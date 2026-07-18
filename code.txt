@@ -1,0 +1,4765 @@
+{
+type: uploaded file
+fileName: src/relational/RelationalEngine.java
+fullContent:
+package relational;
+
+public class RelationalEngine
+{
+    public RelationalEngine()
+    {
+
+    }
+
+
+}
+}
+
+{
+type: uploaded file
+fileName: src/relational/SearchVariable.java
+fullContent:
+package relational;
+
+public class SearchVariable
+{
+    public SearchVariable()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/relational/Variable.java
+fullContent:
+package relational;
+
+import nio.ForeignMemory;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+
+public final class Variable {
+
+    // 32 bytes limit for the unique name string (4 longs * 8 bytes)
+    private static final long SLOT_SIZE = 32L;
+    private static final int DEFAULT_CAPACITY = 1024;
+
+    private static Arena poolArena;
+    private static long baseAddress;
+    private static volatile int capacity;
+    private static volatile int activeCount;
+    private static volatile boolean active;
+
+    static {
+        poolArena = Arena.ofShared();
+        long initialBytes = DEFAULT_CAPACITY * SLOT_SIZE;
+        MemorySegment segment = poolArena.allocate(initialBytes, 8);
+
+        baseAddress = segment.address();
+        capacity = DEFAULT_CAPACITY;
+        activeCount = 0;
+        active = true;
+    }
+
+    private Variable() {}
+
+    private static void checkActive() {
+        if (!active) throw new IllegalStateException("Variable subsystem not active!");
+    }
+
+    // Free all allocated off-heap memory resources for this subsystem
+    public static void freeAllClasses() {
+        if (active) {
+            active = false;
+            if (poolArena != null && poolArena.scope().isAlive()) {
+                poolArena.close();
+            }
+        }
+    }
+
+    // Register a unique name via raw bytes and return its assigned index, or -1 if invalid/duplicate
+    public static int register(byte[] nameBytes) {
+        if (nameBytes == null || nameBytes.length > 32) {
+            return -1;
+        }
+
+        checkActive();
+
+        // Pack name bytes into stack primitives
+        long l0 = packLong(nameBytes, 0);
+        long l1 = packLong(nameBytes, 8);
+        long l2 = packLong(nameBytes, 16);
+        long l3 = packLong(nameBytes, 24);
+
+        synchronized (Variable.class) {
+            // Scan for duplications
+            for (int i = 0; i < activeCount; i++) {
+                long slotAddr = baseAddress + (i * SLOT_SIZE);
+                if (ForeignMemory.getLong(slotAddr) == l0 &&
+                        ForeignMemory.getLong(slotAddr + 8L) == l1 &&
+                        ForeignMemory.getLong(slotAddr + 16L) == l2 &&
+                        ForeignMemory.getLong(slotAddr + 24L) == l3) {
+                    return -1;
+                }
+            }
+
+            // Expand storage block dynamically if capacity boundary is reached
+            if (activeCount >= capacity) {
+                int newCapacity = capacity + DEFAULT_CAPACITY;
+                long newBytes = newCapacity * SLOT_SIZE;
+                MemorySegment newSegment = poolArena.allocate(newBytes, 8);
+                long newBase = newSegment.address();
+
+                ForeignMemory.copy(baseAddress, newBase, activeCount * SLOT_SIZE);
+                baseAddress = newBase;
+                capacity = newCapacity;
+            }
+
+            // Write name segments back-to-back into off-heap memory
+            long targetSlot = baseAddress + (activeCount * SLOT_SIZE);
+            ForeignMemory.putLong(targetSlot, l0);
+            ForeignMemory.putLong(targetSlot + 8L, l1);
+            ForeignMemory.putLong(targetSlot + 16L, l2);
+            ForeignMemory.putLong(targetSlot + 24L, l3);
+
+            int assignedId = activeCount;
+            activeCount++;
+            return assignedId;
+        }
+    }
+
+    // Look up a name via raw bytes and return its index, or -1 if not found
+    public static int getId(byte[] nameBytes) {
+        if (nameBytes == null || nameBytes.length > 32) {
+            return -1;
+        }
+
+        checkActive();
+        long l0 = packLong(nameBytes, 0);
+        long l1 = packLong(nameBytes, 8);
+        long l2 = packLong(nameBytes, 16);
+        long l3 = packLong(nameBytes, 24);
+
+        for (int i = 0; i < activeCount; i++) {
+            long slotAddr = baseAddress + (i * SLOT_SIZE);
+            if (ForeignMemory.getLong(slotAddr) == l0 &&
+                    ForeignMemory.getLong(slotAddr + 8L) == l1 &&
+                    ForeignMemory.getLong(slotAddr + 16L) == l2 &&
+                    ForeignMemory.getLong(slotAddr + 24L) == l3) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    // Rename an existing entry using raw byte arrays while preserving its index
+    public static boolean rename(byte[] oldNameBytes, byte[] newNameBytes) {
+        if (oldNameBytes == null || newNameBytes == null || oldNameBytes.length > 32 || newNameBytes.length > 32) {
+            return false;
+        }
+
+        checkActive();
+        long oldL0 = packLong(oldNameBytes, 0);
+        long oldL1 = packLong(oldNameBytes, 8);
+        long oldL2 = packLong(oldNameBytes, 16);
+        long oldL3 = packLong(oldNameBytes, 24);
+
+        long newL0 = packLong(newNameBytes, 0);
+        long newL1 = packLong(newNameBytes, 8);
+        long newL2 = packLong(newNameBytes, 16);
+        long newL3 = packLong(newNameBytes, 24);
+
+        synchronized (Variable.class) {
+            int targetIdx = -1;
+
+            for (int i = 0; i < activeCount; i++) {
+                long slotAddr = baseAddress + (i * SLOT_SIZE);
+                long currentL0 = ForeignMemory.getLong(slotAddr);
+                long currentL1 = ForeignMemory.getLong(slotAddr + 8L);
+                long currentL2 = ForeignMemory.getLong(slotAddr + 16L);
+                long currentL3 = ForeignMemory.getLong(slotAddr + 24L);
+
+                if (currentL0 == newL0 && currentL1 == newL1 && currentL2 == newL2 && currentL3 == newL3) {
+                    return false; // New name already exists
+                }
+                if (currentL0 == oldL0 && currentL1 == oldL1 && currentL2 == oldL2 && currentL3 == oldL3) {
+                    targetIdx = i;
+                }
+            }
+
+            if (targetIdx == -1) return false;
+
+            long targetSlot = baseAddress + (targetIdx * SLOT_SIZE);
+            ForeignMemory.putLong(targetSlot, newL0);
+            ForeignMemory.putLong(targetSlot + 8L, newL1);
+            ForeignMemory.putLong(targetSlot + 16L, newL2);
+            ForeignMemory.putLong(targetSlot + 24L, newL3);
+            return true;
+        }
+    }
+
+    // Extract 8 bytes into a stack-allocated primitive long with lowercase normalization
+    private static long packLong(byte[] bytes, int offset) {
+        long result = 0L;
+        int len = bytes.length;
+        for (int i = 0; i < 8; i++) {
+            int index = offset + i;
+            long b = 0L;
+            if (index < len) {
+                int rawByte = bytes[index] & 0xFF;
+                if (rawByte >= 65 && rawByte <= 90) {
+                    rawByte += 32;
+                }
+                b = rawByte;
+            }
+            result |= (b << (i * 8));
+        }
+        return result;
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/relational/Generic.java
+fullContent:
+package relational;
+
+public class Generic
+{
+    public Generic()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/net/PollRequest.java
+fullContent:
+package net;
+
+public class PollRequest
+{
+    public PollRequest()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/net/HTTPClient.java
+fullContent:
+package net;
+
+public class HTTPClient
+{
+    public HTTPClient()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/asset/Assimp.java
+fullContent:
+package asset;
+
+public class Assimp
+{
+    public Assimp()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/asset/GeometryBaker.java
+fullContent:
+package asset;
+
+public class GeometryBaker
+{
+    public GeometryBaker()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/util/ProbableObjects.java
+fullContent:
+package util;
+
+public class ProbableObjects
+{
+    public ProbableObjects()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/util/Base.java
+fullContent:
+package util;
+
+public class Base
+{
+    public Base()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/util/Probable.java
+fullContent:
+package util;
+
+public class Probable
+{
+    public Probable()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/util/Random.java
+fullContent:
+package util;
+
+public class Random
+{
+    public Random()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/util/IndexRandom.java
+fullContent:
+package util;
+
+public class IndexRandom
+{
+    public IndexRandom()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/FileCompiler.java
+fullContent:
+void main()
+{
+    Path sourceDir = Paths.get("src");
+    Path outputFile = Paths.get("code.txt");
+
+    IO.println("Scanning directory: " + sourceDir.toAbsolutePath());
+    try(BufferedWriter writer = Files.newBufferedWriter(outputFile);
+        Stream<Path> paths = Files.walk(sourceDir)) {
+        paths.filter(Files::isRegularFile)
+                .filter(path ->
+                {
+                    String fileName = path.toString().toLowerCase();
+                    String fullPath = path.toString();
+
+                    // target which file names
+                    boolean isTargetFile = fileName.endsWith(".java") ||
+                            fileName.endsWith(".vert") ||
+                            fileName.endsWith(".comp") ||
+                            fileName.endsWith(".txt") ||
+                            fileName.endsWith(".frag");
+
+
+                    // exclude files here:
+                    boolean inResourcesDir = fullPath.contains("\\resources\\") ||
+                            fullPath.contains("/resources/") ||
+                            fullPath.contains("\\resources") ||
+                            fullPath.contains("/resources");
+
+                    return isTargetFile && !inResourcesDir;
+                })
+                .forEach(path ->
+                {
+                    try {
+                        writer.write("{\n");
+                        writer.write("type: uploaded file\n");
+                        writer.write("fileName: " + path.toString().replace("\\", "/") + "\n");
+                        writer.write("fullContent:\n");
+                        Files.readAllLines(path).forEach(line ->
+                        {
+                            try {
+                                writer.write(line + "\n");
+                            }
+                            catch(IOException e) {
+                                System.err.println("Failed to write line for: " + path);
+                            }
+                        });
+
+                        writer.write("}\n\n");
+                        IO.println("Appended: " + path.getFileName());
+
+                    }
+                    catch(IOException e) {
+                        System.err.println("Could not read file: " + path);
+                    }
+                });
+
+        IO.println("\nSUCCESS! All codebase files compiled into -> " + outputFile.toAbsolutePath());
+    }
+    catch(IOException e) {
+        System.err.println("Critical Error walking the directory tree: " + e.getMessage());
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/entity/Group.java
+fullContent:
+package entity;
+
+public class Group
+{
+    public Group()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/entity/Light.java
+fullContent:
+package entity;
+
+public class Light
+{
+    public Light()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/entity/Player.java
+fullContent:
+package entity;
+
+public class Player
+{
+    public Player()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/entity/Member.java
+fullContent:
+package entity;
+
+public class Member
+{
+    public Member()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/entity/Camera.java
+fullContent:
+package entity;
+
+public class Camera
+{
+    public Camera()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/entity/Entity.java
+fullContent:
+package entity;
+
+public class Entity
+{
+    public Entity()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/primitive/Int32Fp64.java
+fullContent:
+package primitive;
+
+import nio.ForeignMemory;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.Arrays;
+
+public final class Int32Fp64 {
+
+    private static final VarHandle PRIMITIVE_HEAD_VH;
+    private static final VarHandle ARRAY_HANDLE_VH;
+    private static final VarHandle ARRAY_POINTERS_SIZE_VH;
+    private static final int DEFAULT_CAPACITY = 1024;
+    private static final int SLOT_SIZE = 16;
+
+    private static Arena poolArena;
+    private static int level2ChunkSize;
+    private static volatile boolean active;
+
+    private static int[] primitiveHeapInteger;
+    private static long[] primitiveHeapFraction;
+    private static int[] primitiveNext;
+    private static volatile int primitiveHead = -1;
+
+    private static volatile long arrayHandle;
+    private static long[] arrayPointers;
+    private static volatile int arrayPointerSize = 0;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            PRIMITIVE_HEAD_VH = lookup.findStaticVarHandle(Int32Fp64.class, "primitiveHead", int.class);
+            ARRAY_HANDLE_VH = lookup.findStaticVarHandle(Int32Fp64.class, "arrayHandle", long.class);
+            ARRAY_POINTERS_SIZE_VH = lookup.findStaticVarHandle(Int32Fp64.class, "arrayPointerSize", int.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+
+        Int32Fp64.level2ChunkSize = DEFAULT_CAPACITY;
+        Int32Fp64.poolArena = Arena.ofShared();
+
+        primitiveHeapInteger = new int[DEFAULT_CAPACITY];
+        primitiveHeapFraction = new long[DEFAULT_CAPACITY];
+        primitiveNext = new int[DEFAULT_CAPACITY];
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            primitiveNext[i] = i + 1;
+        }
+        primitiveNext[DEFAULT_CAPACITY - 1] = -1;
+        primitiveHead = 0;
+
+        long blockSize = 8L + (DEFAULT_CAPACITY * (long) SLOT_SIZE);
+        long l2Bytes = DEFAULT_CAPACITY * blockSize;
+        MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+        long l2BaseAddress = l2Segment.address();
+
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            long current = l2BaseAddress + (i * blockSize);
+            long next = l2BaseAddress + ((i + 1) * blockSize);
+            ForeignMemory.putLong(current, next);
+        }
+        ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+        arrayHandle = l2BaseAddress;
+
+        arrayPointers = new long[DEFAULT_CAPACITY];
+        arrayPointerSize = 0;
+        active = true;
+    }
+
+    private Int32Fp64() {}
+
+    private static void checkActive() {
+        if (!active) throw new IllegalStateException("Subsystem not initialized!");
+    }
+
+    public static void free() {
+        if (active) {
+            active = false;
+            if (poolArena != null && poolArena.scope().isAlive()) {
+                poolArena.close();
+            }
+        }
+    }
+
+    public static int allocate() {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            if (oldHead == -1) {
+                synchronized (Int32Fp64.class) {
+                    if (primitiveHead == -1) {
+                        int oldLength = primitiveHeapInteger.length;
+                        int newLength = oldLength + DEFAULT_CAPACITY;
+
+                        int[] newHeapI = new int[newLength];
+                        long[] newHeapF = new long[newLength];
+                        int[] newNext = new int[newLength];
+
+                        System.arraycopy(primitiveHeapInteger, 0, newHeapI, 0, oldLength);
+                        System.arraycopy(primitiveHeapFraction, 0, newHeapF, 0, oldLength);
+                        System.arraycopy(primitiveNext, 0, newNext, 0, oldLength);
+
+                        for (int i = oldLength; i < newLength - 1; i++) {
+                            newNext[i] = i + 1;
+                        }
+                        newNext[newLength - 1] = -1;
+
+                        primitiveHeapInteger = newHeapI;
+                        primitiveHeapFraction = newHeapF;
+                        primitiveNext = newNext;
+                        primitiveHead = oldLength;
+                    }
+                }
+                continue;
+            }
+            int next = primitiveNext[oldHead];
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, next)) {
+                primitiveHeapInteger[oldHead] = 0;
+                primitiveHeapFraction[oldHead] = 0L;
+                return oldHead;
+            }
+        }
+    }
+
+    public static void free(int variableHandle) {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            primitiveNext[variableHandle] = oldHead;
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, variableHandle)) {
+                return;
+            }
+        }
+    }
+
+    public static int getInteger(int variableHandle) {
+        checkActive();
+        return primitiveHeapInteger[variableHandle];
+    }
+
+    public static long getFraction(int variableHandle) {
+        checkActive();
+        return primitiveHeapFraction[variableHandle];
+    }
+
+    public static void set(int variableHandle, int integerPart, long fractionPart) {
+        checkActive();
+        primitiveHeapInteger[variableHandle] = integerPart;
+        primitiveHeapFraction[variableHandle] = fractionPart;
+    }
+
+    public static long allocateChunk() {
+        return allocateChunk(DEFAULT_CAPACITY);
+    }
+
+    public static long allocateChunk(int size) {
+        checkActive();
+        if (size <= DEFAULT_CAPACITY) {
+            while (true) {
+                long oldHead = arrayHandle;
+                if (oldHead == 0L) {
+                    synchronized (Int32Fp64.class) {
+                        if (arrayHandle == 0L) {
+                            long blockSize = 8L + (DEFAULT_CAPACITY * (long) SLOT_SIZE);
+                            long l2Bytes = DEFAULT_CAPACITY * blockSize;
+                            MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+                            long l2BaseAddress = l2Segment.address();
+
+                            for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+                                long current = l2BaseAddress + (i * blockSize);
+                                long next = l2BaseAddress + ((i + 1) * blockSize);
+                                ForeignMemory.putLong(current, next);
+                            }
+                            ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+                            arrayHandle = l2BaseAddress;
+                        }
+                    }
+                    continue;
+                }
+                long next = ForeignMemory.getLong(oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, next)) {
+                    ForeignMemory.putLong(oldHead, 1L);
+                    return oldHead + 8L;
+                }
+            }
+        } else {
+            long blockSize = 8L + (size * (long) SLOT_SIZE);
+            MemorySegment customSegment = poolArena.allocate(blockSize, 8);
+            long baseAddress = customSegment.address();
+            ForeignMemory.putLong(baseAddress, 0L);
+            return baseAddress + 8L;
+        }
+    }
+
+    public static void freeChunk(long payloadAddress) {
+        checkActive();
+        long blockBase = payloadAddress - 8L;
+        long marker = ForeignMemory.getLong(blockBase);
+        if (marker == 1L) {
+            while (true) {
+                long oldHead = arrayHandle;
+                ForeignMemory.putLong(blockBase, oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, blockBase)) {
+                    return;
+                }
+            }
+        }
+    }
+
+    public static int registerChunk(long chunkPayloadAddress) {
+        checkActive();
+        while (true) {
+            int idx = arrayPointerSize;
+            if (idx >= arrayPointers.length) {
+                synchronized (Int32Fp64.class) {
+                    if (arrayPointerSize >= arrayPointers.length) {
+                        arrayPointers = Arrays.copyOf(arrayPointers, arrayPointers.length + DEFAULT_CAPACITY);
+                    }
+                }
+                continue;
+            }
+            if (ARRAY_POINTERS_SIZE_VH.compareAndSet(idx, idx + 1)) {
+                arrayPointers[idx] = chunkPayloadAddress;
+                return idx;
+            }
+        }
+    }
+
+    public static long getArray(int id) {
+        checkActive();
+        if (id < 0 || id >= arrayPointerSize) throw new IndexOutOfBoundsException("Invalid array ID!");
+        return arrayPointers[id];
+    }
+
+    // Convert double to discrete components and write to target handle
+    public static void setFromDouble(int variableHandle, double value) {
+        int integerPart = (int) Math.floor(value);
+        double frac = value - integerPart;
+        long fractionPart = (long) (frac * 18446744073709551616.0);
+        set(variableHandle, integerPart, fractionPart);
+    }
+
+    // Convert components to high-precision double
+    public static double toDouble(int integerPart, long fractionPart) {
+        double frac = (fractionPart & 0x7FFFFFFFFFFFFFFFL);
+        if (fractionPart < 0) {
+            frac += 9223372036854775808.0;
+        }
+        return integerPart + (frac / 18446744073709551616.0);
+    }
+
+    // Fast carry-aware addition direct to memory handle
+    public static void add(int aInteger, long aFraction, int bInteger, long bFraction, int resultHandle) {
+        long sumF = aFraction + bFraction;
+        long carry = (Long.compareUnsigned(sumF, aFraction) < 0) ? 1L : 0L;
+        set(resultHandle, (int) (aInteger + bInteger + carry), sumF);
+    }
+
+    // Fast borrow-aware subtraction direct to memory handle
+    public static void sub(int aInteger, long aFraction, int bInteger, long bFraction, int resultHandle) {
+        long diffF = aFraction - bFraction;
+        long borrow = (Long.compareUnsigned(aFraction, bFraction) < 0) ? 1L : 0L;
+        set(resultHandle, (int) (aInteger - bInteger - borrow), diffF);
+    }
+
+    // High-precision multiplication direct to memory handle
+    public static void mul(int aInteger, long aFraction, int bInteger, long bFraction, int resultHandle) {
+        double val1 = toDouble(aInteger, aFraction);
+        double val2 = toDouble(bInteger, bFraction);
+        setFromDouble(resultHandle, val1 * val2);
+    }
+
+    // High-precision division direct to memory handle
+    public static void div(int aInteger, long aFraction, int bInteger, long bFraction, int resultHandle) {
+        double val1 = toDouble(aInteger, aFraction);
+        double val2 = toDouble(bInteger, bFraction);
+        setFromDouble(resultHandle, val1 / val2);
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/primitive/Int32Fp32.java
+fullContent:
+package primitive;
+
+import nio.ForeignMemory;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.Arrays;
+
+public final class Int32Fp32 {
+
+    private static final VarHandle PRIMITIVE_HEAD_VH;
+    private static final VarHandle ARRAY_HANDLE_VH;
+    private static final VarHandle ARRAY_POINTERS_SIZE_VH;
+    private static final int DEFAULT_CAPACITY = 1024;
+    private static final int LONG_BYTES = 8;
+
+    private static Arena poolArena;
+    private static int level2ChunkSize;
+    private static volatile boolean active;
+
+    private static long[] primitiveHeap;
+    private static int[] primitiveNext;
+    private static volatile int primitiveHead = -1;
+
+    private static volatile long arrayHandle;
+    private static long[] arrayPointers;
+    private static volatile int arrayPointerSize = 0;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            PRIMITIVE_HEAD_VH = lookup.findStaticVarHandle(Int32Fp32.class, "primitiveHead", int.class);
+            ARRAY_HANDLE_VH = lookup.findStaticVarHandle(Int32Fp32.class, "arrayHandle", long.class);
+            ARRAY_POINTERS_SIZE_VH = lookup.findStaticVarHandle(Int32Fp32.class, "arrayPointerSize", int.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+
+        Int32Fp32.level2ChunkSize = DEFAULT_CAPACITY;
+        Int32Fp32.poolArena = Arena.ofShared();
+
+        primitiveHeap = new long[DEFAULT_CAPACITY];
+        primitiveNext = new int[DEFAULT_CAPACITY];
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            primitiveNext[i] = i + 1;
+        }
+        primitiveNext[DEFAULT_CAPACITY - 1] = -1;
+        primitiveHead = 0;
+
+        long blockSize = 8L + (DEFAULT_CAPACITY * (long) LONG_BYTES);
+        long l2Bytes = DEFAULT_CAPACITY * blockSize;
+        MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+        long l2BaseAddress = l2Segment.address();
+
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            long current = l2BaseAddress + (i * blockSize);
+            long next = l2BaseAddress + ((i + 1) * blockSize);
+            ForeignMemory.putLong(current, next);
+        }
+        ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+        arrayHandle = l2BaseAddress;
+
+        arrayPointers = new long[DEFAULT_CAPACITY];
+        arrayPointerSize = 0;
+        active = true;
+    }
+
+    private Int32Fp32() {}
+
+    private static void checkActive() {
+        if (!active) throw new IllegalStateException("Subsystem not initialized!");
+    }
+
+    public static void free() {
+        if (active) {
+            active = false;
+            if (poolArena != null && poolArena.scope().isAlive()) {
+                poolArena.close();
+            }
+        }
+    }
+
+    // Allocate an on-heap variable handle
+    public static int allocate() {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            if (oldHead == -1) {
+                synchronized (Int32Fp32.class) {
+                    if (primitiveHead == -1) {
+                        int oldLength = primitiveHeap.length;
+                        int newLength = oldLength + DEFAULT_CAPACITY;
+
+                        long[] newHeap = new long[newLength];
+                        int[] newNext = new int[newLength];
+
+                        System.arraycopy(primitiveHeap, 0, newHeap, 0, oldLength);
+                        System.arraycopy(primitiveNext, 0, newNext, 0, oldLength);
+
+                        for (int i = oldLength; i < newLength - 1; i++) {
+                            newNext[i] = i + 1;
+                        }
+                        newNext[newLength - 1] = -1;
+
+                        primitiveHeap = newHeap;
+                        primitiveNext = newNext;
+                        primitiveHead = oldLength;
+                    }
+                }
+                continue;
+            }
+            int next = primitiveNext[oldHead];
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, next)) {
+                primitiveHeap[oldHead] = 0L;
+                return oldHead;
+            }
+        }
+    }
+
+    // Recycle an on-heap variable handle
+    public static void free(int variableHandle) {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            primitiveNext[variableHandle] = oldHead;
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, variableHandle)) {
+                return;
+            }
+        }
+    }
+
+    // Get packed long value from on-heap
+    public static long get(int variableHandle) {
+        checkActive();
+        return primitiveHeap[variableHandle];
+    }
+
+    // Set packed long value on-heap
+    public static void set(int variableHandle, long value) {
+        checkActive();
+        primitiveHeap[variableHandle] = value;
+    }
+
+    // Allocate default off-heap array page
+    public static long allocateChunk() {
+        return allocateChunk(DEFAULT_CAPACITY);
+    }
+
+    // Allocate custom off-heap memory size
+    public static long allocateChunk(int size) {
+        checkActive();
+        if (size <= DEFAULT_CAPACITY) {
+            while (true) {
+                long oldHead = arrayHandle;
+                if (oldHead == 0L) {
+                    synchronized (Int32Fp32.class) {
+                        if (arrayHandle == 0L) {
+                            long blockSize = 8L + (DEFAULT_CAPACITY * (long) LONG_BYTES);
+                            long l2Bytes = DEFAULT_CAPACITY * blockSize;
+                            MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+                            long l2BaseAddress = l2Segment.address();
+
+                            for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+                                long current = l2BaseAddress + (i * blockSize);
+                                long next = l2BaseAddress + ((i + 1) * blockSize);
+                                ForeignMemory.putLong(current, next);
+                            }
+                            ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+                            arrayHandle = l2BaseAddress;
+                        }
+                    }
+                    continue;
+                }
+                long next = ForeignMemory.getLong(oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, next)) {
+                    ForeignMemory.putLong(oldHead, 1L);
+                    return oldHead + 8L;
+                }
+            }
+        } else {
+            long blockSize = 8L + (size * (long) LONG_BYTES);
+            MemorySegment customSegment = poolArena.allocate(blockSize, 8);
+            long baseAddress = customSegment.address();
+            ForeignMemory.putLong(baseAddress, 0L);
+            return baseAddress + 8L;
+        }
+    }
+
+    // Recycle off-heap array page
+    public static void freeChunk(long payloadAddress) {
+        checkActive();
+        long blockBase = payloadAddress - 8L;
+        long marker = ForeignMemory.getLong(blockBase);
+        if (marker == 1L) {
+            while (true) {
+                long oldHead = arrayHandle;
+                ForeignMemory.putLong(blockBase, oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, blockBase)) {
+                    return;
+                }
+            }
+        }
+    }
+
+    // Register an off-heap pointer in Level 3 directory
+    public static int registerChunk(long chunkPayloadAddress) {
+        checkActive();
+        while (true) {
+            int idx = arrayPointerSize;
+            if (idx >= arrayPointers.length) {
+                synchronized (Int32Fp32.class) {
+                    if (arrayPointerSize >= arrayPointers.length) {
+                        arrayPointers = Arrays.copyOf(arrayPointers, arrayPointers.length + DEFAULT_CAPACITY);
+                    }
+                }
+                continue;
+            }
+            if (ARRAY_POINTERS_SIZE_VH.compareAndSet(idx, idx + 1)) {
+                arrayPointers[idx] = chunkPayloadAddress;
+                return idx;
+            }
+        }
+    }
+
+    // Retrieve registered off-heap chunk by directory ID
+    public static long getArray(int id) {
+        checkActive();
+        if (id < 0 || id >= arrayPointerSize) throw new IndexOutOfBoundsException("Invalid array ID!");
+        return arrayPointers[id];
+    }
+
+    // Pack 32-bit integer and 32-bit fraction into a single 64-bit long
+    public static long pack(int integerPart, int fractionPart) {
+        return ((long) integerPart << 32) | (fractionPart & 0xFFFFFFFFL);
+    }
+
+    // Get 32-bit integer part from a packed long
+    public static int getInteger(long packed) {
+        return (int) (packed >>> 32);
+    }
+
+    // Get 32-bit fraction part from a packed long
+    public static int getFraction(long packed) {
+        return (int) packed;
+    }
+
+    // Convert float to raw packed value
+    public static long fromFloat(float value) {
+        int integerPart = (int) Math.floor(value);
+        int fractionPart = (int) ((value - integerPart) * 4294967296.0);
+        return pack(integerPart, fractionPart);
+    }
+
+    // Convert raw packed value to float
+    public static float toFloat(long packed) {
+        int integerPart = getInteger(packed);
+        int fractionPart = getFraction(packed);
+        return integerPart + (float) (fractionPart & 0xFFFFFFFFL) / 4294967296.0f;
+    }
+
+    // Add two packed values using lock-free carry logic
+    public static long add(long a, long b) {
+        int i1 = getInteger(a);
+        long f1 = getFraction(a) & 0xFFFFFFFFL;
+        int i2 = getInteger(b);
+        long f2 = getFraction(b) & 0xFFFFFFFFL;
+        long sumF = f1 + f2;
+        int carry = (int) (sumF >>> 32);
+        return pack(i1 + i2 + carry, (int) sumF);
+    }
+
+    // Subtract two packed values using lock-free borrow logic
+    public static long sub(long a, long b) {
+        int i1 = getInteger(a);
+        long f1 = getFraction(a) & 0xFFFFFFFFL;
+        int i2 = getInteger(b);
+        long f2 = getFraction(b) & 0xFFFFFFFFL;
+        long diffF = f1 - f2;
+        int borrow = (diffF < 0) ? 1 : 0;
+        return pack(i1 - i2 - borrow, (int) diffF);
+    }
+
+    // Multiply two packed values using high-precision conversion
+    public static long mul(long a, long b) {
+        return fromFloat(toFloat(a) * toFloat(b));
+    }
+
+    // Divide two packed values using high-precision conversion
+    public static long div(long a, long b) {
+        return fromFloat(toFloat(a) / toFloat(b));
+    }
+
+    // Sine calculation
+    public static long sin(long angleDegrees) {
+        float rad = toFloat(angleDegrees) * (3.14159265f / 180.0f);
+        return fromFloat((float) Math.sin(rad));
+    }
+
+    // Cosine calculation
+    public static long cos(long angleDegrees) {
+        float rad = toFloat(angleDegrees) * (3.14159265f / 180.0f);
+        return fromFloat((float) Math.cos(rad));
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/primitive/Byte.java
+fullContent:
+package primitive;
+
+import nio.ForeignMemory;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.Arrays;
+
+public final class Byte {
+
+    private static final VarHandle PRIMITIVE_HEAD_VH;
+    private static final VarHandle ARRAY_HANDLE_VH;
+    private static final VarHandle ARRAY_POINTERS_SIZE_VH;
+    private static final int DEFAULT_CAPACITY = 1024;
+
+    private static Arena poolArena;
+    private static int level2ChunkSize;
+    private static volatile boolean active; // = false
+
+    // Level 1: On-heap primitive storage using flat arrays and an integer head
+    private static byte[] primitiveHeap;
+    private static int[] primitiveNext;
+    private static volatile int primitiveHead = -1;
+
+    // Level 2 & 3: Off-heap memory chunk handles and static layout pointers
+    private static volatile long arrayHandle;
+    private static long[] arrayPointers;
+    private static volatile int arrayPointerSize = 0;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            PRIMITIVE_HEAD_VH = lookup.findStaticVarHandle(Byte.class, "primitiveHead", int.class);
+            ARRAY_HANDLE_VH = lookup.findStaticVarHandle(Byte.class, "arrayHandle", long.class);
+            ARRAY_POINTERS_SIZE_VH = lookup.findStaticVarHandle(Byte.class, "arrayPointerSize", int.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+
+        Byte.level2ChunkSize = DEFAULT_CAPACITY;
+        Byte.poolArena = Arena.ofShared();
+
+        // Allocating Level 1 primitive heap space on boot
+        primitiveHeap = new byte[DEFAULT_CAPACITY];
+        primitiveNext = new int[DEFAULT_CAPACITY];
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            primitiveNext[i] = i + 1;
+        }
+        primitiveNext[DEFAULT_CAPACITY - 1] = -1;
+        primitiveHead = 0;
+
+        // Allocating Level 2 off-heap page buffers on boot
+        long blockSize = 8L + DEFAULT_CAPACITY;
+        long l2Bytes = DEFAULT_CAPACITY * blockSize;
+        MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+        long l2BaseAddress = l2Segment.address();
+
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            long current = l2BaseAddress + (i * blockSize);
+            long next = l2BaseAddress + ((i + 1) * blockSize);
+            ForeignMemory.putLong(current, next);
+        }
+        ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+                arrayHandle = l2BaseAddress;
+
+        // Level 3: Zero-allocation directory configuration
+        arrayPointers = new long[DEFAULT_CAPACITY];
+        arrayPointerSize = 0;
+        active = true;
+    }
+
+    // private constructor
+    private Byte() {}
+
+    private static void checkActive() {
+        if (!active) throw new IllegalStateException("Subsystem not initialized!");
+    }
+
+    public static void free() {
+        if (active) {
+            active = false;
+            if (poolArena != null && poolArena.scope().isAlive()) {
+                poolArena.close();
+            }
+        }
+    }
+
+
+    public static int allocate() {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            if (oldHead == -1) {
+
+                // Thread-safe heap array expansion by 1024 elements
+                synchronized (Byte.class) {
+                    if (primitiveHead == -1) {
+                        int oldLength = primitiveHeap.length;
+                        int newLength = oldLength + DEFAULT_CAPACITY;
+
+                        byte[] newHeap = new byte[newLength];
+                        int[] newNext = new int[newLength];
+
+                        // intrinsics
+                        System.arraycopy(primitiveHeap, 0, newHeap, 0, oldLength);
+                        System.arraycopy(primitiveNext, 0, newNext, 0, oldLength);
+
+                        for (int i = oldLength; i < newLength - 1; i++) {
+                            newNext[i] = i + 1;
+                        }
+                        newNext[newLength - 1] = -1;
+
+                        primitiveHeap = newHeap;
+                        primitiveNext = newNext;
+                        primitiveHead = oldLength;
+                    }
+                }
+                continue;
+            }
+            int next = primitiveNext[oldHead];
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, next)) {
+                primitiveHeap[oldHead] = 0;
+                return oldHead;
+            }
+        }
+    }
+
+    public static void free(int variableHandle) {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            primitiveNext[variableHandle] = oldHead;
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, variableHandle)) {
+                return;
+            }
+        }
+    }
+
+    public static byte get(int variableHandle) {
+        checkActive();
+        return primitiveHeap[variableHandle];
+    }
+
+    public static void set(int variableHandle, byte value) {
+        checkActive();
+        primitiveHeap[variableHandle] = value;
+    }
+
+    public static long allocateChunk() {
+        return allocateChunk(DEFAULT_CAPACITY);
+    }
+
+    // Handles targeted array sizing demands exceeding the standard 1024 ceiling
+    public static long allocateChunk(int size) {
+        checkActive();
+        if (size <= DEFAULT_CAPACITY) {
+            while (true) {
+                long oldHead = arrayHandle;
+                if (oldHead == 0L) {
+                    // Replenish the pool with 1024 standard segments if empty
+                    synchronized (Byte.class) {
+                        if (arrayHandle == 0L) {
+                            long blockSize = 8L + DEFAULT_CAPACITY;
+                            long l2Bytes = DEFAULT_CAPACITY * blockSize;
+                            MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+                            long l2BaseAddress = l2Segment.address();
+
+                            for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+                                long current = l2BaseAddress + (i * blockSize);
+                                long next = l2BaseAddress + ((i + 1) * blockSize);
+                                ForeignMemory.putLong(current, next);
+                            }
+                            ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+                                    arrayHandle = l2BaseAddress;
+                        }
+                    }
+                    continue;
+                }
+                long next = ForeignMemory.getLong(oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, next)) {
+                    ForeignMemory.putLong(oldHead, 1L); // 1L signifies standard pooled segment layout[span_6](start_span)[span_6](end_span)
+                    return oldHead + 8L;
+                }
+            }
+        } else {
+            // Request takes more than 1024: Allocate custom off-heap memory matching that specific layout requirement
+            long blockSize = 8L + size;
+            MemorySegment customSegment = poolArena.allocate(blockSize, 8);
+            long baseAddress = customSegment.address();
+            ForeignMemory.putLong(baseAddress, 0L); // 0L signifies standalone oversized tracking allocation[span_7](start_span)[span_7](end_span)
+            return baseAddress + 8L;
+        }
+    }
+
+    public static void freeChunk(long payloadAddress) {
+        checkActive();
+        long blockBase = payloadAddress - 8L;
+        long marker = ForeignMemory.getLong(blockBase);
+        if (marker == 1L) {
+            // Recycles standard pooled segments lock-free
+            while (true) {
+                long oldHead = arrayHandle;
+                ForeignMemory.putLong(blockBase, oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, blockBase)) {
+                    return;
+                }
+            }
+        }
+        // Custom large chunks (>1024) bypass standard pooling slots to maintain chunk size safety boundaries
+    }
+
+    // Resolves boundary checks and handles dynamic expansion inside Level 3 array of arrays
+    public static int registerChunk(long chunkPayloadAddress) {
+        checkActive();
+        while (true) {
+            int idx = arrayPointerSize;
+            if (idx >= arrayPointers.length) {
+                synchronized (Byte.class) {
+                    if (arrayPointerSize >= arrayPointers.length) {
+                        arrayPointers = Arrays.copyOf(arrayPointers, arrayPointers.length + DEFAULT_CAPACITY);
+                    }
+                }
+                continue;
+            }
+            if (ARRAY_POINTERS_SIZE_VH.compareAndSet(idx, idx + 1)) {
+                arrayPointers[idx] = chunkPayloadAddress;
+                return idx;
+            }
+        }
+    }
+
+    public static long getArray(int id) {
+        checkActive();
+        if (id < 0 || id >= arrayPointerSize) throw new IndexOutOfBoundsException("Invalid array ID!");
+        return arrayPointers[id];
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/primitive/Int32.java
+fullContent:
+package primitive;
+
+import nio.ForeignMemory;
+import nio.MemoryRegistry;
+
+import java.lang.foreign.Arena;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
+public final class Int32 {
+
+    public static final int MAX_VALUE = 2147483647;
+    public static final int MIN_VALUE = -2147483648;
+
+    // Structural Identifiers
+    public static final int TYPE_SINGLETON = 0;
+    public static final int TYPE_ARRAY = 1;
+    public static final int TYPE_MATRIX = 2;
+
+    private static final int DEFAULT_CAPACITY = 1024;
+
+    // Memory Block Sizes (Including 8-byte headers)
+    private static final long SINGLETON_SLOT_SIZE = 16L; // 8B header + 4B data + 4B padding
+    private static final long POOLED_ARRAY_SIZE = 8L + (DEFAULT_CAPACITY * 4L);  // 4104 Bytes
+    private static final long POOLED_MATRIX_SIZE = 8L + (DEFAULT_CAPACITY * 8L); // 8200 Bytes
+
+    private static final VarHandle SINGLETON_FREE_HEAD_VH;
+    private static final VarHandle ARRAY_FREE_HEAD_VH;
+    private static final VarHandle MATRIX_FREE_HEAD_VH;
+
+    // Spin-lock flags
+    private static volatile int singletonExpanding = 0;
+    private static volatile int arrayExpanding = 0;
+    private static volatile int matrixExpanding = 0;
+
+    private static final VarHandle SINGLETON_EXPANDING_VH;
+    private static final VarHandle ARRAY_EXPANDING_VH;
+    private static final VarHandle MATRIX_EXPANDING_VH;
+
+    private static Arena poolArena;
+    private static volatile boolean active;
+
+    // Lock-free free-list heads tracking the USER pointers (base + 8L)
+    private static volatile long singletonFreeHead;
+    private static volatile long arrayFreeHead;
+    private static volatile long matrixFreeHead;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            SINGLETON_FREE_HEAD_VH = lookup.findStaticVarHandle(Int32.class, "singletonFreeHead", long.class);
+            ARRAY_FREE_HEAD_VH = lookup.findStaticVarHandle(Int32.class, "arrayFreeHead", long.class);
+            MATRIX_FREE_HEAD_VH = lookup.findStaticVarHandle(Int32.class, "matrixFreeHead", long.class);
+
+            SINGLETON_EXPANDING_VH = lookup.findStaticVarHandle(Int32.class, "singletonExpanding", int.class);
+            ARRAY_EXPANDING_VH = lookup.findStaticVarHandle(Int32.class, "arrayExpanding", int.class);
+            MATRIX_EXPANDING_VH = lookup.findStaticVarHandle(Int32.class, "matrixExpanding", int.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+
+        poolArena = Arena.ofShared();
+        active = true;
+
+        // Register for decoupled teardown
+        MemoryRegistry.register(Int32::freeAll);
+
+        // Pre-allocate default 1024 reserved slots for all layers on boot
+        expandSingletonPool();
+        expandArrayPool();
+        expandMatrixPool();
+    }
+
+    private Int32() {}
+
+    private static void checkActive() {
+        if (!active) throw new IllegalStateException("Int32 subsystem is not active!");
+    }
+
+    public static void freeAll() {
+        if (active) {
+            active = false;
+            if (poolArena != null && poolArena.scope().isAlive()) {
+                poolArena.close();
+            }
+        }
+    }
+
+    // --- INTERNAL POOL EXPANSIONS (Fully Lock-Free) ---
+    private static void expandSingletonPool() {
+        long totalBytes = DEFAULT_CAPACITY * SINGLETON_SLOT_SIZE;
+        long baseAddress = poolArena.allocate(totalBytes, 8).address();
+        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
+            long currentBlock = baseAddress + (i * SINGLETON_SLOT_SIZE);
+            long userPtr = currentBlock + 8L;
+            while (true) {
+                long oldHead = singletonFreeHead;
+                ForeignMemory.putLong(userPtr, oldHead);
+                if (SINGLETON_FREE_HEAD_VH.compareAndSet(oldHead, userPtr)) break;
+            }
+        }
+    }
+
+    private static void expandArrayPool() {
+        long totalBytes = DEFAULT_CAPACITY * POOLED_ARRAY_SIZE;
+        long baseAddress = poolArena.allocate(totalBytes, 8).address();
+        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
+            long currentBlock = baseAddress + (i * POOLED_ARRAY_SIZE);
+            long userPtr = currentBlock + 8L;
+            while (true) {
+                long oldHead = arrayFreeHead;
+                ForeignMemory.putLong(userPtr, oldHead);
+                if (ARRAY_FREE_HEAD_VH.compareAndSet(oldHead, userPtr)) break;
+            }
+        }
+    }
+
+    private static void expandMatrixPool() {
+        long totalBytes = DEFAULT_CAPACITY * POOLED_MATRIX_SIZE;
+        long baseAddress = poolArena.allocate(totalBytes, 8).address();
+        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
+            long currentBlock = baseAddress + (i * POOLED_MATRIX_SIZE);
+            long userPtr = currentBlock + 8L;
+            while (true) {
+                long oldHead = matrixFreeHead;
+                ForeignMemory.putLong(userPtr, oldHead);
+                if (MATRIX_FREE_HEAD_VH.compareAndSet(oldHead, userPtr)) break;
+            }
+        }
+    }
+
+    // --- ALLOCATION LAYER (Spin-Lock Implementations) ---
+    public static long allocateSingleton() {
+        checkActive();
+        while (true) {
+            long oldHead = singletonFreeHead;
+            if (oldHead == 0L) {
+                if (SINGLETON_EXPANDING_VH.compareAndSet(0, 1)) {
+                    expandSingletonPool();
+                    SINGLETON_EXPANDING_VH.setVolatile(0);
+                } else {
+                    Thread.onSpinWait();
+                }
+                continue;
+            }
+            long next = ForeignMemory.getLong(oldHead);
+            if (SINGLETON_FREE_HEAD_VH.compareAndSet(oldHead, next)) {
+                long base = oldHead - 8L;
+                ForeignMemory.putInt(base, 1);
+                ForeignMemory.putInt(base + 4L, TYPE_SINGLETON);
+                ForeignMemory.putLong(oldHead, 0); // Clear metadata signature
+                return oldHead;
+            }
+        }
+    }
+
+    public static long allocateArray(int length) {
+        checkActive();
+        if (length <= DEFAULT_CAPACITY) {
+            while (true) {
+                long oldHead = arrayFreeHead;
+                if (oldHead == 0L) {
+                    if (ARRAY_EXPANDING_VH.compareAndSet(0, 1)) {
+                        expandArrayPool();
+                        ARRAY_EXPANDING_VH.setVolatile(0);
+                    } else {
+                        Thread.onSpinWait();
+                    }
+                    continue;
+                }
+                long next = ForeignMemory.getLong(oldHead);
+                if (ARRAY_FREE_HEAD_VH.compareAndSet(oldHead, next)) {
+                    long base = oldHead - 8L;
+                    ForeignMemory.putInt(base, length);
+                    ForeignMemory.putInt(base + 4L, TYPE_ARRAY);
+                    return oldHead;
+                }
+            }
+        } else {
+            long totalBytes = 8L + (length * 4L);
+            long alignedBytes = (totalBytes + 7L) & ~7L;
+            long base = poolArena.allocate(alignedBytes, 8).address();
+            ForeignMemory.putInt(base, length);
+            ForeignMemory.putInt(base + 4L, TYPE_ARRAY);
+            return base + 8L;
+        }
+    }
+
+    public static long allocateMatrix(int length) {
+        checkActive();
+        if (length <= DEFAULT_CAPACITY) {
+            while (true) {
+                long oldHead = matrixFreeHead;
+                if (oldHead == 0L) {
+                    if (MATRIX_EXPANDING_VH.compareAndSet(0, 1)) {
+                        expandMatrixPool();
+                        MATRIX_EXPANDING_VH.setVolatile(0);
+                    } else {
+                        Thread.onSpinWait();
+                    }
+                    continue;
+                }
+                long next = ForeignMemory.getLong(oldHead);
+                if (MATRIX_FREE_HEAD_VH.compareAndSet(oldHead, next)) {
+                    long base = oldHead - 8L;
+                    ForeignMemory.putInt(base, length);
+                    ForeignMemory.putInt(base + 4L, TYPE_MATRIX);
+                    return oldHead;
+                }
+            }
+        } else {
+            long totalBytes = 8L + (length * 8L);
+            long base = poolArena.allocate(totalBytes, 8).address();
+            ForeignMemory.putInt(base, length);
+            ForeignMemory.putInt(base + 4L, TYPE_MATRIX);
+            return base + 8L;
+        }
+    }
+
+    // --- MUTATING EXPANSION LAYER ---
+    public static long expandArray(long oldPointer, int newLength) {
+        checkActive();
+        int oldLength = length(oldPointer);
+        long newPointer = allocateArray(newLength);
+
+        int elementsToCopy = Math.min(oldLength, newLength);
+        ForeignMemory.copy(oldPointer, newPointer, elementsToCopy * 4L);
+        free(oldPointer);
+        return newPointer;
+    }
+
+    public static long expandMatrix(long oldPointer, int newLength) {
+        checkActive();
+        int oldLength = length(oldPointer);
+        long newPointer = allocateMatrix(newLength);
+
+        int elementsToCopy = Math.min(oldLength, newLength);
+        ForeignMemory.copy(oldPointer, newPointer, elementsToCopy * 8L);
+        free(oldPointer);
+        return newPointer;
+    }
+
+    // --- VARIABLE RECYCLING LAYER (Oversized Guard Added) ---
+    public static void free(long pointer) {
+        checkActive();
+        if (pointer == 0L) return;
+
+        int type = type(pointer);
+        int length = length(pointer);
+        long base = pointer - 8L;
+
+        // Clear metadata signatures to easily trap dangling pointer loops
+        ForeignMemory.putInt(base, 0);
+        ForeignMemory.putInt(base + 4L, -1);
+
+        if (type == TYPE_SINGLETON) {
+            while (true) {
+                long oldHead = singletonFreeHead;
+                ForeignMemory.putLong(pointer, oldHead);
+                if (SINGLETON_FREE_HEAD_VH.compareAndSet(oldHead, pointer)) return;
+            }
+        } else if (type == TYPE_ARRAY) {
+            if (length > DEFAULT_CAPACITY) return; // Drop oversized arrays from fixed pool
+            while (true) {
+                long oldHead = arrayFreeHead;
+                ForeignMemory.putLong(pointer, oldHead);
+                if (ARRAY_FREE_HEAD_VH.compareAndSet(oldHead, pointer)) return;
+            }
+        } else if (type == TYPE_MATRIX) {
+            if (length > DEFAULT_CAPACITY) return; // Drop oversized matrices from fixed pool
+            while (true) {
+                long oldHead = matrixFreeHead;
+                ForeignMemory.putLong(pointer, oldHead);
+                if (MATRIX_FREE_HEAD_VH.compareAndSet(oldHead, pointer)) return;
+            }
+        }
+    }
+
+    // --- DATA ACCESSORS & METADATA ---
+    public static int get(long pointer) { return ForeignMemory.getInt(pointer); }
+    public static int get(long pointer, int index) { return ForeignMemory.getInt(pointer + (index * 4L)); }
+    public static long getPointer(long matrixPointer, int index) { return ForeignMemory.getLong(matrixPointer + (index * 8L)); }
+
+    public static void set(long pointer, int value) { ForeignMemory.putInt(pointer, value); }
+    public static void set(long pointer, int index, int value) { ForeignMemory.putInt(pointer + (index * 4L), value); }
+    public static void setPointer(long matrixPointer, int index, long targetPointer) { ForeignMemory.putLong(matrixPointer + (index * 8L), targetPointer); }
+
+    public static int length(long pointer) { return ForeignMemory.getInt(pointer - 8L); }
+    public static int type(long pointer) { return ForeignMemory.getInt(pointer - 4L); }
+}
+}
+
+{
+type: uploaded file
+fileName: src/primitive/Short.java
+fullContent:
+package primitive;
+
+import nio.ForeignMemory;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.Arrays;
+
+public final class Short {
+
+    private static final VarHandle PRIMITIVE_HEAD_VH;
+    private static final VarHandle ARRAY_HANDLE_VH;
+    private static final VarHandle ARRAY_POINTERS_SIZE_VH;
+    private static final int DEFAULT_CAPACITY = 1024;
+    private static final int SHORT_BYTES = 2; // 2 bytes per element
+
+    private static Arena poolArena;
+    private static int level2ChunkSize;
+    private static volatile boolean active;
+
+    // Level 1: On-heap primitive storage using flat arrays and an integer head
+    private static short[] primitiveHeap;
+    private static int[] primitiveNext;
+    private static volatile int primitiveHead = -1;
+
+    // Level 2 & 3: Off-heap memory chunk handles and static layout pointers
+    private static volatile long arrayHandle;
+    private static long[] arrayPointers;
+    private static volatile int arrayPointerSize = 0;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            PRIMITIVE_HEAD_VH = lookup.findStaticVarHandle(Short.class, "primitiveHead", int.class);
+            ARRAY_HANDLE_VH = lookup.findStaticVarHandle(Short.class, "arrayHandle", long.class);
+            ARRAY_POINTERS_SIZE_VH = lookup.findStaticVarHandle(Short.class, "arrayPointerSize", int.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+
+        Short.level2ChunkSize = DEFAULT_CAPACITY;
+        Short.poolArena = Arena.ofShared();
+
+        // Allocating Level 1 primitive heap space on boot
+        primitiveHeap = new short[DEFAULT_CAPACITY];
+        primitiveNext = new int[DEFAULT_CAPACITY];
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            primitiveNext[i] = i + 1;
+        }
+        primitiveNext[DEFAULT_CAPACITY - 1] = -1;
+        primitiveHead = 0;
+
+        // Allocating Level 2 off-heap page buffers on boot scaled by SHORT_BYTES
+        long blockSize = 8L + (DEFAULT_CAPACITY * (long) SHORT_BYTES);
+        long l2Bytes = DEFAULT_CAPACITY * blockSize;
+        MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+        long l2BaseAddress = l2Segment.address();
+
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            long current = l2BaseAddress + (i * blockSize);
+            long next = l2BaseAddress + ((i + 1) * blockSize);
+            ForeignMemory.putLong(current, next);
+        }
+        ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+        arrayHandle = l2BaseAddress;
+
+        // Level 3: Zero-allocation directory configuration
+        arrayPointers = new long[DEFAULT_CAPACITY];
+        arrayPointerSize = 0;
+        active = true;
+    }
+
+    private Short() {}
+
+    private static void checkActive() {
+        if (!active) throw new IllegalStateException("Subsystem not initialized!");
+    }
+
+    public static void free() {
+        if (active) {
+            active = false;
+            if (poolArena != null && poolArena.scope().isAlive()) {
+                poolArena.close();
+            }
+        }
+    }
+
+    public static int allocate() {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            if (oldHead == -1) {
+                synchronized (Short.class) {
+                    if (primitiveHead == -1) {
+                        int oldLength = primitiveHeap.length;
+                        int newLength = oldLength + DEFAULT_CAPACITY;
+
+                        short[] newHeap = new short[newLength];
+                        int[] newNext = new int[newLength];
+
+                        System.arraycopy(primitiveHeap, 0, newHeap, 0, oldLength);
+                        System.arraycopy(primitiveNext, 0, newNext, 0, oldLength);
+
+                        for (int i = oldLength; i < newLength - 1; i++) {
+                            newNext[i] = i + 1;
+                        }
+                        newNext[newLength - 1] = -1;
+
+                        primitiveHeap = newHeap;
+                        primitiveNext = newNext;
+                        primitiveHead = oldLength;
+                    }
+                }
+                continue;
+            }
+            int next = primitiveNext[oldHead];
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, next)) {
+                primitiveHeap[oldHead] = 0;
+                return oldHead;
+            }
+        }
+    }
+
+    public static void free(int variableHandle) {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            primitiveNext[variableHandle] = oldHead;
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, variableHandle)) {
+                return;
+            }
+        }
+    }
+
+    public static short get(int variableHandle) {
+        checkActive();
+        return primitiveHeap[variableHandle];
+    }
+
+    public static void set(int variableHandle, short value) {
+        checkActive();
+        primitiveHeap[variableHandle] = value;
+    }
+
+    public static long allocateChunk() {
+        return allocateChunk(DEFAULT_CAPACITY);
+    }
+
+    public static long allocateChunk(int size) {
+        checkActive();
+        if (size <= DEFAULT_CAPACITY) {
+            while (true) {
+                long oldHead = arrayHandle;
+                if (oldHead == 0L) {
+                    synchronized (Short.class) {
+                        if (arrayHandle == 0L) {
+                            long blockSize = 8L + (DEFAULT_CAPACITY * (long) SHORT_BYTES);
+                            long l2Bytes = DEFAULT_CAPACITY * blockSize;
+                            MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+                            long l2BaseAddress = l2Segment.address();
+
+                            for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+                                long current = l2BaseAddress + (i * blockSize);
+                                long next = l2BaseAddress + ((i + 1) * blockSize);
+                                ForeignMemory.putLong(current, next);
+                            }
+                            ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+                            arrayHandle = l2BaseAddress;
+                        }
+                    }
+                    continue;
+                }
+                long next = ForeignMemory.getLong(oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, next)) {
+                    ForeignMemory.putLong(oldHead, 1L);
+                    return oldHead + 8L;
+                }
+            }
+        } else {
+            long blockSize = 8L + (size * (long) SHORT_BYTES);
+            MemorySegment customSegment = poolArena.allocate(blockSize, 8);
+            long baseAddress = customSegment.address();
+            ForeignMemory.putLong(baseAddress, 0L);
+            return baseAddress + 8L;
+        }
+    }
+
+    public static void freeChunk(long payloadAddress) {
+        checkActive();
+        long blockBase = payloadAddress - 8L;
+        long marker = ForeignMemory.getLong(blockBase);
+        if (marker == 1L) {
+            while (true) {
+                long oldHead = arrayHandle;
+                ForeignMemory.putLong(blockBase, oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, blockBase)) {
+                    return;
+                }
+            }
+        }
+    }
+
+    public static int registerChunk(long chunkPayloadAddress) {
+        checkActive();
+        while (true) {
+            int idx = arrayPointerSize;
+            if (idx >= arrayPointers.length) {
+                synchronized (Short.class) {
+                    if (arrayPointerSize >= arrayPointers.length) {
+                        arrayPointers = Arrays.copyOf(arrayPointers, arrayPointers.length + DEFAULT_CAPACITY);
+                    }
+                }
+                continue;
+            }
+            if (ARRAY_POINTERS_SIZE_VH.compareAndSet(idx, idx + 1)) {
+                arrayPointers[idx] = chunkPayloadAddress;
+                return idx;
+            }
+        }
+    }
+
+    public static long getArray(int id) {
+        checkActive();
+        if (id < 0 || id >= arrayPointerSize) throw new IndexOutOfBoundsException("Invalid array ID!");
+        return arrayPointers[id];
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/primitive/string.java
+fullContent:
+package primitive;
+
+import nio.ForeignMemory;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.nio.charset.StandardCharsets;
+
+public final class string {
+
+    private static final VarHandle WRITE_POINTER_VH;
+    private static final long RESERVATION_SIZE = 1024L * 1024 * 1024; // 1GB virtual memory
+
+    private static Arena poolArena;
+    private static long baseAddress;
+    private static long endAddress;
+    private static volatile long writePointer;
+    private static volatile boolean active;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            WRITE_POINTER_VH = lookup.findStaticVarHandle(string.class, "writePointer", long.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+
+        string.poolArena = Arena.ofShared();
+
+        MemorySegment segment = poolArena.allocate(RESERVATION_SIZE, 8);
+        string.baseAddress = segment.address();
+        string.endAddress = string.baseAddress + RESERVATION_SIZE;
+        string.writePointer = string.baseAddress;
+        string.active = true;
+    }
+
+    private string() {}
+
+    private static void checkActive() {
+        if (!active) throw new IllegalStateException("String subsystem not active!");
+    }
+
+    public static void free() {
+        if (active) {
+            active = false;
+            if (poolArena != null && poolArena.scope().isAlive()) {
+                poolArena.close();
+            }
+        }
+    }
+
+    // Reclaims all allocated strings in less than a nanosecond by wrapping the bump pointer
+    public static void reset() {
+        checkActive();
+        writePointer = baseAddress;
+    }
+
+    public static long allocate(String value) {
+        if (value == null) return 0L;
+        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+        return allocate(bytes);
+    }
+
+    public static long allocate(byte[] bytes) {
+        checkActive();
+        int len = bytes.length;
+        long sizeNeeded = len + 1L; // +1 for null
+
+        long targetAddress = (long) WRITE_POINTER_VH.getAndAdd(sizeNeeded);
+
+        if (targetAddress + sizeNeeded > endAddress)
+            throw new OutOfMemoryError("Persistent string virtual memory limit reached!");
+
+        ForeignMemory.copyFromHeap(bytes, 0, targetAddress, len);
+        ForeignMemory.putByte(targetAddress + len, (byte) 0);
+
+        return targetAddress;
+    }
+
+    // Reads the null-terminated sequence off-heap and constructs a readable String
+    public static String get(long pointer) {
+        checkActive();
+        if (pointer == 0L)
+            return null;
+        return ForeignMemory.getString(pointer);
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/primitive/Int64.java
+fullContent:
+package primitive;
+
+import nio.ForeignMemory;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.Arrays;
+
+public final class Int64 {
+
+    private static final VarHandle PRIMITIVE_HEAD_VH;
+    private static final VarHandle ARRAY_HANDLE_VH;
+    private static final VarHandle ARRAY_POINTERS_SIZE_VH;
+    private static final int DEFAULT_CAPACITY = 1024;
+    private static final int LONG_BYTES = 8; // 8 bytes per element
+
+    private static Arena poolArena;
+    private static int level2ChunkSize;
+    private static volatile boolean active;
+
+    // Level 1: On-heap primitive storage using flat arrays and an integer head
+    private static long[] primitiveHeap;
+    private static int[] primitiveNext;
+    private static volatile int primitiveHead;
+
+    // Level 2 & 3: Off-heap memory chunk handles and static layout pointers
+    private static volatile long arrayHandle;
+    private static long[] arrayPointers;
+    private static volatile int arrayPointerSize;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            PRIMITIVE_HEAD_VH = lookup.findStaticVarHandle(Int64.class, "primitiveHead", int.class);
+            ARRAY_HANDLE_VH = lookup.findStaticVarHandle(Int64.class, "arrayHandle", long.class);
+            ARRAY_POINTERS_SIZE_VH = lookup.findStaticVarHandle(Int64.class, "arrayPointerSize", int.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+
+        Int64.level2ChunkSize = DEFAULT_CAPACITY;
+        Int64.poolArena = Arena.ofShared();
+
+        // Allocating Level 1 primitive heap space on boot
+        primitiveHeap = new long[DEFAULT_CAPACITY];
+        primitiveNext = new int[DEFAULT_CAPACITY];
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            primitiveNext[i] = i + 1;
+        }
+        primitiveNext[DEFAULT_CAPACITY - 1] = -1;
+        primitiveHead = 0;
+
+        // Allocating Level 2 off-heap page buffers on boot scaled by LONG_BYTES
+        long blockSize = 8L + (DEFAULT_CAPACITY * (long) LONG_BYTES);
+        long l2Bytes = DEFAULT_CAPACITY * blockSize;
+        MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+        long l2BaseAddress = l2Segment.address();
+
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            long current = l2BaseAddress + (i * blockSize);
+            long next = l2BaseAddress + ((i + 1) * blockSize);
+            ForeignMemory.putLong(current, next);
+        }
+        ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+        arrayHandle = l2BaseAddress;
+
+        // Level 3: Zero-allocation directory configuration
+        arrayPointers = new long[DEFAULT_CAPACITY];
+        arrayPointerSize = 0;
+        active = true;
+    }
+
+    private Int64() {}
+
+    private static void checkActive() {
+        if (!active) throw new IllegalStateException("Subsystem not initialized!");
+    }
+
+    public static void free() {
+        if (active) {
+            active = false;
+            if (poolArena != null && poolArena.scope().isAlive()) {
+                poolArena.close();
+            }
+        }
+    }
+
+    public static int allocate() {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            if (oldHead == -1) {
+                synchronized (Long.class) {
+                    if (primitiveHead == -1) {
+                        int oldLength = primitiveHeap.length;
+                        int newLength = oldLength + DEFAULT_CAPACITY;
+
+                        long[] newHeap = new long[newLength];
+                        int[] newNext = new int[newLength];
+
+                        System.arraycopy(primitiveHeap, 0, newHeap, 0, oldLength);
+                        System.arraycopy(primitiveNext, 0, newNext, 0, oldLength);
+
+                        for (int i = oldLength; i < newLength - 1; i++) {
+                            newNext[i] = i + 1;
+                        }
+                        newNext[newLength - 1] = -1;
+
+                        primitiveHeap = newHeap;
+                        primitiveNext = newNext;
+                        primitiveHead = oldLength;
+                    }
+                }
+                continue;
+            }
+            int next = primitiveNext[oldHead];
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, next)) {
+                primitiveHeap[oldHead] = 0L;
+                return oldHead;
+            }
+        }
+    }
+
+    public static void free(int variableHandle) {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            primitiveNext[variableHandle] = oldHead;
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, variableHandle)) {
+                return;
+            }
+        }
+    }
+
+    public static long get(int variableHandle) {
+        checkActive();
+        return primitiveHeap[variableHandle];
+    }
+
+    public static void set(int variableHandle, long value) {
+        checkActive();
+        primitiveHeap[variableHandle] = value;
+    }
+
+    public static long allocateChunk() {
+        return allocateChunk(DEFAULT_CAPACITY);
+    }
+
+    public static long allocateChunk(int size) {
+        checkActive();
+        if (size <= DEFAULT_CAPACITY) {
+            while (true) {
+                long oldHead = arrayHandle;
+                if (oldHead == 0L) {
+                    synchronized (Long.class) {
+                        if (arrayHandle == 0L) {
+                            long blockSize = 8L + (DEFAULT_CAPACITY * (long) LONG_BYTES);
+                            long l2Bytes = DEFAULT_CAPACITY * blockSize;
+                            MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+                            long l2BaseAddress = l2Segment.address();
+
+                            for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+                                long current = l2BaseAddress + (i * blockSize);
+                                long next = l2BaseAddress + ((i + 1) * blockSize);
+                                ForeignMemory.putLong(current, next);
+                            }
+                            ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+                            arrayHandle = l2BaseAddress;
+                        }
+                    }
+                    continue;
+                }
+                long next = ForeignMemory.getLong(oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, next)) {
+                    ForeignMemory.putLong(oldHead, 1L);
+                    return oldHead + 8L;
+                }
+            }
+        } else {
+            long blockSize = 8L + (size * (long) LONG_BYTES);
+            MemorySegment customSegment = poolArena.allocate(blockSize, 8);
+            long baseAddress = customSegment.address();
+            ForeignMemory.putLong(baseAddress, 0L);
+            return baseAddress + 8L;
+        }
+    }
+
+    public static void freeChunk(long payloadAddress) {
+        checkActive();
+        long blockBase = payloadAddress - 8L;
+        long marker = ForeignMemory.getLong(blockBase);
+        if (marker == 1L) {
+            while (true) {
+                long oldHead = arrayHandle;
+                ForeignMemory.putLong(blockBase, oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, blockBase)) {
+                    return;
+                }
+            }
+        }
+    }
+
+    public static int registerChunk(long chunkPayloadAddress) {
+        checkActive();
+        while (true) {
+            int idx = arrayPointerSize;
+            if (idx >= arrayPointers.length) {
+                synchronized (Long.class) {
+                    if (arrayPointerSize >= arrayPointers.length) {
+                        arrayPointers = Arrays.copyOf(arrayPointers, arrayPointers.length + DEFAULT_CAPACITY);
+                    }
+                }
+                continue;
+            }
+            if (ARRAY_POINTERS_SIZE_VH.compareAndSet(idx, idx + 1)) {
+                arrayPointers[idx] = chunkPayloadAddress;
+                return idx;
+            }
+        }
+    }
+
+    public static long getArray(int id) {
+        checkActive();
+        if (id < 0 || id >= arrayPointerSize) throw new IndexOutOfBoundsException("Invalid array ID!");
+        return arrayPointers[id];
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/primitive/Int64Fp64.java
+fullContent:
+package primitive;
+
+import nio.ForeignMemory;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.Arrays;
+
+public final class Int64Fp64 {
+
+    private static final VarHandle PRIMITIVE_HEAD_VH;
+    private static final VarHandle ARRAY_HANDLE_VH;
+    private static final VarHandle ARRAY_POINTERS_SIZE_VH;
+    private static final int DEFAULT_CAPACITY = 1024;
+    private static final int SLOT_SIZE = 16;
+
+    private static Arena poolArena;
+    private static int level2ChunkSize;
+    private static volatile boolean active;
+
+    private static long[] primitiveHeapInteger;
+    private static long[] primitiveHeapFraction;
+    private static int[] primitiveNext;
+    private static volatile int primitiveHead = -1;
+
+    private static volatile long arrayHandle;
+    private static long[] arrayPointers;
+    private static volatile int arrayPointerSize = 0;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            PRIMITIVE_HEAD_VH = lookup.findStaticVarHandle(Int64Fp64.class, "primitiveHead", int.class);
+            ARRAY_HANDLE_VH = lookup.findStaticVarHandle(Int64Fp64.class, "arrayHandle", long.class);
+            ARRAY_POINTERS_SIZE_VH = lookup.findStaticVarHandle(Int64Fp64.class, "arrayPointerSize", int.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+
+        Int64Fp64.level2ChunkSize = DEFAULT_CAPACITY;
+        Int64Fp64.poolArena = Arena.ofShared();
+
+        primitiveHeapInteger = new long[DEFAULT_CAPACITY];
+        primitiveHeapFraction = new long[DEFAULT_CAPACITY];
+        primitiveNext = new int[DEFAULT_CAPACITY];
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            primitiveNext[i] = i + 1;
+        }
+        primitiveNext[DEFAULT_CAPACITY - 1] = -1;
+        primitiveHead = 0;
+
+        long blockSize = 8L + (DEFAULT_CAPACITY * (long) SLOT_SIZE);
+        long l2Bytes = DEFAULT_CAPACITY * blockSize;
+        MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+        long l2BaseAddress = l2Segment.address();
+
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            long current = l2BaseAddress + (i * blockSize);
+            long next = l2BaseAddress + ((i + 1) * blockSize);
+            ForeignMemory.putLong(current, next);
+        }
+        ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+        arrayHandle = l2BaseAddress;
+
+        arrayPointers = new long[DEFAULT_CAPACITY];
+        arrayPointerSize = 0;
+        active = true;
+    }
+
+    private Int64Fp64() {}
+
+    private static void checkActive() {
+        if (!active) throw new IllegalStateException("Subsystem not initialized!");
+    }
+
+    public static void free() {
+        if (active) {
+            active = false;
+            if (poolArena != null && poolArena.scope().isAlive()) {
+                poolArena.close();
+            }
+        }
+    }
+
+    public static int allocate() {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            if (oldHead == -1) {
+                synchronized (Int64Fp64.class) {
+                    if (primitiveHead == -1) {
+                        int oldLength = primitiveHeapInteger.length;
+                        int newLength = oldLength + DEFAULT_CAPACITY;
+
+                        long[] newHeapI = new long[newLength];
+                        long[] newHeapF = new long[newLength];
+                        int[] newNext = new int[newLength];
+
+                        System.arraycopy(primitiveHeapInteger, 0, newHeapI, 0, oldLength);
+                        System.arraycopy(primitiveHeapFraction, 0, newHeapF, 0, oldLength);
+                        System.arraycopy(primitiveNext, 0, newNext, 0, oldLength);
+
+                        for (int i = oldLength; i < newLength - 1; i++) {
+                            newNext[i] = i + 1;
+                        }
+                        newNext[newLength - 1] = -1;
+
+                        primitiveHeapInteger = newHeapI;
+                        primitiveHeapFraction = newHeapF;
+                        primitiveNext = newNext;
+                        primitiveHead = oldLength;
+                    }
+                }
+                continue;
+            }
+            int next = primitiveNext[oldHead];
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, next)) {
+                primitiveHeapInteger[oldHead] = 0L;
+                primitiveHeapFraction[oldHead] = 0L;
+                return oldHead;
+            }
+        }
+    }
+
+    public static void free(int variableHandle) {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            primitiveNext[variableHandle] = oldHead;
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, variableHandle)) {
+                return;
+            }
+        }
+    }
+
+    public static long getInteger(int variableHandle) {
+        checkActive();
+        return primitiveHeapInteger[variableHandle];
+    }
+
+    public static long getFraction(int variableHandle) {
+        checkActive();
+        return primitiveHeapFraction[variableHandle];
+    }
+
+    public static void set(int variableHandle, long integerPart, long fractionPart) {
+        checkActive();
+        primitiveHeapInteger[variableHandle] = integerPart;
+        primitiveHeapFraction[variableHandle] = fractionPart;
+    }
+
+    public static long allocateChunk() {
+        return allocateChunk(DEFAULT_CAPACITY);
+    }
+
+    public static long allocateChunk(int size) {
+        checkActive();
+        if (size <= DEFAULT_CAPACITY) {
+            while (true) {
+                long oldHead = arrayHandle;
+                if (oldHead == 0L) {
+                    synchronized (Int64Fp64.class) {
+                        if (arrayHandle == 0L) {
+                            long blockSize = 8L + (DEFAULT_CAPACITY * (long) SLOT_SIZE);
+                            long l2Bytes = DEFAULT_CAPACITY * blockSize;
+                            MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+                            long l2BaseAddress = l2Segment.address();
+
+                            for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+                                long current = l2BaseAddress + (i * blockSize);
+                                long next = l2BaseAddress + ((i + 1) * blockSize);
+                                ForeignMemory.putLong(current, next);
+                            }
+                            ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+                            arrayHandle = l2BaseAddress;
+                        }
+                    }
+                    continue;
+                }
+                long next = ForeignMemory.getLong(oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, next)) {
+                    ForeignMemory.putLong(oldHead, 1L);
+                    return oldHead + 8L;
+                }
+            }
+        } else {
+            long blockSize = 8L + (size * (long) SLOT_SIZE);
+            MemorySegment customSegment = poolArena.allocate(blockSize, 8);
+            long baseAddress = customSegment.address();
+            ForeignMemory.putLong(baseAddress, 0L);
+            return baseAddress + 8L;
+        }
+    }
+
+    public static void freeChunk(long payloadAddress) {
+        checkActive();
+        long blockBase = payloadAddress - 8L;
+        long marker = ForeignMemory.getLong(blockBase);
+        if (marker == 1L) {
+            while (true) {
+                long oldHead = arrayHandle;
+                ForeignMemory.putLong(blockBase, oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, blockBase)) {
+                    return;
+                }
+            }
+        }
+    }
+
+    public static int registerChunk(long chunkPayloadAddress) {
+        checkActive();
+        while (true) {
+            int idx = arrayPointerSize;
+            if (idx >= arrayPointers.length) {
+                synchronized (Int64Fp64.class) {
+                    if (arrayPointerSize >= arrayPointers.length) {
+                        arrayPointers = Arrays.copyOf(arrayPointers, arrayPointers.length + DEFAULT_CAPACITY);
+                    }
+                }
+                continue;
+            }
+            if (ARRAY_POINTERS_SIZE_VH.compareAndSet(idx, idx + 1)) {
+                arrayPointers[idx] = chunkPayloadAddress;
+                return idx;
+            }
+        }
+    }
+
+    public static long getArray(int id) {
+        checkActive();
+        if (id < 0 || id >= arrayPointerSize) throw new IndexOutOfBoundsException("Invalid array ID!");
+        return arrayPointers[id];
+    }
+
+    public static void setFromDouble(int variableHandle, double value) {
+        long integerPart = (long) Math.floor(value);
+        double frac = value - integerPart;
+        long fractionPart = (long) (frac * 18446744073709551616.0);
+        set(variableHandle, integerPart, fractionPart);
+    }
+
+    public static double toDouble(long integerPart, long fractionPart) {
+        double frac = (fractionPart & 0x7FFFFFFFFFFFFFFFL);
+        if (fractionPart < 0) {
+            frac += 9223372036854775808.0;
+        }
+        return integerPart + (frac / 18446744073709551616.0);
+    }
+
+    // Fast carry-aware addition direct to memory handle
+    public static void add(long aInteger, long aFraction, long bInteger, long bFraction, int resultHandle) {
+        long sumF = aFraction + bFraction;
+        long carry = (Long.compareUnsigned(sumF, aFraction) < 0) ? 1L : 0L;
+        set(resultHandle, aInteger + bInteger + carry, sumF);
+    }
+
+    // Fast borrow-aware subtraction direct to memory handle
+    public static void sub(long aInteger, long aFraction, long bInteger, long bFraction, int resultHandle) {
+        long diffF = aFraction - bFraction;
+        long borrow = (Long.compareUnsigned(aFraction, bFraction) < 0) ? 1L : 0L;
+        set(resultHandle, aInteger - bInteger - borrow, diffF);
+    }
+
+    public static void mul(long aInteger, long aFraction, long bInteger, long bFraction, int resultHandle) {
+        double val1 = toDouble(aInteger, aFraction);
+        double val2 = toDouble(bInteger, bFraction);
+        setFromDouble(resultHandle, val1 * val2);
+    }
+
+    public static void div(long aInteger, long aFraction, long bInteger, long bFraction, int resultHandle) {
+        double val1 = toDouble(aInteger, aFraction);
+        double val2 = toDouble(bInteger, bFraction);
+        setFromDouble(resultHandle, val1 / val2);
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/primitive/Int64Fp32.java
+fullContent:
+package primitive;
+
+import nio.ForeignMemory;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.Arrays;
+
+public final class Int64Fp32 {
+
+    private static final VarHandle PRIMITIVE_HEAD_VH;
+    private static final VarHandle ARRAY_HANDLE_VH;
+    private static final VarHandle ARRAY_POINTERS_SIZE_VH;
+    private static final int DEFAULT_CAPACITY = 1024;
+    private static final int SLOT_SIZE = 16;
+
+    private static Arena poolArena;
+    private static int level2ChunkSize;
+    private static volatile boolean active;
+
+    private static long[] primitiveHeapInteger;
+    private static int[] primitiveHeapFraction;
+    private static int[] primitiveNext;
+    private static volatile int primitiveHead = -1;
+
+    private static volatile long arrayHandle;
+    private static long[] arrayPointers;
+    private static volatile int arrayPointerSize = 0;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            PRIMITIVE_HEAD_VH = lookup.findStaticVarHandle(Int64Fp32.class, "primitiveHead", int.class);
+            ARRAY_HANDLE_VH = lookup.findStaticVarHandle(Int64Fp32.class, "arrayHandle", long.class);
+            ARRAY_POINTERS_SIZE_VH = lookup.findStaticVarHandle(Int64Fp32.class, "arrayPointerSize", int.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+
+        Int64Fp32.level2ChunkSize = DEFAULT_CAPACITY;
+        Int64Fp32.poolArena = Arena.ofShared();
+
+        primitiveHeapInteger = new long[DEFAULT_CAPACITY];
+        primitiveHeapFraction = new int[DEFAULT_CAPACITY];
+        primitiveNext = new int[DEFAULT_CAPACITY];
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            primitiveNext[i] = i + 1;
+        }
+        primitiveNext[DEFAULT_CAPACITY - 1] = -1;
+        primitiveHead = 0;
+
+        long blockSize = 8L + (DEFAULT_CAPACITY * (long) SLOT_SIZE);
+        long l2Bytes = DEFAULT_CAPACITY * blockSize;
+        MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+        long l2BaseAddress = l2Segment.address();
+
+        for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+            long current = l2BaseAddress + (i * blockSize);
+            long next = l2BaseAddress + ((i + 1) * blockSize);
+            ForeignMemory.putLong(current, next);
+        }
+        ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+        arrayHandle = l2BaseAddress;
+
+        arrayPointers = new long[DEFAULT_CAPACITY];
+        arrayPointerSize = 0;
+        active = true;
+    }
+
+    private Int64Fp32() {}
+
+    private static void checkActive() {
+        if (!active) throw new IllegalStateException("Subsystem not initialized!");
+    }
+
+    public static void free() {
+        if (active) {
+            active = false;
+            if (poolArena != null && poolArena.scope().isAlive()) {
+                poolArena.close();
+            }
+        }
+    }
+
+    public static int allocate() {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            if (oldHead == -1) {
+                synchronized (Int64Fp32.class) {
+                    if (primitiveHead == -1) {
+                        int oldLength = primitiveHeapInteger.length;
+                        int newLength = oldLength + DEFAULT_CAPACITY;
+
+                        long[] newHeapI = new long[newLength];
+                        int[] newHeapF = new int[newLength];
+                        int[] newNext = new int[newLength];
+
+                        System.arraycopy(primitiveHeapInteger, 0, newHeapI, 0, oldLength);
+                        System.arraycopy(primitiveHeapFraction, 0, newHeapF, 0, oldLength);
+                        System.arraycopy(primitiveNext, 0, newNext, 0, oldLength);
+
+                        for (int i = oldLength; i < newLength - 1; i++) {
+                            newNext[i] = i + 1;
+                        }
+                        newNext[newLength - 1] = -1;
+
+                        primitiveHeapInteger = newHeapI;
+                        primitiveHeapFraction = newHeapF;
+                        primitiveNext = newNext;
+                        primitiveHead = oldLength;
+                    }
+                }
+                continue;
+            }
+            int next = primitiveNext[oldHead];
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, next)) {
+                primitiveHeapInteger[oldHead] = 0L;
+                primitiveHeapFraction[oldHead] = 0;
+                return oldHead;
+            }
+        }
+    }
+
+    public static void free(int variableHandle) {
+        checkActive();
+        while (true) {
+            int oldHead = primitiveHead;
+            primitiveNext[variableHandle] = oldHead;
+            if (PRIMITIVE_HEAD_VH.compareAndSet(oldHead, variableHandle)) {
+                return;
+            }
+        }
+    }
+
+    public static long getInteger(int variableHandle) {
+        checkActive();
+        return primitiveHeapInteger[variableHandle];
+    }
+
+    public static int getFraction(int variableHandle) {
+        checkActive();
+        return primitiveHeapFraction[variableHandle];
+    }
+
+    public static void set(int variableHandle, long integerPart, int fractionPart) {
+        checkActive();
+        primitiveHeapInteger[variableHandle] = integerPart;
+        primitiveHeapFraction[variableHandle] = fractionPart;
+    }
+
+    public static long allocateChunk() {
+        return allocateChunk(DEFAULT_CAPACITY);
+    }
+
+    public static long allocateChunk(int size) {
+        checkActive();
+        if (size <= DEFAULT_CAPACITY) {
+            while (true) {
+                long oldHead = arrayHandle;
+                if (oldHead == 0L) {
+                    synchronized (Int64Fp32.class) {
+                        if (arrayHandle == 0L) {
+                            long blockSize = 8L + (DEFAULT_CAPACITY * (long) SLOT_SIZE);
+                            long l2Bytes = DEFAULT_CAPACITY * blockSize;
+                            MemorySegment l2Segment = poolArena.allocate(l2Bytes, 8);
+                            long l2BaseAddress = l2Segment.address();
+
+                            for (int i = 0; i < DEFAULT_CAPACITY - 1; i++) {
+                                long current = l2BaseAddress + (i * blockSize);
+                                long next = l2BaseAddress + ((i + 1) * blockSize);
+                                ForeignMemory.putLong(current, next);
+                            }
+                            ForeignMemory.putLong(l2BaseAddress + ((DEFAULT_CAPACITY - 1) * blockSize), 0L);
+                            arrayHandle = l2BaseAddress;
+                        }
+                    }
+                    continue;
+                }
+                long next = ForeignMemory.getLong(oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, next)) {
+                    ForeignMemory.putLong(oldHead, 1L);
+                    return oldHead + 8L;
+                }
+            }
+        } else {
+            long blockSize = 8L + (size * (long) SLOT_SIZE);
+            MemorySegment customSegment = poolArena.allocate(blockSize, 8);
+            long baseAddress = customSegment.address();
+            ForeignMemory.putLong(baseAddress, 0L);
+            return baseAddress + 8L;
+        }
+    }
+
+    public static void freeChunk(long payloadAddress) {
+        checkActive();
+        long blockBase = payloadAddress - 8L;
+        long marker = ForeignMemory.getLong(blockBase);
+        if (marker == 1L) {
+            while (true) {
+                long oldHead = arrayHandle;
+                ForeignMemory.putLong(blockBase, oldHead);
+                if (ARRAY_HANDLE_VH.compareAndSet(oldHead, blockBase)) {
+                    return;
+                }
+            }
+        }
+    }
+
+    public static int registerChunk(long chunkPayloadAddress) {
+        checkActive();
+        while (true) {
+            int idx = arrayPointerSize;
+            if (idx >= arrayPointers.length) {
+                synchronized (Int64Fp32.class) {
+                    if (arrayPointerSize >= arrayPointers.length) {
+                        arrayPointers = Arrays.copyOf(arrayPointers, arrayPointers.length + DEFAULT_CAPACITY);
+                    }
+                }
+                continue;
+            }
+            if (ARRAY_POINTERS_SIZE_VH.compareAndSet(idx, idx + 1)) {
+                arrayPointers[idx] = chunkPayloadAddress;
+                return idx;
+            }
+        }
+    }
+
+    public static long getArray(int id) {
+        checkActive();
+        if (id < 0 || id >= arrayPointerSize) throw new IndexOutOfBoundsException("Invalid array ID!");
+        return arrayPointers[id];
+    }
+
+    public static void setFromDouble(int variableHandle, double value) {
+        long integerPart = (long) Math.floor(value);
+        double frac = value - integerPart;
+        int fractionPart = (int) (frac * 4294967296.0);
+        set(variableHandle, integerPart, fractionPart);
+    }
+
+    public static double toDouble(long integerPart, int fractionPart) {
+        return integerPart + (double) (fractionPart & 0xFFFFFFFFL) / 4294967296.0;
+    }
+
+    // Fast carry-aware addition direct to memory handle
+    public static void add(long aInteger, int aFraction, long bInteger, int bFraction, int resultHandle) {
+        long sumF = (aFraction & 0xFFFFFFFFL) + (bFraction & 0xFFFFFFFFL);
+        long carry = sumF >>> 32;
+        set(resultHandle, aInteger + bInteger + carry, (int) sumF);
+    }
+
+    // Fast borrow-aware subtraction direct to memory handle
+    public static void sub(long aInteger, int aFraction, long bInteger, int bFraction, int resultHandle) {
+        long diffF = (aFraction & 0xFFFFFFFFL) - (bFraction & 0xFFFFFFFFL);
+        long borrow = (diffF < 0) ? 1 : 0;
+        set(resultHandle, aInteger - bInteger - borrow, (int) diffF);
+    }
+
+    public static void mul(long aInteger, int aFraction, long bInteger, int bFraction, int resultHandle) {
+        double val1 = toDouble(aInteger, aFraction);
+        double val2 = toDouble(bInteger, bFraction);
+        setFromDouble(resultHandle, val1 * val2);
+    }
+
+    public static void div(long aInteger, int aFraction, long bInteger, int bFraction, int resultHandle) {
+        double val1 = toDouble(aInteger, aFraction);
+        double val2 = toDouble(bInteger, bFraction);
+        setFromDouble(resultHandle, val1 / val2);
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/io/PersistentObject.java
+fullContent:
+package io;
+
+public class PersistentObject
+{
+    public PersistentObject()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/io/PageReader.java
+fullContent:
+package io;
+
+public class PageReader
+{
+    public PageReader()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/io/FileReader.java
+fullContent:
+package io;
+
+public class FileReader
+{
+    public FileReader()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/time/Calendar.java
+fullContent:
+package time;
+
+public class Calendar
+{
+    public Calendar()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/time/NanoTime.java
+fullContent:
+package time;
+
+public class NanoTime
+{
+    public NanoTime()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/time/DateTime.java
+fullContent:
+package time;
+
+public class DateTime
+{
+    public DateTime()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/time/Clock.java
+fullContent:
+package time;
+
+public class Clock
+{
+    public Clock()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/struct/Map.java
+fullContent:
+package struct;
+
+public class Map
+{
+    public Map()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/struct/List.java
+fullContent:
+package struct;
+
+public class List
+{
+    public List()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/struct/Array.java
+fullContent:
+package struct;
+
+public class Array
+{
+    public Array()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/struct/Deque.java
+fullContent:
+package struct;
+
+public class Deque
+{
+    public Deque()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/struct/Set.java
+fullContent:
+package struct;
+
+public class Set
+{
+    public Set()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/struct/Trie.java
+fullContent:
+package struct;
+
+public class Trie
+{
+    public Trie()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/struct/Stack.java
+fullContent:
+package struct;
+
+public class Stack
+{
+    public Stack()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/lang/System.java
+fullContent:
+package lang;
+
+import primitive.string;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+
+public final class System {
+
+    private static HardwareInfo hardware;
+    private static DisplayInfo display;
+    private static GraphicsInfo graphics;
+    private static AudioInfo audio;
+    private static VideoInfo video;
+    private static PerformanceInfo performance;
+
+    static {
+
+        // base operating system and memory thingies
+        String osName = java.lang.System.getProperty("os.name").toLowerCase();
+        long osNamePtr = string.allocate(java.lang.System.getProperty("os.name"));
+        long osArchPtr = string.allocate(java.lang.System.getProperty("os.arch"));
+        long deviceModelPtr = string.allocate(isMobileOrHandheld() ? "Handheld/Mobile" : "Desktop");
+
+        String rawCpu = java.lang.System.getenv("PROCESSOR_IDENTIFIER");
+        long cpuBrandPtr = string.allocate(rawCpu != null ? rawCpu : java.lang.System.getProperty("os.arch"));
+        int cores = Runtime.getRuntime().availableProcessors();
+
+        long totalMemory;
+        long freeMemory;
+        try {
+            java.lang.management.OperatingSystemMXBean osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+            java.lang.reflect.Method totalMemMethod = osBean.getClass().getMethod("getTotalPhysicalMemorySize");
+            java.lang.reflect.Method freeMemMethod = osBean.getClass().getMethod("getFreePhysicalMemorySize");
+            totalMemory = (long) totalMemMethod.invoke(osBean);
+            freeMemory = (long) freeMemMethod.invoke(osBean);
+        } catch (Throwable t) {
+            totalMemory = Runtime.getRuntime().maxMemory();
+            freeMemory = Runtime.getRuntime().freeMemory();
+        }
+
+        long totalStorage = 0;
+        long availableStorage = 0;
+        try {
+            java.io.File root = new java.io.File("/");
+            totalStorage = root.getTotalSpace();
+            availableStorage = root.getFreeSpace();
+        } catch (Throwable ignored) {}
+
+        // ==========================================
+        // 2. DISPLAY TOPOLOGY SYSTEM
+        // ==========================================
+        DisplayMonitor[] monitors = new DisplayMonitor[0];
+        DisplayMonitor primary = null;
+        Resolution res = new Resolution(1920, 1080);
+        try {
+            if (!java.awt.GraphicsEnvironment.isHeadless()) {
+                java.awt.GraphicsDevice[] devices = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
+                monitors = new DisplayMonitor[devices.length];
+                for (int i = 0; i < devices.length; i++) {
+                    java.awt.GraphicsDevice gd = devices[i];
+                    java.awt.DisplayMode dm = gd.getDisplayMode();
+                    Resolution monitorRes = new Resolution(dm.getWidth(), dm.getHeight());
+                    monitors[i] = new DisplayMonitor(
+                            string.allocate(gd.getIDstring()),
+                            string.allocate("Generic Monitor " + i),
+                            monitorRes, monitorRes, new int[]{dm.getRefreshRate()},
+                            dm.getRefreshRate(), false, 96.0f
+                    );
+                }
+                if (monitors.length > 0) {
+                    primary = monitors[0];
+                    res = primary.currentResolution();
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        display = new DisplayInfo(
+                monitors.length, monitors, primary, res, res,
+                primary != null ? primary.supportedRefreshRates() : new int[]{60},
+                primary != null ? primary.currentRefreshRate() : 60, false, 1.0f
+        );
+
+        // ==========================================
+        // 3. DYNAMIC GRAPHICS & RUNTIME TARGET PROBING
+        // ==========================================
+        String detectedGpuName = "Software Rasterizer";
+        String primaryGraphicsApi;
+        boolean unifiedMemoryArchitecture = false;
+        long physicalVramTotal = 0L;
+
+        // Vulkan Context Probing Defaults
+        boolean hasVulkanSdk = java.lang.System.getenv("VULKAN_SDK") != null || java.lang.System.getenv("VK_LAYER_PATH") != null;
+        String vulkanApiVersion = "0.0.0";
+        String vulkanDriverVersion = "None";
+        boolean vkValidationLayers = hasVulkanSdk;
+
+        // Metal Context Probing Defaults
+        boolean hasMetalRuntime = false;
+        boolean isAppleSiliconGpu = false;
+        int appleGpuFamilyTier = 0;
+        String appleSiliconChipModel = "None";
+        String metalVersionString = "0.0.0";
+
+        // DirectX Context Probing Defaults
+        boolean dynamicDx12Supported = false;
+        int d3dFeatureLevel = 0;
+        boolean agilitySdkPresent = false;
+
+        // Execute Profiler Commands depending on Host Kernel
+        if (osName.contains("mac")) {
+            hasMetalRuntime = true;
+            primaryGraphicsApi = "Metal";
+
+            // Check for explicit Apple Silicon Arm64 instruction pipeline execution
+            String arch = java.lang.System.getProperty("os.arch").toLowerCase();
+            if (arch.contains("aarch64") || arch.contains("arm64")) {
+                isAppleSiliconGpu = true;
+                unifiedMemoryArchitecture = true;
+                physicalVramTotal = totalMemory;
+            }
+
+            // Parse detailed System Profiler structures
+            String hardwareProfile = executeNativeCommand("system_profiler", "SPHardwareDataType");
+            for (String line : hardwareProfile.split("\n")) {
+                if (line.contains("Chip:")) {
+                    appleSiliconChipModel = line.split(":", 2)[1].trim();
+                    detectedGpuName = appleSiliconChipModel;
+
+                    // Extrapolate hardware generation families from model identities from the apple metal documentation book
+                    if (appleSiliconChipModel.contains("M1")) appleGpuFamilyTier = 7;
+                    else if (appleSiliconChipModel.contains("M2")) appleGpuFamilyTier = 8;
+                    else if (appleSiliconChipModel.contains("A18 Pro") /* macbook neo */ || appleSiliconChipModel.contains("M3") || appleSiliconChipModel.contains("M4")) appleGpuFamilyTier = 9;
+                    else if (appleSiliconChipModel.contains("A19 Pro") /* some later thingies */ || appleSiliconChipModel.contains("M5")) appleGpuFamilyTier = 10;
+                    else appleGpuFamilyTier = 6; // defaults to intel/old graphics chips used
+                    break;
+                }
+            }
+            metalVersionString = "Metal 3.0 Native";
+
+        } else if (osName.contains("win")) {
+            dynamicDx12Supported = true;
+            primaryGraphicsApi = "DirectX 12";
+
+            // Interrogate Windows Management Instrumentation for Physical Video hardware
+            String wmicOutput = executeNativeCommand("wmic", "path", "win32_VideoController", "get", "Name,AdapterRAM", "/value");
+            for (String line : wmicOutput.split("\n")) {
+                line = line.trim();
+                if (line.startsWith("Name=")) {
+                    detectedGpuName = line.split("=", 2)[1].trim();
+                } else if (line.startsWith("AdapterRAM=")) {
+                    try {
+                        physicalVramTotal = Long.parseLong(line.split("=", 2)[1].trim());
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            // Detect Windows UMA states (Integrated graphics/APUs sharing memory pools)
+            String lowerGpu = detectedGpuName.toLowerCase();
+            if (lowerGpu.contains("intel") || lowerGpu.contains("amd radeon graphics") || lowerGpu.contains("vega")) {
+                unifiedMemoryArchitecture = true;
+                if (physicalVramTotal == 0) physicalVramTotal = totalMemory / 4; // Typical safe OS lock-allocation
+            }
+            d3dFeatureLevel = 0xC200; // Default mapping D3D_FEATURE_LEVEL_12_2
+
+        } else {
+            // Linux kernel fallback
+            String lspci = executeNativeCommand("sh", "-c", "lspci | grep -i vga");
+            if (lspci.contains(":")) {
+                detectedGpuName = lspci.split(":", 2)[1].trim();
+            }
+            primaryGraphicsApi = "OpenGL Fallback";
+        }
+
+        // --- Global Vulkan Command Line Interrogation Tool Probe ---
+        String vulkanSummary = executeNativeCommand("vulkaninfo", "--summary");
+        if (vulkanSummary.contains("Vulkan Instance Version")) {
+            if (osName.contains("mac")) primaryGraphicsApi = "Vulkan (MoltenVK)";
+            else primaryGraphicsApi = "Vulkan Native";
+
+            for (String line : vulkanSummary.split("\n")) {
+                if (line.contains("Vulkan Instance Version") || line.contains("API Version:")) {
+                    vulkanApiVersion = line.split(":", 2)[1].trim();
+                    break;
+                }
+            }
+        }
+
+        // instantiation of the properties
+        // Assemble Final Engine Structures
+        VulkanInstanceInfo vulkanInstance = new VulkanInstanceInfo(
+                hasVulkanSdk,
+                string.allocate(vulkanApiVersion),
+                string.allocate(vulkanDriverVersion),
+                physicalVramTotal, // Estimated fallback allocations
+                0L,
+                new MemoryHeap[0],
+                vkValidationLayers
+        );
+
+        MetalInstanceInfo metalInstance = new MetalInstanceInfo(
+                hasMetalRuntime,
+                isAppleSiliconGpu,
+                appleGpuFamilyTier,
+                string.allocate(appleSiliconChipModel),
+                string.allocate(metalVersionString),
+                isAppleSiliconGpu, // Argument buffers are standard on modern apple silicon
+                appleGpuFamilyTier >= 9 // HW Raytracing arrived with Family 9 (M3 series)
+        );
+
+        DirectXInstanceInfo directInstance = new DirectXInstanceInfo(
+                dynamicDx12Supported,
+                d3dFeatureLevel,
+                agilitySdkPresent,
+                dynamicDx12Supported
+        );
+
+        graphics = new GraphicsInfo(
+                string.allocate(detectedGpuName),
+                0, 0,
+                string.allocate(primaryGraphicsApi),
+                unifiedMemoryArchitecture,
+                true, // Compute active globally
+                appleGpuFamilyTier >= 9 || osName.contains("win"), // Mesh Shading validation
+                appleGpuFamilyTier >= 9, // Native hardware ray tracing tracking
+                true,
+                4096, 1.0f, 1, false,
+                physicalVramTotal,
+                physicalVramTotal,
+                1024,
+                !unifiedMemoryArchitecture,
+                0.0f, 0.0f,
+                string.allocate("sRGB"),
+                vulkanInstance,
+                metalInstance,
+                directInstance
+        );
+
+        audio = new AudioInfo(
+                string.allocate("Primary Audio Driver"),
+                new AudioDevice[0],
+                new int[]{48000},
+                48000,
+                2,
+                false,
+                32,
+                10.0f);
+        video = new VideoInfo(
+                new long[]{string.allocate("H264")},
+                true,
+                false,
+                new Resolution(3840, 2160),
+                false, 60);
+        performance = new PerformanceInfo(
+                1.0f,
+                false,
+                string.allocate("Not Supported"),
+                false,
+                0,
+                false);
+
+        hardware = new HardwareInfo(
+                osNamePtr,
+                osArchPtr,
+                deviceModelPtr,
+                cpuBrandPtr,
+                cores,
+                cores * 2,
+                totalStorage,
+                availableStorage,
+                totalMemory,
+                freeMemory,
+                Runtime.getRuntime().totalMemory(),
+                Runtime.getRuntime().maxMemory(),
+                string.allocate("AC Powered"),
+                1.0f
+        );
+    }
+
+    // ==========================================
+    // NATIVE PIPELINE SUBPROCESS RUNNER
+    // ==========================================
+    private static String executeNativeCommand(String... command) {
+        StringBuilder output = new StringBuilder();
+        try {
+            Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            }
+            process.waitFor();
+            return output.toString();
+        } catch (Exception e) {
+            return ""; // Soft safety landing if command is absent on the execution node
+        }
+    }
+
+    private System() {}
+
+    // ==========================================
+    // CORE STATIC GETTERS
+    // ==========================================
+    public static HardwareInfo getHardware() { return hardware; }
+    public static DisplayInfo getDisplay() { return display; }
+    public static GraphicsInfo getGraphics() { return graphics; }
+    public static AudioInfo getAudio() { return audio; }
+    public static VideoInfo getVideo() { return video; }
+    public static PerformanceInfo getPerformance() { return performance; }
+
+    // ==========================================
+    // CONVENIENCE DEEP GETTERS
+    // ==========================================
+    public static float getGpuTimestamp() {
+        return performance != null ? performance.gpuTimestampPeriod() : 0.0f;
+    }
+
+    public static String getGpuName() {
+        return graphics != null ? string.get(graphics.gpuName()) : "Unknown GPU";
+    }
+
+    public static long getRamTotal() {
+        return hardware != null ? hardware.ramTotal() : 0L;
+    }
+
+    public static int getCpuCoreCount() {
+        return hardware != null ? hardware.cpuCoreCount() : 1;
+    }
+
+    public static int getMonitorCount() {
+        return display != null ? display.monitorCount() : 0;
+    }
+
+    private static boolean isMobileOrHandheld() {
+        String os = java.lang.System.getProperty("os.name").toLowerCase();
+        return os.contains("android") || os.contains("ios");
+    }
+
+    // ==========================================
+    // THE "GOD" SPEC SPECIFICATION STRINGIFIER
+    // ==========================================
+    public static String getSystem() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("==================================================\n");
+        sb.append("         CORE ENGINE HARDWARE PROFILE             \n");
+        sb.append("==================================================\n\n");
+
+        if (hardware != null) {
+            sb.append("[HARDWARE SPECIFICATIONS]\n");
+            sb.append("  - OS: ").append(string.get(hardware.operatingSystem())).append("\n");
+            sb.append("  - Arch: ").append(string.get(hardware.systemArchitecture())).append("\n");
+            sb.append("  - Model Class: ").append(string.get(hardware.deviceModel())).append("\n");
+            sb.append("  - CPU: ").append(string.get(hardware.cpuBrand())).append("\n");
+            sb.append("  - Cores / Threads: ").append(hardware.cpuCoreCount()).append(" / ").append(hardware.cpuThreadCount()).append("\n");
+            sb.append("  - RAM Total: ").append(hardware.ramTotal() / 1024 / 1024).append(" MB\n");
+            sb.append("  - RAM Available: ").append(hardware.ramAvailable() / 1024 / 1024).append(" MB\n");
+            sb.append("  - Heap Allocated / Max: ").append(hardware.javaHeapSize() / 1024 / 1024).append(" MB / ").append(hardware.javaHeapMax() / 1024 / 1024).append(" MB\n");
+            sb.append("  - Storage Total / Available: ").append(hardware.storageTotalSpace() / 1024 / 1024 / 1024).append(" GB / ").append(hardware.storageAvailableSpace() / 1024 / 1024 / 1024).append(" GB\n");
+            sb.append("  - Battery Level: ").append(hardware.batteryLevel() * 100).append("% (").append(string.get(hardware.batteryStatus())).append(")\n\n");
+        }
+
+        if (display != null) {
+            sb.append("[DISPLAY TOPOLOGY]\n");
+            sb.append("  - Detected Monitors: ").append(display.monitorCount()).append("\n");
+            if (display.monitors() != null) {
+                for (int i = 0; i < display.monitors().length; i++) {
+                    DisplayMonitor m = display.monitors()[i];
+                    sb.append("    * Monitor [").append(i).append("]: ").append(string.get(m.name()))
+                            .append(" (ID: ").append(string.get(m.id())).append(")\n");
+                    sb.append("      Res (Current/Native): ").append(m.currentResolution().width()).append("x").append(m.currentResolution().height())
+                            .append(" / ").append(m.nativeResolution().width()).append("x").append(m.nativeResolution().height()).append("\n");
+                    sb.append("      Refresh Rate: ").append(m.currentRefreshRate()).append("Hz\n");
+                    sb.append("      HDR / DPI: ").append(m.hdrSupported() ? "Yes" : "No").append(" / ").append(m.dpi()).append("\n");
+                }
+            }
+            sb.append("\n");
+        }
+
+        if (graphics != null) {
+            sb.append("[GRAPHICS DEVICE CAPABILITIES]\n");
+            sb.append("  - GPU: ").append(string.get(graphics.gpuName())).append("\n");
+            sb.append("  - Vendor / Device ID: 0x").append(Integer.toHexString(graphics.gpuVendorId())).append(" / 0x").append(Integer.toHexString(graphics.gpuDeviceId())).append("\n");
+            sb.append("  - Active System API: ").append(string.get(graphics.primaryGraphicsApi())).append("\n");
+            sb.append("  - Unified Memory Architecture (UMA): ").append(graphics.unifiedMemoryEnabled() ? "Yes (Shared Pool)" : "No (Discrete VRAM Heap)").append("\n");
+            sb.append("  - Max Texture Size: ").append(graphics.maxTextureSize()).append("\n");
+            sb.append("  - Hardware Ray Tracing: ").append(graphics.hardwareRayTracingEnabled() ? "Yes" : "No").append("\n");
+            sb.append("  - Mesh Shaders: ").append(graphics.meshShadersEnabled() ? "Yes" : "No").append("\n");
+            sb.append("  - Compute Shaders: ").append(graphics.computeShadersEnabled() ? "Yes" : "No").append("\n");
+            sb.append("  - Physical VRAM Total / Available: ").append(graphics.vramTotal() / 1024 / 1024).append(" MB / ").append(graphics.vramAvailable() / 1024 / 1024).append(" MB\n\n");
+
+            // --- Vulkan Instance Printing Diagnostic ---
+            if (graphics.vulkanInstance() != null) {
+                VulkanInstanceInfo vk = graphics.vulkanInstance();
+                sb.append("  [Vulkan Sub-System Instance]\n");
+                sb.append("    * Vulkan SDK Installed: ").append(vk.vulkanSdkInstalled() ? "Yes" : "No").append("\n");
+                sb.append("    * Runtime API Version: ").append(string.get(vk.vulkanVersion())).append("\n");
+                sb.append("    * Device Driver Build: ").append(string.get(vk.apiDriversVersion())).append("\n");
+                sb.append("    * OS Memory Budget Allocation: ").append(vk.vulkanTotalMemoryBudget() / 1024 / 1024).append(" MB\n");
+                sb.append("    * Sub-allocator Active Usage: ").append(vk.vulkanCurrentMemoryUsage() / 1024 / 1024).append(" MB\n");
+                sb.append("    * Validation Status Layers: ").append(vk.validationLayersEnabled() ? "Active Debug Profile" : "Disabled (Release)").append("\n\n");
+            }
+
+            // --- Metal Instance Printing Diagnostic ---
+            if (graphics.metalInstance() != null) {
+                MetalInstanceInfo mt = graphics.metalInstance();
+                sb.append("  [Apple Metal Sub-System Instance]\n");
+                sb.append("    * Metal Framework Present: ").append(mt.metalRuntimeAvailable() ? "Yes" : "No").append("\n");
+                sb.append("    * Architecture Class: ").append(mt.isAppleSilicon() ? "Apple Silicon SoC" : "Legacy Intel Mac Hardware").append("\n");
+                sb.append("    * Processor Chip Silicon Model: ").append(string.get(mt.appleChipModel())).append("\n");
+                sb.append("    * Hardware Feature Set: Apple GPU Family ").append(mt.appleGpuFamily()).append("\n");
+                sb.append("    * Metal Dynamic API Version: ").append(string.get(mt.metalVersion())).append("\n");
+                sb.append("    * Argument Binding Layouts: ").append(mt.argumentBuffersSupported() ? "Tier 2/Supported" : "Unsupported").append("\n");
+                sb.append("    * Ray Tracing Execution Tier: ").append(mt.rayTracingTierSupported() ? "Hardware Accelerated Cores" : "None/Compute Polling").append("\n\n");
+            }
+
+            // --- DirectX Instance Printing Diagnostic ---
+            if (graphics.directInstance() != null) {
+                DirectXInstanceInfo dx = graphics.directInstance();
+                sb.append("  [DirectX Sub-System Instance]\n");
+                sb.append("    * DX12 API Supported: ").append(dx.directX12Supported() ? "Yes" : "No").append("\n");
+                sb.append("    * Direct3D Core Feature Level: 0x").append(Integer.toHexString(dx.featureLevel())).append("\n");
+                sb.append("    * Runtime Engine Agility SDK: ").append(dx.agilitySdkPresent() ? "Linked / Loaded" : "Missing / Stale").append("\n");
+                sb.append("    * High Tier Shader Program compilation: ").append(dx.shaderModel6_xSupported() ? "Shader Model 6.x Early Native" : "Legacy Direct3D Layer").append("\n\n");
+            }
+        }
+
+        if (audio != null) {
+            sb.append("[AUDIO LATENCY PIPELINE]\n");
+            sb.append("  - Device Target: ").append(string.get(audio.audioDeviceName())).append("\n");
+            sb.append("  - Channels / Native Rate: ").append(audio.audioChannelCount()).append(" / ").append(audio.currentSampleRate()).append("Hz\n");
+            sb.append("  - Output Hardware Latency: ").append(audio.audioOutputLatency()).append(" ms\n");
+            sb.append("  - Spatial Audio: ").append(audio.spatialAudioSupported() ? "Yes" : "No").append("\n\n");
+        }
+
+        if (performance != null) {
+            sb.append("[REAL-TIME EXECUTION METRICS]\n");
+            sb.append("  - GPU Timestamp Period: ").append(performance.gpuTimestampPeriod()).append(" ns/tick\n");
+            sb.append("  - Variable Rate Shading: ").append(performance.variableRateShadingSupported() ? "Yes" : "No").append("\n");
+            sb.append("  - Power Saving Mode Active: ").append(performance.powerSavingModeActive() ? "Yes" : "No").append("\n");
+            sb.append("  - OS Thermal Throttle State: Level ").append(performance.thermalMitigationLevel()).append("\n");
+        }
+
+        sb.append("==================================================\n");
+        return sb.toString();
+    }
+
+    // ==========================================
+    // STRUCTURAL STATIC RECORDS
+    // ==========================================
+
+    public static record Resolution(int width, int height) {}
+
+    public static record HardwareInfo(
+            long operatingSystem,
+            long systemArchitecture,
+            long deviceModel,
+            long cpuBrand,
+            int cpuCoreCount,
+            int cpuThreadCount,
+            long storageTotalSpace,
+            long storageAvailableSpace,
+            long ramTotal,
+            long ramAvailable,
+            long javaHeapSize,
+            long javaHeapMax,
+            long batteryStatus,
+            float batteryLevel
+    ) {}
+
+    public static record DisplayMonitor(
+            long id,
+            long name,
+            Resolution currentResolution,
+            Resolution nativeResolution,
+            int[] supportedRefreshRates,
+            int currentRefreshRate,
+            boolean hdrSupported,
+            float dpi
+    ) {}
+
+    public static record DisplayInfo(
+            int monitorCount,
+            DisplayMonitor[] monitors,
+            DisplayMonitor primaryMonitor,
+            Resolution monitorResolution,
+            Resolution nativeResolution,
+            int[] refreshRates,
+            int currentRefreshRate,
+            boolean hdrSupported,
+            float displayDensity
+    ) {}
+
+    public static record MemoryHeap(
+            long totalSpace,
+            boolean isDeviceLocal
+    ) {}
+
+    // Modular Sub-System Context Interfaces
+    public static record VulkanInstanceInfo(
+            boolean vulkanSdkInstalled,
+            long vulkanVersion,
+            long apiDriversVersion,
+            long vulkanTotalMemoryBudget,
+            long vulkanCurrentMemoryUsage,
+            MemoryHeap[] vulkanMemoryHeaps,
+            boolean validationLayersEnabled
+    ) {}
+
+    public static record MetalInstanceInfo(
+            boolean metalRuntimeAvailable,
+            boolean isAppleSilicon,
+            int appleGpuFamily,
+            long appleChipModel,
+            long metalVersion,
+            boolean argumentBuffersSupported,
+            boolean rayTracingTierSupported
+    ) {}
+
+    public static record DirectXInstanceInfo(
+            boolean directX12Supported,
+            int featureLevel,
+            boolean agilitySdkPresent,
+            boolean shaderModel6_xSupported
+    ) {}
+
+    public static record GraphicsInfo(
+            long gpuName,
+            int gpuVendorId,
+            int gpuDeviceId,
+            long primaryGraphicsApi,
+            boolean unifiedMemoryEnabled,
+            boolean computeShadersEnabled,
+            boolean meshShadersEnabled,
+            boolean hardwareRayTracingEnabled,
+            boolean instancedIndexedEnabled,
+            int maxTextureSize,
+            float maxAnisotropyLevel,
+            int msaaSampleCounts,
+            boolean tessellationSupported,
+            long vramTotal,
+            long vramAvailable,
+            int maxComputeWorkGroupInvocations,
+            boolean discreteGpuEnabled,
+            float hdrMaxLuminance,
+            float hdrMinLuminance,
+            long surfaceColorSpace,
+            VulkanInstanceInfo vulkanInstance,
+            MetalInstanceInfo metalInstance,
+            DirectXInstanceInfo directInstance
+    ) {}
+
+    public static record AudioDevice(
+            long name,
+            int[] supportedSampleRates
+    ) {}
+
+    public static record AudioInfo(
+            long audioDeviceName,
+            AudioDevice[] availableAudioDevices,
+            int[] sampleRates,
+            int currentSampleRate,
+            int audioChannelCount,
+            boolean spatialAudioSupported,
+            int maxAudioSources,
+            float audioOutputLatency
+    ) {}
+
+    public static record VideoInfo(
+            long[] supportedVideoCodecs,
+            boolean hardwareDecodingSupported,
+            boolean hardwareEncodingSupported,
+            Resolution maxVideoResolution,
+            boolean hdrVideoPlaybackSupported,
+            int videoFrameRateMax
+    ) {}
+
+    public static record PerformanceInfo(
+            float gpuTimestampPeriod,
+            boolean variableRateShadingSupported,
+            long vrsSurfaceProperties,
+            boolean dynamicResolutionScaleSupported,
+            int thermalMitigationLevel,
+            boolean powerSavingModeActive
+    ) {}
+}
+}
+
+{
+type: uploaded file
+fileName: src/lang/Vec4.java
+fullContent:
+package lang;
+
+public class Vec4
+{
+    public Vec4()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/lang/Mat4.java
+fullContent:
+package lang;
+
+public class Mat4
+{
+    public Mat4()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/lang/Vec3.java
+fullContent:
+package lang;
+
+public class Vec3
+{
+    public Vec3()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/lang/Vec2.java
+fullContent:
+package lang;
+
+public class Vec2
+{
+    public Vec2()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/ScratchTest.java
+fullContent:
+public final class ScratchTest
+{
+    public static void main(String[] args) {
+        // Fetch and print the entire "God" system specs layout
+        java.lang.System.out.println(lang.System.getSystem());
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/vulkan/VK.java
+fullContent:
+//package vulkan;
+//
+//import hardware.VulkanContext;
+//import org.lwjgl.PointerBuffer;
+//import org.lwjgl.system.MemoryStack;
+//import org.lwjgl.system.MemoryUtil;
+//import org.lwjgl.vulkan.*;
+//import renderer.MasterRenderer;
+//
+//import java.nio.ByteBuffer;
+//import java.nio.FloatBuffer;
+//import java.nio.IntBuffer;
+//import java.nio.LongBuffer;
+//
+//import static org.lwjgl.system.MemoryStack.stackPush;
+//import static org.lwjgl.vulkan.KHRSurface.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+//import static org.lwjgl.vulkan.KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+//import static org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+//import static org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+//import static org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+//import static org.lwjgl.vulkan.VK10.*;
+//import static org.lwjgl.vulkan.VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_ACCESS_SHADER_READ_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_ACCESS_TRANSFER_WRITE_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_ATTACHMENT_LOAD_OP_CLEAR;
+//import static org.lwjgl.vulkan.VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+//import static org.lwjgl.vulkan.VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE;
+//import static org.lwjgl.vulkan.VK10.VK_ATTACHMENT_STORE_OP_STORE;
+//import static org.lwjgl.vulkan.VK10.VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+//import static org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+//import static org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_COMPARE_OP_ALWAYS;
+//import static org.lwjgl.vulkan.VK10.VK_DEPENDENCY_BY_REGION_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_FILTER_LINEAR;
+//import static org.lwjgl.vulkan.VK10.VK_FORMAT_D32_SFLOAT;
+//import static org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_DEPTH_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+//import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+//import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+//import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED;
+//import static org.lwjgl.vulkan.VK10.VK_IMAGE_TILING_OPTIMAL;
+//import static org.lwjgl.vulkan.VK10.VK_IMAGE_TYPE_2D;
+//import static org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_IMAGE_VIEW_TYPE_2D;
+//import static org.lwjgl.vulkan.VK10.VK_NULL_HANDLE;
+//import static org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_QUEUE_FAMILY_IGNORED;
+//import static org.lwjgl.vulkan.VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT;
+//import static org.lwjgl.vulkan.VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR;
+//import static org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT;
+//import static org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE;
+//import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+//import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+//import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+//import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+//import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+//import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+//import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+//import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+//import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+//import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO;
+//import static org.lwjgl.vulkan.VK10.VK_SUBPASS_EXTERNAL;
+//import static org.lwjgl.vulkan.VK10.VK_SUCCESS;
+//import static org.lwjgl.vulkan.VK10.vkAllocateCommandBuffers;
+//import static org.lwjgl.vulkan.VK10.vkAllocateMemory;
+//import static org.lwjgl.vulkan.VK10.vkBeginCommandBuffer;
+//import static org.lwjgl.vulkan.VK10.vkBindBufferMemory;
+//import static org.lwjgl.vulkan.VK10.vkCmdCopyBufferToImage;
+//import static org.lwjgl.vulkan.VK10.vkCmdPipelineBarrier;
+//import static org.lwjgl.vulkan.VK10.vkCreateBuffer;
+//import static org.lwjgl.vulkan.VK10.vkCreateImage;
+//import static org.lwjgl.vulkan.VK10.vkCreateImageView;
+//import static org.lwjgl.vulkan.VK10.vkCreateSampler;
+//import static org.lwjgl.vulkan.VK10.vkEndCommandBuffer;
+//import static org.lwjgl.vulkan.VK10.vkFreeCommandBuffers;
+//import static org.lwjgl.vulkan.VK10.vkGetBufferMemoryRequirements;
+//import static org.lwjgl.vulkan.VK10.vkGetImageMemoryRequirements;
+//import static org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties;
+//import static org.lwjgl.vulkan.VK10.vkQueueSubmit;
+//import static org.lwjgl.vulkan.VK10.vkQueueWaitIdle;
+//
+///**
+// * Boilerplate wrapper for Vulkan memory and image operations.
+// */
+//public class VK
+//{
+//
+//    public static IntBuffer allocInt(int size)
+//    {
+//        return MemoryUtil.memAllocInt(1);
+//    }
+//
+//    public static FloatBuffer allocFloat(float size)
+//    {
+//        return MemoryUtil.memAllocFloat(1);
+//    }
+//
+//    public static PointerBuffer allocPointer(int size)
+//    {
+//        return MemoryUtil.memAllocPointer(1);
+//    }
+//
+//    public static LongBuffer allocLong(int size)
+//    {
+//        return MemoryUtil.memAllocLong(1);
+//    }
+//
+//    public static ByteBuffer allocByte(int size)
+//    {
+//        return MemoryUtil.memAlloc(1);
+//    }
+//
+//
+//    public static VkCommandBufferBeginInfo createBeginInfo()
+//    {
+//        return VkCommandBufferBeginInfo.calloc().sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
+//    }
+//
+//    /**
+//     * Finds the exact right type of RAM (e.g., CPU-visible vs GPU-local) on your specific hardware.
+//     */
+//    public static int findMemoryType(int typeFilter, int properties) {
+//        VkPhysicalDeviceMemoryProperties memProperties = VkPhysicalDeviceMemoryProperties.calloc();
+//        // ---> THE FIX: Use VulkanContext
+//        vkGetPhysicalDeviceMemoryProperties(VulkanContext.getPhysicalDevice(), memProperties);
+//
+//        for (int i = 0; i < memProperties.memoryTypeCount(); i++) {
+//            if ((typeFilter & (1 << i)) != 0 && (memProperties.memoryTypes(i).propertyFlags() & properties) == properties) {
+//                memProperties.free();
+//                return i;
+//            }
+//        }
+//        memProperties.free();
+//        throw new RuntimeException("Failed to find suitable memory type!");
+//    }
+//
+//    public static long createBuffer(long size, int usage) {
+//        try (MemoryStack stack = stackPush()) {
+//            VkBufferCreateInfo bufferInfo = VkBufferCreateInfo.calloc(stack);
+//            bufferInfo.sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
+//            bufferInfo.size(size);
+//            bufferInfo.usage(usage);
+//            bufferInfo.sharingMode(VK_SHARING_MODE_EXCLUSIVE);
+//
+//            LongBuffer pBuffer = stack.mallocLong(1);
+//            // ---> THE FIX: Use VulkanContext
+//            if (vkCreateBuffer(VulkanContext.getDevice(), bufferInfo, null, pBuffer) != VK_SUCCESS) {
+//                throw new RuntimeException("Failed to create Vulkan Buffer!");
+//            }
+//            return pBuffer.get(0);
+//        }
+//    }
+//
+//    public static long allocateBufferMemory(long buffer, int properties) {
+//        try (MemoryStack stack = stackPush()) {
+//            VkMemoryRequirements memRequirements = VkMemoryRequirements.calloc(stack);
+//            vkGetBufferMemoryRequirements(VulkanContext.getDevice(), buffer, memRequirements);
+//
+//            VkMemoryAllocateInfo allocInfo = VkMemoryAllocateInfo.calloc(stack);
+//            allocInfo.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
+//            allocInfo.allocationSize(memRequirements.size());
+//            allocInfo.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), properties));
+//
+//            LongBuffer pBufferMemory = stack.mallocLong(1);
+//            if (vkAllocateMemory(VulkanContext.getDevice(), allocInfo, null, pBufferMemory) != VK_SUCCESS) {
+//                throw new RuntimeException("Failed to allocate Buffer Memory!");
+//            }
+//            vkBindBufferMemory(VulkanContext.getDevice(), buffer, pBufferMemory.get(0), 0);
+//            return pBufferMemory.get(0);
+//        }
+//    }
+//
+//    public static long createImage(int width, int height, int format, int tiling, int usage) {
+//        try (MemoryStack stack = stackPush()) {
+//            VkImageCreateInfo imageInfo = VkImageCreateInfo.calloc(stack);
+//            imageInfo.sType(VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
+//            imageInfo.imageType(VK_IMAGE_TYPE_2D);
+//            imageInfo.extent().width(width).height(height).depth(1);
+//            imageInfo.mipLevels(1);
+//            imageInfo.arrayLayers(1);
+//            imageInfo.format(format);
+//            imageInfo.tiling(tiling);
+//            imageInfo.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED);
+//            imageInfo.usage(usage);
+//            imageInfo.samples(VK_SAMPLE_COUNT_1_BIT);
+//            imageInfo.sharingMode(VK_SHARING_MODE_EXCLUSIVE);
+//
+//            LongBuffer pImage = stack.mallocLong(1);
+//            if (vkCreateImage(VulkanContext.getDevice(), imageInfo, null, pImage) != VK_SUCCESS) {
+//                throw new RuntimeException("Failed to create Vulkan Image!");
+//            }
+//            return pImage.get(0);
+//        }
+//    }
+//
+//    public static long allocateImageMemory(long image, int properties) {
+//        try (MemoryStack stack = stackPush()) {
+//            VkMemoryRequirements memRequirements = VkMemoryRequirements.calloc(stack);
+//            vkGetImageMemoryRequirements(VulkanContext.getDevice(), image, memRequirements);
+//
+//            VkMemoryAllocateInfo allocInfo = VkMemoryAllocateInfo.calloc(stack);
+//            allocInfo.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
+//            allocInfo.allocationSize(memRequirements.size());
+//            allocInfo.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), properties));
+//
+//            LongBuffer pImageMemory = stack.mallocLong(1);
+//            if (vkAllocateMemory(VulkanContext.getDevice(), allocInfo, null, pImageMemory) != VK_SUCCESS) {
+//                throw new RuntimeException("Failed to allocate Image Memory!");
+//            }
+//            return pImageMemory.get(0);
+//        }
+//    }
+//
+//    public static long createImageView(long image, int format) {
+//        try (MemoryStack stack = stackPush()) {
+//            VkImageViewCreateInfo viewInfo = VkImageViewCreateInfo.calloc(stack);
+//            viewInfo.sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO);
+//            viewInfo.image(image);
+//            viewInfo.viewType(VK_IMAGE_VIEW_TYPE_2D);
+//            viewInfo.format(format);
+//
+//            // ---> THE FIX: Dynamically assign the aspect mask!
+//            int aspectFlags = (format == VK_FORMAT_D32_SFLOAT) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+//
+//            viewInfo.subresourceRange().aspectMask(aspectFlags);
+//            viewInfo.subresourceRange().baseMipLevel(0);
+//            viewInfo.subresourceRange().levelCount(1);
+//            viewInfo.subresourceRange().baseArrayLayer(0);
+//            viewInfo.subresourceRange().layerCount(1);
+//
+//            LongBuffer pImageView = stack.mallocLong(1);
+//            if (vkCreateImageView(VulkanContext.getDevice(), viewInfo, null, pImageView) != VK_SUCCESS) {
+//                throw new RuntimeException("Failed to create texture image view!");
+//            }
+//            return pImageView.get(0);
+//        }
+//    }
+//
+//    public static long createTextureSampler() {
+//        try (MemoryStack stack = stackPush()) {
+//            VkSamplerCreateInfo samplerInfo = VkSamplerCreateInfo.calloc(stack);
+//            samplerInfo.sType(VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
+//            samplerInfo.magFilter(VK_FILTER_LINEAR);
+//            samplerInfo.minFilter(VK_FILTER_LINEAR);
+//            samplerInfo.addressModeU(VK_SAMPLER_ADDRESS_MODE_REPEAT);
+//            samplerInfo.addressModeV(VK_SAMPLER_ADDRESS_MODE_REPEAT);
+//            samplerInfo.addressModeW(VK_SAMPLER_ADDRESS_MODE_REPEAT);
+//            samplerInfo.anisotropyEnable(false);
+//            samplerInfo.maxAnisotropy(1.0f);
+//            samplerInfo.borderColor(VK_BORDER_COLOR_INT_OPAQUE_BLACK);
+//            samplerInfo.unnormalizedCoordinates(false);
+//            samplerInfo.compareEnable(false);
+//            samplerInfo.compareOp(VK_COMPARE_OP_ALWAYS);
+//            samplerInfo.mipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR);
+//
+//            LongBuffer pSampler = stack.mallocLong(1);
+//            if (vkCreateSampler(VulkanContext.getDevice(), samplerInfo, null, pSampler) != VK_SUCCESS) {
+//                throw new RuntimeException("Failed to create texture sampler!");
+//            }
+//            return pSampler.get(0);
+//        }
+//    }
+//
+//    // --- COMMAND BUFFER HELPERS ---
+//    // Note: You must expose a 'CommandPool' variable from your MasterRenderer.java for these to work.
+//
+//    public static VkCommandBuffer beginSingleTimeCommands() {
+//        try (MemoryStack stack = stackPush()) {
+//            VkCommandBufferAllocateInfo allocInfo = VkCommandBufferAllocateInfo.calloc(stack);
+//            allocInfo.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO);
+//            allocInfo.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+//            allocInfo.commandPool(MasterRenderer.getCommandPool());
+//            allocInfo.commandBufferCount(1);
+//
+//            PointerBuffer pCommandBuffer = stack.mallocPointer(1);
+//            vkAllocateCommandBuffers(VulkanContext.getDevice(), allocInfo, pCommandBuffer);
+//
+//            VkCommandBuffer commandBuffer = new VkCommandBuffer(pCommandBuffer.get(0), VulkanContext.getDevice());
+//
+//            VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack);
+//            beginInfo.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
+//            beginInfo.flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+//
+//            vkBeginCommandBuffer(commandBuffer, beginInfo);
+//            return commandBuffer;
+//        }
+//    }
+//
+//    public static void endSingleTimeCommands(VkCommandBuffer commandBuffer) {
+//        try (MemoryStack stack = stackPush()) {
+//            vkEndCommandBuffer(commandBuffer);
+//
+//            VkSubmitInfo.Buffer submitInfo = VkSubmitInfo.calloc(1, stack);
+//            submitInfo.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO);
+//            submitInfo.pCommandBuffers(stack.pointers(commandBuffer));
+//
+//            vkQueueSubmit(VulkanContext.getGraphicsQueue(), submitInfo, VK_NULL_HANDLE);
+//            vkQueueWaitIdle(VulkanContext.getGraphicsQueue());
+//
+//            vkFreeCommandBuffers(VulkanContext.getDevice(), MasterRenderer.getCommandPool(), commandBuffer);
+//        }
+//    }
+//
+//    public static void transitionImageLayout(VkCommandBuffer cmd, long image, int format, int oldLayout, int newLayout) {
+//        try (MemoryStack stack = stackPush()) {
+//            VkImageMemoryBarrier.Buffer barrier = VkImageMemoryBarrier.calloc(1, stack);
+//            barrier.sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER);
+//            barrier.oldLayout(oldLayout);
+//            barrier.newLayout(newLayout);
+//            barrier.srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED);
+//            barrier.dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED);
+//            barrier.image(image);
+//            barrier.subresourceRange().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT);
+//            barrier.subresourceRange().baseMipLevel(0);
+//            barrier.subresourceRange().levelCount(1);
+//            barrier.subresourceRange().baseArrayLayer(0);
+//            barrier.subresourceRange().layerCount(1);
+//
+//            int sourceStage;
+//            int destinationStage;
+//
+//            if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+//                barrier.srcAccessMask(0);
+//                barrier.dstAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT);
+//                sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+//                destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+//            } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+//                barrier.srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT);
+//                barrier.dstAccessMask(VK_ACCESS_SHADER_READ_BIT);
+//                sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+//                destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+//            } else {
+//                throw new IllegalArgumentException("Unsupported layout transition!");
+//            }
+//
+//            vkCmdPipelineBarrier(cmd, sourceStage, destinationStage, 0, null, null, barrier);
+//        }
+//    }
+//
+//    public static void copyBufferToImage(VkCommandBuffer cmd, long buffer, long image, int width, int height) {
+//        try (MemoryStack stack = stackPush()) {
+//            VkBufferImageCopy.Buffer region = VkBufferImageCopy.calloc(1, stack);
+//            region.bufferOffset(0);
+//            region.bufferRowLength(0);
+//            region.bufferImageHeight(0);
+//            region.imageSubresource().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT);
+//            region.imageSubresource().mipLevel(0);
+//            region.imageSubresource().baseArrayLayer(0);
+//            region.imageSubresource().layerCount(1);
+//            region.imageOffset().set(0, 0, 0);
+//            region.imageExtent().set(width, height, 1);
+//
+//            vkCmdCopyBufferToImage(cmd, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region);
+//        }
+//    }
+//
+//    public static VkClearValue.Buffer createClearValues()
+//    {
+//        VkClearValue.Buffer value = VkClearValue.calloc(2);
+//
+//        // Color Clear
+//        value.get(0).color()
+//                .float32(0, 1)
+//                .float32(1, 1)
+//                .float32(2, 1)
+//                .float32(3, 1);
+//
+//        // Depth Clear
+//        value.get(1).depthStencil()
+//                .depth(1.0f)
+//                .stencil(0);
+//
+//        return value;
+//    }
+//
+//    public static VkRect2D createRenderArea()
+//    {
+//        return VkRect2D.calloc();
+//    }
+//
+//    public static VkRenderPassBeginInfo createRenderPassInfo(long renderPass, VkClearValue.Buffer clearValues)
+//    {
+//        return VkRenderPassBeginInfo.calloc()
+//                                    .sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
+//                                    .renderPass(renderPass)
+//                                    .pClearValues(clearValues);
+//    }
+//
+//    public static VkSubmitInfo createSubmitInfo(IntBuffer mask)
+//    {
+//        return  VkSubmitInfo.calloc()
+//                .sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
+//                .waitSemaphoreCount(1)
+//                .pWaitDstStageMask(mask);
+//    }
+//
+//    public static VkPresentInfoKHR createPresentInfo(LongBuffer pSwapchains, IntBuffer pImageIndex)
+//    {
+//        return VkPresentInfoKHR.calloc()
+//                .sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
+//                .swapchainCount(1)
+//                .pSwapchains(pSwapchains)
+//                .pImageIndices(pImageIndex);
+//    }
+//
+//    public static VkSwapchainCreateInfoKHR createCreateInfo(MemoryStack stack, long surface, int swapchainImageFormat, VkExtent2D swapchainExtent, int presentMode, VkSurfaceCapabilitiesKHR capabilities, int imageCount)
+//    {
+//        return  VkSwapchainCreateInfoKHR.calloc(stack).sType(VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
+//         .surface(surface)
+//         .minImageCount(imageCount)
+//         .imageFormat(swapchainImageFormat)
+//         .imageColorSpace(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+//         .imageExtent(swapchainExtent)
+//         .imageArrayLayers(1)
+//         .imageUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+//         .presentMode(presentMode)
+//         .preTransform(capabilities.currentTransform())
+//         .compositeAlpha(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
+//         .clipped(true)
+//         .oldSwapchain(VK_NULL_HANDLE);
+//    }
+//
+//    public static void modifyDependencies(MemoryStack stack, VkSubpassDependency.Buffer dependencies)
+//    {
+//        // Dependency 0: Coming IN
+//        dependencies.get(0)
+//                    .srcSubpass(VK_SUBPASS_EXTERNAL).dstSubpass(0)
+//                    .srcStageMask(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+//                    .dstStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
+//                    .srcAccessMask(VK_ACCESS_SHADER_READ_BIT)
+//                    .dstAccessMask(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+//                    .dependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+//
+//        // Dependency 1: Going OUT
+//        dependencies.get(1)
+//                    .srcSubpass(0)
+//                    .dstSubpass(VK_SUBPASS_EXTERNAL)
+//                    .srcStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT)
+//                    .dstStageMask(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+//                    .srcAccessMask(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+//                    .dstAccessMask(VK_ACCESS_SHADER_READ_BIT)
+//                    .dependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+//
+//    }
+//
+//    public static void modifyBufferAttachments(VkAttachmentDescription.Buffer attachments, int swapchainImageFormat)
+//    {
+//
+//        // 0: Color Attachment
+//        attachments.get(0).format(swapchainImageFormat).samples(VK_SAMPLE_COUNT_1_BIT)
+//                .loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR).storeOp(VK_ATTACHMENT_STORE_OP_STORE)
+//                .stencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE).stencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
+//                .initialLayout(VK_IMAGE_LAYOUT_UNDEFINED).finalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+//
+//        // 1: Depth Attachment
+//        attachments.get(1).format(VK_FORMAT_D32_SFLOAT).samples(VK_SAMPLE_COUNT_1_BIT)
+//                .loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR).storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE) // Don't need to save depth after rendering
+//                .stencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE).stencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
+//                .initialLayout(VK_IMAGE_LAYOUT_UNDEFINED).finalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+//    }
+//
+//    public static VkAttachmentDescription.Buffer createColorAttachmentBuffer(MemoryStack stack, int format)
+//    {
+//        return VkAttachmentDescription.calloc(1, stack)
+//        .format(format)
+//        .samples(VK_SAMPLE_COUNT_1_BIT)
+//        .loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
+//        .storeOp(VK_ATTACHMENT_STORE_OP_STORE)
+//        .stencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+//        .stencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
+//        .initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+//        .finalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+//    }
+//
+//    public static VkImageCreateInfo createImageInfo(MemoryStack stack, int width, int height, int format, int usage) {
+//        return VkImageCreateInfo.calloc(stack)
+//                .sType(VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
+//                .imageType(VK_IMAGE_TYPE_2D)
+//                .extent(VkExtent3D.calloc(stack).set(width, height, 1))
+//                .mipLevels(1).arrayLayers(1)
+//                .format(format)
+//                .tiling(VK_IMAGE_TILING_OPTIMAL)
+//                .initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+//                .usage(usage)
+//                .samples(VK_SAMPLE_COUNT_1_BIT)
+//                .sharingMode(VK_SHARING_MODE_EXCLUSIVE);
+//    }
+//}
+}
+
+{
+type: uploaded file
+fileName: src/nio/TextureBuffer.java
+fullContent:
+package nio;
+
+public class TextureBuffer
+{
+    public TextureBuffer()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/nio/ForeignMemory.java
+fullContent:
+package nio;
+
+import primitive.Byte;
+import primitive.Int32;
+import primitive.Int64;
+import primitive.Short;
+import primitive.string;
+
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
+public class ForeignMemory
+{
+    // god, the lens of all things. might be dangerous to hold, low-key
+    // literally c flavored hell java version
+    // good luck myself
+    private static final MemorySegment GLOBAL_MEMORY = MemorySegment.ofAddress(0).reinterpret(Long.MAX_VALUE);
+
+    public static byte getByte(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_BYTE, address);
+    }
+
+    public static void putByte(long address, byte value)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_BYTE, address, value);
+    }
+
+    public static short getShort(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_SHORT, address);
+    }
+
+    public static void putShort(long address, short value)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_SHORT, address, value);
+    }
+
+    public static int getInt(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_INT, address);
+    }
+
+    public static void putInt(long address, int value)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_INT, address, value);
+    }
+
+    public static long getLong(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_LONG, address);
+    }
+
+    public static void putLong(long address, long value)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_LONG, address, value);
+    }
+
+    public static float getFloat(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_FLOAT, address);
+    }
+
+    public static void putFloat(long address, float value)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_FLOAT, address, value);
+    }
+
+    public static double getDouble(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_DOUBLE, address);
+    }
+
+    public static void putDouble(long address, double value)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_DOUBLE, address, value);
+    }
+
+    public static short getShortUnaligned(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_SHORT_UNALIGNED, address);
+    }
+
+    public static void putShortUnaligned(long address, short value)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_SHORT_UNALIGNED, address, value);
+    }
+
+    public static int getIntUnaligned(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_INT_UNALIGNED, address);
+    }
+
+    public static void putIntUnaligned(long address, int value)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_INT_UNALIGNED, address, value);
+    }
+
+    public static long getLongUnaligned(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_LONG_UNALIGNED, address);
+    }
+
+    public static void putLongUnaligned(long address, long value)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_LONG_UNALIGNED, address, value);
+    }
+
+    public static float getFloatUnaligned(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_FLOAT_UNALIGNED, address);
+    }
+
+    public static void putFloatUnaligned(long address, float value)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_FLOAT_UNALIGNED, address, value);
+    }
+
+    public static double getDoubleUnaligned(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_DOUBLE_UNALIGNED, address);
+    }
+
+    public static void putDoubleUnaligned(long address, double value)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_DOUBLE_UNALIGNED, address, value);
+    }
+
+    public static long getAddress(long address)
+    {
+        return GLOBAL_MEMORY.get(ValueLayout.ADDRESS, address).address();
+    }
+
+    public static void putAddress(long address, long targetAddress)
+    {
+        GLOBAL_MEMORY.set(ValueLayout.ADDRESS, address, MemorySegment.ofAddress(targetAddress));
+    }
+
+    public static void copy(long srcAddress, long destAddress, long bytes)
+    {
+        MemorySegment.copy(GLOBAL_MEMORY, srcAddress, GLOBAL_MEMORY, destAddress, bytes);
+    }
+
+    public static void copyToHeap(long srcAddress, byte[] destArray, int destOffset, int length)
+    {
+        MemorySegment.copy(GLOBAL_MEMORY, ValueLayout.JAVA_BYTE, srcAddress, destArray, destOffset, length);
+    }
+
+    public static void copyFromHeap(byte[] srcArray, int srcOffset, long destAddress, int length)
+    {
+        MemorySegment.copy(srcArray, srcOffset, GLOBAL_MEMORY, ValueLayout.JAVA_BYTE, destAddress, length);
+    }
+
+    public static String getString(long address)
+    {
+        if (address == 0) return null;
+        return GLOBAL_MEMORY.getString(address);
+    }
+
+    public static MemorySegment wrap(long address, long byteSize)
+    {
+        return MemorySegment.ofAddress(address).reinterpret(byteSize);
+    }
+
+    public static MemorySegment wrap(long address, long byteSize, Arena arena)
+    {
+        return MemorySegment.ofAddress(address).reinterpret(byteSize, arena, null);
+    }
+
+    // nuclear, dangerous
+    public static void freeAllClasses()
+    {
+
+        Byte.free();
+        Short.free();
+        Int32.freeAll();
+        string.free();
+        Int64.free();
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/nio/NativeSubsystem.java
+fullContent:
+package nio;
+
+public interface NativeSubsystem {
+    void freeAll();
+}
+}
+
+{
+type: uploaded file
+fileName: src/nio/GeometryBuffer.java
+fullContent:
+package nio;
+
+public class GeometryBuffer
+{
+    public GeometryBuffer()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/nio/FileVariable.java
+fullContent:
+package nio;
+
+public class FileVariable
+{
+    public FileVariable()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/nio/MemoryRegistry.java
+fullContent:
+package nio;
+
+import nio.NativeSubsystem;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+public class MemoryRegistry {
+    private static final CopyOnWriteArrayList<NativeSubsystem> subsystems = new CopyOnWriteArrayList<>();
+
+    public static void register(NativeSubsystem subsystem) {
+        subsystems.add(subsystem);
+    }
+
+    public static void shutdownAll() {
+        for (NativeSubsystem sub : subsystems) {
+            sub.freeAll();
+        }
+        subsystems.clear();
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/shader/D3DShader.java
+fullContent:
+package shader;
+
+public class D3DShader
+{
+    public D3DShader()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/shader/SpirVCompiler.java
+fullContent:
+package shader;
+
+public class SpirVCompiler
+{
+    public SpirVCompiler()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/shader/D3DCompiler.java
+fullContent:
+package shader;
+
+public class D3DCompiler
+{
+    public D3DCompiler()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/shader/VKShader.java
+fullContent:
+package shader;
+
+public class VKShader
+{
+    public VKShader()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/shader/MTLShader.java
+fullContent:
+package shader;
+
+public class MTLShader
+{
+    public MTLShader()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/spatial/Octree.java
+fullContent:
+package spatial;
+
+public class Octree
+{
+    public Octree()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/spatial/BTree.java
+fullContent:
+package spatial;
+
+public class BTree
+{
+    public BTree()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/spatial/BinaryTree.java
+fullContent:
+package spatial;
+
+public class BinaryTree
+{
+    public BinaryTree()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/spatial/GridArray.java
+fullContent:
+package spatial;
+
+public class GridArray
+{
+    public GridArray()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/spatial/CubeArray.java
+fullContent:
+package spatial;
+
+public class CubeArray
+{
+    public CubeArray()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/timeline/Timeline.java
+fullContent:
+package timeline;
+
+public class Timeline
+{
+    public Timeline()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/timeline/Trigger.java
+fullContent:
+package timeline;
+
+public class Trigger
+{
+    public Trigger()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/thread/ScriptingThread.java
+fullContent:
+package thread;
+
+public class ScriptingThread
+{
+    public ScriptingThread()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/thread/NetworkingThread.java
+fullContent:
+package thread;
+
+public class NetworkingThread
+{
+    public NetworkingThread()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/thread/DrawThread.java
+fullContent:
+package thread;
+
+public class DrawThread
+{
+    public DrawThread()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/event/MouseEvent.java
+fullContent:
+package event;
+
+public class MouseEvent
+{
+    public MouseEvent()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/event/ScriptingEvent.java
+fullContent:
+package event;
+
+public class ScriptingEvent
+{
+    public ScriptingEvent()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/event/RayEvent.java
+fullContent:
+package event;
+
+public class RayEvent
+{
+    public RayEvent()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/event/MeshEvent.java
+fullContent:
+package event;
+
+public class MeshEvent
+{
+    public MeshEvent()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/event/CollisionEvent.java
+fullContent:
+package event;
+
+public class CollisionEvent
+{
+    public CollisionEvent()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/event/KeyEvent.java
+fullContent:
+package event;
+
+public class KeyEvent
+{
+    public KeyEvent()
+    {
+
+    }
+}
+}
+
+{
+type: uploaded file
+fileName: src/event/NetworkingEvent.java
+fullContent:
+package event;
+
+public class NetworkingEvent
+{
+    public NetworkingEvent()
+    {
+
+    }
+}
+}
+
