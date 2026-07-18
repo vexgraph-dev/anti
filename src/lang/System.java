@@ -138,6 +138,13 @@ public final class System {
 
         // Vulkan Context Probing Defaults
         boolean hasVulkanSdk = java.lang.System.getenv("VULKAN_SDK") != null || java.lang.System.getenv("VK_LAYER_PATH") != null;
+        if (!hasVulkanSdk) {
+            String homeDir = java.lang.System.getProperty("user.home");
+            hasVulkanSdk = new java.io.File("/usr/local/include/vulkan").exists() ||
+                           new java.io.File("/opt/homebrew/include/vulkan").exists() ||
+                           new java.io.File("/vulkan-sdk").exists() ||
+                           (homeDir != null && new java.io.File(homeDir, "VulkanSDK").exists());
+        }
         String vulkanApiVersion = "0.0.0";
         String vulkanDriverVersion = "None";
         boolean vkValidationLayers = hasVulkanSdk;
@@ -175,15 +182,28 @@ public final class System {
                     detectedGpuName = appleSiliconChipModel;
 
                     // Extrapolate hardware generation families from model identities from the apple metal documentation book
-                    if (appleSiliconChipModel.contains("M1")) appleGpuFamilyTier = 7;
-                    else if (appleSiliconChipModel.contains("M2")) appleGpuFamilyTier = 8;
-                    else if (appleSiliconChipModel.contains("A18 Pro") /* macbook neo */ || appleSiliconChipModel.contains("M3") || appleSiliconChipModel.contains("M4")) appleGpuFamilyTier = 9;
-                    else if (appleSiliconChipModel.contains("A19 Pro") /* some later thingies */ || appleSiliconChipModel.contains("M5")) appleGpuFamilyTier = 10;
-                    else appleGpuFamilyTier = 6; // defaults to intel/old graphics chips used
+                    if (appleSiliconChipModel.contains("M1")) {
+                        appleGpuFamilyTier = 7;
+                        metalVersionString = "Metal 3.0 Native";
+                    } else if (appleSiliconChipModel.contains("M2")) {
+                        appleGpuFamilyTier = 8;
+                        metalVersionString = "Metal 3.0 Native";
+                    } else if (appleSiliconChipModel.contains("A18 Pro") /* macbook neo */ || appleSiliconChipModel.contains("M3") || appleSiliconChipModel.contains("M4")) {
+                        appleGpuFamilyTier = 9;
+                        metalVersionString = "Metal 3.1 Native (Apple Family 9)";
+                    } else if (appleSiliconChipModel.contains("A19 Pro") /* some later thingies */ || appleSiliconChipModel.contains("M5")) {
+                        appleGpuFamilyTier = 10;
+                        metalVersionString = "Metal 3.2 Native (Apple Family 10)";
+                    } else {
+                        appleGpuFamilyTier = 6; // defaults to intel/old graphics chips used
+                        metalVersionString = "Metal 2.4 Legacy";
+                    }
                     break;
                 }
             }
-            metalVersionString = "Metal 3.0 Native";
+            if (metalVersionString.equals("0.0.0")) {
+                metalVersionString = "Metal 3.1 Native";
+            }
 
         } else if (osName.contains("win")) {
             dynamicDx12Supported = true;
