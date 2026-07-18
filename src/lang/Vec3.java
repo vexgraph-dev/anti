@@ -131,6 +131,27 @@ public final class Vec3
         float lenSq = lengthSquared(src);
         if (lenSq > FastMath.EPSILON)
         {
+            if (FastMath.abs(lenSq - 1.0f) < FastMath.EPSILON)
+            {
+                copy(dest, src);
+            }
+            else
+            {
+                float invLen = (float) (1.0 / Math.sqrt(lenSq));
+                set(dest, getX(src) * invLen, getY(src) * invLen, getZ(src) * invLen);
+            }
+        }
+        else
+        {
+            set(dest, 0.0f, 0.0f, 0.0f);
+        }
+    }
+
+    public static void fastNormalize(long dest, long src)
+    {
+        float lenSq = lengthSquared(src);
+        if (lenSq > FastMath.EPSILON)
+        {
             float invLen = FastMath.invSqrt(lenSq);
             set(dest, getX(src) * invLen, getY(src) * invLen, getZ(src) * invLen);
         }
@@ -153,7 +174,7 @@ public final class Vec3
         float d = dot(a, b);
         float lenSq = lengthSquared(a) * lengthSquared(b);
         if (lenSq <= FastMath.EPSILON) return 0.0f;
-        float cosTheta = FastMath.clamp(d * FastMath.invSqrt(lenSq), -1.0f, 1.0f);
+        float cosTheta = FastMath.clamp((float) (d / Math.sqrt(lenSq)), -1.0f, 1.0f);
         return (float) Math.acos(cosTheta);
     }
 
