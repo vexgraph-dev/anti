@@ -128,10 +128,11 @@ public final class Vec3
 
     public static void normalize(long dest, long src)
     {
-        float len = length(src);
-        if (len != 0.0f)
+        float lenSq = lengthSquared(src);
+        if (lenSq > FastMath.EPSILON)
         {
-            div(dest, src, len);
+            float invLen = FastMath.invSqrt(lenSq);
+            set(dest, getX(src) * invLen, getY(src) * invLen, getZ(src) * invLen);
         }
         else
         {
@@ -147,6 +148,29 @@ public final class Vec3
         return (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
+    public static float angle(long a, long b)
+    {
+        float d = dot(a, b);
+        float lenSq = lengthSquared(a) * lengthSquared(b);
+        if (lenSq <= FastMath.EPSILON) return 0.0f;
+        float cosTheta = FastMath.clamp(d * FastMath.invSqrt(lenSq), -1.0f, 1.0f);
+        return (float) Math.acos(cosTheta);
+    }
+
+    public static void project(long dest, long vector, long onto)
+    {
+        float ontoLenSq = lengthSquared(onto);
+        if (ontoLenSq > FastMath.EPSILON)
+        {
+            float scale = dot(vector, onto) / ontoLenSq;
+            mul(dest, onto, scale);
+        }
+        else
+        {
+            set(dest, 0.0f, 0.0f, 0.0f);
+        }
+    }
+
     public static void reflect(long dest, long incident, long normal)
     {
         float d = 2.0f * dot(incident, normal);
@@ -154,6 +178,26 @@ public final class Vec3
         float ry = getY(incident) - d * getY(normal);
         float rz = getZ(incident) - d * getZ(normal);
         set(dest, rx, ry, rz);
+    }
+
+    public static void min(long dest, long a, long b)
+    {
+        set(dest, Math.min(getX(a), getX(b)), Math.min(getY(a), getY(b)), Math.min(getZ(a), getZ(b)));
+    }
+
+    public static void max(long dest, long a, long b)
+    {
+        set(dest, Math.max(getX(a), getX(b)), Math.max(getY(a), getY(b)), Math.max(getZ(a), getZ(b)));
+    }
+
+    public static void clamp(long dest, long src, float minVal, float maxVal)
+    {
+        set(dest, FastMath.clamp(getX(src), minVal, maxVal), FastMath.clamp(getY(src), minVal, maxVal), FastMath.clamp(getZ(src), minVal, maxVal));
+    }
+
+    public static void abs(long dest, long src)
+    {
+        set(dest, FastMath.abs(getX(src)), FastMath.abs(getY(src)), FastMath.abs(getZ(src)));
     }
 
     public static void lerp(long dest, long a, long b, float t)

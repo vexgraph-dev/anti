@@ -129,15 +129,36 @@ public final class Vec4
 
     public static void normalize(long dest, long src)
     {
-        float len = length(src);
-        if (len != 0.0f)
+        float lenSq = lengthSquared(src);
+        if (lenSq > FastMath.EPSILON)
         {
-            div(dest, src, len);
+            float invLen = FastMath.invSqrt(lenSq);
+            set(dest, getX(src) * invLen, getY(src) * invLen, getZ(src) * invLen, getW(src) * invLen);
         }
         else
         {
             set(dest, 0.0f, 0.0f, 0.0f, 0.0f);
         }
+    }
+
+    public static void min(long dest, long a, long b)
+    {
+        set(dest, Math.min(getX(a), getX(b)), Math.min(getY(a), getY(b)), Math.min(getZ(a), getZ(b)), Math.min(getW(a), getW(b)));
+    }
+
+    public static void max(long dest, long a, long b)
+    {
+        set(dest, Math.max(getX(a), getX(b)), Math.max(getY(a), getY(b)), Math.max(getZ(a), getZ(b)), Math.max(getW(a), getW(b)));
+    }
+
+    public static void clamp(long dest, long src, float minVal, float maxVal)
+    {
+        set(dest, FastMath.clamp(getX(src), minVal, maxVal), FastMath.clamp(getY(src), minVal, maxVal), FastMath.clamp(getZ(src), minVal, maxVal), FastMath.clamp(getW(src), minVal, maxVal));
+    }
+
+    public static void abs(long dest, long src)
+    {
+        set(dest, FastMath.abs(getX(src)), FastMath.abs(getY(src)), FastMath.abs(getZ(src)), FastMath.abs(getW(src)));
     }
 
     public static void lerp(long dest, long a, long b, float t)
