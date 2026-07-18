@@ -35,6 +35,8 @@ bin/
 preferences.txt
 lib/
 ScratchTest.java
+src/ScratchTest.java
+**/ScratchTest.java
 FileCompiler.java
 
 ### Private / Regurgitation Files ###
