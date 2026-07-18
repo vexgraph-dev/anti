@@ -126,7 +126,7 @@ public final class System {
             oshi.ffm.SystemInfo oshiSys = new oshi.ffm.SystemInfo();
             java.util.List<oshi.hardware.GraphicsCard> gpus = oshiSys.getHardware().getGraphicsCards();
             if (gpus != null && !gpus.isEmpty()) {
-                oshi.hardware.GraphicsCard mainGpu = gpus.get(0);
+                oshi.hardware.GraphicsCard mainGpu = gpus.getFirst();
                 if (mainGpu.getName() != null && !mainGpu.getName().isBlank()) {
                     detectedGpuName = mainGpu.getName().trim();
                 }
@@ -271,7 +271,7 @@ public final class System {
                 appleGpuFamilyTier,
                 string.allocate(appleSiliconChipModel),
                 string.allocate(metalVersionString),
-                isAppleSiliconGpu, // Argument buffers are standard on modern apple silicon
+                isAppleSiliconGpu, // Argument buffers are standard on modern Apple Silicon
                 appleGpuFamilyTier >= 9 // HW Raytracing arrived with Family 9 (M3 series)
         );
 
@@ -334,7 +334,7 @@ public final class System {
             oshi.ffm.SystemInfo oshiSys = new oshi.ffm.SystemInfo();
             java.util.List<oshi.hardware.PowerSource> powerSources = oshiSys.getHardware().getPowerSources();
             if (powerSources != null && !powerSources.isEmpty()) {
-                oshi.hardware.PowerSource ps = powerSources.get(0);
+                oshi.hardware.PowerSource ps = powerSources.getFirst();
                 double capacity = ps.getRemainingCapacityPercent();
                 batteryLevelVal = (float) (capacity > 0 ? capacity : 1.0);
                 if (ps.isPowerOnLine()) {
