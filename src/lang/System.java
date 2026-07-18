@@ -23,21 +23,53 @@ public final class System {
         long deviceModelPtr = string.allocate(isMobileOrHandheld() ? "Handheld/Mobile" : "Desktop");
 
         String rawCpu = java.lang.System.getenv("PROCESSOR_IDENTIFIER");
-        long cpuBrandPtr = string.allocate(rawCpu != null ? rawCpu : java.lang.System.getProperty("os.arch"));
         int cores = Runtime.getRuntime().availableProcessors();
+        int threads = cores * 2;
 
-        long totalMemory;
-        long freeMemory;
+        long totalMemory = 0L;
+        long freeMemory = 0L;
+
+        // Pure FFM OSHI Telemetry Probe
+        boolean oshiAvailable = false;
         try {
-            java.lang.management.OperatingSystemMXBean osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
-            java.lang.reflect.Method totalMemMethod = osBean.getClass().getMethod("getTotalPhysicalMemorySize");
-            java.lang.reflect.Method freeMemMethod = osBean.getClass().getMethod("getFreePhysicalMemorySize");
-            totalMemory = (long) totalMemMethod.invoke(osBean);
-            freeMemory = (long) freeMemMethod.invoke(osBean);
-        } catch (Throwable t) {
-            totalMemory = Runtime.getRuntime().maxMemory();
-            freeMemory = Runtime.getRuntime().freeMemory();
+            oshi.ffm.SystemInfo oshiSys = new oshi.ffm.SystemInfo();
+            oshi.hardware.HardwareAbstractionLayer hal = oshiSys.getHardware();
+            oshi.hardware.CentralProcessor cpu = hal.getProcessor();
+            oshi.hardware.GlobalMemory mem = hal.getMemory();
+
+            if (cpu != null && cpu.getProcessorIdentifier() != null) {
+                String fetchedCpu = cpu.getProcessorIdentifier().getName();
+                if (fetchedCpu != null && !fetchedCpu.isBlank()) {
+                    rawCpu = fetchedCpu.trim();
+                }
+                if (cpu.getPhysicalProcessorCount() > 0) {
+                    cores = cpu.getPhysicalProcessorCount();
+                }
+                if (cpu.getLogicalProcessorCount() > 0) {
+                    threads = cpu.getLogicalProcessorCount();
+                }
+            }
+            if (mem != null) {
+                totalMemory = mem.getTotal();
+                freeMemory = mem.getAvailable();
+            }
+            oshiAvailable = true;
+        } catch (Throwable ignored) {}
+
+        if (!oshiAvailable || totalMemory == 0L) {
+            try {
+                java.lang.management.OperatingSystemMXBean osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+                java.lang.reflect.Method totalMemMethod = osBean.getClass().getMethod("getTotalPhysicalMemorySize");
+                java.lang.reflect.Method freeMemMethod = osBean.getClass().getMethod("getFreePhysicalMemorySize");
+                totalMemory = (long) totalMemMethod.invoke(osBean);
+                freeMemory = (long) freeMemMethod.invoke(osBean);
+            } catch (Throwable t) {
+                totalMemory = Runtime.getRuntime().maxMemory();
+                freeMemory = Runtime.getRuntime().freeMemory();
+            }
         }
+
+        long cpuBrandPtr = string.allocate(rawCpu != null ? rawCpu : java.lang.System.getProperty("os.arch"));
 
         long totalStorage = 0;
         long availableStorage = 0;
@@ -88,6 +120,21 @@ public final class System {
         String primaryGraphicsApi;
         boolean unifiedMemoryArchitecture = false;
         long physicalVramTotal = 0L;
+
+        // Try FFM OSHI GPU hardware probing first
+        try {
+            oshi.ffm.SystemInfo oshiSys = new oshi.ffm.SystemInfo();
+            java.util.List<oshi.hardware.GraphicsCard> gpus = oshiSys.getHardware().getGraphicsCards();
+            if (gpus != null && !gpus.isEmpty()) {
+                oshi.hardware.GraphicsCard mainGpu = gpus.get(0);
+                if (mainGpu.getName() != null && !mainGpu.getName().isBlank()) {
+                    detectedGpuName = mainGpu.getName().trim();
+                }
+                if (mainGpu.getVRam() > 0) {
+                    physicalVramTotal = mainGpu.getVRam();
+                }
+            }
+        } catch (Throwable ignored) {}
 
         // Vulkan Context Probing Defaults
         boolean hasVulkanSdk = java.lang.System.getenv("VULKAN_SDK") != null || java.lang.System.getenv("VK_LAYER_PATH") != null;
