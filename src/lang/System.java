@@ -324,7 +324,26 @@ public final class System {
                 string.allocate("Not Supported"),
                 false,
                 0,
-                false);
+                false
+        );
+
+        // Real-Time Power & Battery Telemetry Probe
+        String batteryStatusStr = "AC Powered";
+        float batteryLevelVal = 1.0f;
+        try {
+            oshi.ffm.SystemInfo oshiSys = new oshi.ffm.SystemInfo();
+            java.util.List<oshi.hardware.PowerSource> powerSources = oshiSys.getHardware().getPowerSources();
+            if (powerSources != null && !powerSources.isEmpty()) {
+                oshi.hardware.PowerSource ps = powerSources.get(0);
+                double capacity = ps.getRemainingCapacityPercent();
+                batteryLevelVal = (float) (capacity > 0 ? capacity : 1.0);
+                if (ps.isPowerOnLine()) {
+                    batteryStatusStr = ps.isCharging() ? "AC Powered (Charging)" : "AC Powered (Full)";
+                } else {
+                    batteryStatusStr = "Battery Power (Discharging)";
+                }
+            }
+        } catch (Throwable ignored) {}
 
         hardware = new HardwareInfo(
                 osNamePtr,
@@ -332,15 +351,15 @@ public final class System {
                 deviceModelPtr,
                 cpuBrandPtr,
                 cores,
-                cores * 2,
+                threads,
                 totalStorage,
                 availableStorage,
                 totalMemory,
                 freeMemory,
                 Runtime.getRuntime().totalMemory(),
                 Runtime.getRuntime().maxMemory(),
-                string.allocate("AC Powered"),
-                1.0f
+                string.allocate(batteryStatusStr),
+                batteryLevelVal
         );
     }
 
