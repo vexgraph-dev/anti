@@ -306,13 +306,12 @@ public final class Map {
 
     // check if map is empty
     public static boolean isEmpty(long mapPtr) {
-        return size(mapPtr) == 0;
+        return Collection.isEmpty(mapPtr);
     }
 
     // get element count
     public static int size(long mapPtr) {
-        if (mapPtr == 0L) return 0;
-        return ForeignMemory.getInt(mapPtr - 4L);
+        return Collection.size(mapPtr);
     }
 
     // free map data buffer and header back to native RAM
@@ -337,26 +336,23 @@ public final class Map {
     }
 
     public static int keyClassId(long mapPtr) {
-        if (mapPtr == 0L) return 0;
-        return ForeignMemory.getInt(mapPtr);
+        return Collection.keyClassId(mapPtr);
     }
 
     public static int valClassId(long mapPtr) {
-        if (mapPtr == 0L) return 0;
-        return ForeignMemory.getInt(mapPtr + 4L);
+        return Collection.valClassId(mapPtr);
     }
 
     public static int capacity(long mapPtr) {
-        if (mapPtr == 0L) return 0;
-        return ForeignMemory.getInt(mapPtr + 8L);
+        return Collection.capacity(mapPtr);
     }
 
     public static long dataBuffer(long mapPtr) {
-        if (mapPtr == 0L) return 0L;
-        return ForeignMemory.getLong(mapPtr + 16L);
+        return Collection.dataBuffer(mapPtr);
     }
 
     public static int classId() {
         return CLASS_ID;
     }
 }
+
