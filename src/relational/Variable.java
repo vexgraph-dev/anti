@@ -121,9 +121,11 @@ public final class Variable {
 
             int assignedId = activeCount;
             activeCount++;
+            SearchVariable.insert(nameBytes, assignedId);
             return assignedId;
         }
     }
+
 
     // draft linear search lookups
     @Draft
