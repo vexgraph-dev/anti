@@ -31,6 +31,7 @@ public class TypeRegister {
     public static final int ID_PACK       = 0x00000D; // Pack class // 13
     public static final int ID_ARRAYS     = 0x00000E; // Arrays class // 14
     public static final int ID_HASH       = 0x00000F; // Hash class // 15
+    public static final int ID_CLASS      = 0x000010; // Class class // 16
 
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 

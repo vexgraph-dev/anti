@@ -397,12 +397,18 @@ public final class Int32
     public static void set(long pointer, int value)
     {
         if(pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if(classId(pointer) != CLASS_ID) {
+            throw new IllegalArgumentException("Pointer 0x" + Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Int32 (Class ID " + CLASS_ID + ")");
+        }
         ForeignMemory.putInt(pointer, value);
     }
 
     public static void set(long pointer, int index, int value)
     {
         checkBounds(pointer, index);
+        if(classId(pointer) != CLASS_ID) {
+            throw new IllegalArgumentException("Pointer 0x" + Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Int32 (Class ID " + CLASS_ID + ")");
+        }
         ForeignMemory.putInt(pointer + (index * 4L), value);
     }
 
@@ -411,6 +417,9 @@ public final class Int32
         if(matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
         if(!isPointer(matrixPointer)) {
             throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+        }
+        if(classId(matrixPointer) != CLASS_ID) {
+            throw new IllegalArgumentException("Pointer 0x" + Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected Int32 (Class ID " + CLASS_ID + ")");
         }
         checkBounds(matrixPointer, index);
         ForeignMemory.putLong(matrixPointer + (index * 8L), targetPointer);
