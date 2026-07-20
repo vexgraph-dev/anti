@@ -216,6 +216,13 @@ public class ForeignMemory
         return MemorySegment.ofAddress(address).reinterpret(byteSize);
     }
 
+    public static void setMemory(long address, long byteSize, byte value)
+    {
+        if (address == 0L || byteSize <= 0) return;
+        wrap(address, byteSize).fill(value);
+    }
+
+
     public static MemorySegment wrap(long address, long byteSize, Arena arena)
     {
         return MemorySegment.ofAddress(address).reinterpret(byteSize, arena, null);

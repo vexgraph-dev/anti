@@ -34,6 +34,11 @@ public class TypeRegister {
     public static final int ID_CLASS      = 0x000010; // Class class // 16
     public static final int ID_STRIDE     = 0x000011; // Stride class // 17
     public static final int ID_LIST       = 0x000012; // List class // 18
+    public static final int ID_MAP        = 0x000013; // Map class // 19
+    public static final int ID_SET        = 0x000014; // Set class // 20
+    public static final int ID_STACK      = 0x000015; // Stack class // 21
+    public static final int ID_DEQUE      = 0x000016; // Deque class // 22
+
 
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
