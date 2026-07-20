@@ -32,6 +32,8 @@ public class TypeRegister {
     public static final int ID_ARRAYS     = 0x00000E; // Arrays class // 14
     public static final int ID_HASH       = 0x00000F; // Hash class // 15
     public static final int ID_CLASS      = 0x000010; // Class class // 16
+    public static final int ID_STRIDE     = 0x000011; // Stride class // 17
+    public static final int ID_LIST       = 0x000012; // List class // 18
 
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
