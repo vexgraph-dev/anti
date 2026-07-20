@@ -78,6 +78,32 @@ public final class SearchVariable {
         Trie.insert(trieRoot, nameBytes, variableId);
     }
 
+    private static boolean isExactMatch(String name, byte[] expectedBytes) {
+        if (name == null) return false;
+        byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
+        if (nameBytes.length != expectedBytes.length) return false;
+        for (int i = 0; i < expectedBytes.length; i++) {
+            byte n = nameBytes[i];
+            byte e = expectedBytes[i];
+            if (e >= 65 && e <= 90) e += 32; // normalize prefix/expected to lowercase
+            if (n != e) return false;
+        }
+        return true;
+    }
+
+    private static boolean startsWithPrefix(String name, byte[] prefixBytes) {
+        if (name == null) return false;
+        byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
+        if (nameBytes.length < prefixBytes.length) return false;
+        for (int i = 0; i < prefixBytes.length; i++) {
+            byte n = nameBytes[i];
+            byte p = prefixBytes[i];
+            if (p >= 65 && p <= 90) p += 32; // normalize prefix to lowercase
+            if (n != p) return false;
+        }
+        return true;
+    }
+
     // search exact variable ID by symbol name
     public static int search(String name) {
         if (name == null) return -1;
@@ -87,7 +113,14 @@ public final class SearchVariable {
     // search exact variable ID by symbol name bytes
     public static int search(byte[] nameBytes) {
         checkActive();
-        return Trie.search(trieRoot, nameBytes);
+        int varId = Trie.search(trieRoot, nameBytes);
+        if (varId != -1) {
+            String varName = relational.Variable.getName(varId);
+            if (isExactMatch(varName, nameBytes)) {
+                return varId;
+            }
+        }
+        return -1;
     }
 
     // query a prefix and return an off-heap struct.List pointer containing matching variable IDs
@@ -107,7 +140,19 @@ public final class SearchVariable {
         }
         long listPtr = struct.List.instant(TypeRegister.ID_INT32);
         Trie.searchPrefix(trieRoot, prefixBytes, listPtr);
-        return listPtr;
+
+        // Filter out false positives caused by Trie index mapping collisions (e.g. digit folding)
+        long filteredList = struct.List.instant(TypeRegister.ID_INT32);
+        int count = struct.List.size(listPtr);
+        for (int i = 0; i < count; i++) {
+            int varId = (int) struct.List.get(listPtr, i);
+            String varName = relational.Variable.getName(varId);
+            if (startsWithPrefix(varName, prefixBytes)) {
+                struct.List.add(filteredList, varId);
+            }
+        }
+        struct.List.free(listPtr);
+        return filteredList;
     }
 
     // search matching variable pointers by prefix String returning on-heap long[]
