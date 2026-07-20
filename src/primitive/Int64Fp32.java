@@ -1,7 +1,9 @@
 package primitive;
 
+import annotation.Required;
 import nio.ForeignMemory;
 import nio.MemoryRegistry;
+import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandles;
@@ -9,16 +11,19 @@ import java.lang.invoke.VarHandle;
 
 public final class Int64Fp32 {
 
-    public static final int TYPE_SINGLETON = 0;
-    public static final int TYPE_ARRAY = 1;
-    public static final int TYPE_MATRIX = 2;
+    @Required
+    public static final int CLASS_ID = TypeRegister.ID_INT64_FP32;
+
+    public static final int TYPE_SINGLETON = TypeRegister.INT64_FP32_SINGLETON; // 0xAA00000A
+    public static final int TYPE_ARRAY     = TypeRegister.INT64_FP32_ARRAY;     // 0xBB00000A
+    public static final int TYPE_MATRIX    = TypeRegister.INT64_FP32_POINTER;   // 0xCC00000A
 
     private static final int DEFAULT_CAPACITY = 1024;
 
-    // Memory Block Sizes (8B header + 16B payload per element: 8B long int + 4B int frac + 4B pad)
-    private static final long SINGLETON_SLOT_SIZE = 24L; 
-    private static final long POOLED_ARRAY_SIZE = 8L + (DEFAULT_CAPACITY * 16L);  // 16392 Bytes
-    private static final long POOLED_MATRIX_SIZE = 8L + (DEFAULT_CAPACITY * 8L);  // 8200 Bytes
+    // Memory Block Sizes (Including 8-byte headers: 4B typeId + 4B length)
+    private static final long SINGLETON_SLOT_SIZE = 24L; // 8B header + 8B long + 4B float + 4B padding
+    private static final long POOLED_ARRAY_SIZE = 8L + (DEFAULT_CAPACITY * 12L);  // 12300 Bytes
+    private static final long POOLED_MATRIX_SIZE = 8L + (DEFAULT_CAPACITY * 8L); // 8200 Bytes
 
     private static final VarHandle SINGLETON_FREE_HEAD_VH;
     private static final VarHandle ARRAY_FREE_HEAD_VH;
@@ -169,10 +174,9 @@ public final class Int64Fp32 {
 
             if (SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.putInt(base, 1);
-                ForeignMemory.putInt(base + 4L, TYPE_SINGLETON);
+                ForeignMemory.putInt(base, TYPE_SINGLETON);
+                ForeignMemory.putInt(base + 4L, 1);
                 ForeignMemory.putLong(rawHead, 0L);
-                ForeignMemory.putInt(rawHead + 8L, 0);
                 return rawHead;
             }
         }
@@ -201,20 +205,83 @@ public final class Int64Fp32 {
 
                 if (ARRAY_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                     long base = rawHead - 8L;
-                    ForeignMemory.putInt(base, length);
-                    ForeignMemory.putInt(base + 4L, TYPE_ARRAY);
+                    ForeignMemory.putInt(base, TYPE_ARRAY);
+                    ForeignMemory.putInt(base + 4L, length);
                     return rawHead;
                 }
             }
         } else {
             // Oversized: Pure FFM C malloc downcall (0% GC)
-            long totalBytes = 8L + (length * 16L);
+            long totalBytes = 8L + (length * 12L);
             long alignedBytes = (totalBytes + 7L) & ~7L;
             long base = ForeignMemory.allocateNative(alignedBytes);
-            ForeignMemory.putInt(base, length);
-            ForeignMemory.putInt(base + 4L, TYPE_ARRAY);
+            ForeignMemory.putInt(base, TYPE_ARRAY);
+            ForeignMemory.putInt(base + 4L, length);
             return base + 8L;
         }
+    }
+
+    public static long allocateMatrix(int length) {
+        checkActive();
+        if (length <= DEFAULT_CAPACITY) {
+            while (true) {
+                long oldTagged = matrixFreeHead;
+                long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
+
+                if (rawHead == 0L) {
+                    if (MATRIX_EXPANDING_VH.compareAndSet(0, 1)) {
+                        expandMatrixPool();
+                        MATRIX_EXPANDING_VH.setVolatile(0);
+                    } else {
+                        Thread.onSpinWait();
+                    }
+                    continue;
+                }
+
+                long nextRawHead = ForeignMemory.getLong(rawHead);
+                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
+                long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
+
+                if (MATRIX_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
+                    long base = rawHead - 8L;
+                    ForeignMemory.putInt(base, TYPE_MATRIX);
+                    ForeignMemory.putInt(base + 4L, length);
+                    return rawHead;
+                }
+            }
+        } else {
+            // Oversized: Pure FFM C malloc downcall (0% GC)
+            long totalBytes = 8L + (length * 8L);
+            long base = ForeignMemory.allocateNative(totalBytes);
+            ForeignMemory.putInt(base, TYPE_MATRIX);
+            ForeignMemory.putInt(base + 4L, length);
+            return base + 8L;
+        }
+    }
+
+    // --- MUTATING EXPANSION LAYER ---
+    public static long expandArray(long oldPointer, int newLength) {
+        checkActive();
+        if (oldPointer == 0L) return allocateArray(newLength);
+        int oldLength = length(oldPointer);
+        long newPointer = allocateArray(newLength);
+
+        int elementsToCopy = Math.min(oldLength, newLength);
+        ForeignMemory.copy(oldPointer, newPointer, elementsToCopy * 12L);
+        free(oldPointer);
+        return newPointer;
+    }
+
+    public static long expandMatrix(long oldPointer, int newLength) {
+        checkActive();
+        if (oldPointer == 0L) return allocateMatrix(newLength);
+        int oldLength = length(oldPointer);
+        long newPointer = allocateMatrix(newLength);
+
+        int elementsToCopy = Math.min(oldLength, newLength);
+        ForeignMemory.copy(oldPointer, newPointer, elementsToCopy * 8L);
+        free(oldPointer);
+        return newPointer;
     }
 
     // --- RECYCLING LAYER ---
@@ -223,13 +290,17 @@ public final class Int64Fp32 {
         if (pointer == 0L) return;
 
         int type = type(pointer);
+        if (type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) {
+            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + Long.toHexString(pointer).toUpperCase());
+        }
+
         int length = length(pointer);
         long base = pointer - 8L;
 
         ForeignMemory.putInt(base, 0);
         ForeignMemory.putInt(base + 4L, -1);
 
-        if (type == TYPE_SINGLETON) {
+        if (TypeRegister.isSingleton(type)) {
             while (true) {
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
@@ -241,8 +312,9 @@ public final class Int64Fp32 {
 
                 if (SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
             }
-        } else if (type == TYPE_ARRAY) {
+        } else if (TypeRegister.isArray(type)) {
             if (length > DEFAULT_CAPACITY) {
+                // Oversized: Free back to OS immediately via C free()
                 ForeignMemory.freeNative(base);
                 return;
             }
@@ -257,94 +329,120 @@ public final class Int64Fp32 {
 
                 if (ARRAY_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
             }
+        } else if (TypeRegister.isPointer(type)) {
+            if (length > DEFAULT_CAPACITY) {
+                // Oversized: Free back to OS immediately via C free()
+                ForeignMemory.freeNative(base);
+                return;
+            }
+            while (true) {
+                long oldTagged = matrixFreeHead;
+                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
+
+                ForeignMemory.putLong(pointer, oldRawHead);
+
+                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
+                long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
+
+                if (MATRIX_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
+            }
         }
-    }
-
-    // --- MATH & CONVERSION LOGIC ---
-    public static double toDouble(long integerPart, int fractionPart) {
-        return integerPart + (double) (fractionPart & 0xFFFFFFFFL) / 4294967296.0;
-    }
-
-    public static void setFromDouble(long pointer, double value) {
-        long integerPart = (long) Math.floor(value);
-        double frac = value - integerPart;
-        int fractionPart = (int) (frac * 4294967296.0);
-        set(pointer, integerPart, fractionPart);
-    }
-
-    public static void setFromDouble(long pointer, int index, double value) {
-        long integerPart = (long) Math.floor(value);
-        double frac = value - integerPart;
-        int fractionPart = (int) (frac * 4294967296.0);
-        set(pointer, index, integerPart, fractionPart);
-    }
-
-    public static void add(long aPtr, long bPtr, long resultPtr) {
-        long aInt = getInteger(aPtr);
-        int aFrac = getFraction(aPtr);
-        long bInt = getInteger(bPtr);
-        int bFrac = getFraction(bPtr);
-
-        long sumF = (aFrac & 0xFFFFFFFFL) + (bFrac & 0xFFFFFFFFL);
-        long carry = sumF >>> 32;
-        set(resultPtr, aInt + bInt + carry, (int) sumF);
-    }
-
-    public static void sub(long aPtr, long bPtr, long resultPtr) {
-        long aInt = getInteger(aPtr);
-        int aFrac = getFraction(aPtr);
-        long bInt = getInteger(bPtr);
-        int bFrac = getFraction(bPtr);
-
-        long diffF = (aFrac & 0xFFFFFFFFL) - (bFrac & 0xFFFFFFFFL);
-        long borrow = (diffF < 0) ? 1L : 0L;
-        set(resultPtr, aInt - bInt - borrow, (int) diffF);
-    }
-
-    public static void mul(long aPtr, long bPtr, long resultPtr) {
-        double v1 = toDouble(getInteger(aPtr), getFraction(aPtr));
-        double v2 = toDouble(getInteger(bPtr), getFraction(bPtr));
-        setFromDouble(resultPtr, v1 * v2);
-    }
-
-    public static void div(long aPtr, long bPtr, long resultPtr) {
-        double v1 = toDouble(getInteger(aPtr), getFraction(aPtr));
-        double v2 = toDouble(getInteger(bPtr), getFraction(bPtr));
-        setFromDouble(resultPtr, v1 / v2);
     }
 
     // --- DATA ACCESSORS & BOUNDS CHECKS ---
-    public static long getInteger(long pointer) { return ForeignMemory.getLong(pointer); }
-    public static int getFraction(long pointer) { return ForeignMemory.getInt(pointer + 8L); }
-
-    public static long getInteger(long pointer, int index) { 
-        checkBounds(pointer, index);
-        return ForeignMemory.getLong(pointer + (index * 16L)); 
-    }
-    public static int getFraction(long pointer, int index) { 
-        checkBounds(pointer, index);
-        return ForeignMemory.getInt(pointer + (index * 16L) + 8L); 
+    public static long getIntPart(long pointer) {
+        if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        return ForeignMemory.getLong(pointer);
     }
 
-    public static void set(long pointer, long integerPart, int fractionPart) { 
-        ForeignMemory.putLong(pointer, integerPart); 
-        ForeignMemory.putInt(pointer + 8L, fractionPart);
+    public static float getFracPart(long pointer) {
+        if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        return ForeignMemory.getFloat(pointer + 8L);
     }
 
-    public static void set(long pointer, int index, long integerPart, int fractionPart) { 
+    public static double getAsDouble(long pointer) {
+        if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        return ForeignMemory.getLong(pointer) + ForeignMemory.getFloat(pointer + 8L);
+    }
+
+    public static long getIntPart(long pointer, int index) {
         checkBounds(pointer, index);
-        long offset = pointer + (index * 16L);
-        ForeignMemory.putLong(offset, integerPart);
-        ForeignMemory.putInt(offset + 8L, fractionPart);
+        return ForeignMemory.getLong(pointer + (index * 12L));
+    }
+
+    public static float getFracPart(long pointer, int index) {
+        checkBounds(pointer, index);
+        return ForeignMemory.getFloat(pointer + (index * 12L) + 8L);
+    }
+
+    public static double getAsDouble(long pointer, int index) {
+        checkBounds(pointer, index);
+        return ForeignMemory.getLong(pointer + (index * 12L)) + ForeignMemory.getFloat(pointer + (index * 12L) + 8L);
+    }
+
+    public static long getPointer(long matrixPointer, int index) { 
+        if (matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if (!isPointer(matrixPointer)) {
+            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+        }
+        checkBounds(matrixPointer, index);
+        return ForeignMemory.getLong(matrixPointer + (index * 8L)); 
+    }
+
+    public static void set(long pointer, long intPart, float fracPart) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        ForeignMemory.putLong(pointer, intPart);
+        ForeignMemory.putFloat(pointer + 8L, fracPart);
+    }
+
+    public static void set(long pointer, int index, long intPart, float fracPart) {
+        checkBounds(pointer, index);
+        ForeignMemory.putLong(pointer + (index * 12L), intPart);
+        ForeignMemory.putFloat(pointer + (index * 12L) + 8L, fracPart);
+    }
+
+    public static void setPointer(long matrixPointer, int index, long targetPointer) { 
+        if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if (!isPointer(matrixPointer)) {
+            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+        }
+        checkBounds(matrixPointer, index);
+        ForeignMemory.putLong(matrixPointer + (index * 8L), targetPointer); 
     }
 
     private static void checkBounds(long pointer, int index) {
+        if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
         int len = length(pointer);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap Int64Fp32 length " + len);
+            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap Int64Fp32 length " + len + " (Ptr: 0x" + Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
         }
     }
 
-    public static int length(long pointer) { return ForeignMemory.getInt(pointer - 8L); }
-    public static int type(long pointer) { return ForeignMemory.getInt(pointer - 4L); }
+    public static int classId() {
+        return CLASS_ID;
+    }
+
+    public static int type(long pointer) {
+        return ForeignMemory.getInt(pointer - 8L);
+    }
+
+    public static int length(long pointer) {
+        return ForeignMemory.getInt(pointer - 4L);
+    }
+
+    public static int classId(long pointer) {
+        return TypeRegister.getClassId(type(pointer));
+    }
+
+    public static boolean isSingleton(long pointer) {
+        return TypeRegister.isSingleton(type(pointer));
+    }
+
+    public static boolean isArray(long pointer) {
+        return TypeRegister.isArray(type(pointer));
+    }
+
+    public static boolean isPointer(long pointer) {
+        return TypeRegister.isPointer(type(pointer));
+    }
 }
