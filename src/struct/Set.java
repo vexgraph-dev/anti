@@ -91,13 +91,20 @@ public final class Set {
         return userPtr;
     }
 
+    // returns true if this class ID stores off-heap pointers (strings, structs) rather than raw scalar values
+    private static boolean isReferenceClass(int classId) {
+        return classId >= TypeRegister.ID_STRING; // ID_STRING and above are reference types with off-heap headers
+    }
+
     // compute 64-bit hash for element based on class inspection
     private static long computeHash(int elementClassId, long element) {
         if (element == 0L) return 0L;
-        int inspectedClass = Class.getClass(element);
-        if (inspectedClass != 0) {
-            int len = Class.getLength(element);
-            if (len > 0) return Hash.fnv1a64(element, len);
+        if (isReferenceClass(elementClassId)) {
+            int inspectedClass = Class.getClass(element);
+            if (inspectedClass != 0) {
+                int len = Class.getLength(element);
+                if (len > 0) return Hash.fnv1a64(element, len);
+            }
         }
         return Hash.murmur3Mix64(element);
     }
@@ -106,18 +113,20 @@ public final class Set {
     private static boolean elementsEqual(int elementClassId, long e1, long e2) {
         if (e1 == e2) return true;
         if (e1 == 0L || e2 == 0L) return false;
-        int c1 = Class.getClass(e1);
-        int c2 = Class.getClass(e2);
-        if (c1 != 0 && c1 == c2) {
-            int len1 = Class.getLength(e1);
-            int len2 = Class.getLength(e2);
-            if (len1 != len2) return false;
-            for (int i = 0; i < len1; i++) {
-                if (ForeignMemory.getByte(e1 + i) != ForeignMemory.getByte(e2 + i)) {
-                    return false;
+        if (isReferenceClass(elementClassId)) {
+            int c1 = Class.getClass(e1);
+            int c2 = Class.getClass(e2);
+            if (c1 != 0 && c1 == c2) {
+                int len1 = Class.getLength(e1);
+                int len2 = Class.getLength(e2);
+                if (len1 != len2) return false;
+                for (int i = 0; i < len1; i++) {
+                    if (ForeignMemory.getByte(e1 + i) != ForeignMemory.getByte(e2 + i)) {
+                        return false;
+                    }
                 }
+                return true;
             }
-            return true;
         }
         return false;
     }
@@ -260,6 +269,43 @@ public final class Set {
     private static int highestOneBit(int i) {
         return Integer.highestOneBit(i - 1) << 1;
     }
+
+    // export all set elements into an off-heap struct.List
+    public static synchronized long toList(long setPtr) {
+        checkValid(setPtr);
+        int elemClassId = elementClassId(setPtr);
+        int count = size(setPtr);
+        long listPtr = List.instant(elemClassId, count);
+        if (count == 0) return listPtr;
+
+        int cap = capacity(setPtr);
+        long buffer = dataBuffer(setPtr);
+        for (int i = 0; i < cap; i++) {
+            long slot = buffer + ((long) i * SLOT_SIZE);
+            if (ForeignMemory.getLong(slot + 16L) == STATE_OCCUPIED) {
+                long elem = ForeignMemory.getLong(slot);
+                List.add(listPtr, elem);
+            }
+        }
+        return listPtr;
+    }
+
+    // export all set elements into a sorted off-heap struct.List
+    public static synchronized long toSortedList(long setPtr) {
+        long listPtr = toList(setPtr);
+        int sz = List.size(listPtr);
+        if (sz > 1) {
+            long buf = List.dataBuffer(listPtr);
+            int stride = List.stride(listPtr);
+            if (stride == 4) {
+                util.Arrays.sortInt(buf, sz);
+            } else if (stride == 8) {
+                util.Arrays.sortLong(buf, sz);
+            }
+        }
+        return listPtr;
+    }
+
 
     // check if set is empty
     public static boolean isEmpty(long setPtr) {
