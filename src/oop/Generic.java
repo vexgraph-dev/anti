@@ -1,4 +1,4 @@
-package relational;
+package oop;
 
 public class Generic
 {

@@ -40,7 +40,7 @@ src/ScratchTest.java
 FileCompiler.java
 
 ### Private / Regurgitation Files ###
-src/regurgitation/
+regurgitation/
 regurgitation/
 code.txt
 *.regurgitation
