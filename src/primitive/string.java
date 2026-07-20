@@ -1,7 +1,9 @@
 package primitive;
 
+import annotation.Required;
 import nio.ForeignMemory;
 import nio.MemoryRegistry;
+import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandles;
@@ -10,10 +12,15 @@ import java.nio.charset.StandardCharsets;
 
 public final class string {
 
+    @Required
+    public static final int CLASS_ID = TypeRegister.ID_STRING;
+
     public static final int TYPE_SMALL = 0;     // <= 56 UTF-8 Bytes  (64B Slot)
     public static final int TYPE_MEDIUM = 1;    // <= 248 UTF-8 Bytes (256B Slot)
     public static final int TYPE_LARGE = 2;     // <= 1016 UTF-8 Bytes (1024B Slot)
     public static final int TYPE_OVERSIZED = -1; // > 1016 UTF-8 Bytes (C malloc/free)
+
+    public static final int TYPE_HEADER_ID = TypeRegister.STRING_ARRAY; // 0xBB000007
 
     private static final int DEFAULT_CAPACITY = 1024;
 
@@ -178,23 +185,23 @@ public final class string {
             long totalBytes = 8L + len + 1L;
             long alignedBytes = (totalBytes + 7L) & ~7L;
             long base = ForeignMemory.allocateNative(alignedBytes);
-            ForeignMemory.putInt(base, len);
-            ForeignMemory.putInt(base + 4L, TYPE_OVERSIZED);
+            ForeignMemory.putInt(base, TYPE_HEADER_ID);
+            ForeignMemory.putInt(base + 4L, len);
             pointer = base + 8L;
         }
         return pointer;
     }
 
-    private static long popPool(VarHandle headVh, VarHandle expandingVh, int type, int len) {
+    private static long popPool(VarHandle headVh, VarHandle expandingVh, int poolKind, int len) {
         while (true) {
             long oldTagged = (long) headVh.getVolatile();
             long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
             if (rawHead == 0L) {
                 if (expandingVh.compareAndSet(0, 1)) {
-                    if (type == TYPE_SMALL) expandSmallPool();
-                    else if (type == TYPE_MEDIUM) expandMediumPool();
-                    else if (type == TYPE_LARGE) expandLargePool();
+                    if (poolKind == TYPE_SMALL) expandSmallPool();
+                    else if (poolKind == TYPE_MEDIUM) expandMediumPool();
+                    else if (poolKind == TYPE_LARGE) expandLargePool();
                     expandingVh.setVolatile(0);
                 } else {
                     Thread.onSpinWait();
@@ -208,8 +215,8 @@ public final class string {
 
             if (headVh.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.putInt(base, len);
-                ForeignMemory.putInt(base + 4L, type);
+                ForeignMemory.putInt(base, TYPE_HEADER_ID);
+                ForeignMemory.putInt(base + 4L, len);
                 return rawHead;
             }
         }
@@ -220,20 +227,27 @@ public final class string {
         checkActive();
         if (pointer == 0L) return;
 
-        int type = type(pointer);
+        int typeHeader = type(pointer);
+        if (typeHeader == 0 || !TypeRegister.isArray(typeHeader)) {
+            throw new IllegalStateException("Double free or corrupt string pointer: 0x" + Long.toHexString(pointer).toUpperCase());
+        }
+
+        int len = length(pointer);
         long base = pointer - 8L;
 
         ForeignMemory.putInt(base, 0);
         ForeignMemory.putInt(base + 4L, -1);
 
-        if (type == TYPE_OVERSIZED) {
+        int poolKind = (len <= 56) ? TYPE_SMALL : (len <= 248) ? TYPE_MEDIUM : (len <= 1016) ? TYPE_LARGE : TYPE_OVERSIZED;
+
+        if (poolKind == TYPE_OVERSIZED) {
             // Oversized: Free back to OS immediately via C free()
             ForeignMemory.freeNative(base);
             return;
         }
 
-        VarHandle headVh = (type == TYPE_SMALL) ? SMALL_FREE_HEAD_VH :
-                           (type == TYPE_MEDIUM) ? MEDIUM_FREE_HEAD_VH : LARGE_FREE_HEAD_VH;
+        VarHandle headVh = (poolKind == TYPE_SMALL) ? SMALL_FREE_HEAD_VH :
+                           (poolKind == TYPE_MEDIUM) ? MEDIUM_FREE_HEAD_VH : LARGE_FREE_HEAD_VH;
 
         while (true) {
             long oldTagged = (long) headVh.getVolatile();
@@ -255,15 +269,33 @@ public final class string {
         return ForeignMemory.getString(pointer);
     }
 
-    public static int length(long pointer) { return ForeignMemory.getInt(pointer - 8L); }
-    public static int type(long pointer) { return ForeignMemory.getInt(pointer - 4L); }
+    public static int type(long pointer) {
+        return ForeignMemory.getInt(pointer - 8L);
+    }
+
+    public static int length(long pointer) {
+        return ForeignMemory.getInt(pointer - 4L);
+    }
+
+    public static int classId() {
+        return CLASS_ID;
+    }
+
+    public static int classId(long pointer) {
+        return TypeRegister.getClassId(type(pointer));
+    }
+
+    public static boolean isArray(long pointer) {
+        return TypeRegister.isArray(type(pointer));
+    }
 
     public static int capacity(long pointer) {
-        int t = type(pointer);
-        if (t == TYPE_SMALL) return 56;
-        if (t == TYPE_MEDIUM) return 248;
-        if (t == TYPE_LARGE) return 1016;
-        return length(pointer);
+        if (pointer == 0L) return 0;
+        int len = length(pointer);
+        if (len <= 56) return 56;
+        if (len <= 248) return 248;
+        if (len <= 1016) return 1016;
+        return len;
     }
 
     // --- COPY & APPEND LAYER ---
@@ -296,11 +328,18 @@ public final class string {
         int newLen = oldLen + length;
         int maxCap = capacity(destPtr);
 
-        if (type(destPtr) != TYPE_OVERSIZED && newLen <= maxCap) {
+        if (maxCap > 1016 && newLen > maxCap) {
+            long newPtr = allocateUninitialized(newLen);
+            ForeignMemory.copy(destPtr, newPtr, oldLen);
+            ForeignMemory.copyFromHeap(bytes, offset, newPtr + oldLen, length);
+            ForeignMemory.putByte(newPtr + newLen, (byte) 0);
+            free(destPtr);
+            return newPtr;
+        } else if (newLen <= maxCap) {
             // In-place append! 0 allocation & 0 pointer relocation
             ForeignMemory.copyFromHeap(bytes, offset, destPtr + oldLen, length);
             ForeignMemory.putByte(destPtr + newLen, (byte) 0);
-            ForeignMemory.putInt(destPtr - 8L, newLen);
+            ForeignMemory.putInt(destPtr - 4L, newLen);
             return destPtr;
         } else {
             // Reallocate to larger slot/pool and recycle old slot
@@ -323,11 +362,18 @@ public final class string {
         int newLen = oldLen + srcLen;
         int maxCap = capacity(destPtr);
 
-        if (type(destPtr) != TYPE_OVERSIZED && newLen <= maxCap) {
+        if (maxCap > 1016 && newLen > maxCap) {
+            long newPtr = allocateUninitialized(newLen);
+            ForeignMemory.copy(destPtr, newPtr, oldLen);
+            ForeignMemory.copy(srcPtr, newPtr + oldLen, srcLen);
+            ForeignMemory.putByte(newPtr + newLen, (byte) 0);
+            free(destPtr);
+            return newPtr;
+        } else if (newLen <= maxCap) {
             // In-place append! 0 allocation & 0 pointer relocation
             ForeignMemory.copy(srcPtr, destPtr + oldLen, srcLen);
             ForeignMemory.putByte(destPtr + newLen, (byte) 0);
-            ForeignMemory.putInt(destPtr - 8L, newLen);
+            ForeignMemory.putInt(destPtr - 4L, newLen);
             return destPtr;
         } else {
             // Reallocate to larger slot/pool and recycle old slot
