@@ -168,17 +168,16 @@ public final class List {
 
     // check if list is empty
     public static boolean isEmpty(long listPtr) {
-        return size(listPtr) == 0;
+        return Collection.isEmpty(listPtr);
     }
 
     // get list element count
     public static int size(long listPtr) {
-        if (listPtr == 0L) return 0;
-        return ForeignMemory.getInt(listPtr - 4L);
+        return Collection.size(listPtr);
     }
 
     public static int length(long listPtr) {
-        return size(listPtr);
+        return Collection.length(listPtr);
     }
 
     // compare two lists for equality
@@ -229,26 +228,23 @@ public final class List {
     }
 
     public static int elementClassId(long listPtr) {
-        if (listPtr == 0L) return 0;
-        return ForeignMemory.getInt(listPtr);
+        return Collection.elementClassId(listPtr);
     }
 
     public static int stride(long listPtr) {
-        if (listPtr == 0L) return 0;
-        return ForeignMemory.getInt(listPtr + 4L);
+        return Collection.stride(listPtr);
     }
 
     public static int capacity(long listPtr) {
-        if (listPtr == 0L) return 0;
-        return ForeignMemory.getInt(listPtr + 8L);
+        return Collection.capacity(listPtr);
     }
 
     public static long dataBuffer(long listPtr) {
-        if (listPtr == 0L) return 0L;
-        return ForeignMemory.getLong(listPtr + 16L);
+        return Collection.dataBuffer(listPtr);
     }
 
     public static int classId() {
         return CLASS_ID;
     }
 }
+
