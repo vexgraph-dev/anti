@@ -21,9 +21,7 @@ public final class Variable {
     @Required
     public static final int CLASS_ID = TypeRegister.ID_VARIABLE;
 
-    // 40 bytes layout per Variable slot:
-    //   0..31  (32B): Unique Name String (4 longs * 8 bytes), always lowercased UTF-8 bytes
-    //  32..39  (8B) : Target Address Pointer / Value Payload (8-byte primitive long)
+    // 40 bytes slot layout: 32B lowercase name + 8B target pointer payload
     private static final long NAME_SIZE = 32L;
     private static final long SLOT_SIZE = 40L;
     private static final int DEFAULT_CAPACITY = 1024;
@@ -60,7 +58,7 @@ public final class Variable {
         }
     }
 
-    // Free all allocated off-heap memory resources for this subsystem
+    // free all subsystem memory resources
     public static void freeAllClasses() {
         if (active) {
             active = false;
@@ -70,8 +68,7 @@ public final class Variable {
         }
     }
 
-    // --- FACTORY INSTANTIATION METHODS ---
-
+    // factory functions
     @Draft
     public static int instant(String name, long targetPointer) {
         if (name == null) return -1;
@@ -86,27 +83,23 @@ public final class Variable {
 
         checkActive();
 
-        // Pack name bytes into stack primitive longs (always lowercased)
         long l0 = packLong(nameBytes, 0);
         long l1 = packLong(nameBytes, 8);
         long l2 = packLong(nameBytes, 16);
         long l3 = packLong(nameBytes, 24);
 
         synchronized (Variable.class) {
-            // Draft O(n) search scan for duplicate name check
             for (int i = 0; i < activeCount; i++) {
                 long slotAddr = baseAddress + (i * SLOT_SIZE);
                 if (ForeignMemory.getLong(slotAddr) == l0 &&
                         ForeignMemory.getLong(slotAddr + 8L) == l1 &&
                         ForeignMemory.getLong(slotAddr + 16L) == l2 &&
                         ForeignMemory.getLong(slotAddr + 24L) == l3) {
-                    // Symbol already registered; update its bound pointer payload
                     ForeignMemory.putLong(slotAddr + 32L, targetPointer);
                     return i;
                 }
             }
 
-            // Expand storage block dynamically if capacity boundary is reached
             if (activeCount >= capacity) {
                 int newCapacity = capacity + DEFAULT_CAPACITY;
                 long newBytes = newCapacity * SLOT_SIZE;
@@ -118,14 +111,12 @@ public final class Variable {
                 capacity = newCapacity;
             }
 
-            // Write 32-byte lowercased name segments into off-heap memory
             long targetSlot = baseAddress + (activeCount * SLOT_SIZE);
             ForeignMemory.putLong(targetSlot, l0);
             ForeignMemory.putLong(targetSlot + 8L, l1);
             ForeignMemory.putLong(targetSlot + 16L, l2);
             ForeignMemory.putLong(targetSlot + 24L, l3);
 
-            // Bind the 8-byte target address pointer payload
             ForeignMemory.putLong(targetSlot + 32L, targetPointer);
 
             int assignedId = activeCount;
@@ -134,8 +125,7 @@ public final class Variable {
         }
     }
 
-    // --- DRAFT O(N) LINEAR SEARCH LOOKUPS ---
-
+    // draft linear search lookups
     @Draft
     public static int getId(String name) {
         if (name == null) return -1;
@@ -154,7 +144,6 @@ public final class Variable {
         long l2 = packLong(nameBytes, 16);
         long l3 = packLong(nameBytes, 24);
 
-        // O(n) sequential scan comparing 4 packed longs off-heap
         for (int i = 0; i < activeCount; i++) {
             long slotAddr = baseAddress + (i * SLOT_SIZE);
             if (ForeignMemory.getLong(slotAddr) == l0 &&
@@ -214,7 +203,7 @@ public final class Variable {
                 long currentL3 = ForeignMemory.getLong(slotAddr + 24L);
 
                 if (currentL0 == newL0 && currentL1 == newL1 && currentL2 == newL2 && currentL3 == newL3) {
-                    return false; // New name already exists
+                    return false;
                 }
                 if (currentL0 == oldL0 && currentL1 == oldL1 && currentL2 == oldL2 && currentL3 == oldL3) {
                     targetIdx = i;
@@ -232,10 +221,7 @@ public final class Variable {
         }
     }
 
-    // =========================================================================================
-    // 8-BYTE VALUE / POINTER PAYLOAD ACCESSORS
-    // =========================================================================================
-
+    // payload accessors
     public static void setPointer(int varId, long targetPointer) {
         checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
@@ -273,7 +259,7 @@ public final class Variable {
         return CLASS_ID;
     }
 
-    // Extract 8 bytes into a stack-allocated primitive long with lowercase normalization
+    // pack 8 bytes into primitive long with lowercase normalization
     private static long packLong(byte[] bytes, int offset) {
         long result = 0L;
         int len = bytes.length;
@@ -282,7 +268,6 @@ public final class Variable {
             long b = 0L;
             if (index < len) {
                 int rawByte = bytes[index] & 0xFF;
-                // Force lowercase: convert uppercase A-Z (65-90) to a-z (+32)
                 if (rawByte >= 65 && rawByte <= 90) {
                     rawByte += 32;
                 }
