@@ -1,5 +1,6 @@
 package relational;
 
+import annotation.Draft;
 import annotation.Required;
 import nio.ForeignMemory;
 import nio.MemoryRegistry;
@@ -11,30 +12,20 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Off-Heap Relational Variable Subsystem.
- * Manages symbol names (up to 32 characters packed into 4 primitive longs) and off-heap typed values
- * (Int, Long, Float, Double, Boolean, Pointer) with 0 GC overhead.
+ * Draft implementation of a 32-character string symbol registry (always stored lowercase)
+ * mapping each registered symbol to an 8-byte long value / target address pointer payload.
  */
+@Draft
 public final class Variable {
 
     @Required
     public static final int CLASS_ID = TypeRegister.ID_VARIABLE;
 
-    // Type Identifiers (Mapped to bit-packed off-heap TypeRegister standards)
-    public static final int TYPE_UNDEFINED = 0;
-    public static final int TYPE_INT       = TypeRegister.INT32_SINGLETON;   // 0xAA000001
-    public static final int TYPE_LONG      = TypeRegister.INT64_SINGLETON;   // 0xAA000002
-    public static final int TYPE_FLOAT     = TypeRegister.FLOAT32_SINGLETON; // 0xAA000003
-    public static final int TYPE_DOUBLE    = TypeRegister.FLOAT64_SINGLETON; // 0xAA000004
-    public static final int TYPE_BOOLEAN   = TypeRegister.BYTE_SINGLETON;    // 0xAA000005
-    public static final int TYPE_POINTER   = TypeRegister.INT64_POINTER;     // 0xCC000002
-
-    // 48 bytes layout per Variable slot:
-    //   0..31  (32B): Unique Name String (4 longs * 8 bytes)
-    //  32..39  (8B) : Value Payload (64-bit primitive data)
-    //  40..43  (4B) : Type Tag
-    //  44..47  (4B) : Flags & Padding
+    // 40 bytes layout per Variable slot:
+    //   0..31  (32B): Unique Name String (4 longs * 8 bytes), always lowercased UTF-8 bytes
+    //  32..39  (8B) : Target Address Pointer / Value Payload (8-byte primitive long)
     private static final long NAME_SIZE = 32L;
-    private static final long SLOT_SIZE = 48L;
+    private static final long SLOT_SIZE = 40L;
     private static final int DEFAULT_CAPACITY = 1024;
 
     private static Arena poolArena;
@@ -79,34 +70,39 @@ public final class Variable {
         }
     }
 
-    public static int register(String name) {
+    // --- FACTORY INSTANTIATION METHODS ---
+
+    @Draft
+    public static int instant(String name, long targetPointer) {
         if (name == null) return -1;
-        return register(name.getBytes(StandardCharsets.UTF_8));
+        return instant(name.getBytes(StandardCharsets.UTF_8), targetPointer);
     }
 
-    // Register a unique name via raw bytes and return its assigned index, or -1 if invalid/duplicate
-    public static int register(byte[] nameBytes) {
+    @Draft
+    public static int instant(byte[] nameBytes, long targetPointer) {
         if (nameBytes == null || nameBytes.length > 32) {
             return -1;
         }
 
         checkActive();
 
-        // Pack name bytes into stack primitives
+        // Pack name bytes into stack primitive longs (always lowercased)
         long l0 = packLong(nameBytes, 0);
         long l1 = packLong(nameBytes, 8);
         long l2 = packLong(nameBytes, 16);
         long l3 = packLong(nameBytes, 24);
 
         synchronized (Variable.class) {
-            // Scan for duplications
+            // Draft O(n) search scan for duplicate name check
             for (int i = 0; i < activeCount; i++) {
                 long slotAddr = baseAddress + (i * SLOT_SIZE);
                 if (ForeignMemory.getLong(slotAddr) == l0 &&
                         ForeignMemory.getLong(slotAddr + 8L) == l1 &&
                         ForeignMemory.getLong(slotAddr + 16L) == l2 &&
                         ForeignMemory.getLong(slotAddr + 24L) == l3) {
-                    return -1;
+                    // Symbol already registered; update its bound pointer payload
+                    ForeignMemory.putLong(slotAddr + 32L, targetPointer);
+                    return i;
                 }
             }
 
@@ -122,17 +118,15 @@ public final class Variable {
                 capacity = newCapacity;
             }
 
-            // Write name segments back-to-back into off-heap memory
+            // Write 32-byte lowercased name segments into off-heap memory
             long targetSlot = baseAddress + (activeCount * SLOT_SIZE);
             ForeignMemory.putLong(targetSlot, l0);
             ForeignMemory.putLong(targetSlot + 8L, l1);
             ForeignMemory.putLong(targetSlot + 16L, l2);
             ForeignMemory.putLong(targetSlot + 24L, l3);
 
-            // Initialize default value and type
-            ForeignMemory.putLong(targetSlot + 32L, 0L);
-            ForeignMemory.putInt(targetSlot + 40L, TYPE_UNDEFINED);
-            ForeignMemory.putInt(targetSlot + 44L, 0);
+            // Bind the 8-byte target address pointer payload
+            ForeignMemory.putLong(targetSlot + 32L, targetPointer);
 
             int assignedId = activeCount;
             activeCount++;
@@ -140,12 +134,15 @@ public final class Variable {
         }
     }
 
+    // --- DRAFT O(N) LINEAR SEARCH LOOKUPS ---
+
+    @Draft
     public static int getId(String name) {
         if (name == null) return -1;
         return getId(name.getBytes(StandardCharsets.UTF_8));
     }
 
-    // Look up a name via raw bytes and return its index, or -1 if not found
+    @Draft
     public static int getId(byte[] nameBytes) {
         if (nameBytes == null || nameBytes.length > 32) {
             return -1;
@@ -157,6 +154,7 @@ public final class Variable {
         long l2 = packLong(nameBytes, 16);
         long l3 = packLong(nameBytes, 24);
 
+        // O(n) sequential scan comparing 4 packed longs off-heap
         for (int i = 0; i < activeCount; i++) {
             long slotAddr = baseAddress + (i * SLOT_SIZE);
             if (ForeignMemory.getLong(slotAddr) == l0 &&
@@ -169,12 +167,26 @@ public final class Variable {
         return -1;
     }
 
+    @Draft
+    public static long getPointer(String name) {
+        if (name == null) return 0L;
+        return getPointer(name.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Draft
+    public static long getPointer(byte[] nameBytes) {
+        int id = getId(nameBytes);
+        if (id == -1) return 0L;
+        return getPointer(id);
+    }
+
+    @Draft
     public static boolean rename(String oldName, String newName) {
         if (oldName == null || newName == null) return false;
         return rename(oldName.getBytes(StandardCharsets.UTF_8), newName.getBytes(StandardCharsets.UTF_8));
     }
 
-    // Rename an existing entry using raw byte arrays while preserving its index
+    @Draft
     public static boolean rename(byte[] oldNameBytes, byte[] newNameBytes) {
         if (oldNameBytes == null || newNameBytes == null || oldNameBytes.length > 32 || newNameBytes.length > 32) {
             return false;
@@ -221,79 +233,13 @@ public final class Variable {
     }
 
     // =========================================================================================
-    // TYPED VALUE ACCESSORS (ZERO-HEAP ALLOCATION)
+    // 8-BYTE VALUE / POINTER PAYLOAD ACCESSORS
     // =========================================================================================
 
-    public static int getType(int varId) {
-        checkBounds(varId);
-        return ForeignMemory.getInt(baseAddress + (varId * SLOT_SIZE) + 40L);
-    }
-
-    public static void setInt(int varId, int value) {
+    public static void setPointer(int varId, long targetPointer) {
         checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.putInt(slot + 32L, value);
-        ForeignMemory.putInt(slot + 40L, TYPE_INT);
-    }
-
-    public static int getInt(int varId) {
-        checkBounds(varId);
-        return ForeignMemory.getInt(baseAddress + (varId * SLOT_SIZE) + 32L);
-    }
-
-    public static void setLong(int varId, long value) {
-        checkBounds(varId);
-        long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.putLong(slot + 32L, value);
-        ForeignMemory.putInt(slot + 40L, TYPE_LONG);
-    }
-
-    public static long getLong(int varId) {
-        checkBounds(varId);
-        return ForeignMemory.getLong(baseAddress + (varId * SLOT_SIZE) + 32L);
-    }
-
-    public static void setFloat(int varId, float value) {
-        checkBounds(varId);
-        long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.putFloat(slot + 32L, value);
-        ForeignMemory.putInt(slot + 40L, TYPE_FLOAT);
-    }
-
-    public static float getFloat(int varId) {
-        checkBounds(varId);
-        return ForeignMemory.getFloat(baseAddress + (varId * SLOT_SIZE) + 32L);
-    }
-
-    public static void setDouble(int varId, double value) {
-        checkBounds(varId);
-        long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.putDouble(slot + 32L, value);
-        ForeignMemory.putInt(slot + 40L, TYPE_DOUBLE);
-    }
-
-    public static double getDouble(int varId) {
-        checkBounds(varId);
-        return ForeignMemory.getDouble(baseAddress + (varId * SLOT_SIZE) + 32L);
-    }
-
-    public static void setBoolean(int varId, boolean value) {
-        checkBounds(varId);
-        long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.putInt(slot + 32L, value ? 1 : 0);
-        ForeignMemory.putInt(slot + 40L, TYPE_BOOLEAN);
-    }
-
-    public static boolean getBoolean(int varId) {
-        checkBounds(varId);
-        return ForeignMemory.getInt(baseAddress + (varId * SLOT_SIZE) + 32L) != 0;
-    }
-
-    public static void setPointer(int varId, long ptr) {
-        checkBounds(varId);
-        long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.putLong(slot + 32L, ptr);
-        ForeignMemory.putInt(slot + 40L, TYPE_POINTER);
+        ForeignMemory.putLong(slot + 32L, targetPointer);
     }
 
     public static long getPointer(int varId) {
@@ -336,6 +282,7 @@ public final class Variable {
             long b = 0L;
             if (index < len) {
                 int rawByte = bytes[index] & 0xFF;
+                // Force lowercase: convert uppercase A-Z (65-90) to a-z (+32)
                 if (rawByte >= 65 && rawByte <= 90) {
                     rawByte += 32;
                 }
