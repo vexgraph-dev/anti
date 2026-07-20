@@ -43,9 +43,12 @@ public final class Stride {
                  TypeRegister.ID_STRING_ENGINE,
                  TypeRegister.ID_SPIN_LOCK,
                  TypeRegister.ID_RING_BUFFER,
-                 TypeRegister.ID_MMAP_MANAGER -> 8; // pointer sizes
+                 TypeRegister.ID_MMAP_MANAGER,
+                 TypeRegister.ID_TRIE,
+                 TypeRegister.ID_SEARCH_VARIABLE -> 8; // pointer sizes
             default                         -> 8;
         };
     }
 }
+
 
