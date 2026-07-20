@@ -36,8 +36,14 @@ public class TypeRegister {
     public static final int ID_LIST       = 0x000012; // List class // 18
     public static final int ID_MAP        = 0x000013; // Map class // 19
     public static final int ID_SET        = 0x000014; // Set class // 20
-    public static final int ID_STACK      = 0x000015; // Stack class // 21
-    public static final int ID_DEQUE      = 0x000016; // Deque class // 22
+    public static final int ID_STACK          = 0x000015; // Stack class // 21
+    public static final int ID_DEQUE          = 0x000016; // Deque class // 22
+    public static final int ID_SLAB_ALLOCATOR = 0x000017; // SlabAllocator class // 23
+    public static final int ID_STRING_ENGINE  = 0x000018; // StringEngine class // 24
+    public static final int ID_SPIN_LOCK       = 0x000019; // SpinLock class // 25
+    public static final int ID_RING_BUFFER     = 0x00001A; // RingBuffer class // 26
+    public static final int ID_MMAP_MANAGER    = 0x00001B; // MmapManager class // 27
+
 
 
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
