@@ -28,6 +28,7 @@ public class TypeRegister {
     public static final int ID_INT64_FP32 = 0x00000A; // Int64Fp32 class // 10
     public static final int ID_INT64_FP64 = 0x00000B; // Int64Fp64 class // 11
     public static final int ID_VARIABLE   = 0x00000C; // Variable class // 12
+    public static final int ID_PACK       = 0x00000D; // Pack class // 13
 
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
