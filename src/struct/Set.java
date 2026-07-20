@@ -93,13 +93,13 @@ public final class Set {
 
     // returns true if this class ID stores off-heap pointers (strings, structs) rather than raw scalar values
     private static boolean isReferenceClass(int classId) {
-        return classId >= TypeRegister.ID_STRING; // ID_STRING and above are reference types with off-heap headers
+        return classId == TypeRegister.ID_STRING || classId >= TypeRegister.ID_LIST;
     }
 
     // compute 64-bit hash for element based on class inspection
     private static long computeHash(int elementClassId, long element) {
         if (element == 0L) return 0L;
-        if (isReferenceClass(elementClassId)) {
+        if (isReferenceClass(elementClassId) && element >= 4096L) {
             int inspectedClass = Class.getClass(element);
             if (inspectedClass != 0) {
                 int len = Class.getLength(element);
@@ -113,7 +113,7 @@ public final class Set {
     private static boolean elementsEqual(int elementClassId, long e1, long e2) {
         if (e1 == e2) return true;
         if (e1 == 0L || e2 == 0L) return false;
-        if (isReferenceClass(elementClassId)) {
+        if (isReferenceClass(elementClassId) && e1 >= 4096L && e2 >= 4096L) {
             int c1 = Class.getClass(e1);
             int c2 = Class.getClass(e2);
             if (c1 != 0 && c1 == c2) {
@@ -130,6 +130,7 @@ public final class Set {
         }
         return false;
     }
+
 
     // add element to set, returns true if inserted, false if already present
     public static synchronized boolean add(long setPtr, long element) {

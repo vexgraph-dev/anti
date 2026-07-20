@@ -91,13 +91,19 @@ public final class Map {
         return userPtr;
     }
 
+    private static boolean isReferenceClass(int classId) {
+        return classId == TypeRegister.ID_STRING || classId >= TypeRegister.ID_LIST;
+    }
+
     // compute 64-bit hash for key based on key class inspection
     private static long computeHash(int keyClassId, long key) {
         if (key == 0L) return 0L;
-        int inspectedClass = Class.getClass(key);
-        if (inspectedClass != 0) {
-            int len = Class.getLength(key);
-            if (len > 0) return Hash.fnv1a64(key, len);
+        if (isReferenceClass(keyClassId) && key >= 4096L) {
+            int inspectedClass = Class.getClass(key);
+            if (inspectedClass != 0) {
+                int len = Class.getLength(key);
+                if (len > 0) return Hash.fnv1a64(key, len);
+            }
         }
         return Hash.murmur3Mix64(key);
     }
@@ -106,21 +112,24 @@ public final class Map {
     private static boolean keysEqual(int keyClassId, long k1, long k2) {
         if (k1 == k2) return true;
         if (k1 == 0L || k2 == 0L) return false;
-        int c1 = Class.getClass(k1);
-        int c2 = Class.getClass(k2);
-        if (c1 != 0 && c1 == c2) {
-            int len1 = Class.getLength(k1);
-            int len2 = Class.getLength(k2);
-            if (len1 != len2) return false;
-            for (int i = 0; i < len1; i++) {
-                if (ForeignMemory.getByte(k1 + i) != ForeignMemory.getByte(k2 + i)) {
-                    return false;
+        if (isReferenceClass(keyClassId) && k1 >= 4096L && k2 >= 4096L) {
+            int c1 = Class.getClass(k1);
+            int c2 = Class.getClass(k2);
+            if (c1 != 0 && c1 == c2) {
+                int len1 = Class.getLength(k1);
+                int len2 = Class.getLength(k2);
+                if (len1 != len2) return false;
+                for (int i = 0; i < len1; i++) {
+                    if (ForeignMemory.getByte(k1 + i) != ForeignMemory.getByte(k2 + i)) {
+                        return false;
+                    }
                 }
+                return true;
             }
-            return true;
         }
         return false;
     }
+
 
     // put key-value entry into map
     public static synchronized void put(long mapPtr, long key, long value) {
