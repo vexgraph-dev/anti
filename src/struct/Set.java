@@ -310,13 +310,12 @@ public final class Set {
 
     // check if set is empty
     public static boolean isEmpty(long setPtr) {
-        return size(setPtr) == 0;
+        return Collection.isEmpty(setPtr);
     }
 
     // get active element count
     public static int size(long setPtr) {
-        if (setPtr == 0L) return 0;
-        return ForeignMemory.getInt(setPtr - 4L);
+        return Collection.size(setPtr);
     }
 
     // free set data buffer and header back to native RAM
@@ -341,21 +340,19 @@ public final class Set {
     }
 
     public static int elementClassId(long setPtr) {
-        if (setPtr == 0L) return 0;
-        return ForeignMemory.getInt(setPtr);
+        return Collection.elementClassId(setPtr);
     }
 
     public static int capacity(long setPtr) {
-        if (setPtr == 0L) return 0;
-        return ForeignMemory.getInt(setPtr + 8L);
+        return Collection.capacity(setPtr);
     }
 
     public static long dataBuffer(long setPtr) {
-        if (setPtr == 0L) return 0L;
-        return ForeignMemory.getLong(setPtr + 16L);
+        return Collection.dataBuffer(setPtr);
     }
 
     public static int classId() {
         return CLASS_ID;
     }
+
 }
