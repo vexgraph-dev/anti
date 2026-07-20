@@ -21,9 +21,9 @@ public final class Variable {
     @Required
     public static final int CLASS_ID = TypeRegister.ID_VARIABLE;
 
-    // 40 bytes slot layout: 32B lowercase name + 8B target pointer payload
+    // 48 bytes slot layout: 32B lowercase name + 4B classId + 4B padding + 8B target pointer payload
     private static final long NAME_SIZE = 32L;
-    private static final long SLOT_SIZE = 40L;
+    private static final long SLOT_SIZE = 48L;
     private static final int DEFAULT_CAPACITY = 1024;
 
     private static Arena poolArena;
@@ -70,13 +70,13 @@ public final class Variable {
 
     // factory functions
     @Draft
-    public static int instant(String name, long targetPointer) {
+    public static int instant(String name, int classId, long targetPointer) {
         if (name == null) return -1;
-        return instant(name.getBytes(StandardCharsets.UTF_8), targetPointer);
+        return instant(name.getBytes(StandardCharsets.UTF_8), classId, targetPointer);
     }
 
     @Draft
-    public static int instant(byte[] nameBytes, long targetPointer) {
+    public static int instant(byte[] nameBytes, int classId, long targetPointer) {
         if (nameBytes == null || nameBytes.length > 32) {
             return -1;
         }
@@ -95,7 +95,8 @@ public final class Variable {
                         ForeignMemory.getLong(slotAddr + 8L) == l1 &&
                         ForeignMemory.getLong(slotAddr + 16L) == l2 &&
                         ForeignMemory.getLong(slotAddr + 24L) == l3) {
-                    ForeignMemory.putLong(slotAddr + 32L, targetPointer);
+                    ForeignMemory.putInt(slotAddr + 32L, classId);
+                    ForeignMemory.putLong(slotAddr + 40L, targetPointer);
                     return i;
                 }
             }
@@ -117,7 +118,8 @@ public final class Variable {
             ForeignMemory.putLong(targetSlot + 16L, l2);
             ForeignMemory.putLong(targetSlot + 24L, l3);
 
-            ForeignMemory.putLong(targetSlot + 32L, targetPointer);
+            ForeignMemory.putInt(targetSlot + 32L, classId);
+            ForeignMemory.putLong(targetSlot + 40L, targetPointer);
 
             int assignedId = activeCount;
             activeCount++;
@@ -227,12 +229,17 @@ public final class Variable {
     public static void setPointer(int varId, long targetPointer) {
         checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.putLong(slot + 32L, targetPointer);
+        ForeignMemory.putLong(slot + 40L, targetPointer);
     }
 
     public static long getPointer(int varId) {
         checkBounds(varId);
-        return ForeignMemory.getLong(baseAddress + (varId * SLOT_SIZE) + 32L);
+        return ForeignMemory.getLong(baseAddress + (varId * SLOT_SIZE) + 40L);
+    }
+
+    public static int getClassId(int varId) {
+        checkBounds(varId);
+        return ForeignMemory.getInt(baseAddress + (varId * SLOT_SIZE) + 32L);
     }
 
     public static String getName(int varId) {
