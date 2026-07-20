@@ -1,18 +1,22 @@
 package struct;
 
+import annotation.Intention;
 import annotation.Required;
+import annotation.Volatile;
 import nio.ForeignMemory;
 import nio.MemoryRegistry;
 import oop.Stride;
 import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
 
 /**
  * Off-heap dynamic stride-based list implementation.
  */
+@Volatile
+@Intention("Zero-GC off-heap dynamic stride-based list implementation with self-describing type header, thread-safe memory mutations, and global MemoryRegistry integration.")
 public final class List {
+
 
     @Required
     public static final int CLASS_ID = TypeRegister.ID_LIST;
@@ -86,7 +90,7 @@ public final class List {
     }
 
     // append value or pointer to list
-    public static void add(long listPtr, long valueOrPointer) {
+    public static synchronized void add(long listPtr, long valueOrPointer) {
         checkActive();
         if (listPtr == 0L) throw new NullPointerException("Writing to NULL off-heap list!");
 
@@ -119,7 +123,7 @@ public final class List {
     }
 
     // get value or pointer at index
-    public static long get(long listPtr, int index) {
+    public static synchronized long get(long listPtr, int index) {
         checkBounds(listPtr, index);
         int stride = stride(listPtr);
         long dataBuffer = dataBuffer(listPtr);
@@ -132,7 +136,7 @@ public final class List {
     }
 
     // set value or pointer at index
-    public static void set(long listPtr, int index, long valueOrPointer) {
+    public static synchronized void set(long listPtr, int index, long valueOrPointer) {
         checkBounds(listPtr, index);
         int stride = stride(listPtr);
         long dataBuffer = dataBuffer(listPtr);
@@ -145,7 +149,7 @@ public final class List {
     }
 
     // remove element at index and shift remaining left
-    public static void remove(long listPtr, int index) {
+    public static synchronized void remove(long listPtr, int index) {
         checkBounds(listPtr, index);
         int count = size(listPtr);
         int stride = stride(listPtr);
@@ -160,6 +164,7 @@ public final class List {
 
         ForeignMemory.putInt(listPtr - 4L, count - 1);
     }
+
 
     // check if list is empty
     public static boolean isEmpty(long listPtr) {
