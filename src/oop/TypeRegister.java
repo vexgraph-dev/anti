@@ -27,6 +27,7 @@ public class TypeRegister {
     public static final int ID_INT32_FP64 = 0x000009; // Int32Fp64 class // 9
     public static final int ID_INT64_FP32 = 0x00000A; // Int64Fp32 class // 10
     public static final int ID_INT64_FP64 = 0x00000B; // Int64Fp64 class // 11
+    public static final int ID_VARIABLE   = 0x00000C; // Variable class // 12
 
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
@@ -84,6 +85,11 @@ public class TypeRegister {
     public static final int INT64_FP64_SINGLETON = FORM_SINGLETON | ID_INT64_FP64; // 0xAA00000B // -1442840565
     public static final int INT64_FP64_ARRAY     = FORM_ARRAY     | ID_INT64_FP64; // 0xBB00000B // -1157627893
     public static final int INT64_FP64_POINTER   = FORM_POINTER   | ID_INT64_FP64; // 0xCC00000B // -872415221
+
+    // Variable class
+    public static final int VARIABLE_SINGLETON = FORM_SINGLETON | ID_VARIABLE; // 0xAA00000C // -1442840564
+    public static final int VARIABLE_ARRAY     = FORM_ARRAY     | ID_VARIABLE; // 0xBB00000C // -1157627892
+    public static final int VARIABLE_POINTER   = FORM_POINTER   | ID_VARIABLE; // 0xCC00000C // -872415220
 
     // --- HELPER BITWISE METHODS ---
     public static boolean isSingleton(int typeId) {

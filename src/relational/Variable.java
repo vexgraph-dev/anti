@@ -1,6 +1,10 @@
 package relational;
 
+import annotation.Required;
 import nio.ForeignMemory;
+import nio.MemoryRegistry;
+import oop.TypeRegister;
+
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
@@ -12,21 +16,23 @@ import java.nio.charset.StandardCharsets;
  */
 public final class Variable {
 
-    // Type Identifiers
+    @Required
+    public static final int CLASS_ID = TypeRegister.ID_VARIABLE;
+
+    // Type Identifiers (Mapped to bit-packed off-heap TypeRegister standards)
     public static final int TYPE_UNDEFINED = 0;
-    public static final int TYPE_INT       = 1;
-    public static final int TYPE_LONG      = 2;
-    public static final int TYPE_FLOAT     = 3;
-    public static final int TYPE_DOUBLE    = 4;
-    public static final int TYPE_BOOLEAN   = 5;
-    public static final int TYPE_POINTER   = 6;
+    public static final int TYPE_INT       = TypeRegister.INT32_SINGLETON;   // 0xAA000001
+    public static final int TYPE_LONG      = TypeRegister.INT64_SINGLETON;   // 0xAA000002
+    public static final int TYPE_FLOAT     = TypeRegister.FLOAT32_SINGLETON; // 0xAA000003
+    public static final int TYPE_DOUBLE    = TypeRegister.FLOAT64_SINGLETON; // 0xAA000004
+    public static final int TYPE_BOOLEAN   = TypeRegister.BYTE_SINGLETON;    // 0xAA000005
+    public static final int TYPE_POINTER   = TypeRegister.INT64_POINTER;     // 0xCC000002
 
     // 48 bytes layout per Variable slot:
     //   0..31  (32B): Unique Name String (4 longs * 8 bytes)
     //  32..39  (8B) : Value Payload (64-bit primitive data)
     //  40..43  (4B) : Type Tag
     //  44..47  (4B) : Flags & Padding
-    // 32 bytes limit for the unique name string (4 longs * 8 bytes)
     private static final long NAME_SIZE = 32L;
     private static final long SLOT_SIZE = 48L;
     private static final int DEFAULT_CAPACITY = 1024;
@@ -46,12 +52,21 @@ public final class Variable {
         capacity = DEFAULT_CAPACITY;
         activeCount = 0;
         active = true;
+
+        MemoryRegistry.register(Variable::freeAllClasses);
     }
 
     private Variable() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("Variable subsystem not active!");
+        if (!active) throw new IllegalStateException("Variable subsystem is not active!");
+    }
+
+    private static void checkBounds(int varId) {
+        checkActive();
+        if (varId < 0 || varId >= activeCount) {
+            throw new IndexOutOfBoundsException("Variable ID " + varId + " out of bounds for active count " + activeCount);
+        }
     }
 
     // Free all allocated off-heap memory resources for this subsystem
@@ -210,84 +225,84 @@ public final class Variable {
     // =========================================================================================
 
     public static int getType(int varId) {
-        if (varId < 0 || varId >= activeCount) return TYPE_UNDEFINED;
+        checkBounds(varId);
         return ForeignMemory.getInt(baseAddress + (varId * SLOT_SIZE) + 40L);
     }
 
     public static void setInt(int varId, int value) {
-        if (varId < 0 || varId >= activeCount) return;
+        checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
         ForeignMemory.putInt(slot + 32L, value);
         ForeignMemory.putInt(slot + 40L, TYPE_INT);
     }
 
     public static int getInt(int varId) {
-        if (varId < 0 || varId >= activeCount) return 0;
+        checkBounds(varId);
         return ForeignMemory.getInt(baseAddress + (varId * SLOT_SIZE) + 32L);
     }
 
     public static void setLong(int varId, long value) {
-        if (varId < 0 || varId >= activeCount) return;
+        checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
         ForeignMemory.putLong(slot + 32L, value);
         ForeignMemory.putInt(slot + 40L, TYPE_LONG);
     }
 
     public static long getLong(int varId) {
-        if (varId < 0 || varId >= activeCount) return 0L;
+        checkBounds(varId);
         return ForeignMemory.getLong(baseAddress + (varId * SLOT_SIZE) + 32L);
     }
 
     public static void setFloat(int varId, float value) {
-        if (varId < 0 || varId >= activeCount) return;
+        checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
         ForeignMemory.putFloat(slot + 32L, value);
         ForeignMemory.putInt(slot + 40L, TYPE_FLOAT);
     }
 
     public static float getFloat(int varId) {
-        if (varId < 0 || varId >= activeCount) return 0.0f;
+        checkBounds(varId);
         return ForeignMemory.getFloat(baseAddress + (varId * SLOT_SIZE) + 32L);
     }
 
     public static void setDouble(int varId, double value) {
-        if (varId < 0 || varId >= activeCount) return;
+        checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
         ForeignMemory.putDouble(slot + 32L, value);
         ForeignMemory.putInt(slot + 40L, TYPE_DOUBLE);
     }
 
     public static double getDouble(int varId) {
-        if (varId < 0 || varId >= activeCount) return 0.0;
+        checkBounds(varId);
         return ForeignMemory.getDouble(baseAddress + (varId * SLOT_SIZE) + 32L);
     }
 
     public static void setBoolean(int varId, boolean value) {
-        if (varId < 0 || varId >= activeCount) return;
+        checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
         ForeignMemory.putInt(slot + 32L, value ? 1 : 0);
         ForeignMemory.putInt(slot + 40L, TYPE_BOOLEAN);
     }
 
     public static boolean getBoolean(int varId) {
-        if (varId < 0 || varId >= activeCount) return false;
+        checkBounds(varId);
         return ForeignMemory.getInt(baseAddress + (varId * SLOT_SIZE) + 32L) != 0;
     }
 
     public static void setPointer(int varId, long ptr) {
-        if (varId < 0 || varId >= activeCount) return;
+        checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
         ForeignMemory.putLong(slot + 32L, ptr);
         ForeignMemory.putInt(slot + 40L, TYPE_POINTER);
     }
 
     public static long getPointer(int varId) {
-        if (varId < 0 || varId >= activeCount) return 0L;
+        checkBounds(varId);
         return ForeignMemory.getLong(baseAddress + (varId * SLOT_SIZE) + 32L);
     }
 
     public static String getName(int varId) {
-        if (varId < 0 || varId >= activeCount) return null;
+        checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
         byte[] bytes = new byte[32];
         for (int i = 0; i < 4; i++) {
@@ -304,7 +319,12 @@ public final class Variable {
     }
 
     public static int getActiveCount() {
+        checkActive();
         return activeCount;
+    }
+
+    public static int classId() {
+        return CLASS_ID;
     }
 
     // Extract 8 bytes into a stack-allocated primitive long with lowercase normalization
