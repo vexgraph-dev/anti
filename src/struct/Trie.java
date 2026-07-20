@@ -21,8 +21,8 @@ public final class Trie {
 
     public static final int TYPE_TRIE = TypeRegister.FORM_POINTER | CLASS_ID; // 0xCC00001C
 
-    private static final long NODE_SIZE = 216L; // 26 child pointers (208B) + variableId (4B) + padding (4B)
-    private static final int CHAR_COUNT = 26;
+    private static final long NODE_SIZE = 312L; // 38 child pointers (304B) + variableId (4B) + padding (4B)
+    private static final int CHAR_COUNT = 38;
 
     private static Arena poolArena;
     private static volatile boolean active;
@@ -51,7 +51,7 @@ public final class Trie {
     private static long allocateNode() {
         long node = ForeignMemory.allocateNative(NODE_SIZE);
         ForeignMemory.setMemory(node, NODE_SIZE, (byte) 0);
-        ForeignMemory.putInt(node + 208L, -1); // initial variable ID = -1 (not a terminal node)
+        ForeignMemory.putInt(node + 304L, -1); // initial variable ID = -1 (not a terminal node)
         return node;
     }
 
@@ -65,7 +65,7 @@ public final class Trie {
         ForeignMemory.putInt(headerBlock + 4L, 0); // node count or size
 
         ForeignMemory.setMemory(rootPtr, NODE_SIZE, (byte) 0);
-        ForeignMemory.putInt(rootPtr + 208L, -1);
+        ForeignMemory.putInt(rootPtr + 304L, -1);
 
         return rootPtr;
     }
@@ -77,6 +77,15 @@ public final class Trie {
         }
         if (val >= 97 && val <= 122) { // a-z
             return val - 97;
+        }
+        if (val >= 48 && val <= 57) { // 0-9
+            return val - 48 + 26;
+        }
+        if (val == 95) { // _
+            return 36;
+        }
+        if (val == 36) { // $
+            return 37;
         }
         return -1;
     }
@@ -101,7 +110,7 @@ public final class Trie {
         }
 
         // set terminal node payload
-        ForeignMemory.putInt(current + 208L, variableId);
+        ForeignMemory.putInt(current + 304L, variableId);
     }
 
     // search exact symbol match in trie
@@ -118,7 +127,7 @@ public final class Trie {
             current = child;
         }
 
-        return ForeignMemory.getInt(current + 208L);
+        return ForeignMemory.getInt(current + 304L);
     }
 
     // search all variable IDs starting with prefix, appending them to output list pointer
@@ -143,7 +152,7 @@ public final class Trie {
 
     private static void collect(long node, long outListPtr) {
         if (node == 0L) return;
-        int varId = ForeignMemory.getInt(node + 208L);
+        int varId = ForeignMemory.getInt(node + 304L);
         if (varId != -1) {
             List.add(outListPtr, varId);
         }
