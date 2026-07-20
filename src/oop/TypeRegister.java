@@ -42,7 +42,7 @@ public class TypeRegister {
     public static final int ID_STRING_ENGINE  = 0x000018; // StringEngine class // 24
     public static final int ID_SPIN_LOCK       = 0x000019; // SpinLock class // 25
     public static final int ID_RING_BUFFER     = 0x00001A; // RingBuffer class // 26
-    public static final int ID_MMAP_MANAGER    = 0x00001B; // MmapManager class // 27
+    public static final int ID_MEMORY_MAP_MANAGER = 0x00001B; // MemoryMapManager class // 27
     public static final int ID_TRIE            = 0x00001C; // Trie class // 28
     public static final int ID_SEARCH_VARIABLE  = 0x00001D; // SearchVariable class // 29
 
