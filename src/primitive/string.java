@@ -161,6 +161,12 @@ public final class string {
         return allocate(bytes);
     }
 
+    public static long allocate(char[] value) {
+        if (value == null) return 0L;
+        byte[] bytes = new String(value).getBytes(StandardCharsets.UTF_8);
+        return allocate(bytes);
+    }
+
     public static long allocate(byte[] bytes) {
         checkActive();
         if (bytes == null) return 0L;
@@ -269,6 +275,13 @@ public final class string {
         return ForeignMemory.getString(pointer);
     }
 
+    public static char[] getChars(long pointer) {
+        checkActive();
+        if (pointer == 0L) return null;
+        String s = get(pointer);
+        return s != null ? s.toCharArray() : null;
+    }
+
     public static int type(long pointer) {
         return ForeignMemory.getInt(pointer - 8L);
     }
@@ -312,6 +325,11 @@ public final class string {
     public static long append(long destPtr, String value) {
         if (value == null || value.isEmpty()) return destPtr;
         return append(destPtr, value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static long append(long destPtr, char[] value) {
+        if (value == null || value.length == 0) return destPtr;
+        return append(destPtr, new String(value).getBytes(StandardCharsets.UTF_8));
     }
 
     public static long append(long destPtr, byte[] bytes) {

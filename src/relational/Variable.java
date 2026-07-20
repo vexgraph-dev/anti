@@ -76,6 +76,12 @@ public final class Variable {
     }
 
     @Draft
+    public static int instant(char[] nameChars, int classId, long targetPointer) {
+        if (nameChars == null) return -1;
+        return instant(new String(nameChars).getBytes(StandardCharsets.UTF_8), classId, targetPointer);
+    }
+
+    @Draft
     public static int instant(byte[] nameBytes, int classId, long targetPointer) {
         if (nameBytes == null || nameBytes.length > 32) {
             return -1;
@@ -137,6 +143,12 @@ public final class Variable {
     }
 
     @Draft
+    public static int getId(char[] nameChars) {
+        if (nameChars == null) return -1;
+        return getId(new String(nameChars).getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Draft
     public static int getId(byte[] nameBytes) {
         if (nameBytes == null || nameBytes.length > 32) {
             return -1;
@@ -167,6 +179,12 @@ public final class Variable {
     }
 
     @Draft
+    public static long getPointer(char[] nameChars) {
+        if (nameChars == null) return 0L;
+        return getPointer(new String(nameChars).getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Draft
     public static long getPointer(byte[] nameBytes) {
         int id = getId(nameBytes);
         if (id == -1) return 0L;
@@ -177,6 +195,12 @@ public final class Variable {
     public static boolean rename(String oldName, String newName) {
         if (oldName == null || newName == null) return false;
         return rename(oldName.getBytes(StandardCharsets.UTF_8), newName.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Draft
+    public static boolean rename(char[] oldNameChars, char[] newNameChars) {
+        if (oldNameChars == null || newNameChars == null) return false;
+        return rename(new String(oldNameChars).getBytes(StandardCharsets.UTF_8), new String(newNameChars).getBytes(StandardCharsets.UTF_8));
     }
 
     @Draft
@@ -257,6 +281,11 @@ public final class Variable {
             }
         }
         return new String(bytes, StandardCharsets.UTF_8).trim();
+    }
+
+    public static char[] getChars(int varId) {
+        String name = getName(varId);
+        return name != null ? name.toCharArray() : null;
     }
 
     public static int getActiveCount() {
