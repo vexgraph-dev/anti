@@ -3,6 +3,7 @@ package primitive;
 import annotation.Required;
 import nio.ForeignMemory;
 import nio.MemoryRegistry;
+import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandles;
@@ -11,13 +12,13 @@ import java.lang.invoke.VarHandle;
 public final class Int32
 {
     @Required // refers to the calculation of the class ids based on files below:
-    public static final int CLASS_ID = oop.TypeRegister.ID_INT32;
+    public static final int CLASS_ID = TypeRegister.ID_INT32;
     public static final int MAX_VALUE = 2147483647;
     public static final int MIN_VALUE = -2147483648;
 
-    public static final int TYPE_SINGLETON = oop.TypeRegister.INT32_SINGLETON; // 0xAA000001
-    public static final int TYPE_ARRAY     = oop.TypeRegister.INT32_ARRAY;     // 0xBB000001
-    public static final int TYPE_MATRIX    = oop.TypeRegister.INT32_POINTER;   // 0xCC000001
+    public static final int TYPE_SINGLETON = TypeRegister.INT32_SINGLETON; // 0xAA000001
+    public static final int TYPE_ARRAY     = TypeRegister.INT32_ARRAY;     // 0xBB000001
+    public static final int TYPE_MATRIX    = TypeRegister.INT32_POINTER;   // 0xCC000001
 
     private static final int DEFAULT_CAPACITY = 1024;
 
@@ -309,7 +310,7 @@ public final class Int32
         if(pointer == 0L) return;
 
         int type = type(pointer);
-        if(type == 0 || (!oop.TypeRegister.isSingleton(type) && !oop.TypeRegister.isArray(type) && !oop.TypeRegister.isPointer(type))) {
+        if(type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) {
             throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + Long.toHexString(pointer).toUpperCase());
         }
 
@@ -319,7 +320,7 @@ public final class Int32
         ForeignMemory.putInt(base, 0);
         ForeignMemory.putInt(base + 4L, -1);
 
-        if(oop.TypeRegister.isSingleton(type)) {
+        if(TypeRegister.isSingleton(type)) {
             while(true) {
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
@@ -332,7 +333,7 @@ public final class Int32
                 if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
             }
         }
-        else if(oop.TypeRegister.isArray(type)) {
+        else if(TypeRegister.isArray(type)) {
             if(length > DEFAULT_CAPACITY) {
                 // Oversized: Free back to OS immediately via C free()
                 ForeignMemory.freeNative(base);
@@ -350,7 +351,7 @@ public final class Int32
                 if(ARRAY_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
             }
         }
-        else if(oop.TypeRegister.isPointer(type)) {
+        else if(TypeRegister.isPointer(type)) {
             if(length > DEFAULT_CAPACITY) {
                 // Oversized: Free back to OS immediately via C free()
                 ForeignMemory.freeNative(base);
@@ -441,21 +442,21 @@ public final class Int32
 
     public static int classId(long pointer)
     {
-        return oop.TypeRegister.getClassId(type(pointer));
+        return TypeRegister.getClassId(type(pointer));
     }
 
     public static boolean isSingleton(long pointer)
     {
-        return oop.TypeRegister.isSingleton(type(pointer));
+        return TypeRegister.isSingleton(type(pointer));
     }
 
     public static boolean isArray(long pointer)
     {
-        return oop.TypeRegister.isArray(type(pointer));
+        return TypeRegister.isArray(type(pointer));
     }
 
     public static boolean isPointer(long pointer)
     {
-        return oop.TypeRegister.isPointer(type(pointer));
+        return TypeRegister.isPointer(type(pointer));
     }
 }
