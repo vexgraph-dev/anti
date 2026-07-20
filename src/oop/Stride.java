@@ -34,7 +34,18 @@ public final class Stride {
                  TypeRegister.ID_INT64_FP32,
                  TypeRegister.ID_INT64_FP64 -> 16;
             case TypeRegister.ID_VARIABLE   -> 40;
+            case TypeRegister.ID_LIST,
+                 TypeRegister.ID_MAP,
+                 TypeRegister.ID_SET,
+                 TypeRegister.ID_STACK,
+                 TypeRegister.ID_DEQUE,
+                 TypeRegister.ID_SLAB_ALLOCATOR,
+                 TypeRegister.ID_STRING_ENGINE,
+                 TypeRegister.ID_SPIN_LOCK,
+                 TypeRegister.ID_RING_BUFFER,
+                 TypeRegister.ID_MMAP_MANAGER -> 8; // pointer sizes
             default                         -> 8;
         };
     }
 }
+
