@@ -34,6 +34,9 @@ public final class Stride {
                  TypeRegister.ID_INT64_FP32,
                  TypeRegister.ID_INT64_FP64 -> 16;
             case TypeRegister.ID_VARIABLE   -> 40;
+            case TypeRegister.ID_CLOCK      -> 48;
+            case TypeRegister.ID_DATETIME,
+                 TypeRegister.ID_NANOTIME   -> 40;
             case TypeRegister.ID_RANDOM     -> 16;
             case TypeRegister.ID_LIST,
                  TypeRegister.ID_MAP,
@@ -47,7 +50,8 @@ public final class Stride {
                  TypeRegister.ID_MEMORY_MAP_MANAGER,
                  TypeRegister.ID_TRIE,
                  TypeRegister.ID_SEARCH_VARIABLE,
-                 TypeRegister.ID_INDEX_RANDOM -> 8; // pointer sizes
+                 TypeRegister.ID_INDEX_RANDOM,
+                 TypeRegister.ID_CALENDAR -> 8; // pointer sizes
             default                         -> 8;
         };
     }

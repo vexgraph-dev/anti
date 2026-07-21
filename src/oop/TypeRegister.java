@@ -47,6 +47,10 @@ public class TypeRegister {
     public static final int ID_SEARCH_VARIABLE  = 0x00001D; // SearchVariable class // 29
     public static final int ID_RANDOM           = 0x00001E; // Random class // 30
     public static final int ID_INDEX_RANDOM     = 0x00001F; // IndexRandom class // 31
+    public static final int ID_CALENDAR         = 0x000020; // Calendar class // 32
+    public static final int ID_CLOCK            = 0x000021; // Clock class // 33
+    public static final int ID_DATETIME         = 0x000022; // DateTime class // 34
+    public static final int ID_NANOTIME         = 0x000023; // NanoTime class // 35
 
 
 
@@ -116,6 +120,11 @@ public class TypeRegister {
     // Random class
     public static final int RANDOM_SINGLETON = FORM_SINGLETON | ID_RANDOM; // 0xAA00001E
     public static final int INDEX_RANDOM_SINGLETON = FORM_SINGLETON | ID_INDEX_RANDOM; // 0xAA00001F
+
+    // Time classes
+    public static final int CLOCK_SINGLETON = FORM_SINGLETON | ID_CLOCK; // 0xAA000021
+    public static final int DATETIME_SINGLETON = FORM_SINGLETON | ID_DATETIME; // 0xAA000022
+    public static final int NANOTIME_SINGLETON = FORM_SINGLETON | ID_NANOTIME; // 0xAA000023
 
     // --- HELPER BITWISE METHODS ---
     public static boolean isSingleton(int typeId) {
