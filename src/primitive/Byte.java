@@ -380,6 +380,21 @@ public final class Byte {
         ForeignMemory.putByte(pointer + index, value); 
     }
 
+    public static byte getVolatile(long pointer) {
+        if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return ForeignMemory.getByteVolatile(pointer);
+    }
+
+    public static void setVolatile(long pointer, byte value) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        ForeignMemory.putByteVolatile(pointer, value);
+    }
+
+    public static boolean compareAndSet(long pointer, byte expected, byte value) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        return ForeignMemory.compareAndSetByte(pointer, expected, value);
+    }
+
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
         if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
         if (!isPointer(matrixPointer)) {
