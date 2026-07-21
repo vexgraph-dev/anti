@@ -103,6 +103,15 @@ public final class RelationalEngine {
         Variable.setPointer(varId, newPtr);
     }
 
+    public static boolean compareAndSetString(int varId, long expectedPtr, String newValue) {
+        int cid = Variable.getClassId(varId);
+        if (cid != TypeRegister.ID_STRING) {
+            throw new IllegalArgumentException("Variable ID " + varId + " is not of type String (Class ID: " + cid + ")");
+        }
+        long pointerAddr = Variable.getPointerAddress(varId);
+        return primitive.string.compareAndSetString(pointerAddr, expectedPtr, newValue);
+    }
+
     public static int classId() {
         return CLASS_ID;
     }
