@@ -3,7 +3,6 @@ package relational;
 import annotation.Draft;
 import annotation.Required;
 import nio.ForeignMemory;
-import nio.MemoryRegistry;
 import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
@@ -42,7 +41,6 @@ public final class Variable {
         activeCount = 0;
         active = true;
 
-        MemoryRegistry.register(Variable::freeAllClasses);
     }
 
     private Variable() {}
