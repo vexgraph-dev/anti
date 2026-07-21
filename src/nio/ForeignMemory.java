@@ -1,6 +1,7 @@
 package nio;
 
 import annotation.HotCode;
+import oop.Struct;
 import primitive.Byte;
 import primitive.Double;
 import primitive.Float;
@@ -12,6 +13,17 @@ import primitive.Int64Fp32;
 import primitive.Int64Fp64;
 import primitive.Short;
 import primitive.string;
+import relational.Variable;
+import relational.SearchVariable;
+import struct.List;
+import struct.Deque;
+import struct.Stack;
+import struct.Map;
+import struct.Set;
+import struct.Trie;
+import spatial.GridArray;
+import spatial.CircularArray;
+import thread.RingBuffer;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
@@ -245,6 +257,18 @@ public class ForeignMemory
         Int64Fp32.freeAll();
         Int64Fp64.freeAll();
         string.freeAll();
+        Struct.freeAll();
 
+        Variable.freeAllClasses();
+        SearchVariable.freeAll();
+        List.freeAll();
+        Deque.freeAll();
+        Stack.freeAll();
+        Map.freeAll();
+        Set.freeAll();
+        Trie.freeAll();
+        GridArray.freeAll();
+        CircularArray.freeAll();
+        RingBuffer.freeAll();
     }
 }
