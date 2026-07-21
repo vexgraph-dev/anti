@@ -380,6 +380,21 @@ public final class Float {
         ForeignMemory.putFloat(pointer + (index * 4L), value); 
     }
 
+    public static float getVolatile(long pointer) {
+        if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return ForeignMemory.getFloatVolatile(pointer);
+    }
+
+    public static void setVolatile(long pointer, float value) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        ForeignMemory.putFloatVolatile(pointer, value);
+    }
+
+    public static boolean compareAndSet(long pointer, float expected, float value) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        return ForeignMemory.compareAndSetFloat(pointer, expected, value);
+    }
+
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
         if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
         if (!isPointer(matrixPointer)) {
