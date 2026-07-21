@@ -5,12 +5,12 @@ import oop.Struct;
 import primitive.Byte;
 import primitive.Double;
 import primitive.Float;
-import primitive.Int32;
-import primitive.Int32Fp32;
-import primitive.Int32Fp64;
-import primitive.Int64;
-import primitive.Int64Fp32;
-import primitive.Int64Fp64;
+import primitive.Int;
+import primitive.IntDouble;
+import primitive.IntFloat;
+import primitive.Long;
+import primitive.LongFloat;
+import primitive.LongDouble;
 import primitive.Short;
 import primitive.string;
 import relational.Variable;
@@ -40,7 +40,7 @@ public class ForeignMemory
     // god, the lens of all things. might be dangerous to hold, low-key
     // literally c flavored hell java version
     // good luck myself
-    private static final MemorySegment GLOBAL_MEMORY = MemorySegment.ofAddress(0).reinterpret(Long.MAX_VALUE);
+    private static final MemorySegment GLOBAL_MEMORY = MemorySegment.ofAddress(0).reinterpret(java.lang.Long.MAX_VALUE);
 
     private static final VarHandle BYTE_VH = ValueLayout.JAVA_BYTE.varHandle();
     private static final VarHandle SHORT_VH = ValueLayout.JAVA_SHORT.varHandle();
@@ -341,14 +341,14 @@ public class ForeignMemory
 
         Byte.freeAll();
         Short.freeAll();
-        Int32.freeAll();
-        Int64.freeAll();
+        Int.freeAll();
+        Long.freeAll();
         Float.freeAll();
         Double.freeAll();
-        Int32Fp32.freeAll();
-        Int32Fp64.freeAll();
-        Int64Fp32.freeAll();
-        Int64Fp64.freeAll();
+        IntFloat.freeAll();
+        IntDouble.freeAll();
+        LongFloat.freeAll();
+        LongDouble.freeAll();
         string.freeAll();
         Struct.freeAll();
 
