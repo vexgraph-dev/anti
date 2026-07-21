@@ -61,14 +61,14 @@ public final class Stack {
     }
 
     // create empty off-heap stack for given class ID
-    public static long instant(int classId) {
-        return instant(classId, DEFAULT_CAPACITY);
+    public static long instant(int generic) {
+        return instant(generic, DEFAULT_CAPACITY);
     }
 
     // create empty off-heap stack with initial capacity
-    public static long instant(int classId, int initialCapacity) {
+    public static long instant(int generic, int initialCapacity) {
         checkActive();
-        int stride = Stride.get(classId);
+        int stride = Stride.get(generic);
         int cap = (initialCapacity <= 0) ? DEFAULT_CAPACITY : initialCapacity;
 
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
@@ -77,7 +77,7 @@ public final class Stack {
         ForeignMemory.putInt(headerBlock, TYPE_STACK);
         ForeignMemory.putInt(headerBlock + 4L, 0); // activeCount/size
 
-        ForeignMemory.putInt(userPtr, classId);
+        ForeignMemory.putInt(userPtr, generic);
         ForeignMemory.putInt(userPtr + 4L, stride);
         ForeignMemory.putInt(userPtr + 8L, cap);
         ForeignMemory.putInt(userPtr + 12L, 0); // padding
