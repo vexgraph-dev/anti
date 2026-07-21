@@ -11,14 +11,14 @@ import java.lang.invoke.VarHandle;
 public final class Float {
 
     @Required
-    public static final int CLASS_ID = TypeRegister.ID_FLOAT32;
+    public static final int CLASS_ID = TypeRegister.ID_FLOAT;
 
     public static final float MAX_VALUE = java.lang.Float.MAX_VALUE;
     public static final float MIN_VALUE = java.lang.Float.MIN_VALUE;
 
-    public static final int TYPE_SINGLETON = TypeRegister.FLOAT32_SINGLETON; // 0xAA000003
-    public static final int TYPE_ARRAY     = TypeRegister.FLOAT32_ARRAY;     // 0xBB000003
-    public static final int TYPE_MATRIX    = TypeRegister.FLOAT32_POINTER;   // 0xCC000003
+    public static final int TYPE_SINGLETON = TypeRegister.FLOAT_SINGLETON; // 0xAA000003
+    public static final int TYPE_ARRAY     = TypeRegister.FLOAT_ARRAY;     // 0xBB000003
+    public static final int TYPE_MATRIX    = TypeRegister.FLOAT_POINTER;   // 0xCC000003
 
     private static final int DEFAULT_CAPACITY = 1024;
 
@@ -292,7 +292,7 @@ public final class Float {
 
         int type = type(pointer);
         if (type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) {
-            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
         }
 
         int length = length(pointer);
@@ -408,7 +408,7 @@ public final class Float {
         if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
         int len = length(pointer);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap float length " + len + " (Ptr: 0x" + Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap float length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
         }
     }
 
