@@ -410,6 +410,42 @@ public final class Int32
         ForeignMemory.putInt(pointer + (index * 4L), value);
     }
 
+    public static int getVolatile(long pointer)
+    {
+        if(pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if(classId(pointer) != CLASS_ID) {
+            throw new IllegalArgumentException("Pointer 0x" + Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Int32 (Class ID " + CLASS_ID + ")");
+        }
+        return ForeignMemory.getIntVolatile(pointer);
+    }
+
+    public static void setVolatile(long pointer, int value)
+    {
+        if(pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if(classId(pointer) != CLASS_ID) {
+            throw new IllegalArgumentException("Pointer 0x" + Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Int32 (Class ID " + CLASS_ID + ")");
+        }
+        ForeignMemory.putIntVolatile(pointer, value);
+    }
+
+    public static boolean compareAndSet(long pointer, int expected, int value)
+    {
+        if(pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if(classId(pointer) != CLASS_ID) {
+            throw new IllegalArgumentException("Pointer 0x" + Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Int32 (Class ID " + CLASS_ID + ")");
+        }
+        return ForeignMemory.compareAndSetInt(pointer, expected, value);
+    }
+
+    public static int getAndSet(long pointer, int value)
+    {
+        if(pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if(classId(pointer) != CLASS_ID) {
+            throw new IllegalArgumentException("Pointer 0x" + Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Int32 (Class ID " + CLASS_ID + ")");
+        }
+        return ForeignMemory.getAndSetInt(pointer, value);
+    }
+
     public static void setPointer(long matrixPointer, int index, long targetPointer)
     {
         if(matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
