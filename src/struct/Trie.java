@@ -165,19 +165,19 @@ public final class Trie {
     // free recursively all nodes
     public static synchronized void free(long rootPtr) {
         if (rootPtr == 0L) return;
-        freeNode(rootPtr);
+        freeChildren(rootPtr);
         long headerBlock = rootPtr - 8L;
         ForeignMemory.freeNative(headerBlock);
     }
 
-    private static void freeNode(long node) {
+    private static void freeChildren(long node) {
         for (int i = 0; i < CHAR_COUNT; i++) {
             long child = ForeignMemory.getLong(node + ((long) i * 8L));
             if (child != 0L) {
-                freeNode(child);
+                freeChildren(child);
+                ForeignMemory.freeNative(child);
             }
         }
-        ForeignMemory.freeNative(node);
     }
 
     public static int classId() {
