@@ -19,17 +19,17 @@ public class TypeRegister {
     public static final int CUSTOM_STRUCT     = 0x00110000; // custom struct
 
     // --- RAW CLASS IDS (Lower 24 bits) ---
-    public static final int ID_INT32      = 0x000001; // Int32 class // 1
-    public static final int ID_INT64      = 0x000002; // Int64 class // 2
-    public static final int ID_FLOAT32    = 0x000003; // Float class // 3
-    public static final int ID_FLOAT64    = 0x000004; // Double class // 4
+    public static final int ID_INT      = 0x000001; // Int class // 1
+    public static final int ID_LONG      = 0x000002; // Long class // 2
+    public static final int ID_FLOAT    = 0x000003; // Float class // 3
+    public static final int ID_DOUBLE    = 0x000004; // Double class // 4
     public static final int ID_BYTE       = 0x000005; // Byte class // 5
     public static final int ID_SHORT      = 0x000006; // Short class // 6
     public static final int ID_STRING     = 0x000007; // string class // 7
-    public static final int ID_INT32_FP32 = 0x000008; // Int32Fp32 class // 8
-    public static final int ID_INT32_FP64 = 0x000009; // Int32Fp64 class // 9
-    public static final int ID_INT64_FP32 = 0x00000A; // Int64Fp32 class // 10
-    public static final int ID_INT64_FP64 = 0x00000B; // Int64Fp64 class // 11
+    public static final int ID_INT_FLOAT = 0x000008; // IntFloat class // 8
+    public static final int ID_INT_DOUBLE = 0x000009; // IntDouble class // 9
+    public static final int ID_LONG_FLOAT = 0x00000A; // LongFloat class // 10
+    public static final int ID_LONG_DOUBLE = 0x00000B; // LongDouble class // 11
     public static final int ID_VARIABLE   = 0x00000C; // Variable class // 12
     public static final int ID_PACK       = 0x00000D; // Pack class // 13
     public static final int ID_ARRAYS     = 0x00000E; // Arrays class // 14
@@ -65,25 +65,25 @@ public class TypeRegister {
 
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
-    // Int32 class
-    public static final int INT32_SINGLETON = FORM_SINGLETON | ID_INT32; // 0xAA000001 // -1442840575
-    public static final int INT32_ARRAY     = FORM_ARRAY     | ID_INT32; // 0xBB000001 // -1157627903
-    public static final int INT32_POINTER   = FORM_POINTER   | ID_INT32; // 0xCC000001 // -872415231
+    // Int class
+    public static final int INT_SINGLETON = FORM_SINGLETON | ID_INT; // 0xAA000001 // -1442840575
+    public static final int INT_ARRAY     = FORM_ARRAY     | ID_INT; // 0xBB000001 // -1157627903
+    public static final int INT_POINTER   = FORM_POINTER   | ID_INT; // 0xCC000001 // -872415231
 
-    // Int64 class
-    public static final int INT64_SINGLETON = FORM_SINGLETON | ID_INT64; // 0xAA000002 // -1442840574
-    public static final int INT64_ARRAY     = FORM_ARRAY     | ID_INT64; // 0xBB000002 // -1157627902
-    public static final int INT64_POINTER   = FORM_POINTER   | ID_INT64; // 0xCC000002 // -872415230
+    // Long class
+    public static final int LONG_SINGLETON = FORM_SINGLETON | ID_LONG; // 0xAA000002 // -1442840574
+    public static final int LONG_ARRAY     = FORM_ARRAY     | ID_LONG; // 0xBB000002 // -1157627902
+    public static final int LONG_POINTER   = FORM_POINTER   | ID_LONG; // 0xCC000002 // -872415230
 
     // Float class
-    public static final int FLOAT32_SINGLETON = FORM_SINGLETON | ID_FLOAT32; // 0xAA000003 // -1442840573
-    public static final int FLOAT32_ARRAY     = FORM_ARRAY     | ID_FLOAT32; // 0xBB000003 // -1157627901
-    public static final int FLOAT32_POINTER   = FORM_POINTER   | ID_FLOAT32; // 0xCC000003 // -872415229
+    public static final int FLOAT_SINGLETON = FORM_SINGLETON | ID_FLOAT; // 0xAA000003 // -1442840573
+    public static final int FLOAT_ARRAY     = FORM_ARRAY     | ID_FLOAT; // 0xBB000003 // -1157627901
+    public static final int FLOAT_POINTER   = FORM_POINTER   | ID_FLOAT; // 0xCC000003 // -872415229
 
     // Double class
-    public static final int FLOAT64_SINGLETON = FORM_SINGLETON | ID_FLOAT64; // 0xAA000004 // -1442840572
-    public static final int FLOAT64_ARRAY     = FORM_ARRAY     | ID_FLOAT64; // 0xBB000004 // -1157627900
-    public static final int FLOAT64_POINTER   = FORM_POINTER   | ID_FLOAT64; // 0xCC000004 // -872415228
+    public static final int DOUBLE_SINGLETON = FORM_SINGLETON | ID_DOUBLE; // 0xAA000004 // -1442840572
+    public static final int DOUBLE_ARRAY     = FORM_ARRAY     | ID_DOUBLE; // 0xBB000004 // -1157627900
+    public static final int DOUBLE_POINTER   = FORM_POINTER   | ID_DOUBLE; // 0xCC000004 // -872415228
 
     // Byte class
     public static final int BYTE_SINGLETON = FORM_SINGLETON | ID_BYTE; // 0xAA000005 // -1442840571
@@ -100,25 +100,25 @@ public class TypeRegister {
     public static final int STRING_ARRAY     = FORM_ARRAY     | ID_STRING; // 0xBB000007 // -1157627897
     public static final int STRING_POINTER   = FORM_POINTER   | ID_STRING; // 0xCC000007 // -872415225
 
-    // Int32Fp32 class
-    public static final int INT32_FP32_SINGLETON = FORM_SINGLETON | ID_INT32_FP32; // 0xAA000008 // -1442840568
-    public static final int INT32_FP32_ARRAY     = FORM_ARRAY     | ID_INT32_FP32; // 0xBB000008 // -1157627896
-    public static final int INT32_FP32_POINTER   = FORM_POINTER   | ID_INT32_FP32; // 0xCC000008 // -872415224
+    // IntFloat class
+    public static final int INT_FLOAT_SINGLETON = FORM_SINGLETON | ID_INT_FLOAT; // 0xAA000008 // -1442840568
+    public static final int INT_FLOAT_ARRAY     = FORM_ARRAY     | ID_INT_FLOAT; // 0xBB000008 // -1157627896
+    public static final int INT_FLOAT_POINTER   = FORM_POINTER   | ID_INT_FLOAT; // 0xCC000008 // -872415224
 
-    // Int32Fp64 class
-    public static final int INT32_FP64_SINGLETON = FORM_SINGLETON | ID_INT32_FP64; // 0xAA000009 // -1442840567
-    public static final int INT32_FP64_ARRAY     = FORM_ARRAY     | ID_INT32_FP64; // 0xBB000009 // -1157627895
-    public static final int INT32_FP64_POINTER   = FORM_POINTER   | ID_INT32_FP64; // 0xCC000009 // -872415223
+    // IntDouble class
+    public static final int INT_DOUBLE_SINGLETON = FORM_SINGLETON | ID_INT_DOUBLE; // 0xAA000009 // -1442840567
+    public static final int INT_DOUBLE_ARRAY     = FORM_ARRAY     | ID_INT_DOUBLE; // 0xBB000009 // -1157627895
+    public static final int INT_DOUBLE_POINTER   = FORM_POINTER   | ID_INT_DOUBLE; // 0xCC000009 // -872415223
 
-    // Int64Fp32 class
-    public static final int INT64_FP32_SINGLETON = FORM_SINGLETON | ID_INT64_FP32; // 0xAA00000A // -1442840566
-    public static final int INT64_FP32_ARRAY     = FORM_ARRAY     | ID_INT64_FP32; // 0xBB00000A // -1157627894
-    public static final int INT64_FP32_POINTER   = FORM_POINTER   | ID_INT64_FP32; // 0xCC00000A // -872415222
+    // LongFloat class
+    public static final int LONG_FLOAT_SINGLETON = FORM_SINGLETON | ID_LONG_FLOAT; // 0xAA00000A // -1442840566
+    public static final int LONG_FLOAT_ARRAY     = FORM_ARRAY     | ID_LONG_FLOAT; // 0xBB00000A // -1157627894
+    public static final int LONG_FLOAT_POINTER   = FORM_POINTER   | ID_LONG_FLOAT; // 0xCC00000A // -872415222
 
-    // Int64Fp64 class
-    public static final int INT64_FP64_SINGLETON = FORM_SINGLETON | ID_INT64_FP64; // 0xAA00000B // -1442840565
-    public static final int INT64_FP64_ARRAY     = FORM_ARRAY     | ID_INT64_FP64; // 0xBB00000B // -1157627893
-    public static final int INT64_FP64_POINTER   = FORM_POINTER   | ID_INT64_FP64; // 0xCC00000B // -872415221
+    // LongDouble class
+    public static final int LONG_DOUBLE_SINGLETON = FORM_SINGLETON | ID_LONG_DOUBLE; // 0xAA00000B // -1442840565
+    public static final int LONG_DOUBLE_ARRAY     = FORM_ARRAY     | ID_LONG_DOUBLE; // 0xBB00000B // -1157627893
+    public static final int LONG_DOUBLE_POINTER   = FORM_POINTER   | ID_LONG_DOUBLE; // 0xCC00000B // -872415221
 
     // Variable class
     public static final int VARIABLE_SINGLETON = FORM_SINGLETON | ID_VARIABLE; // 0xAA00000C // -1442840564
