@@ -233,7 +233,7 @@ public final class string {
 
         int typeHeader = type(pointer);
         if (typeHeader == 0 || !TypeRegister.isArray(typeHeader)) {
-            throw new IllegalStateException("Double free or corrupt string pointer: 0x" + Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException("Double free or corrupt string pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
         }
 
         int len = length(pointer);
