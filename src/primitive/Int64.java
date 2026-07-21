@@ -380,6 +380,26 @@ public final class Int64 {
         ForeignMemory.putLong(pointer + (index * 8L), value); 
     }
 
+    public static long getVolatile(long pointer) {
+        if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return ForeignMemory.getLongVolatile(pointer);
+    }
+
+    public static void setVolatile(long pointer, long value) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        ForeignMemory.putLongVolatile(pointer, value);
+    }
+
+    public static boolean compareAndSet(long pointer, long expected, long value) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        return ForeignMemory.compareAndSetLong(pointer, expected, value);
+    }
+
+    public static long getAndSet(long pointer, long value) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        return ForeignMemory.getAndSetLong(pointer, value);
+    }
+
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
         if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
         if (!isPointer(matrixPointer)) {
