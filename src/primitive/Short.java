@@ -380,6 +380,21 @@ public final class Short {
         ForeignMemory.putShort(pointer + (index * 2L), value); 
     }
 
+    public static short getVolatile(long pointer) {
+        if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return ForeignMemory.getShortVolatile(pointer);
+    }
+
+    public static void setVolatile(long pointer, short value) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        ForeignMemory.putShortVolatile(pointer, value);
+    }
+
+    public static boolean compareAndSet(long pointer, short expected, short value) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        return ForeignMemory.compareAndSetShort(pointer, expected, value);
+    }
+
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
         if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
         if (!isPointer(matrixPointer)) {
