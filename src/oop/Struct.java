@@ -244,90 +244,90 @@ public final class Struct {
     // FIELD MUTATORS & ACCESSORS (SINGLETON / LEVEL 1)
     // =========================================================================
 
-    public static void setInt32(long userPtr, int fieldIndex, int value) {
+    public static void setInt(long userPtr, int fieldIndex, int value) {
         int generic = getStructIdFromPointer(userPtr);
-        setInt32(generic, userPtr, fieldIndex, value);
+        setInt(generic, userPtr, fieldIndex, value);
     }
 
-    public static void setInt32(int generic, long userPtr, int fieldIndex, int value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
+    public static void setInt(int generic, long userPtr, int fieldIndex, int value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putInt(userPtr + offset, value);
     }
 
-    public static int getInt32(long userPtr, int fieldIndex) {
+    public static int getInt(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getInt32(generic, userPtr, fieldIndex);
+        return getInt(generic, userPtr, fieldIndex);
     }
 
-    public static int getInt32(int generic, long userPtr, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
+    public static int getInt(int generic, long userPtr, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getInt(userPtr + offset);
     }
 
-    public static void setInt64(long userPtr, int fieldIndex, long value) {
+    public static void setLong(long userPtr, int fieldIndex, long value) {
         int generic = getStructIdFromPointer(userPtr);
-        setInt64(generic, userPtr, fieldIndex, value);
+        setLong(generic, userPtr, fieldIndex, value);
     }
 
-    public static void setInt64(int generic, long userPtr, int fieldIndex, long value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
+    public static void setLong(int generic, long userPtr, int fieldIndex, long value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putLong(userPtr + offset, value);
     }
 
-    public static long getInt64(long userPtr, int fieldIndex) {
+    public static long getLong(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getInt64(generic, userPtr, fieldIndex);
+        return getLong(generic, userPtr, fieldIndex);
     }
 
-    public static long getInt64(int generic, long userPtr, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
+    public static long getLong(int generic, long userPtr, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getLong(userPtr + offset);
     }
 
-    public static void setFloat32(long userPtr, int fieldIndex, float value) {
+    public static void setFloat(long userPtr, int fieldIndex, float value) {
         int generic = getStructIdFromPointer(userPtr);
-        setFloat32(generic, userPtr, fieldIndex, value);
+        setFloat(generic, userPtr, fieldIndex, value);
     }
 
-    public static void setFloat32(int generic, long userPtr, int fieldIndex, float value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
+    public static void setFloat(int generic, long userPtr, int fieldIndex, float value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putFloat(userPtr + offset, value);
     }
 
-    public static float getFloat32(long userPtr, int fieldIndex) {
+    public static float getFloat(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getFloat32(generic, userPtr, fieldIndex);
+        return getFloat(generic, userPtr, fieldIndex);
     }
 
-    public static float getFloat32(int generic, long userPtr, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
+    public static float getFloat(int generic, long userPtr, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getFloat(userPtr + offset);
     }
 
-    public static void setFloat64(long userPtr, int fieldIndex, double value) {
+    public static void setDouble(long userPtr, int fieldIndex, double value) {
         int generic = getStructIdFromPointer(userPtr);
-        setFloat64(generic, userPtr, fieldIndex, value);
+        setDouble(generic, userPtr, fieldIndex, value);
     }
 
-    public static void setFloat64(int generic, long userPtr, int fieldIndex, double value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
+    public static void setDouble(int generic, long userPtr, int fieldIndex, double value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putDouble(userPtr + offset, value);
     }
 
-    public static double getFloat64(long userPtr, int fieldIndex) {
+    public static double getDouble(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getFloat64(generic, userPtr, fieldIndex);
+        return getDouble(generic, userPtr, fieldIndex);
     }
 
-    public static double getFloat64(int generic, long userPtr, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
+    public static double getDouble(int generic, long userPtr, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getDouble(userPtr + offset);
     }
@@ -380,97 +380,97 @@ public final class Struct {
     // ARRAY FIELD MUTATORS & ACCESSORS (ARRAY / LEVEL 2)
     // =========================================================================
 
-    public static void setInt32(long userPtr, int elementIndex, int fieldIndex, int value) {
+    public static void setInt(long userPtr, int elementIndex, int fieldIndex, int value) {
         int generic = getStructIdFromPointer(userPtr);
-        setInt32(generic, userPtr, elementIndex, fieldIndex, value);
+        setInt(generic, userPtr, elementIndex, fieldIndex, value);
     }
 
-    public static void setInt32(int generic, long userPtr, int elementIndex, int fieldIndex, int value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
+    public static void setInt(int generic, long userPtr, int elementIndex, int fieldIndex, int value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putInt(userPtr + (long) elementIndex * stride + offset, value);
     }
 
-    public static int getInt32(long userPtr, int elementIndex, int fieldIndex) {
+    public static int getInt(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getInt32(generic, userPtr, elementIndex, fieldIndex);
+        return getInt(generic, userPtr, elementIndex, fieldIndex);
     }
 
-    public static int getInt32(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
+    public static int getInt(int generic, long userPtr, int elementIndex, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getInt(userPtr + (long) elementIndex * stride + offset);
     }
 
-    public static void setInt64(long userPtr, int elementIndex, int fieldIndex, long value) {
+    public static void setLong(long userPtr, int elementIndex, int fieldIndex, long value) {
         int generic = getStructIdFromPointer(userPtr);
-        setInt64(generic, userPtr, elementIndex, fieldIndex, value);
+        setLong(generic, userPtr, elementIndex, fieldIndex, value);
     }
 
-    public static void setInt64(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
+    public static void setLong(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putLong(userPtr + (long) elementIndex * stride + offset, value);
     }
 
-    public static long getInt64(long userPtr, int elementIndex, int fieldIndex) {
+    public static long getLong(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getInt64(generic, userPtr, elementIndex, fieldIndex);
+        return getLong(generic, userPtr, elementIndex, fieldIndex);
     }
 
-    public static long getInt64(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
+    public static long getLong(int generic, long userPtr, int elementIndex, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getLong(userPtr + (long) elementIndex * stride + offset);
     }
 
-    public static void setFloat32(long userPtr, int elementIndex, int fieldIndex, float value) {
+    public static void setFloat(long userPtr, int elementIndex, int fieldIndex, float value) {
         int generic = getStructIdFromPointer(userPtr);
-        setFloat32(generic, userPtr, elementIndex, fieldIndex, value);
+        setFloat(generic, userPtr, elementIndex, fieldIndex, value);
     }
 
-    public static void setFloat32(int generic, long userPtr, int elementIndex, int fieldIndex, float value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
+    public static void setFloat(int generic, long userPtr, int elementIndex, int fieldIndex, float value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putFloat(userPtr + (long) elementIndex * stride + offset, value);
     }
 
-    public static float getFloat32(long userPtr, int elementIndex, int fieldIndex) {
+    public static float getFloat(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getFloat32(generic, userPtr, elementIndex, fieldIndex);
+        return getFloat(generic, userPtr, elementIndex, fieldIndex);
     }
 
-    public static float getFloat32(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
+    public static float getFloat(int generic, long userPtr, int elementIndex, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getFloat(userPtr + (long) elementIndex * stride + offset);
     }
 
-    public static void setFloat64(long userPtr, int elementIndex, int fieldIndex, double value) {
+    public static void setDouble(long userPtr, int elementIndex, int fieldIndex, double value) {
         int generic = getStructIdFromPointer(userPtr);
-        setFloat64(generic, userPtr, elementIndex, fieldIndex, value);
+        setDouble(generic, userPtr, elementIndex, fieldIndex, value);
     }
 
-    public static void setFloat64(int generic, long userPtr, int elementIndex, int fieldIndex, double value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
+    public static void setDouble(int generic, long userPtr, int elementIndex, int fieldIndex, double value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putDouble(userPtr + (long) elementIndex * stride + offset, value);
     }
 
-    public static double getFloat64(long userPtr, int elementIndex, int fieldIndex) {
+    public static double getDouble(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getFloat64(generic, userPtr, elementIndex, fieldIndex);
+        return getDouble(generic, userPtr, elementIndex, fieldIndex);
     }
 
-    public static double getFloat64(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
+    public static double getDouble(int generic, long userPtr, int elementIndex, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getDouble(userPtr + (long) elementIndex * stride + offset);
@@ -528,134 +528,134 @@ public final class Struct {
     // VOLATILE & ATOMIC MUTATORS & ACCESSORS (SINGLETON / LEVEL 1)
     // =========================================================================
 
-    public static void setInt32Volatile(long userPtr, int fieldIndex, int value) {
+    public static void setIntVolatile(long userPtr, int fieldIndex, int value) {
         int generic = getStructIdFromPointer(userPtr);
-        setInt32Volatile(generic, userPtr, fieldIndex, value);
+        setIntVolatile(generic, userPtr, fieldIndex, value);
     }
 
-    public static void setInt32Volatile(int generic, long userPtr, int fieldIndex, int value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
+    public static void setIntVolatile(int generic, long userPtr, int fieldIndex, int value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putIntVolatile(userPtr + offset, value);
     }
 
-    public static int getInt32Volatile(long userPtr, int fieldIndex) {
+    public static int getIntVolatile(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getInt32Volatile(generic, userPtr, fieldIndex);
+        return getIntVolatile(generic, userPtr, fieldIndex);
     }
 
-    public static int getInt32Volatile(int generic, long userPtr, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
+    public static int getIntVolatile(int generic, long userPtr, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getIntVolatile(userPtr + offset);
     }
 
-    public static boolean compareAndSetInt32(long userPtr, int fieldIndex, int expected, int value) {
+    public static boolean compareAndSetInt(long userPtr, int fieldIndex, int expected, int value) {
         int generic = getStructIdFromPointer(userPtr);
-        return compareAndSetInt32(generic, userPtr, fieldIndex, expected, value);
+        return compareAndSetInt(generic, userPtr, fieldIndex, expected, value);
     }
 
-    public static boolean compareAndSetInt32(int generic, long userPtr, int fieldIndex, int expected, int value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
+    public static boolean compareAndSetInt(int generic, long userPtr, int fieldIndex, int expected, int value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.compareAndSetInt(userPtr + offset, expected, value);
     }
 
-    public static void setInt64Volatile(long userPtr, int fieldIndex, long value) {
+    public static void setLongVolatile(long userPtr, int fieldIndex, long value) {
         int generic = getStructIdFromPointer(userPtr);
-        setInt64Volatile(generic, userPtr, fieldIndex, value);
+        setLongVolatile(generic, userPtr, fieldIndex, value);
     }
 
-    public static void setInt64Volatile(int generic, long userPtr, int fieldIndex, long value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
+    public static void setLongVolatile(int generic, long userPtr, int fieldIndex, long value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putLongVolatile(userPtr + offset, value);
     }
 
-    public static long getInt64Volatile(long userPtr, int fieldIndex) {
+    public static long getLongVolatile(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getInt64Volatile(generic, userPtr, fieldIndex);
+        return getLongVolatile(generic, userPtr, fieldIndex);
     }
 
-    public static long getInt64Volatile(int generic, long userPtr, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
+    public static long getLongVolatile(int generic, long userPtr, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getLongVolatile(userPtr + offset);
     }
 
-    public static boolean compareAndSetInt64(long userPtr, int fieldIndex, long expected, long value) {
+    public static boolean compareAndSetLong(long userPtr, int fieldIndex, long expected, long value) {
         int generic = getStructIdFromPointer(userPtr);
-        return compareAndSetInt64(generic, userPtr, fieldIndex, expected, value);
+        return compareAndSetLong(generic, userPtr, fieldIndex, expected, value);
     }
 
-    public static boolean compareAndSetInt64(int generic, long userPtr, int fieldIndex, long expected, long value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
+    public static boolean compareAndSetLong(int generic, long userPtr, int fieldIndex, long expected, long value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.compareAndSetLong(userPtr + offset, expected, value);
     }
 
-    public static void setFloat32Volatile(long userPtr, int fieldIndex, float value) {
+    public static void setFloatVolatile(long userPtr, int fieldIndex, float value) {
         int generic = getStructIdFromPointer(userPtr);
-        setFloat32Volatile(generic, userPtr, fieldIndex, value);
+        setFloatVolatile(generic, userPtr, fieldIndex, value);
     }
 
-    public static void setFloat32Volatile(int generic, long userPtr, int fieldIndex, float value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
+    public static void setFloatVolatile(int generic, long userPtr, int fieldIndex, float value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putFloatVolatile(userPtr + offset, value);
     }
 
-    public static float getFloat32Volatile(long userPtr, int fieldIndex) {
+    public static float getFloatVolatile(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getFloat32Volatile(generic, userPtr, fieldIndex);
+        return getFloatVolatile(generic, userPtr, fieldIndex);
     }
 
-    public static float getFloat32Volatile(int generic, long userPtr, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
+    public static float getFloatVolatile(int generic, long userPtr, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getFloatVolatile(userPtr + offset);
     }
 
-    public static boolean compareAndSetFloat32(long userPtr, int fieldIndex, float expected, float value) {
+    public static boolean compareAndSetFloat(long userPtr, int fieldIndex, float expected, float value) {
         int generic = getStructIdFromPointer(userPtr);
-        return compareAndSetFloat32(generic, userPtr, fieldIndex, expected, value);
+        return compareAndSetFloat(generic, userPtr, fieldIndex, expected, value);
     }
 
-    public static boolean compareAndSetFloat32(int generic, long userPtr, int fieldIndex, float expected, float value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
+    public static boolean compareAndSetFloat(int generic, long userPtr, int fieldIndex, float expected, float value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.compareAndSetFloat(userPtr + offset, expected, value);
     }
 
-    public static void setFloat64Volatile(long userPtr, int fieldIndex, double value) {
+    public static void setDoubleVolatile(long userPtr, int fieldIndex, double value) {
         int generic = getStructIdFromPointer(userPtr);
-        setFloat64Volatile(generic, userPtr, fieldIndex, value);
+        setDoubleVolatile(generic, userPtr, fieldIndex, value);
     }
 
-    public static void setFloat64Volatile(int generic, long userPtr, int fieldIndex, double value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
+    public static void setDoubleVolatile(int generic, long userPtr, int fieldIndex, double value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putDoubleVolatile(userPtr + offset, value);
     }
 
-    public static double getFloat64Volatile(long userPtr, int fieldIndex) {
+    public static double getDoubleVolatile(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getFloat64Volatile(generic, userPtr, fieldIndex);
+        return getDoubleVolatile(generic, userPtr, fieldIndex);
     }
 
-    public static double getFloat64Volatile(int generic, long userPtr, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
+    public static double getDoubleVolatile(int generic, long userPtr, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getDoubleVolatile(userPtr + offset);
     }
 
-    public static boolean compareAndSetFloat64(long userPtr, int fieldIndex, double expected, double value) {
+    public static boolean compareAndSetDouble(long userPtr, int fieldIndex, double expected, double value) {
         int generic = getStructIdFromPointer(userPtr);
-        return compareAndSetFloat64(generic, userPtr, fieldIndex, expected, value);
+        return compareAndSetDouble(generic, userPtr, fieldIndex, expected, value);
     }
 
-    public static boolean compareAndSetFloat64(int generic, long userPtr, int fieldIndex, double expected, double value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
+    public static boolean compareAndSetDouble(int generic, long userPtr, int fieldIndex, double expected, double value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.compareAndSetDouble(userPtr + offset, expected, value);
     }
@@ -730,145 +730,145 @@ public final class Struct {
     // VOLATILE & ATOMIC ARRAY FIELD MUTATORS & ACCESSORS (ARRAY / LEVEL 2)
     // =========================================================================
 
-    public static void setInt32Volatile(long userPtr, int elementIndex, int fieldIndex, int value) {
+    public static void setIntVolatile(long userPtr, int elementIndex, int fieldIndex, int value) {
         int generic = getStructIdFromPointer(userPtr);
-        setInt32Volatile(generic, userPtr, elementIndex, fieldIndex, value);
+        setIntVolatile(generic, userPtr, elementIndex, fieldIndex, value);
     }
 
-    public static void setInt32Volatile(int generic, long userPtr, int elementIndex, int fieldIndex, int value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
+    public static void setIntVolatile(int generic, long userPtr, int elementIndex, int fieldIndex, int value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putIntVolatile(userPtr + (long) elementIndex * stride + offset, value);
     }
 
-    public static int getInt32Volatile(long userPtr, int elementIndex, int fieldIndex) {
+    public static int getIntVolatile(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getInt32Volatile(generic, userPtr, elementIndex, fieldIndex);
+        return getIntVolatile(generic, userPtr, elementIndex, fieldIndex);
     }
 
-    public static int getInt32Volatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
+    public static int getIntVolatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getIntVolatile(userPtr + (long) elementIndex * stride + offset);
     }
 
-    public static boolean compareAndSetInt32(long userPtr, int elementIndex, int fieldIndex, int expected, int value) {
+    public static boolean compareAndSetInt(long userPtr, int elementIndex, int fieldIndex, int expected, int value) {
         int generic = getStructIdFromPointer(userPtr);
-        return compareAndSetInt32(generic, userPtr, elementIndex, fieldIndex, expected, value);
+        return compareAndSetInt(generic, userPtr, elementIndex, fieldIndex, expected, value);
     }
 
-    public static boolean compareAndSetInt32(int generic, long userPtr, int elementIndex, int fieldIndex, int expected, int value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
+    public static boolean compareAndSetInt(int generic, long userPtr, int elementIndex, int fieldIndex, int expected, int value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.compareAndSetInt(userPtr + (long) elementIndex * stride + offset, expected, value);
     }
 
-    public static void setInt64Volatile(long userPtr, int elementIndex, int fieldIndex, long value) {
+    public static void setLongVolatile(long userPtr, int elementIndex, int fieldIndex, long value) {
         int generic = getStructIdFromPointer(userPtr);
-        setInt64Volatile(generic, userPtr, elementIndex, fieldIndex, value);
+        setLongVolatile(generic, userPtr, elementIndex, fieldIndex, value);
     }
 
-    public static void setInt64Volatile(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
+    public static void setLongVolatile(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putLongVolatile(userPtr + (long) elementIndex * stride + offset, value);
     }
 
-    public static long getInt64Volatile(long userPtr, int elementIndex, int fieldIndex) {
+    public static long getLongVolatile(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getInt64Volatile(generic, userPtr, elementIndex, fieldIndex);
+        return getLongVolatile(generic, userPtr, elementIndex, fieldIndex);
     }
 
-    public static long getInt64Volatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
+    public static long getLongVolatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getLongVolatile(userPtr + (long) elementIndex * stride + offset);
     }
 
-    public static boolean compareAndSetInt64(long userPtr, int elementIndex, int fieldIndex, long expected, long value) {
+    public static boolean compareAndSetLong(long userPtr, int elementIndex, int fieldIndex, long expected, long value) {
         int generic = getStructIdFromPointer(userPtr);
-        return compareAndSetInt64(generic, userPtr, elementIndex, fieldIndex, expected, value);
+        return compareAndSetLong(generic, userPtr, elementIndex, fieldIndex, expected, value);
     }
 
-    public static boolean compareAndSetInt64(int generic, long userPtr, int elementIndex, int fieldIndex, long expected, long value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
+    public static boolean compareAndSetLong(int generic, long userPtr, int elementIndex, int fieldIndex, long expected, long value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.compareAndSetLong(userPtr + (long) elementIndex * stride + offset, expected, value);
     }
 
-    public static void setFloat32Volatile(long userPtr, int elementIndex, int fieldIndex, float value) {
+    public static void setFloatVolatile(long userPtr, int elementIndex, int fieldIndex, float value) {
         int generic = getStructIdFromPointer(userPtr);
-        setFloat32Volatile(generic, userPtr, elementIndex, fieldIndex, value);
+        setFloatVolatile(generic, userPtr, elementIndex, fieldIndex, value);
     }
 
-    public static void setFloat32Volatile(int generic, long userPtr, int elementIndex, int fieldIndex, float value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
+    public static void setFloatVolatile(int generic, long userPtr, int elementIndex, int fieldIndex, float value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putFloatVolatile(userPtr + (long) elementIndex * stride + offset, value);
     }
 
-    public static float getFloat32Volatile(long userPtr, int elementIndex, int fieldIndex) {
+    public static float getFloatVolatile(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getFloat32Volatile(generic, userPtr, elementIndex, fieldIndex);
+        return getFloatVolatile(generic, userPtr, elementIndex, fieldIndex);
     }
 
-    public static float getFloat32Volatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
+    public static float getFloatVolatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getFloatVolatile(userPtr + (long) elementIndex * stride + offset);
     }
 
-    public static boolean compareAndSetFloat32(long userPtr, int elementIndex, int fieldIndex, float expected, float value) {
+    public static boolean compareAndSetFloat(long userPtr, int elementIndex, int fieldIndex, float expected, float value) {
         int generic = getStructIdFromPointer(userPtr);
-        return compareAndSetFloat32(generic, userPtr, elementIndex, fieldIndex, expected, value);
+        return compareAndSetFloat(generic, userPtr, elementIndex, fieldIndex, expected, value);
     }
 
-    public static boolean compareAndSetFloat32(int generic, long userPtr, int elementIndex, int fieldIndex, float expected, float value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
+    public static boolean compareAndSetFloat(int generic, long userPtr, int elementIndex, int fieldIndex, float expected, float value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.compareAndSetFloat(userPtr + (long) elementIndex * stride + offset, expected, value);
     }
 
-    public static void setFloat64Volatile(long userPtr, int elementIndex, int fieldIndex, double value) {
+    public static void setDoubleVolatile(long userPtr, int elementIndex, int fieldIndex, double value) {
         int generic = getStructIdFromPointer(userPtr);
-        setFloat64Volatile(generic, userPtr, elementIndex, fieldIndex, value);
+        setDoubleVolatile(generic, userPtr, elementIndex, fieldIndex, value);
     }
 
-    public static void setFloat64Volatile(int generic, long userPtr, int elementIndex, int fieldIndex, double value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
+    public static void setDoubleVolatile(int generic, long userPtr, int elementIndex, int fieldIndex, double value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putDoubleVolatile(userPtr + (long) elementIndex * stride + offset, value);
     }
 
-    public static double getFloat64Volatile(long userPtr, int elementIndex, int fieldIndex) {
+    public static double getDoubleVolatile(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
-        return getFloat64Volatile(generic, userPtr, elementIndex, fieldIndex);
+        return getDoubleVolatile(generic, userPtr, elementIndex, fieldIndex);
     }
 
-    public static double getFloat64Volatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
+    public static double getDoubleVolatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getDoubleVolatile(userPtr + (long) elementIndex * stride + offset);
     }
 
-    public static boolean compareAndSetFloat64(long userPtr, int elementIndex, int fieldIndex, double expected, double value) {
+    public static boolean compareAndSetDouble(long userPtr, int elementIndex, int fieldIndex, double expected, double value) {
         int generic = getStructIdFromPointer(userPtr);
-        return compareAndSetFloat64(generic, userPtr, elementIndex, fieldIndex, expected, value);
+        return compareAndSetDouble(generic, userPtr, elementIndex, fieldIndex, expected, value);
     }
 
-    public static boolean compareAndSetFloat64(int generic, long userPtr, int elementIndex, int fieldIndex, double expected, double value) {
-        checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
+    public static boolean compareAndSetDouble(int generic, long userPtr, int elementIndex, int fieldIndex, double expected, double value) {
+        checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.compareAndSetDouble(userPtr + (long) elementIndex * stride + offset, expected, value);
