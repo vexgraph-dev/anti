@@ -11,9 +11,12 @@ public class TypeRegister {
     public static final int MASK_FORM        = 0xFF000000; // -16777216
     public static final int MASK_CLASS       = 0x00FFFFFF; // 16777215
 
+
     public static final int FORM_SINGLETON   = 0xAA000000; // -1442840576
     public static final int FORM_ARRAY       = 0xBB000000; // -1157627904
     public static final int FORM_POINTER     = 0xCC000000; // -872415232
+
+    public static final int CUSTOM_STRUCT     = 0x00110000; // custom struct
 
     // --- RAW CLASS IDS (Lower 24 bits) ---
     public static final int ID_INT32      = 0x000001; // Int32 class // 1
