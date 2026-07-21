@@ -88,6 +88,33 @@ public final class Stack {
         return userPtr;
     }
 
+    // allocate stack with pre-allocated items/slots initialized to size count
+    public static synchronized long allocate(int generic, int count) {
+        checkActive();
+        if (count < 0) throw new IllegalArgumentException("Count must be non-negative!");
+        int stride = Stride.get(generic);
+        int cap = Math.max(DEFAULT_CAPACITY, count);
+
+        long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
+        long userPtr = headerBlock + 8L;
+
+        ForeignMemory.putInt(headerBlock, TYPE_STACK);
+        ForeignMemory.putInt(headerBlock + 4L, count); // activeCount/size is set to count
+
+        ForeignMemory.putInt(userPtr, generic);
+        ForeignMemory.putInt(userPtr + 4L, stride);
+        ForeignMemory.putInt(userPtr + 8L, cap);
+        ForeignMemory.putInt(userPtr + 12L, 0); // padding
+
+        long bufferBytes = (long) cap * stride;
+        long alignedBytes = (bufferBytes + 7L) & ~7L;
+        long dataBuffer = ForeignMemory.allocateNative(alignedBytes);
+        ForeignMemory.setMemory(dataBuffer, alignedBytes, (byte) 0);
+        ForeignMemory.putLong(userPtr + 16L, dataBuffer);
+
+        return userPtr;
+    }
+
     private static long readSlot(long slot, int stride) {
         if (stride == 1) return ForeignMemory.getByte(slot) & 0xFF;
         if (stride == 2) return ForeignMemory.getShort(slot) & 0xFFFF;
@@ -162,6 +189,18 @@ public final class Stack {
         int targetIndex = count - 1;
         long targetSlot = dataBuffer + ((long) targetIndex * stride);
         return readSlot(targetSlot, stride);
+    }
+
+    // get pointer to struct element at index
+    public static synchronized long getStruct(long stackPtr, int index) {
+        if (stackPtr == 0L) throw new NullPointerException("Accessing NULL off-heap stack pointer!");
+        int len = size(stackPtr);
+        if (index < 0 || index >= len) {
+            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for stack size " + len);
+        }
+        int stride = stride(stackPtr);
+        long dataBuffer = dataBuffer(stackPtr);
+        return dataBuffer + (long) index * stride;
     }
 
     public static boolean isEmpty(long stackPtr) {
