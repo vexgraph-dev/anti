@@ -18,6 +18,9 @@ public final class IndexRandom {
     @Required
     public static final int CLASS_ID = TypeRegister.ID_INDEX_RANDOM;
 
+    // 64-bit golden ratio fractional constant (Weyl sequence step) for balanced/even dispersion
+    private static final long GOLDEN_RATIO_64 = 0x9e3779b97f4a7c15L;
+
     private IndexRandom() {}
 
     public static int classId() {
@@ -25,7 +28,7 @@ public final class IndexRandom {
     }
 
     private static long deterministicHash(long seed, long ptr, int index) {
-        long mixed = seed ^ ptr ^ ((long) index * 0x9e3779b97f4a7c15L);
+        long mixed = seed ^ ptr ^ ((long) index * GOLDEN_RATIO_64);
         return util.Hash.murmur3Mix64(mixed);
     }
 
@@ -83,7 +86,8 @@ public final class IndexRandom {
 
     @Draft
     public static double nextFractalDouble(long ptr, int index) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L)
+            throw new NullPointerException("Accessing NULL off-heap pointer!");
         long seed = ForeignMemory.getLong(ptr);
         double value = 0.0;
         double amplitude = 1.0;

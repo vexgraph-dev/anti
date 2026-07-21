@@ -17,6 +17,9 @@ public final class Random {
     @Required
     public static final int CLASS_ID = TypeRegister.ID_RANDOM;
 
+    // 64-bit golden ratio fractional constant (Weyl sequence step) for balanced/even dispersion
+    private static final long GOLDEN_RATIO_64 = 0x9e3779b97f4a7c15L;
+
     private Random() {}
 
     public static int classId() {
@@ -75,7 +78,7 @@ public final class Random {
         int currentInteger = ForeignMemory.getInt(ptr + 8L);
 
         // Advance seed/state using chaotic Murmur3 mix and sequence index
-        long mixed = seed ^ ptr ^ ((long) currentInteger * 0x9e3779b97f4a7c15L);
+        long mixed = seed ^ ptr ^ ((long) currentInteger * GOLDEN_RATIO_64);
         long result = util.Hash.murmur3Mix64(mixed);
 
         // Commit updated state back to off-heap memory
