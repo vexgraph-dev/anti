@@ -51,7 +51,12 @@ public final class Stride {
                  TypeRegister.ID_TRIE,
                  TypeRegister.ID_SEARCH_VARIABLE,
                  TypeRegister.ID_INDEX_RANDOM,
-                 TypeRegister.ID_CALENDAR -> 8; // pointer sizes
+                 TypeRegister.ID_CALENDAR,
+                 TypeRegister.ID_GRID_ARRAY,
+                 TypeRegister.ID_OCTREE,
+                 TypeRegister.ID_CUBE_ARRAY,
+                 TypeRegister.ID_SPHERE_ARRAY,
+                 TypeRegister.ID_CIRCULAR_ARRAY -> 8; // pointer sizes
             default                         -> 8;
         };
     }

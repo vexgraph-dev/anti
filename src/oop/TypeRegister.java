@@ -51,6 +51,11 @@ public class TypeRegister {
     public static final int ID_CLOCK            = 0x000021; // Clock class // 33
     public static final int ID_DATETIME         = 0x000022; // DateTime class // 34
     public static final int ID_NANOTIME         = 0x000023; // NanoTime class // 35
+    public static final int ID_GRID_ARRAY       = 0x000024; // GridArray class // 36
+    public static final int ID_OCTREE           = 0x000025; // Octree class // 37
+    public static final int ID_CUBE_ARRAY       = 0x000026; // CubeArray class // 38
+    public static final int ID_SPHERE_ARRAY     = 0x000027; // SphereArray class // 39
+    public static final int ID_CIRCULAR_ARRAY   = 0x000028; // CircularArray class // 40
 
 
 
