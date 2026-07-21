@@ -259,6 +259,17 @@ public final class Variable {
         return ForeignMemory.getLong(baseAddress + (varId * SLOT_SIZE) + 40L);
     }
 
+    public static long getPointerAddress(int varId) {
+        checkBounds(varId);
+        return baseAddress + (varId * SLOT_SIZE) + 40L;
+    }
+
+    public static boolean compareAndSetPointer(int varId, long expectedPointer, long newPointer) {
+        checkBounds(varId);
+        long addr = baseAddress + (varId * SLOT_SIZE) + 40L;
+        return ForeignMemory.compareAndSetLong(addr, expectedPointer, newPointer);
+    }
+
     public static int getClassId(int varId) {
         checkBounds(varId);
         return ForeignMemory.getInt(baseAddress + (varId * SLOT_SIZE) + 32L);
