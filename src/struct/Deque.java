@@ -89,6 +89,33 @@ public final class Deque {
         return userPtr;
     }
 
+    // allocate deque with pre-allocated items/slots initialized to size count
+    public static synchronized long allocate(int generic, int count) {
+        checkActive();
+        if (count < 0) throw new IllegalArgumentException("Count must be non-negative!");
+        int stride = Stride.get(generic);
+        int cap = Math.max(DEFAULT_CAPACITY, count);
+
+        long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
+        long userPtr = headerBlock + 8L;
+
+        ForeignMemory.putInt(headerBlock, TYPE_DEQUE);
+        ForeignMemory.putInt(headerBlock + 4L, count); // activeCount/size is set to count
+
+        ForeignMemory.putInt(userPtr, generic);
+        ForeignMemory.putInt(userPtr + 4L, stride);
+        ForeignMemory.putInt(userPtr + 8L, cap);
+        ForeignMemory.putInt(userPtr + 12L, 0); // head index
+
+        long bufferBytes = (long) cap * stride;
+        long alignedBytes = (bufferBytes + 7L) & ~7L;
+        long dataBuffer = ForeignMemory.allocateNative(alignedBytes);
+        ForeignMemory.setMemory(dataBuffer, alignedBytes, (byte) 0);
+        ForeignMemory.putLong(userPtr + 16L, dataBuffer);
+
+        return userPtr;
+    }
+
     private static void ensureCapacity(long dequePtr) {
         int count = size(dequePtr);
         int cap = capacity(dequePtr);
@@ -251,6 +278,17 @@ public final class Deque {
         int targetIndex = (head + index) % cap;
         long slot = dataBuffer + ((long) targetIndex * stride);
         return readSlot(slot, stride);
+    }
+
+    // get pointer to struct element at logical index from the front
+    public static synchronized long getStruct(long dequePtr, int index) {
+        checkBounds(dequePtr, index);
+        int cap = capacity(dequePtr);
+        int stride = stride(dequePtr);
+        long dataBuffer = dataBuffer(dequePtr);
+        int head = head(dequePtr);
+        int targetIndex = (head + index) % cap;
+        return dataBuffer + (long) targetIndex * stride;
     }
 
     public static boolean isEmpty(long dequePtr) {
