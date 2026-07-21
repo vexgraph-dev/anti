@@ -2,7 +2,6 @@ package primitive;
 
 import annotation.Required;
 import nio.ForeignMemory;
-import nio.MemoryRegistry;
 import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
@@ -62,7 +61,6 @@ public final class Int32Fp32 {
         poolArena = Arena.ofShared();
         active = true;
 
-        MemoryRegistry.register(Int32Fp32::freeAll);
 
         expandSingletonPool();
         expandArrayPool();
