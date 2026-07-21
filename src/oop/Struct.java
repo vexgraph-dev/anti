@@ -175,12 +175,60 @@ public final class Struct {
         return userPtr;
     }
 
-    // free a struct singleton or array
+    // Level 3: Allocate a pointer array (Matrix) of custom structs (FORM_POINTER | generic)
+    public static long allocateMatrix(int generic, int length) {
+        int stride = getStride(generic);
+        if (stride == 0) throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
+        if (length <= 0) throw new IllegalArgumentException("Matrix length must be positive!");
+
+        long bufferBytes = (long) length * 8L;
+        long block = ForeignMemory.allocateNative(8L + bufferBytes);
+        long userPtr = block + 8L;
+
+        // Write header: type (FORM_POINTER | generic), length (length)
+        ForeignMemory.putInt(block, TypeRegister.FORM_POINTER | generic);
+        ForeignMemory.putInt(block + 4L, length);
+
+        // Zero-initialize pointers
+        ForeignMemory.setMemory(userPtr, bufferBytes, (byte) 0);
+
+        return userPtr;
+    }
+
+    // get pointer at index in struct pointer array (matrix)
+    public static long getPointer(long userPtr, int index) {
+        if (userPtr == 0L) throw new NullPointerException("Accessing NULL off-heap struct matrix pointer!");
+        int type = ForeignMemory.getInt(userPtr - 8L);
+        if (!TypeRegister.isPointer(type)) {
+            throw new IllegalArgumentException("Expected pointer array (matrix) form but found 0x" + Integer.toHexString(type).toUpperCase());
+        }
+        int length = ForeignMemory.getInt(userPtr - 4L);
+        if (index < 0 || index >= length) {
+            throw new IndexOutOfBoundsException("Matrix index " + index + " out of bounds (length: " + length + ")");
+        }
+        return ForeignMemory.getLong(userPtr + (long) index * 8L);
+    }
+
+    // set pointer at index in struct pointer array (matrix)
+    public static void setPointer(long userPtr, int index, long targetPointer) {
+        if (userPtr == 0L) throw new NullPointerException("Accessing NULL off-heap struct matrix pointer!");
+        int type = ForeignMemory.getInt(userPtr - 8L);
+        if (!TypeRegister.isPointer(type)) {
+            throw new IllegalArgumentException("Expected pointer array (matrix) form but found 0x" + Integer.toHexString(type).toUpperCase());
+        }
+        int length = ForeignMemory.getInt(userPtr - 4L);
+        if (index < 0 || index >= length) {
+            throw new IndexOutOfBoundsException("Matrix index " + index + " out of bounds (length: " + length + ")");
+        }
+        ForeignMemory.putLong(userPtr + (long) index * 8L, targetPointer);
+    }
+
+    // free a struct singleton, array, or pointer array (matrix)
     public static void free(long userPtr) {
         if (userPtr == 0L) return;
         long block = userPtr - 8L;
         int type = ForeignMemory.getInt(block);
-        if (type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type))) {
+        if (type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) {
             throw new IllegalStateException("Double free or corrupt struct pointer: 0x" + Long.toHexString(userPtr).toUpperCase());
         }
         ForeignMemory.putInt(block, 0);
