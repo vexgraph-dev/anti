@@ -273,6 +273,39 @@ public final class string {
         return ForeignMemory.getString(pointer);
     }
 
+    public static long getVolatile(long pointerAddress) {
+        checkActive();
+        if (pointerAddress == 0L) return 0L;
+        return ForeignMemory.getLongVolatile(pointerAddress);
+    }
+
+    public static void setVolatile(long pointerAddress, long stringPointer) {
+        checkActive();
+        if (pointerAddress == 0L) throw new NullPointerException("Writing to NULL pointer address!");
+        ForeignMemory.putLongVolatile(pointerAddress, stringPointer);
+    }
+
+    public static boolean compareAndSet(long pointerAddress, long expectedStringPointer, long newStringPointer) {
+        checkActive();
+        if (pointerAddress == 0L) throw new NullPointerException("Writing to NULL pointer address!");
+        return ForeignMemory.compareAndSetLong(pointerAddress, expectedStringPointer, newStringPointer);
+    }
+
+    public static boolean compareAndSetString(long pointerAddress, long expectedStringPointer, String newStringValue) {
+        checkActive();
+        if (pointerAddress == 0L) throw new NullPointerException("Writing to NULL pointer address!");
+        long newStringPointer = allocate(newStringValue);
+        if (ForeignMemory.compareAndSetLong(pointerAddress, expectedStringPointer, newStringPointer)) {
+            if (expectedStringPointer != 0L) {
+                free(expectedStringPointer);
+            }
+            return true;
+        } else {
+            free(newStringPointer);
+            return false;
+        }
+    }
+
     public static char[] getChars(long pointer) {
         checkActive();
         if (pointer == 0L) return null;
