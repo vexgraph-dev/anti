@@ -8,14 +8,14 @@ import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-public final class Int64Fp64 {
+public final class LongDouble {
 
     @Required
-    public static final int CLASS_ID = TypeRegister.ID_INT64_FP64;
+    public static final int CLASS_ID = TypeRegister.ID_LONG_DOUBLE;
 
-    public static final int TYPE_SINGLETON = TypeRegister.INT64_FP64_SINGLETON; // 0xAA00000B
-    public static final int TYPE_ARRAY     = TypeRegister.INT64_FP64_ARRAY;     // 0xBB00000B
-    public static final int TYPE_MATRIX    = TypeRegister.INT64_FP64_POINTER;   // 0xCC00000B
+    public static final int TYPE_SINGLETON = TypeRegister.LONG_DOUBLE_SINGLETON; // 0xAA00000B
+    public static final int TYPE_ARRAY     = TypeRegister.LONG_DOUBLE_ARRAY;     // 0xBB00000B
+    public static final int TYPE_MATRIX    = TypeRegister.LONG_DOUBLE_POINTER;   // 0xCC00000B
 
     private static final int DEFAULT_CAPACITY = 1024;
 
@@ -47,13 +47,13 @@ public final class Int64Fp64 {
     static {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
-            SINGLETON_FREE_HEAD_VH = lookup.findStaticVarHandle(Int64Fp64.class, "singletonFreeHead", long.class);
-            ARRAY_FREE_HEAD_VH = lookup.findStaticVarHandle(Int64Fp64.class, "arrayFreeHead", long.class);
-            MATRIX_FREE_HEAD_VH = lookup.findStaticVarHandle(Int64Fp64.class, "matrixFreeHead", long.class);
+            SINGLETON_FREE_HEAD_VH = lookup.findStaticVarHandle(LongDouble.class, "singletonFreeHead", long.class);
+            ARRAY_FREE_HEAD_VH = lookup.findStaticVarHandle(LongDouble.class, "arrayFreeHead", long.class);
+            MATRIX_FREE_HEAD_VH = lookup.findStaticVarHandle(LongDouble.class, "matrixFreeHead", long.class);
 
-            SINGLETON_EXPANDING_VH = lookup.findStaticVarHandle(Int64Fp64.class, "singletonExpanding", int.class);
-            ARRAY_EXPANDING_VH = lookup.findStaticVarHandle(Int64Fp64.class, "arrayExpanding", int.class);
-            MATRIX_EXPANDING_VH = lookup.findStaticVarHandle(Int64Fp64.class, "matrixExpanding", int.class);
+            SINGLETON_EXPANDING_VH = lookup.findStaticVarHandle(LongDouble.class, "singletonExpanding", int.class);
+            ARRAY_EXPANDING_VH = lookup.findStaticVarHandle(LongDouble.class, "arrayExpanding", int.class);
+            MATRIX_EXPANDING_VH = lookup.findStaticVarHandle(LongDouble.class, "matrixExpanding", int.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -67,10 +67,10 @@ public final class Int64Fp64 {
         expandMatrixPool();
     }
 
-    private Int64Fp64() {}
+    private LongDouble() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("Int64Fp64 subsystem is not active!");
+        if (!active) throw new IllegalStateException("LongDouble subsystem is not active!");
     }
 
     public static void freeAll() {
@@ -289,7 +289,7 @@ public final class Int64Fp64 {
 
         int type = type(pointer);
         if (type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) {
-            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
         }
 
         int length = length(pointer);
@@ -412,7 +412,7 @@ public final class Int64Fp64 {
         if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
         int len = length(pointer);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap Int64Fp64 length " + len + " (Ptr: 0x" + Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap LongDouble length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
         }
     }
 
