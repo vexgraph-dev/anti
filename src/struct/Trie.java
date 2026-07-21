@@ -4,7 +4,6 @@ import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import nio.ForeignMemory;
-import nio.MemoryRegistry;
 import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
@@ -30,7 +29,6 @@ public final class Trie {
     static {
         poolArena = Arena.ofShared();
         active = true;
-        MemoryRegistry.register(Trie::freeAll);
     }
 
     private Trie() {}
