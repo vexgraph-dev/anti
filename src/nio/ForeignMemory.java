@@ -33,6 +33,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.VarHandle;
 
 public class ForeignMemory
 {
@@ -40,6 +41,13 @@ public class ForeignMemory
     // literally c flavored hell java version
     // good luck myself
     private static final MemorySegment GLOBAL_MEMORY = MemorySegment.ofAddress(0).reinterpret(Long.MAX_VALUE);
+
+    private static final VarHandle BYTE_VH = ValueLayout.JAVA_BYTE.varHandle();
+    private static final VarHandle SHORT_VH = ValueLayout.JAVA_SHORT.varHandle();
+    private static final VarHandle INT_VH = ValueLayout.JAVA_INT.varHandle();
+    private static final VarHandle LONG_VH = ValueLayout.JAVA_LONG.varHandle();
+    private static final VarHandle FLOAT_VH = ValueLayout.JAVA_FLOAT.varHandle();
+    private static final VarHandle DOUBLE_VH = ValueLayout.JAVA_DOUBLE.varHandle();
 
     private static final MethodHandle MALLOC_HANDLE;
     private static final MethodHandle FREE_HANDLE;
@@ -240,6 +248,90 @@ public class ForeignMemory
     public static MemorySegment wrap(long address, long byteSize, Arena arena)
     {
         return MemorySegment.ofAddress(address).reinterpret(byteSize, arena, null);
+    }
+
+    // =========================================================================
+    // ATOMIC & VOLATILE DEREFERENCING METHODS (VarHandles)
+    // =========================================================================
+
+    public static byte getByteVolatile(long address) {
+        return (byte) BYTE_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    public static void putByteVolatile(long address, byte value) {
+        BYTE_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    public static boolean compareAndSetByte(long address, byte expected, byte value) {
+        return (boolean) BYTE_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
+    }
+
+    public static short getShortVolatile(long address) {
+        return (short) SHORT_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    public static void putShortVolatile(long address, short value) {
+        SHORT_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    public static boolean compareAndSetShort(long address, short expected, short value) {
+        return (boolean) SHORT_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
+    }
+
+    public static int getIntVolatile(long address) {
+        return (int) INT_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    public static void putIntVolatile(long address, int value) {
+        INT_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    public static boolean compareAndSetInt(long address, int expected, int value) {
+        return (boolean) INT_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
+    }
+
+    public static int getAndSetInt(long address, int value) {
+        return (int) INT_VH.getAndSet(GLOBAL_MEMORY, address, value);
+    }
+
+    public static long getLongVolatile(long address) {
+        return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    public static void putLongVolatile(long address, long value) {
+        LONG_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    public static boolean compareAndSetLong(long address, long expected, long value) {
+        return (boolean) LONG_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
+    }
+
+    public static long getAndSetLong(long address, long value) {
+        return (long) LONG_VH.getAndSet(GLOBAL_MEMORY, address, value);
+    }
+
+    public static float getFloatVolatile(long address) {
+        return (float) FLOAT_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    public static void putFloatVolatile(long address, float value) {
+        FLOAT_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    public static boolean compareAndSetFloat(long address, float expected, float value) {
+        return (boolean) FLOAT_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
+    }
+
+    public static double getDoubleVolatile(long address) {
+        return (double) DOUBLE_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    public static void putDoubleVolatile(long address, double value) {
+        DOUBLE_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    public static boolean compareAndSetDouble(long address, double expected, double value) {
+        return (boolean) DOUBLE_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
     }
 
     // nuclear, dangerous
