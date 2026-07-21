@@ -8,14 +8,14 @@ import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-public final class Int32Fp32 {
+public final class IntFloat {
 
     @Required
-    public static final int CLASS_ID = TypeRegister.ID_INT32_FP32;
+    public static final int CLASS_ID = TypeRegister.ID_INT_FLOAT;
 
-    public static final int TYPE_SINGLETON = TypeRegister.INT32_FP32_SINGLETON; // 0xAA000008
-    public static final int TYPE_ARRAY     = TypeRegister.INT32_FP32_ARRAY;     // 0xBB000008
-    public static final int TYPE_MATRIX    = TypeRegister.INT32_FP32_POINTER;   // 0xCC000008
+    public static final int TYPE_SINGLETON = TypeRegister.INT_FLOAT_SINGLETON; // 0xAA000008
+    public static final int TYPE_ARRAY     = TypeRegister.INT_FLOAT_ARRAY;     // 0xBB000008
+    public static final int TYPE_MATRIX    = TypeRegister.INT_FLOAT_POINTER;   // 0xCC000008
 
     private static final int DEFAULT_CAPACITY = 1024;
 
@@ -47,13 +47,13 @@ public final class Int32Fp32 {
     static {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
-            SINGLETON_FREE_HEAD_VH = lookup.findStaticVarHandle(Int32Fp32.class, "singletonFreeHead", long.class);
-            ARRAY_FREE_HEAD_VH = lookup.findStaticVarHandle(Int32Fp32.class, "arrayFreeHead", long.class);
-            MATRIX_FREE_HEAD_VH = lookup.findStaticVarHandle(Int32Fp32.class, "matrixFreeHead", long.class);
+            SINGLETON_FREE_HEAD_VH = lookup.findStaticVarHandle(IntFloat.class, "singletonFreeHead", long.class);
+            ARRAY_FREE_HEAD_VH = lookup.findStaticVarHandle(IntFloat.class, "arrayFreeHead", long.class);
+            MATRIX_FREE_HEAD_VH = lookup.findStaticVarHandle(IntFloat.class, "matrixFreeHead", long.class);
 
-            SINGLETON_EXPANDING_VH = lookup.findStaticVarHandle(Int32Fp32.class, "singletonExpanding", int.class);
-            ARRAY_EXPANDING_VH = lookup.findStaticVarHandle(Int32Fp32.class, "arrayExpanding", int.class);
-            MATRIX_EXPANDING_VH = lookup.findStaticVarHandle(Int32Fp32.class, "matrixExpanding", int.class);
+            SINGLETON_EXPANDING_VH = lookup.findStaticVarHandle(IntFloat.class, "singletonExpanding", int.class);
+            ARRAY_EXPANDING_VH = lookup.findStaticVarHandle(IntFloat.class, "arrayExpanding", int.class);
+            MATRIX_EXPANDING_VH = lookup.findStaticVarHandle(IntFloat.class, "matrixExpanding", int.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -67,10 +67,10 @@ public final class Int32Fp32 {
         expandMatrixPool();
     }
 
-    private Int32Fp32() {}
+    private IntFloat() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("Int32Fp32 subsystem is not active!");
+        if (!active) throw new IllegalStateException("IntFloat subsystem is not active!");
     }
 
     public static void freeAll() {
@@ -289,7 +289,7 @@ public final class Int32Fp32 {
 
         int type = type(pointer);
         if (type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) {
-            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
         }
 
         int length = length(pointer);
@@ -412,7 +412,7 @@ public final class Int32Fp32 {
         if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
         int len = length(pointer);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap Int32Fp32 length " + len + " (Ptr: 0x" + Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap IntFloat length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
         }
     }
 
