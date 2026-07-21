@@ -6,7 +6,6 @@ import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import nio.ForeignMemory;
-import nio.MemoryRegistry;
 import oop.TypeRegister;
 import struct.List;
 
@@ -34,7 +33,6 @@ public final class CircularArray {
     static {
         poolArena = Arena.ofShared();
         active = true;
-        MemoryRegistry.register(CircularArray::freeAll);
     }
 
     private CircularArray() {}
