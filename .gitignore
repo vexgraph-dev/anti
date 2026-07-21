@@ -38,9 +38,9 @@ ScratchTest.java
 src/ScratchTest.java
 **/ScratchTest.java
 FileCompiler.java
+LOCounter.java
 
 ### Private / Regurgitation Files ###
-regurgitation/
 regurgitation/
 code.txt
 *.regurgitation
