@@ -16,6 +16,7 @@ import primitive.string;
 import relational.Variable;
 import relational.SearchVariable;
 import struct.List;
+import struct.Array;
 import struct.Deque;
 import struct.Stack;
 import struct.Map;
@@ -262,6 +263,7 @@ public class ForeignMemory
         Variable.freeAllClasses();
         SearchVariable.freeAll();
         List.freeAll();
+        Array.freeAll();
         Deque.freeAll();
         Stack.freeAll();
         Map.freeAll();
