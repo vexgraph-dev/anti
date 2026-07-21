@@ -24,7 +24,7 @@ public final class GridArray {
 
     public static final int TYPE_GRID_ARRAY = TypeRegister.FORM_ARRAY | CLASS_ID; // 0xBB000024
 
-    private static final long HEADER_SIZE = 32L; // 8B metadata header + 24B slot layout
+    private static final long HEADER_SIZE = 40L; // 8B metadata header + 32B slot layout
 
     private static Arena poolArena;
     private static volatile boolean active;
