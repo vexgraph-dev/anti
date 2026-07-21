@@ -45,6 +45,8 @@ public class TypeRegister {
     public static final int ID_MEMORY_MAP_MANAGER = 0x00001B; // MemoryMapManager class // 27
     public static final int ID_TRIE            = 0x00001C; // Trie class // 28
     public static final int ID_SEARCH_VARIABLE  = 0x00001D; // SearchVariable class // 29
+    public static final int ID_RANDOM           = 0x00001E; // Random class // 30
+    public static final int ID_INDEX_RANDOM     = 0x00001F; // IndexRandom class // 31
 
 
 
@@ -110,6 +112,10 @@ public class TypeRegister {
     public static final int VARIABLE_SINGLETON = FORM_SINGLETON | ID_VARIABLE; // 0xAA00000C // -1442840564
     public static final int VARIABLE_ARRAY     = FORM_ARRAY     | ID_VARIABLE; // 0xBB00000C // -1157627892
     public static final int VARIABLE_POINTER   = FORM_POINTER   | ID_VARIABLE; // 0xCC00000C // -872415220
+
+    // Random class
+    public static final int RANDOM_SINGLETON = FORM_SINGLETON | ID_RANDOM; // 0xAA00001E
+    public static final int INDEX_RANDOM_SINGLETON = FORM_SINGLETON | ID_INDEX_RANDOM; // 0xAA00001F
 
     // --- HELPER BITWISE METHODS ---
     public static boolean isSingleton(int typeId) {
