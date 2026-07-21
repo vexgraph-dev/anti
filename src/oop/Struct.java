@@ -41,10 +41,10 @@ public final class Struct {
         ForeignMemory.freeNative(REGISTRY_BASE);
     }
 
-    private static int nextStructId = 1000;
+    private static int nextStructId = 1;
 
     public static synchronized int construct(int... fieldClassIds) {
-        int id = nextStructId++;
+        int id = TypeRegister.CUSTOM_STRUCT + nextStructId++;
         define(id, fieldClassIds);
         return id;
     }
@@ -61,14 +61,15 @@ public final class Struct {
 
     // define a custom struct layout
     public static synchronized void define(int generic, int... fieldClassIds) {
-        if (generic < 0 || generic >= MAX_STRUCTS) {
-            throw new IllegalArgumentException("Struct ID " + generic + " must be between 0 and " + (MAX_STRUCTS - 1));
+        int index = generic - TypeRegister.CUSTOM_STRUCT;
+        if (index < 0 || index >= MAX_STRUCTS) {
+            throw new IllegalArgumentException("Struct ID " + generic + " must map to index between 0 and " + (MAX_STRUCTS - 1));
         }
         if (fieldClassIds == null || fieldClassIds.length == 0) {
             throw new IllegalArgumentException("Fields layout cannot be empty!");
         }
 
-        long slot = REGISTRY_BASE + (generic * SLOT_SIZE);
+        long slot = REGISTRY_BASE + (index * SLOT_SIZE);
 
         // Free previous if redefined
         long prevFieldTypesPtr = ForeignMemory.getLong(slot + 8L);
@@ -94,10 +95,11 @@ public final class Struct {
     }
 
     private static void checkFieldType(int generic, int fieldIndex, int expectedClassId) {
-        if (generic < 0 || generic >= MAX_STRUCTS) {
+        int index = generic - TypeRegister.CUSTOM_STRUCT;
+        if (index < 0 || index >= MAX_STRUCTS) {
             throw new IllegalArgumentException("Invalid Struct ID " + generic);
         }
-        long slot = REGISTRY_BASE + (generic * SLOT_SIZE);
+        long slot = REGISTRY_BASE + (index * SLOT_SIZE);
         int fieldsCount = ForeignMemory.getInt(slot + 4L);
         long fieldTypesPtr = ForeignMemory.getLong(slot + 8L);
 
@@ -120,16 +122,18 @@ public final class Struct {
     }
 
     private static int getOffset(int generic, int fieldIndex) {
-        long slot = REGISTRY_BASE + (generic * SLOT_SIZE);
+        int index = generic - TypeRegister.CUSTOM_STRUCT;
+        long slot = REGISTRY_BASE + (index * SLOT_SIZE);
         long offsetsPtr = ForeignMemory.getLong(slot + 16L);
         return ForeignMemory.getInt(offsetsPtr + fieldIndex * 4L);
     }
 
     private static int getStride(int generic) {
-        if (generic < 0 || generic >= MAX_STRUCTS) {
+        int index = generic - TypeRegister.CUSTOM_STRUCT;
+        if (index < 0 || index >= MAX_STRUCTS) {
             return 0;
         }
-        long slot = REGISTRY_BASE + (generic * SLOT_SIZE);
+        long slot = REGISTRY_BASE + (index * SLOT_SIZE);
         return ForeignMemory.getInt(slot);
     }
 
