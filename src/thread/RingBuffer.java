@@ -6,7 +6,6 @@ import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import nio.ForeignMemory;
-import nio.MemoryRegistry;
 import oop.Stride;
 import oop.TypeRegister;
 
@@ -40,7 +39,6 @@ public final class RingBuffer {
     static {
         poolArena = Arena.ofShared();
         active = true;
-        MemoryRegistry.register(RingBuffer::freeAll);
     }
 
     private RingBuffer() {}
