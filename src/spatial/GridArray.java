@@ -134,8 +134,8 @@ public final class GridArray {
         long listPtr = ForeignMemory.getLong(dataBuffer + cellOffset);
 
         if (listPtr == 0L) {
-            // Lazy initialization of the cell's off-heap List of Int64 pointers
-            listPtr = List.instant(TypeRegister.ID_INT64, 4);
+            // Lazy initialization of the cell's off-heap List of Long pointers
+            listPtr = List.instant(TypeRegister.ID_LONG, 4);
             ForeignMemory.putLong(dataBuffer + cellOffset, listPtr);
         }
 
