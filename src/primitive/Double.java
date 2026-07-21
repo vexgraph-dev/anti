@@ -11,14 +11,14 @@ import java.lang.invoke.VarHandle;
 public final class Double {
 
     @Required
-    public static final int CLASS_ID = TypeRegister.ID_FLOAT64;
+    public static final int CLASS_ID = TypeRegister.ID_DOUBLE;
 
     public static final double MAX_VALUE = java.lang.Double.MAX_VALUE;
     public static final double MIN_VALUE = java.lang.Double.MIN_VALUE;
 
-    public static final int TYPE_SINGLETON = TypeRegister.FLOAT64_SINGLETON; // 0xAA000004
-    public static final int TYPE_ARRAY     = TypeRegister.FLOAT64_ARRAY;     // 0xBB000004
-    public static final int TYPE_MATRIX    = TypeRegister.FLOAT64_POINTER;   // 0xCC000004
+    public static final int TYPE_SINGLETON = TypeRegister.DOUBLE_SINGLETON; // 0xAA000004
+    public static final int TYPE_ARRAY     = TypeRegister.DOUBLE_ARRAY;     // 0xBB000004
+    public static final int TYPE_MATRIX    = TypeRegister.DOUBLE_POINTER;   // 0xCC000004
 
     private static final int DEFAULT_CAPACITY = 1024;
 
@@ -292,7 +292,7 @@ public final class Double {
 
         int type = type(pointer);
         if (type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) {
-            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
         }
 
         int length = length(pointer);
@@ -408,7 +408,7 @@ public final class Double {
         if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
         int len = length(pointer);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap double length " + len + " (Ptr: 0x" + Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap double length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
         }
     }
 
