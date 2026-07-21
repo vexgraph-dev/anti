@@ -145,7 +145,7 @@ public final class CircularArray {
         long listPtr = ForeignMemory.getLong(dataBuffer + cellOffset);
 
         if (listPtr == 0L) {
-            listPtr = List.instant(TypeRegister.ID_INT64, 4);
+            listPtr = List.instant(TypeRegister.ID_LONG, 4);
             ForeignMemory.putLong(dataBuffer + cellOffset, listPtr);
         }
 
