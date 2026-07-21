@@ -41,7 +41,7 @@ public final class Struct {
         ForeignMemory.freeNative(REGISTRY_BASE);
     }
 
-    private static int nextStructId = 1;
+    private static int nextStructId = 1000;
 
     public static synchronized int construct(int... fieldClassIds) {
         int id = nextStructId++;
