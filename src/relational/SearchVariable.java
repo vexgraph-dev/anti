@@ -4,6 +4,7 @@ import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import oop.TypeRegister;
+import primitive.Long;
 import struct.Trie;
 
 import java.nio.charset.StandardCharsets;
@@ -136,11 +137,11 @@ public final class SearchVariable {
         for (byte b : prefixBytes) {
             if (!isValidChar(b)) return 0L;
         }
-        long listPtr = struct.List.instant(TypeRegister.ID_INT32);
+        long listPtr = struct.List.instant(TypeRegister.ID_INT);
         Trie.searchPrefix(trieRoot, prefixBytes, listPtr);
 
         // Filter out false positives caused by Trie index mapping collisions (e.g. digit folding)
-        long filteredList = struct.List.instant(TypeRegister.ID_INT32);
+        long filteredList = struct.List.instant(TypeRegister.ID_INT);
         int count = struct.List.size(listPtr);
         for (int i = 0; i < count; i++) {
             int varId = (int) struct.List.get(listPtr, i);
@@ -184,22 +185,22 @@ public final class SearchVariable {
             return new long[0];
         }
 
-        // Allocate off-heap Int64 array for pointer buffering
-        long tempArrayPtr = primitive.Int64.allocateArray(count);
+        // Allocate off-heap Long array for pointer buffering
+        long tempArrayPtr = Long.allocateArray(count);
         for (int i = 0; i < count; i++) {
             int varId = (int) struct.List.get(listPtr, i);
             long pointer = relational.Variable.getPointer(varId);
-            primitive.Int64.set(tempArrayPtr, i, pointer);
+            Long.set(tempArrayPtr, i, pointer);
         }
 
         // Copy to JVM on-heap array
         long[] result = new long[count];
         for (int i = 0; i < count; i++) {
-            result[i] = primitive.Int64.get(tempArrayPtr, i);
+            result[i] = Long.get(tempArrayPtr, i);
         }
 
         // Free off-heap temporary arrays and lists immediately
-        primitive.Int64.free(tempArrayPtr);
+        Long.free(tempArrayPtr);
         struct.List.free(listPtr);
 
         return result;
