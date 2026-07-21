@@ -5,12 +5,6 @@ import annotation.Intention;
 import annotation.Required;
 import annotation.Volatile;
 import nio.ForeignMemory;
-
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.lang.invoke.VarHandle;
-import nio.MemoryRegistry;
-
 /**
  * Off-heap generic dynamic struct layout manager.
  */
@@ -30,7 +24,6 @@ public final class Struct {
     static {
         REGISTRY_BASE = ForeignMemory.allocateNative(MAX_STRUCTS * SLOT_SIZE);
         ForeignMemory.setMemory(REGISTRY_BASE, MAX_STRUCTS * SLOT_SIZE, (byte) 0);
-        MemoryRegistry.register(Struct::freeAll);
     }
 
     public static void freeAll() {
@@ -46,6 +39,22 @@ public final class Struct {
             }
         }
         ForeignMemory.freeNative(REGISTRY_BASE);
+    }
+
+    private static int nextStructId = 1;
+
+    public static synchronized int construct(int... fieldClassIds) {
+        int id = nextStructId++;
+        define(id, fieldClassIds);
+        return id;
+    }
+
+    public static long instant(int generic) {
+        return allocateSingleton(generic);
+    }
+
+    public static long instant(int generic, int length) {
+        return allocateArray(generic, length);
     }
 
     private Struct() {}
@@ -179,8 +188,16 @@ public final class Struct {
     // FIELD MUTATORS & ACCESSORS (SINGLETON / LEVEL 1)
     // =========================================================================
 
+    // =========================================================================
+    // FIELD MUTATORS & ACCESSORS (SINGLETON / LEVEL 1)
+    // =========================================================================
+
     public static void setInt32(long userPtr, int fieldIndex, int value) {
         int generic = getStructIdFromPointer(userPtr);
+        setInt32(generic, userPtr, fieldIndex, value);
+    }
+
+    public static void setInt32(int generic, long userPtr, int fieldIndex, int value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putInt(userPtr + offset, value);
@@ -188,6 +205,10 @@ public final class Struct {
 
     public static int getInt32(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getInt32(generic, userPtr, fieldIndex);
+    }
+
+    public static int getInt32(int generic, long userPtr, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getInt(userPtr + offset);
@@ -195,6 +216,10 @@ public final class Struct {
 
     public static void setInt64(long userPtr, int fieldIndex, long value) {
         int generic = getStructIdFromPointer(userPtr);
+        setInt64(generic, userPtr, fieldIndex, value);
+    }
+
+    public static void setInt64(int generic, long userPtr, int fieldIndex, long value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putLong(userPtr + offset, value);
@@ -202,6 +227,10 @@ public final class Struct {
 
     public static long getInt64(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getInt64(generic, userPtr, fieldIndex);
+    }
+
+    public static long getInt64(int generic, long userPtr, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getLong(userPtr + offset);
@@ -209,6 +238,10 @@ public final class Struct {
 
     public static void setFloat32(long userPtr, int fieldIndex, float value) {
         int generic = getStructIdFromPointer(userPtr);
+        setFloat32(generic, userPtr, fieldIndex, value);
+    }
+
+    public static void setFloat32(int generic, long userPtr, int fieldIndex, float value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putFloat(userPtr + offset, value);
@@ -216,6 +249,10 @@ public final class Struct {
 
     public static float getFloat32(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getFloat32(generic, userPtr, fieldIndex);
+    }
+
+    public static float getFloat32(int generic, long userPtr, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getFloat(userPtr + offset);
@@ -223,6 +260,10 @@ public final class Struct {
 
     public static void setFloat64(long userPtr, int fieldIndex, double value) {
         int generic = getStructIdFromPointer(userPtr);
+        setFloat64(generic, userPtr, fieldIndex, value);
+    }
+
+    public static void setFloat64(int generic, long userPtr, int fieldIndex, double value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putDouble(userPtr + offset, value);
@@ -230,6 +271,10 @@ public final class Struct {
 
     public static double getFloat64(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getFloat64(generic, userPtr, fieldIndex);
+    }
+
+    public static double getFloat64(int generic, long userPtr, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getDouble(userPtr + offset);
@@ -237,6 +282,10 @@ public final class Struct {
 
     public static void setByte(long userPtr, int fieldIndex, byte value) {
         int generic = getStructIdFromPointer(userPtr);
+        setByte(generic, userPtr, fieldIndex, value);
+    }
+
+    public static void setByte(int generic, long userPtr, int fieldIndex, byte value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_BYTE);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putByte(userPtr + offset, value);
@@ -244,6 +293,10 @@ public final class Struct {
 
     public static byte getByte(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getByte(generic, userPtr, fieldIndex);
+    }
+
+    public static byte getByte(int generic, long userPtr, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_BYTE);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getByte(userPtr + offset);
@@ -251,6 +304,10 @@ public final class Struct {
 
     public static void setShort(long userPtr, int fieldIndex, short value) {
         int generic = getStructIdFromPointer(userPtr);
+        setShort(generic, userPtr, fieldIndex, value);
+    }
+
+    public static void setShort(int generic, long userPtr, int fieldIndex, short value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_SHORT);
         int offset = getOffset(generic, fieldIndex);
         ForeignMemory.putShort(userPtr + offset, value);
@@ -258,6 +315,10 @@ public final class Struct {
 
     public static short getShort(long userPtr, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getShort(generic, userPtr, fieldIndex);
+    }
+
+    public static short getShort(int generic, long userPtr, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_SHORT);
         int offset = getOffset(generic, fieldIndex);
         return ForeignMemory.getShort(userPtr + offset);
@@ -269,6 +330,10 @@ public final class Struct {
 
     public static void setInt32(long userPtr, int elementIndex, int fieldIndex, int value) {
         int generic = getStructIdFromPointer(userPtr);
+        setInt32(generic, userPtr, elementIndex, fieldIndex, value);
+    }
+
+    public static void setInt32(int generic, long userPtr, int elementIndex, int fieldIndex, int value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
@@ -277,6 +342,10 @@ public final class Struct {
 
     public static int getInt32(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getInt32(generic, userPtr, elementIndex, fieldIndex);
+    }
+
+    public static int getInt32(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT32);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
@@ -285,6 +354,10 @@ public final class Struct {
 
     public static void setInt64(long userPtr, int elementIndex, int fieldIndex, long value) {
         int generic = getStructIdFromPointer(userPtr);
+        setInt64(generic, userPtr, elementIndex, fieldIndex, value);
+    }
+
+    public static void setInt64(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
@@ -293,6 +366,10 @@ public final class Struct {
 
     public static long getInt64(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getInt64(generic, userPtr, elementIndex, fieldIndex);
+    }
+
+    public static long getInt64(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT64);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
@@ -301,6 +378,10 @@ public final class Struct {
 
     public static void setFloat32(long userPtr, int elementIndex, int fieldIndex, float value) {
         int generic = getStructIdFromPointer(userPtr);
+        setFloat32(generic, userPtr, elementIndex, fieldIndex, value);
+    }
+
+    public static void setFloat32(int generic, long userPtr, int elementIndex, int fieldIndex, float value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
@@ -309,6 +390,10 @@ public final class Struct {
 
     public static float getFloat32(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getFloat32(generic, userPtr, elementIndex, fieldIndex);
+    }
+
+    public static float getFloat32(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT32);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
@@ -317,6 +402,10 @@ public final class Struct {
 
     public static void setFloat64(long userPtr, int elementIndex, int fieldIndex, double value) {
         int generic = getStructIdFromPointer(userPtr);
+        setFloat64(generic, userPtr, elementIndex, fieldIndex, value);
+    }
+
+    public static void setFloat64(int generic, long userPtr, int elementIndex, int fieldIndex, double value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
@@ -325,6 +414,10 @@ public final class Struct {
 
     public static double getFloat64(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getFloat64(generic, userPtr, elementIndex, fieldIndex);
+    }
+
+    public static double getFloat64(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT64);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
@@ -333,6 +426,10 @@ public final class Struct {
 
     public static void setByte(long userPtr, int elementIndex, int fieldIndex, byte value) {
         int generic = getStructIdFromPointer(userPtr);
+        setByte(generic, userPtr, elementIndex, fieldIndex, value);
+    }
+
+    public static void setByte(int generic, long userPtr, int elementIndex, int fieldIndex, byte value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_BYTE);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
@@ -341,6 +438,10 @@ public final class Struct {
 
     public static byte getByte(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getByte(generic, userPtr, elementIndex, fieldIndex);
+    }
+
+    public static byte getByte(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_BYTE);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
@@ -349,6 +450,10 @@ public final class Struct {
 
     public static void setShort(long userPtr, int elementIndex, int fieldIndex, short value) {
         int generic = getStructIdFromPointer(userPtr);
+        setShort(generic, userPtr, elementIndex, fieldIndex, value);
+    }
+
+    public static void setShort(int generic, long userPtr, int elementIndex, int fieldIndex, short value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_SHORT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
@@ -357,6 +462,10 @@ public final class Struct {
 
     public static short getShort(long userPtr, int elementIndex, int fieldIndex) {
         int generic = getStructIdFromPointer(userPtr);
+        return getShort(generic, userPtr, elementIndex, fieldIndex);
+    }
+
+    public static short getShort(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_SHORT);
         int stride = getStride(generic);
         int offset = getOffset(generic, fieldIndex);
