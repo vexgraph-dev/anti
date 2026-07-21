@@ -20,8 +20,12 @@ public final class Stride {
 
     // get byte stride for class ID
     @HotCode
-    public static int get(int classId) {
-        return switch (classId) {
+    public static int get(int generic) {
+        int customStride = Struct.stride(generic);
+        if (customStride != 0) {
+            return customStride;
+        }
+        return switch (generic) {
             case TypeRegister.ID_BYTE       -> 1;
             case TypeRegister.ID_SHORT      -> 2;
             case TypeRegister.ID_INT32,
