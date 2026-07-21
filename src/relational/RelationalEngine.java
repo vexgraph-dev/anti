@@ -4,6 +4,8 @@ import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import oop.TypeRegister;
+import primitive.Int;
+import primitive.Long;
 
 /**
  * High-level dynamic dispatcher and query resolver for relational variables.
@@ -18,65 +20,65 @@ public final class RelationalEngine {
     private RelationalEngine() {}
 
     // Dynamic type-checked getters
-    public static int getInt32(int varId) {
+    public static int getInt(int varId) {
         int cid = Variable.getClassId(varId);
-        if (cid != TypeRegister.ID_INT32) {
-            throw new IllegalArgumentException("Variable ID " + varId + " is not of type Int32 (Class ID: " + cid + ")");
+        if (cid != TypeRegister.ID_INT) {
+            throw new IllegalArgumentException("Variable ID " + varId + " is not of type Int (Class ID: " + cid + ")");
         }
-        return primitive.Int32.get(Variable.getPointer(varId));
+        return Int.get(Variable.getPointer(varId));
     }
 
-    public static void setInt32(int varId, int value) {
+    public static void setInt(int varId, int value) {
         int cid = Variable.getClassId(varId);
-        if (cid != TypeRegister.ID_INT32) {
-            throw new IllegalArgumentException("Variable ID " + varId + " is not of type Int32 (Class ID: " + cid + ")");
+        if (cid != TypeRegister.ID_INT) {
+            throw new IllegalArgumentException("Variable ID " + varId + " is not of type Int (Class ID: " + cid + ")");
         }
-        primitive.Int32.set(Variable.getPointer(varId), value);
+        Int.set(Variable.getPointer(varId), value);
     }
 
-    public static long getInt64(int varId) {
+    public static long getLong(int varId) {
         int cid = Variable.getClassId(varId);
-        if (cid != TypeRegister.ID_INT64) {
-            throw new IllegalArgumentException("Variable ID " + varId + " is not of type Int64 (Class ID: " + cid + ")");
+        if (cid != TypeRegister.ID_LONG) {
+            throw new IllegalArgumentException("Variable ID " + varId + " is not of type Long (Class ID: " + cid + ")");
         }
-        return primitive.Int64.get(Variable.getPointer(varId));
+        return Long.get(Variable.getPointer(varId));
     }
 
-    public static void setInt64(int varId, long value) {
+    public static void setLong(int varId, long value) {
         int cid = Variable.getClassId(varId);
-        if (cid != TypeRegister.ID_INT64) {
-            throw new IllegalArgumentException("Variable ID " + varId + " is not of type Int64 (Class ID: " + cid + ")");
+        if (cid != TypeRegister.ID_LONG) {
+            throw new IllegalArgumentException("Variable ID " + varId + " is not of type Long (Class ID: " + cid + ")");
         }
-        primitive.Int64.set(Variable.getPointer(varId), value);
+        Long.set(Variable.getPointer(varId), value);
     }
 
-    public static float getFloat32(int varId) {
+    public static float getFloat(int varId) {
         int cid = Variable.getClassId(varId);
-        if (cid != TypeRegister.ID_FLOAT32) {
+        if (cid != TypeRegister.ID_FLOAT) {
             throw new IllegalArgumentException("Variable ID " + varId + " is not of type Float (Class ID: " + cid + ")");
         }
         return primitive.Float.get(Variable.getPointer(varId));
     }
 
-    public static void setFloat32(int varId, float value) {
+    public static void setFloat(int varId, float value) {
         int cid = Variable.getClassId(varId);
-        if (cid != TypeRegister.ID_FLOAT32) {
+        if (cid != TypeRegister.ID_FLOAT) {
             throw new IllegalArgumentException("Variable ID " + varId + " is not of type Float (Class ID: " + cid + ")");
         }
         primitive.Float.set(Variable.getPointer(varId), value);
     }
 
-    public static double getFloat64(int varId) {
+    public static double getDouble(int varId) {
         int cid = Variable.getClassId(varId);
-        if (cid != TypeRegister.ID_FLOAT64) {
+        if (cid != TypeRegister.ID_DOUBLE) {
             throw new IllegalArgumentException("Variable ID " + varId + " is not of type Double (Class ID: " + cid + ")");
         }
         return primitive.Double.get(Variable.getPointer(varId));
     }
 
-    public static void setFloat64(int varId, double value) {
+    public static void setDouble(int varId, double value) {
         int cid = Variable.getClassId(varId);
-        if (cid != TypeRegister.ID_FLOAT64) {
+        if (cid != TypeRegister.ID_DOUBLE) {
             throw new IllegalArgumentException("Variable ID " + varId + " is not of type Double (Class ID: " + cid + ")");
         }
         primitive.Double.set(Variable.getPointer(varId), value);
