@@ -3,7 +3,6 @@ package relational;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
-import nio.MemoryRegistry;
 import oop.TypeRegister;
 import struct.Trie;
 
@@ -25,7 +24,6 @@ public final class SearchVariable {
     static {
         trieRoot = Trie.instant();
         active = true;
-        MemoryRegistry.register(SearchVariable::freeAll);
     }
 
     private SearchVariable() {}
