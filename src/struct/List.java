@@ -5,7 +5,6 @@ import annotation.Volatile;
 import annotation.Intention;
 import annotation.Required;
 import nio.ForeignMemory;
-import nio.MemoryRegistry;
 import oop.Stride;
 import oop.TypeRegister;
 
@@ -33,7 +32,6 @@ public final class List {
     static {
         poolArena = Arena.ofShared();
         active = true;
-        MemoryRegistry.register(List::freeAll);
     }
 
     private List() {}
@@ -226,6 +224,49 @@ public final class List {
         ForeignMemory.putInt(headerBlock, 0);
         ForeignMemory.putInt(headerBlock + 4L, -1);
         ForeignMemory.freeNative(headerBlock);
+    }
+
+    // allocate list for custom struct
+    public static long allocateStruct(int generic, int capacity) {
+        return instant(generic, capacity);
+    }
+
+    // append new uninitialized struct element slot and return its pointer
+    public static synchronized long addStruct(long listPtr) {
+        checkActive();
+        if (listPtr == 0L) throw new NullPointerException("Writing to NULL off-heap list!");
+
+        int count = size(listPtr);
+        int cap = capacity(listPtr);
+        int stride = stride(listPtr);
+        long dataBuffer = dataBuffer(listPtr);
+
+        if (count >= cap) {
+            int newCap = cap + DEFAULT_CAPACITY;
+            long newBytes = (long) newCap * stride;
+            long alignedBytes = (newBytes + 7L) & ~7L;
+            long newBuffer = ForeignMemory.allocateNative(alignedBytes);
+
+            ForeignMemory.copy(dataBuffer, newBuffer, (long) count * stride);
+            ForeignMemory.freeNative(dataBuffer);
+
+            dataBuffer = newBuffer;
+            ForeignMemory.putLong(listPtr + 16L, dataBuffer);
+            ForeignMemory.putInt(listPtr + 8L, newCap);
+        }
+
+        long targetSlot = dataBuffer + ((long) count * stride);
+        ForeignMemory.setMemory(targetSlot, stride, (byte) 0);
+        ForeignMemory.putInt(listPtr - 4L, count + 1);
+        return targetSlot;
+    }
+
+    // get pointer to struct element at index
+    public static synchronized long getStruct(long listPtr, int index) {
+        checkBounds(listPtr, index);
+        int stride = stride(listPtr);
+        long dataBuffer = dataBuffer(listPtr);
+        return dataBuffer + (long) index * stride;
     }
 
     public static int elementClassId(long listPtr) {
