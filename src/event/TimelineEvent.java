@@ -1,7 +1,9 @@
-package event;public class TimelineEvent 
+package event;
+
+public class TimelineEvent
 {
     public TimelineEvent()
     {
-    
+
     }
 }

@@ -1,12 +1,12 @@
 package oop;
 
 import annotation.Required;
-import annotation.Volatile;
+import annotation.HotCode;
 
 /**
  * Off-heap stride registry and byte size lookup utility.
  */
-@Volatile
+@HotCode
 public final class Stride {
 
     @Required
@@ -19,7 +19,7 @@ public final class Stride {
     }
 
     // get byte stride for class ID
-    @Volatile
+    @HotCode
     public static int get(int classId) {
         return switch (classId) {
             case TypeRegister.ID_BYTE       -> 1;

@@ -1,7 +1,9 @@
-package event;public class SimulationEvent 
+package event;
+
+public class SimulationEvent
 {
     public SimulationEvent()
     {
-    
+
     }
 }

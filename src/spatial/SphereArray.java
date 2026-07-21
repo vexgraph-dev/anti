@@ -1,7 +1,9 @@
-package spatial;public class SphereArray 
+package spatial;
+
+public class SphereArray
 {
     public SphereArray()
     {
-    
+
     }
 }

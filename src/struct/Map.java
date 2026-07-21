@@ -1,5 +1,7 @@
 package struct;
 
+import annotation.Volatile;
+
 import annotation.Intention;
 import annotation.Required;
 import lang.Class;
@@ -14,6 +16,7 @@ import java.lang.foreign.Arena;
  * Off-heap key-value hash map implementation.
  */
 @Intention("Zero-GC off-heap open-addressing hash map with key class inspection, 64-bit hashing, thread-safe memory mutations, and global MemoryRegistry integration.")
+@Volatile
 public final class Map {
 
     @Required

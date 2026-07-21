@@ -1,9 +1,9 @@
 package oop;
 
 import annotation.Intention;
-import annotation.Volatile;
+import annotation.HotCode;
 
-@Volatile
+@HotCode
 @Intention("Central type registry using bit-packed type IDs: Upper 8 bits = Form (AA=Singleton, BB=Array, CC=Pointer), Lower 24 bits = Class ID")
 public class TypeRegister {
 

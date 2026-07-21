@@ -1,5 +1,7 @@
 package spatial;
 
+import annotation.Volatile;
+
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
@@ -15,6 +17,7 @@ import java.lang.foreign.Arena;
  */
 @Draft
 @Intention("Zero-GC off-heap uniform 2D spatial grid array partitioning space into cell lists for O(1) insertion, removal, and range queries.")
+@Volatile
 public final class GridArray {
 
     @Required

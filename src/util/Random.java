@@ -31,7 +31,7 @@ public final class Random {
      * Block layout:
      *   [userPtr - 8]: 32-bit packed Type ID
      *   [userPtr - 4]: 32-bit length (1)
-     *   [userPtr]    : 64-bit seed / state
+     *   [userPtr + 0]: 64-bit seed / state
      *   [userPtr + 8]: 32-bit current integer counter
      *   [userPtr + 12]: 32-bit padding
      *
@@ -62,7 +62,8 @@ public final class Random {
      */
     @Draft
     public static void free(long ptr) {
-        if (ptr == 0L) return;
+        if (ptr == 0L)
+            return;
         ForeignMemory.freeNative(ptr - 8L);
     }
 

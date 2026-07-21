@@ -3,7 +3,6 @@ package time;
 import annotation.Draft;
 import annotation.Required;
 import annotation.Intention;
-import annotation.Volatile;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
@@ -18,7 +17,6 @@ import java.lang.invoke.MethodHandle;
  * Uses native macOS clock downcalls for zero-overhead ticks.
  */
 @Draft
-@Volatile
 @Intention("Zero-GC off-heap frame tick timer integrated with native macOS clock_gettime_nsec_np and virtual clock scaling.")
 public final class NanoTime {
 

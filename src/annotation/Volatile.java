@@ -3,7 +3,7 @@ package annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
-// this annotation must be put where a function/class is a volatile class that every class being added will have to do with the modification of the framework
+// Applied to framework-level classes that mutate engine state, modify core layout/memory contracts, or control thread dispatching.
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Volatile
 {

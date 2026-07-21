@@ -1,5 +1,7 @@
 package struct;
 
+import annotation.Volatile;
+
 import annotation.Intention;
 import annotation.Required;
 import nio.ForeignMemory;
@@ -13,6 +15,7 @@ import java.lang.foreign.Arena;
  * Off-heap dynamic stride-based list implementation.
  */
 @Intention("Zero-GC off-heap dynamic stride-based list implementation with self-describing type header, thread-safe memory mutations, and global MemoryRegistry integration.")
+@Volatile
 public final class List {
 
 

@@ -1,5 +1,7 @@
 package thread;
 
+import annotation.Volatile;
+
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
@@ -18,6 +20,7 @@ import java.lang.invoke.VarHandle;
  */
 @Draft
 @Intention("High-throughput spinlock-coordinated off-heap MPMC ring buffer coordinating threads with zero allocation and power-of-two masking.")
+@Volatile
 public final class RingBuffer {
 
     @Required

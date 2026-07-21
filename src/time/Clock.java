@@ -12,7 +12,6 @@ import oop.TypeRegister;
  * Tracks game/virtual simulation time with support for scaling and pausing.
  */
 @Draft
-@Volatile
 @Intention("Zero-GC off-heap clock representing virtual time accumulators scaled by dynamic timeScale factors.")
 public final class Clock {
 

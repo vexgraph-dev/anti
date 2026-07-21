@@ -1,5 +1,7 @@
 package spatial;
 
+import annotation.Volatile;
+
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
@@ -15,6 +17,7 @@ import java.lang.foreign.Arena;
  */
 @Draft
 @Intention("Zero-GC off-heap circular polar spatial partitioning array mapping concentric rings and angular slices to coordinate entity lists.")
+@Volatile
 public final class CircularArray {
 
     @Required

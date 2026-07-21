@@ -1,5 +1,7 @@
 package struct;
 
+import annotation.Volatile;
+
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
@@ -15,6 +17,7 @@ import java.lang.foreign.Arena;
  */
 @Draft
 @Intention("Zero-GC off-heap dynamic stride-based stack implementation with thread-safe LIFO mutations and global MemoryRegistry integration.")
+@Volatile
 public final class Stack {
 
     @Required

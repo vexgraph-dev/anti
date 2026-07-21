@@ -1,5 +1,7 @@
 package thread;
 
+import annotation.Volatile;
+
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
@@ -15,6 +17,7 @@ import java.lang.invoke.VarHandle;
  */
 @Draft
 @Intention("Ultra-low-latency spinlock acting directly on memory address flags to coordinate multi-threaded access without thread parking.")
+@Volatile
 public final class SpinLock {
 
     @Required

@@ -1,7 +1,6 @@
 package annotation;
 
-// this is the annotation class where the code updates every single time when the
-// class is being updated and being changed to cater to the new class hardcoded.
+// Applied to classes or functions that require modification or updates every time a new class is added or registered in the framework.
 public @interface HotCode
 {
 }

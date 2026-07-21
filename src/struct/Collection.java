@@ -1,5 +1,7 @@
 package struct;
 
+import annotation.Volatile;
+
 import annotation.Intention;
 import annotation.Required;
 import nio.ForeignMemory;
@@ -9,6 +11,7 @@ import oop.TypeRegister;
  * Universal off-heap collection metadata accessor utility class.
  */
 @Intention("Zero-GC off-heap collection metadata accessors utilizing compact ternary raw memory dereferencing.")
+@Volatile
 public final class Collection {
 
     @Required
