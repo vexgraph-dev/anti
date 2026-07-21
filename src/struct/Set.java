@@ -6,7 +6,6 @@ import annotation.Intention;
 import annotation.Required;
 import lang.Class;
 import nio.ForeignMemory;
-import nio.MemoryRegistry;
 import oop.TypeRegister;
 import util.Hash;
 
@@ -39,7 +38,6 @@ public final class Set {
     static {
         poolArena = Arena.ofShared();
         active = true;
-        MemoryRegistry.register(Set::freeAll);
     }
 
     private Set() {}
