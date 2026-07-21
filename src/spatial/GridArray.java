@@ -3,7 +3,6 @@ package spatial;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
-import annotation.Volatile;
 import nio.ForeignMemory;
 import nio.MemoryRegistry;
 import oop.TypeRegister;
@@ -14,7 +13,6 @@ import java.lang.foreign.Arena;
 /**
  * Off-heap Uniform 2D Spatial Grid Partitioning Array implementation.
  */
-@Volatile
 @Draft
 @Intention("Zero-GC off-heap uniform 2D spatial grid array partitioning space into cell lists for O(1) insertion, removal, and range queries.")
 public final class GridArray {

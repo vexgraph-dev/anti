@@ -3,7 +3,6 @@ package thread;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
-import annotation.Volatile;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
@@ -14,7 +13,6 @@ import java.lang.invoke.VarHandle;
 /**
  * Off-heap Atomic Spinlock based on FFM MemorySegment CAS updates.
  */
-@Volatile
 @Draft
 @Intention("Ultra-low-latency spinlock acting directly on memory address flags to coordinate multi-threaded access without thread parking.")
 public final class SpinLock {

@@ -3,7 +3,6 @@ package thread;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
-import annotation.Volatile;
 import nio.ForeignMemory;
 import nio.MemoryRegistry;
 import oop.Stride;
@@ -17,7 +16,6 @@ import java.lang.invoke.VarHandle;
 /**
  * High-throughput off-heap Ring Buffer queue for inter-thread message dispatching.
  */
-@Volatile
 @Draft
 @Intention("High-throughput spinlock-coordinated off-heap MPMC ring buffer coordinating threads with zero allocation and power-of-two masking.")
 public final class RingBuffer {

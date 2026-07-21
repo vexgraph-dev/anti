@@ -3,7 +3,6 @@ package struct;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
-import annotation.Volatile;
 import nio.ForeignMemory;
 import nio.MemoryRegistry;
 import oop.Stride;
@@ -14,7 +13,6 @@ import java.lang.foreign.Arena;
 /**
  * Off-heap circular buffer double-ended queue (Deque) implementation.
  */
-@Volatile
 @Draft
 @Intention("Zero-GC off-heap dynamic stride-based double-ended queue (Deque) utilizing a circular array, thread-safe memory mutations, and global MemoryRegistry integration.")
 public final class Deque {

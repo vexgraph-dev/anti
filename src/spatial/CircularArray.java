@@ -3,7 +3,6 @@ package spatial;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
-import annotation.Volatile;
 import nio.ForeignMemory;
 import nio.MemoryRegistry;
 import oop.TypeRegister;
@@ -14,7 +13,6 @@ import java.lang.foreign.Arena;
 /**
  * Off-heap Circular Polar Grid Spatial Partitioning Array implementation.
  */
-@Volatile
 @Draft
 @Intention("Zero-GC off-heap circular polar spatial partitioning array mapping concentric rings and angular slices to coordinate entity lists.")
 public final class CircularArray {

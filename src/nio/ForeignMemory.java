@@ -1,5 +1,6 @@
 package nio;
 
+import annotation.HotCode;
 import primitive.Byte;
 import primitive.Double;
 import primitive.Float;
@@ -229,6 +230,7 @@ public class ForeignMemory
     }
 
     // nuclear, dangerous
+    @HotCode
     public static void freeAllClasses()
     {
 

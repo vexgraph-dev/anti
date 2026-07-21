@@ -2,7 +2,6 @@ package struct;
 
 import annotation.Intention;
 import annotation.Required;
-import annotation.Volatile;
 import lang.Class;
 import nio.ForeignMemory;
 import nio.MemoryRegistry;
@@ -14,7 +13,6 @@ import java.lang.foreign.Arena;
 /**
  * Off-heap key-value hash map implementation.
  */
-@Volatile
 @Intention("Zero-GC off-heap open-addressing hash map with key class inspection, 64-bit hashing, thread-safe memory mutations, and global MemoryRegistry integration.")
 public final class Map {
 
