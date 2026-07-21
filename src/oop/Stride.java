@@ -28,15 +28,15 @@ public final class Stride {
         return switch (generic) {
             case TypeRegister.ID_BYTE       -> 1;
             case TypeRegister.ID_SHORT      -> 2;
-            case TypeRegister.ID_INT32,
-                 TypeRegister.ID_FLOAT32    -> 4;
-            case TypeRegister.ID_INT64,
-                 TypeRegister.ID_FLOAT64,
+            case TypeRegister.ID_INT,
+                 TypeRegister.ID_FLOAT    -> 4;
+            case TypeRegister.ID_LONG,
+                 TypeRegister.ID_DOUBLE,
                  TypeRegister.ID_STRING,
-                 TypeRegister.ID_INT32_FP32 -> 8;
-            case TypeRegister.ID_INT32_FP64,
-                 TypeRegister.ID_INT64_FP32,
-                 TypeRegister.ID_INT64_FP64 -> 16;
+                 TypeRegister.ID_INT_FLOAT -> 8;
+            case TypeRegister.ID_INT_DOUBLE,
+                 TypeRegister.ID_LONG_FLOAT,
+                 TypeRegister.ID_LONG_DOUBLE -> 16;
             case TypeRegister.ID_VARIABLE   -> 40;
             case TypeRegister.ID_CLOCK      -> 48;
             case TypeRegister.ID_DATETIME,
