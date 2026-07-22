@@ -1,6 +1,8 @@
 package lang;
 
+import java.lang.StringBuilder;
 import nio.ForeignMemory;
+
 
 /**
  * Off-Heap 4x4 Matrix representation stored in column-major order (16 contiguous 32-bit floats, 64 bytes).
