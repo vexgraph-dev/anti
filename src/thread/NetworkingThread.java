@@ -7,14 +7,13 @@ import annotation.Volatile;
 import net.PollRequest;
 import nio.ForeignMemory;
 import oop.TypeRegister;
-
-import java.util.concurrent.ConcurrentHashMap;
+import struct.Map;
 
 /**
  * Data-Oriented Design (DOD) off-heap Networking Thread instance manager.
  */
 @Draft
-@Intention("Off-heap networking worker handle lifecycle supporting invoke(), run(ptr), stop(ptr), and free(ptr).")
+@Intention("Off-heap networking worker handle lifecycle dogfooding struct.Map for worker registry.")
 @Volatile
 public final class NetworkingThread {
 
@@ -23,7 +22,7 @@ public final class NetworkingThread {
     public static final int TYPE_NETWORKING_THREAD = TypeRegister.NETWORKING_THREAD_SINGLETON;
 
     private static final int DEFAULT_POOL_SIZE = 4;
-    private static final ConcurrentHashMap<Long, Thread[]> WORKER_MAP = new ConcurrentHashMap<>();
+    private static final long WORKER_MAP_PTR = Map.instant(TypeRegister.ID_LONG, TypeRegister.ID_VARIABLE, 64);
 
     private NetworkingThread() {}
 
@@ -92,7 +91,7 @@ public final class NetworkingThread {
                     .start(() -> processQueue(threadPtr, queuePtr));
         }
 
-        WORKER_MAP.put(threadPtr, pool);
+        Map.putObject(WORKER_MAP_PTR, threadPtr, pool);
         ForeignMemory.putInt(threadPtr, 1); // Set state to RUNNING
         return true;
     }
@@ -116,7 +115,7 @@ public final class NetworkingThread {
         if (threadPtr == 0L) return;
         ForeignMemory.putInt(threadPtr, 0); // Set state to STOPPED
 
-        Thread[] pool = WORKER_MAP.remove(threadPtr);
+        Thread[] pool = (Thread[]) Map.removeObject(WORKER_MAP_PTR, threadPtr);
         if (pool != null) {
             for (Thread t : pool) {
                 if (t != null) {
