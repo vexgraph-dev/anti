@@ -5,6 +5,9 @@ import oop.Struct;
 import primitive.Byte;
 import primitive.Double;
 import primitive.Float;
+import primitive.Brain;
+import primitive.Fixed32;
+import primitive.Fixed64;
 import primitive.Int;
 import primitive.IntDouble;
 import primitive.IntFloat;
@@ -349,6 +352,9 @@ public class ForeignMemory
         IntDouble.freeAll();
         LongFloat.freeAll();
         LongDouble.freeAll();
+        Brain.freeAll();
+        Fixed32.freeAll();
+        Fixed64.freeAll();
         string.freeAll();
         Struct.freeAll();
 
