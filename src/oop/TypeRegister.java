@@ -59,6 +59,9 @@ public class TypeRegister {
     public static final int ID_CUBE_ARRAY       = 0x000026; // CubeArray class // 38
     public static final int ID_SPHERE_ARRAY     = 0x000027; // SphereArray class // 39
     public static final int ID_CIRCULAR_ARRAY   = 0x000028; // CircularArray class // 40
+    public static final int ID_BRAIN            = 0x000029; // Brain class // 41
+    public static final int ID_FIXED32          = 0x00002A; // Fixed32 class // 42
+    public static final int ID_FIXED64          = 0x00002B; // Fixed64 class // 43
 
 
 
@@ -133,6 +136,21 @@ public class TypeRegister {
     public static final int CLOCK_SINGLETON = FORM_SINGLETON | ID_CLOCK; // 0xAA000021
     public static final int DATETIME_SINGLETON = FORM_SINGLETON | ID_DATETIME; // 0xAA000022
     public static final int NANOTIME_SINGLETON = FORM_SINGLETON | ID_NANOTIME; // 0xAA000023
+
+    // Brain bfloat16 class
+    public static final int BRAIN_SINGLETON = FORM_SINGLETON | ID_BRAIN; // 0xAA000029
+    public static final int BRAIN_ARRAY     = FORM_ARRAY     | ID_BRAIN; // 0xBB000029
+    public static final int BRAIN_POINTER   = FORM_POINTER   | ID_BRAIN; // 0xCC000029
+
+    // Fixed32 q16.16 class
+    public static final int FIXED32_SINGLETON = FORM_SINGLETON | ID_FIXED32; // 0xAA00002A
+    public static final int FIXED32_ARRAY     = FORM_ARRAY     | ID_FIXED32; // 0xBB00002A
+    public static final int FIXED32_POINTER   = FORM_POINTER   | ID_FIXED32; // 0xCC00002A
+
+    // Fixed64 q32.32 class
+    public static final int FIXED64_SINGLETON = FORM_SINGLETON | ID_FIXED64; // 0xAA00002B
+    public static final int FIXED64_ARRAY     = FORM_ARRAY     | ID_FIXED64; // 0xBB00002B
+    public static final int FIXED64_POINTER   = FORM_POINTER   | ID_FIXED64; // 0xCC00002B
 
     // --- HELPER BITWISE METHODS ---
     public static boolean isSingleton(int typeId) {
