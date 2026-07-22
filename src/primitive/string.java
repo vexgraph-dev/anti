@@ -471,4 +471,42 @@ public final class string {
         }
         return currentPtr;
     }
+
+    // --- SUBSTRING LAYER ---
+    public static long substring(long srcPtr, int start) {
+        checkActive();
+        if (srcPtr == 0L) return 0L;
+        return substring(srcPtr, start, length(srcPtr));
+    }
+
+    public static long substring(long srcPtr, int start, int end) {
+        checkActive();
+        if (srcPtr == 0L) return 0L;
+        int len = length(srcPtr);
+        if (start < 0) start = 0;
+        if (end > len) end = len;
+        if (start >= end) return allocate("");
+
+        int subLen = end - start;
+        long newPtr = allocateUninitialized(subLen);
+        ForeignMemory.copy(srcPtr + start, newPtr, subLen);
+        ForeignMemory.putByte(newPtr + subLen, (byte) 0);
+        return newPtr;
+    }
+
+    public static long substringPop(long srcPtr, int start) {
+        checkActive();
+        if (srcPtr == 0L) return 0L;
+        long subPtr = substring(srcPtr, start);
+        free(srcPtr);
+        return subPtr;
+    }
+
+    public static long substringPop(long srcPtr, int start, int end) {
+        checkActive();
+        if (srcPtr == 0L) return 0L;
+        long subPtr = substring(srcPtr, start, end);
+        free(srcPtr);
+        return subPtr;
+    }
 }
