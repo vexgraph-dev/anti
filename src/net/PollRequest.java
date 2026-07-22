@@ -3,6 +3,7 @@ package net;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
+import lang.Class;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 import primitive.string;
@@ -46,8 +47,7 @@ public final class PollRequest {
     }
 
     public static int getCount(long batchPtr) {
-        if (batchPtr == 0L) return 0;
-        return ForeignMemory.getInt(batchPtr - 4L);
+        return Class.getLength(batchPtr);
     }
 
     public static void freeBatch(long batchPtr) {
@@ -179,6 +179,12 @@ public final class PollRequest {
             execute(batchPtr, i);
         }
     }
+
+    public static boolean executeAsync(long batchPtr) {
+        if (batchPtr == 0L) return false;
+        return thread.NetworkingThread.submitBatch(batchPtr);
+    }
+
 
     // --- DOD STRIDE ATTRIBUTE GETTERS ---
 
