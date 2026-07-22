@@ -63,6 +63,7 @@ public class TypeRegister {
     public static final int ID_FIXED32          = 0x00002A; // Fixed32 class // 42
     public static final int ID_FIXED64          = 0x00002B; // Fixed64 class // 43
     public static final int ID_STRING_BUILDER   = 0x00002C; // StringBuilder class // 44
+    public static final int ID_HTTP_CLIENT      = 0x00002D; // HTTPClient class // 45
 
 
 
@@ -157,6 +158,11 @@ public class TypeRegister {
     public static final int STRING_BUILDER_SINGLETON = FORM_SINGLETON | ID_STRING_BUILDER; // 0xAA00002C
     public static final int STRING_BUILDER_ARRAY     = FORM_ARRAY     | ID_STRING_BUILDER; // 0xBB00002C
     public static final int STRING_BUILDER_POINTER   = FORM_POINTER   | ID_STRING_BUILDER; // 0xCC00002C
+
+    // HTTPClient class
+    public static final int HTTP_CLIENT_SINGLETON = FORM_SINGLETON | ID_HTTP_CLIENT; // 0xAA00002D
+    public static final int HTTP_CLIENT_ARRAY     = FORM_ARRAY     | ID_HTTP_CLIENT; // 0xBB00002D
+    public static final int HTTP_CLIENT_POINTER   = FORM_POINTER   | ID_HTTP_CLIENT; // 0xCC00002D
 
     // --- HELPER BITWISE METHODS ---
     public static boolean isSingleton(int typeId) {
