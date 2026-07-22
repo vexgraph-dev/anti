@@ -178,7 +178,8 @@ public final class string {
         return pointer;
     }
 
-    private static long allocateUninitialized(int len) {
+    public static long allocateUninitialized(int len) {
+
         long pointer;
         if (len <= 56) {
             pointer = popPool(SMALL_FREE_HEAD_VH, SMALL_EXPANDING_VH, TYPE_SMALL, len);
