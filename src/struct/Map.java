@@ -356,7 +356,8 @@ public final class Map {
 
     // --- HYBRID CONCURRENT / VOLATILE ATOMIC EXTENSIONS ---
 
-    private static final java.util.concurrent.ConcurrentHashMap<Long, Object> OBJECT_REGISTRY = new java.util.concurrent.ConcurrentHashMap<>();
+    private static volatile Object[] OBJECT_TABLE = new Object[1024];
+    private static volatile int OBJECT_ID_COUNTER = 1;
 
     public static long getVolatile(long mapPtr, long key) {
         if (mapPtr == 0L) return 0L;
@@ -482,23 +483,31 @@ public final class Map {
 
     public static synchronized void putObject(long mapPtr, long key, Object obj) {
         if (mapPtr == 0L || obj == null) return;
-        long registryKey = (mapPtr ^ key);
-        OBJECT_REGISTRY.put(registryKey, obj);
-        putVolatile(mapPtr, key, registryKey);
+        int objId = OBJECT_ID_COUNTER++;
+        if (objId >= OBJECT_TABLE.length) {
+            Object[] newTable = new Object[OBJECT_TABLE.length * 2];
+            System.arraycopy(OBJECT_TABLE, 0, newTable, 0, OBJECT_TABLE.length);
+            OBJECT_TABLE = newTable;
+        }
+        OBJECT_TABLE[objId] = obj;
+        putVolatile(mapPtr, key, (long) objId);
     }
 
     public static Object getObject(long mapPtr, long key) {
         if (mapPtr == 0L) return null;
-        long registryKey = getVolatile(mapPtr, key);
-        if (registryKey == 0L) return null;
-        return OBJECT_REGISTRY.get(registryKey);
+        long objId = getVolatile(mapPtr, key);
+        if (objId <= 0L || objId >= OBJECT_TABLE.length) return null;
+        return OBJECT_TABLE[(int) objId];
     }
 
     public static synchronized Object removeObject(long mapPtr, long key) {
         if (mapPtr == 0L) return null;
-        long registryKey = removeVolatile(mapPtr, key);
-        if (registryKey == 0L) return null;
-        return OBJECT_REGISTRY.remove(registryKey);
+        long objId = removeVolatile(mapPtr, key);
+        if (objId <= 0L || objId >= OBJECT_TABLE.length) return null;
+        int idx = (int) objId;
+        Object obj = OBJECT_TABLE[idx];
+        OBJECT_TABLE[idx] = null;
+        return obj;
     }
 }
 
