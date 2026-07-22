@@ -266,7 +266,21 @@ public class ForeignMemory
     }
 
     public static boolean compareAndSetByte(long address, byte expected, byte value) {
-        return (boolean) BYTE_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
+        long alignedAddr = address & ~3L;
+        int shift = (int) (address & 3L) * 8;
+        int mask = 0xFF << shift;
+        int expectedBits = (expected & 0xFF) << shift;
+        int valueBits = (value & 0xFF) << shift;
+        while (true) {
+            int oldVal = getIntVolatile(alignedAddr);
+            if (((oldVal >>> shift) & 0xFF) != (expected & 0xFF)) {
+                return false;
+            }
+            int newVal = (oldVal & ~mask) | valueBits;
+            if (compareAndSetInt(alignedAddr, oldVal, newVal)) {
+                return true;
+            }
+        }
     }
 
     public static short getShortVolatile(long address) {
@@ -278,7 +292,21 @@ public class ForeignMemory
     }
 
     public static boolean compareAndSetShort(long address, short expected, short value) {
-        return (boolean) SHORT_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
+        long alignedAddr = address & ~3L;
+        int shift = (int) (address & 3L) * 8;
+        int mask = 0xFFFF << shift;
+        int expectedBits = (expected & 0xFFFF) << shift;
+        int valueBits = (value & 0xFFFF) << shift;
+        while (true) {
+            int oldVal = getIntVolatile(alignedAddr);
+            if (((oldVal >>> shift) & 0xFFFF) != (expected & 0xFFFF)) {
+                return false;
+            }
+            int newVal = (oldVal & ~mask) | valueBits;
+            if (compareAndSetInt(alignedAddr, oldVal, newVal)) {
+                return true;
+            }
+        }
     }
 
     public static int getIntVolatile(long address) {
