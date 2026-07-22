@@ -8,30 +8,42 @@ import net.PollRequest;
 import oop.TypeRegister;
 
 @Draft
-@Intention("Static off-heap non-blocking worker thread manager executing PollRequest batches with zero instance constructors.")
+@Intention("Static off-heap zero-GC dedicated worker thread pool executing PollRequest batches in parallel with zero heap allocations.")
 @Volatile
 public final class NetworkingThread {
 
     @Required
     public static final int CLASS_ID = TypeRegister.ID_POLL_REQUEST;
 
+    private static final int DEFAULT_POOL_SIZE = 4;
     private static volatile boolean running = false;
-    private static volatile Thread workerThread = null;
+    private static volatile Thread[] workerPool = null;
     private static long workQueuePtr = 0L;
 
     private NetworkingThread() {}
 
     public static synchronized void init() {
-        if (running && workerThread != null && workerThread.isAlive()) return;
+        init(DEFAULT_POOL_SIZE);
+    }
+
+    public static synchronized void init(int poolSize) {
+        if (running && workerPool != null) return;
         if (workQueuePtr == 0L) {
-            workQueuePtr = RingBuffer.instant(TypeRegister.ID_POLL_REQUEST, 1024);
+            workQueuePtr = RingBuffer.instant(TypeRegister.ID_POLL_REQUEST, 2048);
         }
+        int threads = Math.max(1, poolSize);
         running = true;
-        workerThread = Thread.ofPlatform().name("Anti-NetworkingWorkerThread").daemon(true).start(NetworkingThread::processQueue);
+        workerPool = new Thread[threads];
+        for (int i = 0; i < threads; i++) {
+            workerPool[i] = Thread.ofPlatform()
+                    .name("Anti-NetworkingWorker-" + i)
+                    .daemon(true)
+                    .start(NetworkingThread::processQueue);
+        }
     }
 
     public static boolean isRunning() {
-        return running && workerThread != null && workerThread.isAlive();
+        return running && workerPool != null;
     }
 
     public static boolean submitBatch(long batchPtr) {
@@ -44,9 +56,13 @@ public final class NetworkingThread {
 
     public static synchronized void shutdown() {
         running = false;
-        if (workerThread != null) {
-            workerThread.interrupt();
-            workerThread = null;
+        if (workerPool != null) {
+            for (Thread worker : workerPool) {
+                if (worker != null) {
+                    worker.interrupt();
+                }
+            }
+            workerPool = null;
         }
         if (workQueuePtr != 0L) {
             RingBuffer.free(workQueuePtr);
