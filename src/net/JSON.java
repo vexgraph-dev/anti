@@ -3,7 +3,6 @@ package net;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
-import lang.StringBuilder;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 import primitive.string;
@@ -195,6 +194,7 @@ public final class JSON {
         String valStr = string.get(valPtr);
         string.free(valPtr);
         try {
+            assert valStr != null;
             return Integer.parseInt(valStr.trim());
         } catch (Exception e) {
             return 0;
@@ -207,6 +207,7 @@ public final class JSON {
         String valStr = string.get(valPtr);
         string.free(valPtr);
         try {
+            assert valStr != null;
             return Long.parseLong(valStr.trim());
         } catch (Exception e) {
             return 0L;
@@ -219,6 +220,7 @@ public final class JSON {
         String valStr = string.get(valPtr);
         string.free(valPtr);
         try {
+            assert valStr != null;
             return Float.parseFloat(valStr.trim());
         } catch (Exception e) {
             return 0.0f;
@@ -231,6 +233,7 @@ public final class JSON {
         String valStr = string.get(valPtr);
         string.free(valPtr);
         try {
+            assert valStr != null;
             return Double.parseDouble(valStr.trim());
         } catch (Exception e) {
             return 0.0;
@@ -242,6 +245,7 @@ public final class JSON {
         if (valPtr == 0L) return false;
         String valStr = string.get(valPtr);
         string.free(valPtr);
+        assert valStr != null;
         return "true".equalsIgnoreCase(valStr.trim());
     }
 
@@ -266,6 +270,225 @@ public final class JSON {
         }
 
         return len > 2 ? count + 1 : 0;
+    }
+
+    public static long getArrayElement(long jsonArrayPtr, int targetIndex) {
+        if (jsonArrayPtr == 0L || targetIndex < 0) return 0L;
+        int len = string.length(jsonArrayPtr);
+        if (len < 2) return 0L;
+
+        int start = 0;
+        while (start < len && isWhitespace(ForeignMemory.getByte(jsonArrayPtr + start))) start++;
+        if (start >= len || ForeignMemory.getByte(jsonArrayPtr + start) != '[') return 0L;
+        start++; // skip '['
+
+        int currentIndex = 0;
+        int depth = 0;
+        boolean inString = false;
+        int elemStart = -1;
+
+        while (start < len) {
+            byte b = ForeignMemory.getByte(jsonArrayPtr + start);
+            if (isWhitespace(b) && depth == 0 && elemStart == -1) {
+                start++;
+                continue;
+            }
+
+            if (b == ']' && depth == 0 && !inString) {
+                if (elemStart != -1 && currentIndex == targetIndex) {
+                    return extractValueAt(jsonArrayPtr, elemStart, start);
+                }
+                break;
+            }
+
+            if (elemStart == -1) {
+                elemStart = start;
+            }
+
+            if (b == '"' && (start == 0 || ForeignMemory.getByte(jsonArrayPtr + start - 1) != '\\')) {
+                inString = !inString;
+            } else if (!inString) {
+                if (b == '{' || b == '[') depth++;
+                else if (b == '}' || b == ']') depth--;
+                else if (b == ',' && depth == 0) {
+                    if (currentIndex == targetIndex) {
+                        return extractValueAt(jsonArrayPtr, elemStart, start);
+                    }
+                    currentIndex++;
+                    elemStart = -1;
+                }
+            }
+            start++;
+        }
+
+        if (elemStart != -1 && currentIndex == targetIndex) {
+            return extractValueAt(jsonArrayPtr, elemStart, len);
+        }
+
+        return 0L;
+    }
+
+    public static long getKeys(long jsonObjPtr) {
+        if (jsonObjPtr == 0L) return 0L;
+        int len = string.length(jsonObjPtr);
+        if (len < 2) return 0L;
+
+        long resultPtr = 0L;
+        int idx = 0;
+        boolean inString = false;
+        int depth = 0;
+        boolean expectKey = true;
+
+        while (idx < len) {
+            byte b = ForeignMemory.getByte(jsonObjPtr + idx);
+            if (b == '\\' && inString) {
+                idx += 2;
+                continue;
+            }
+
+            if (!inString) {
+                if (b == '{' || b == '[') {
+                    depth++;
+                } else if (b == '}' || b == ']') {
+                    depth--;
+                } else if (b == ',' && depth == 1) {
+                    expectKey = true;
+                } else if (b == '"' && depth == 1 && expectKey) {
+                    int keyStart = idx + 1;
+                    int keyEnd = keyStart;
+                    while (keyEnd < len) {
+                        byte kb = ForeignMemory.getByte(jsonObjPtr + keyEnd);
+                        if (kb == '\\') {
+                            keyEnd += 2;
+                            continue;
+                        }
+                        if (kb == '"') {
+                            break;
+                        }
+                        keyEnd++;
+                    }
+                    if (keyEnd < len) {
+                        int keyLen = keyEnd - keyStart;
+                        if (keyLen > 0) {
+                            if (resultPtr == 0L) {
+                                resultPtr = string.allocateUninitialized(keyLen);
+                                ForeignMemory.copy(jsonObjPtr + keyStart, resultPtr, keyLen);
+                                ForeignMemory.putByte(resultPtr + keyLen, (byte) 0);
+                            } else {
+                                resultPtr = string.append(resultPtr, ",");
+                                long tempKey = string.allocateUninitialized(keyLen);
+                                ForeignMemory.copy(jsonObjPtr + keyStart, tempKey, keyLen);
+                                ForeignMemory.putByte(tempKey + keyLen, (byte) 0);
+                                resultPtr = string.appendPop(resultPtr, tempKey);
+                            }
+                        }
+                    }
+                    idx = keyEnd + 1;
+                    expectKey = false;
+                    continue;
+                } else if (b == '"') {
+                    inString = true;
+                }
+            } else if (b == '"') {
+                inString = false;
+            }
+            idx++;
+        }
+
+        return resultPtr;
+    }
+
+    public static long escape(String unescapedStr) {
+        if (unescapedStr == null) return 0L;
+        long strPtr = string.allocate(unescapedStr);
+        long res = escape(strPtr);
+        string.free(strPtr);
+        return res;
+    }
+
+    public static long escape(long strPtr) {
+        if (strPtr == 0L) return 0L;
+        String s = string.get(strPtr);
+        if (s == null) return 0L;
+
+        java.lang.StringBuilder sb = new java.lang.StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '"':  sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\b': sb.append("\\b");  break;
+                case '\f': sb.append("\\f");  break;
+                case '\n': sb.append("\\n");  break;
+                case '\r': sb.append("\\r");  break;
+                case '\t': sb.append("\\t");  break;
+                default:
+                    if (c < 0x20) {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        sb.append(c);
+                    }
+                    break;
+            }
+        }
+        return string.allocate(sb.toString());
+    }
+
+    public static long unescape(String escapedStr) {
+        if (escapedStr == null) return 0L;
+        long strPtr = string.allocate(escapedStr);
+        long res = unescape(strPtr);
+        string.free(strPtr);
+        return res;
+    }
+
+    public static long unescape(long strPtr) {
+        if (strPtr == 0L) return 0L;
+        String s = string.get(strPtr);
+        if (s == null) return 0L;
+
+        java.lang.StringBuilder sb = new java.lang.StringBuilder();
+        int i = 0;
+        int len = s.length();
+        while (i < len) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < len) {
+                char next = s.charAt(i + 1);
+                switch (next) {
+                    case '"':  sb.append('"');  i += 2; break;
+                    case '\\': sb.append('\\'); i += 2; break;
+                    case '/':  sb.append('/');  i += 2; break;
+                    case 'b':  sb.append('\b'); i += 2; break;
+                    case 'f':  sb.append('\f'); i += 2; break;
+                    case 'n':  sb.append('\n'); i += 2; break;
+                    case 'r':  sb.append('\r'); i += 2; break;
+                    case 't':  sb.append('\t'); i += 2; break;
+                    case 'u':
+                        if (i + 5 < len) {
+                            try {
+                                int hexVal = Integer.parseInt(s.substring(i + 2, i + 6), 16);
+                                sb.append((char) hexVal);
+                                i += 6;
+                            } catch (NumberFormatException e) {
+                                sb.append(c);
+                                i++;
+                            }
+                        } else {
+                            sb.append(c);
+                            i++;
+                        }
+                        break;
+                    default:
+                        sb.append(c);
+                        i++;
+                        break;
+                }
+            } else {
+                sb.append(c);
+                i++;
+            }
+        }
+        return string.allocate(sb.toString());
     }
 
     // --- OFF-HEAP JSON TOKEN FINDER ---
