@@ -67,6 +67,8 @@ public class TypeRegister {
     public static final int ID_JSON             = 0x00002E; // JSON class // 46
     public static final int ID_POLL_REQUEST     = 0x00002F; // PollRequest class // 47
     public static final int ID_TRANSPORT_PROTOCOL = 0x000030; // TransportProtocol class // 48
+    public static final int ID_NETWORKING_THREAD  = 0x000031; // NetworkingThread class // 49
+
 
 
 
@@ -183,6 +185,12 @@ public class TypeRegister {
     public static final int TRANSPORT_PROTOCOL_SINGLETON = FORM_SINGLETON | ID_TRANSPORT_PROTOCOL; // 0xAA000030
     public static final int TRANSPORT_PROTOCOL_ARRAY     = FORM_ARRAY     | ID_TRANSPORT_PROTOCOL; // 0xBB000030
     public static final int TRANSPORT_PROTOCOL_POINTER   = FORM_POINTER   | ID_TRANSPORT_PROTOCOL; // 0xCC000030
+
+    // NetworkingThread class
+    public static final int NETWORKING_THREAD_SINGLETON = FORM_SINGLETON | ID_NETWORKING_THREAD; // 0xAA000031
+    public static final int NETWORKING_THREAD_ARRAY     = FORM_ARRAY     | ID_NETWORKING_THREAD; // 0xBB000031
+    public static final int NETWORKING_THREAD_POINTER   = FORM_POINTER   | ID_NETWORKING_THREAD; // 0xCC000031
+
 
 
 
