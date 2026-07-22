@@ -65,6 +65,9 @@ public class TypeRegister {
     public static final int ID_STRING_BUILDER   = 0x00002C; // StringBuilder class // 44
     public static final int ID_HTTP_CLIENT      = 0x00002D; // HTTPClient class // 45
     public static final int ID_JSON             = 0x00002E; // JSON class // 46
+    public static final int ID_POLL_REQUEST     = 0x00002F; // PollRequest class // 47
+    public static final int ID_TRANSPORT_PROTOCOL = 0x000030; // TransportProtocol class // 48
+
 
 
 
@@ -170,6 +173,17 @@ public class TypeRegister {
     public static final int JSON_SINGLETON = FORM_SINGLETON | ID_JSON; // 0xAA00002E
     public static final int JSON_ARRAY     = FORM_ARRAY     | ID_JSON; // 0xBB00002E
     public static final int JSON_POINTER   = FORM_POINTER   | ID_JSON; // 0xCC00002E
+
+    // PollRequest class
+    public static final int POLL_REQUEST_SINGLETON = FORM_SINGLETON | ID_POLL_REQUEST; // 0xAA00002F
+    public static final int POLL_REQUEST_ARRAY     = FORM_ARRAY     | ID_POLL_REQUEST; // 0xBB00002F
+    public static final int POLL_REQUEST_POINTER   = FORM_POINTER   | ID_POLL_REQUEST; // 0xCC00002F
+
+    // TransportProtocol class
+    public static final int TRANSPORT_PROTOCOL_SINGLETON = FORM_SINGLETON | ID_TRANSPORT_PROTOCOL; // 0xAA000030
+    public static final int TRANSPORT_PROTOCOL_ARRAY     = FORM_ARRAY     | ID_TRANSPORT_PROTOCOL; // 0xBB000030
+    public static final int TRANSPORT_PROTOCOL_POINTER   = FORM_POINTER   | ID_TRANSPORT_PROTOCOL; // 0xCC000030
+
 
 
     // --- HELPER BITWISE METHODS ---
