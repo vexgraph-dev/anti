@@ -185,6 +185,23 @@ public final class HTTPClient {
         return executeNative(method, urlPtr, bodyPtr);
     }
 
+    public static long request(long methodPtr, long urlPtr, long headersPtr, long bodyPtr) {
+        if (urlPtr == 0L) return 0L;
+        String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
+        return executeNative(method, urlPtr, bodyPtr);
+    }
+
+    public static long request(String method, String urlStr, String headersStr, String bodyStr) {
+        if (urlStr == null || urlStr.isEmpty()) return 0L;
+        long urlPtr = string.allocate(urlStr);
+        long bodyPtr = bodyStr != null ? string.allocate(bodyStr) : 0L;
+        long res = executeNative(method != null ? method : "GET", urlPtr, bodyPtr);
+        string.free(urlPtr);
+        if (bodyPtr != 0L) string.free(bodyPtr);
+        return res;
+    }
+
+
     // Direct string overloads allocating off-heap pointers
     public static long get(String urlStr) {
         if (urlStr == null || urlStr.isEmpty()) return 0L;
