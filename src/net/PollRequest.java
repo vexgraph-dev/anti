@@ -180,9 +180,9 @@ public final class PollRequest {
         }
     }
 
-    public static boolean executeAsync(long batchPtr) {
-        if (batchPtr == 0L) return false;
-        return thread.NetworkingThread.submitBatch(batchPtr);
+    public static boolean executeAsync(long threadPtr, long batchPtr) {
+        if (threadPtr == 0L || batchPtr == 0L) return false;
+        return thread.NetworkingThread.submit(threadPtr, batchPtr);
     }
 
 
