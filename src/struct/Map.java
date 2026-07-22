@@ -353,5 +353,153 @@ public final class Map {
     public static int classId() {
         return CLASS_ID;
     }
+
+    // --- HYBRID CONCURRENT / VOLATILE ATOMIC EXTENSIONS ---
+
+    private static final java.util.concurrent.ConcurrentHashMap<Long, Object> OBJECT_REGISTRY = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public static long getVolatile(long mapPtr, long key) {
+        if (mapPtr == 0L) return 0L;
+        int cap = capacity(mapPtr);
+        if (cap == 0) return 0L;
+
+        int keyClassId = keyClassId(mapPtr);
+        long hash = computeHash(keyClassId, key);
+        long buffer = dataBuffer(mapPtr);
+        int mask = cap - 1;
+        int idx = (int) (hash & mask);
+
+        for (int i = 0; i < cap; i++) {
+            long slot = buffer + ((long) idx * SLOT_SIZE);
+            long st = ForeignMemory.getLongVolatile(slot + 24L);
+
+            if (st == STATE_EMPTY) return 0L;
+            if (st == STATE_OCCUPIED) {
+                long slotHash = ForeignMemory.getLongVolatile(slot + 16L);
+                long slotKey = ForeignMemory.getLongVolatile(slot);
+                if (slotHash == hash && keysEqual(keyClassId, slotKey, key)) {
+                    return ForeignMemory.getLongVolatile(slot + 8L);
+                }
+            }
+            idx = (idx + 1) & mask;
+        }
+        return 0L;
+    }
+
+    public static synchronized void putVolatile(long mapPtr, long key, long value) {
+        checkActive();
+        checkValid(mapPtr);
+
+        int count = size(mapPtr);
+        int cap = capacity(mapPtr);
+        if (count >= (int) (cap * LOAD_FACTOR)) {
+            rehash(mapPtr, cap * 2);
+            cap = capacity(mapPtr);
+        }
+
+        int keyClassId = keyClassId(mapPtr);
+        long hash = computeHash(keyClassId, key);
+        long buffer = dataBuffer(mapPtr);
+        int mask = cap - 1;
+        int idx = (int) (hash & mask);
+        int firstDeleted = -1;
+
+        while (true) {
+            long slot = buffer + ((long) idx * SLOT_SIZE);
+            long st = ForeignMemory.getLongVolatile(slot + 24L);
+
+            if (st == STATE_EMPTY) {
+                int targetIdx = (firstDeleted != -1) ? firstDeleted : idx;
+                long targetSlot = buffer + ((long) targetIdx * SLOT_SIZE);
+                ForeignMemory.putLongVolatile(targetSlot, key);
+                ForeignMemory.putLongVolatile(targetSlot + 8L, value);
+                ForeignMemory.putLongVolatile(targetSlot + 16L, hash);
+                ForeignMemory.putLongVolatile(targetSlot + 24L, STATE_OCCUPIED);
+                ForeignMemory.putInt(mapPtr - 4L, count + 1);
+                return;
+            } else if (st == STATE_DELETED) {
+                if (firstDeleted == -1) firstDeleted = idx;
+            } else if (st == STATE_OCCUPIED) {
+                long slotHash = ForeignMemory.getLongVolatile(slot + 16L);
+                long slotKey = ForeignMemory.getLongVolatile(slot);
+                if (slotHash == hash && keysEqual(keyClassId, slotKey, key)) {
+                    ForeignMemory.putLongVolatile(slot + 8L, value);
+                    return;
+                }
+            }
+            idx = (idx + 1) & mask;
+        }
+    }
+
+    public static synchronized long removeVolatile(long mapPtr, long key) {
+        checkValid(mapPtr);
+        int cap = capacity(mapPtr);
+        if (cap == 0) return 0L;
+
+        int keyClassId = keyClassId(mapPtr);
+        long hash = computeHash(keyClassId, key);
+        long buffer = dataBuffer(mapPtr);
+        int mask = cap - 1;
+        int idx = (int) (hash & mask);
+
+        for (int i = 0; i < cap; i++) {
+            long slot = buffer + ((long) idx * SLOT_SIZE);
+            long st = ForeignMemory.getLongVolatile(slot + 24L);
+
+            if (st == STATE_EMPTY) return 0L;
+            if (st == STATE_OCCUPIED) {
+                long slotHash = ForeignMemory.getLongVolatile(slot + 16L);
+                long slotKey = ForeignMemory.getLongVolatile(slot);
+                if (slotHash == hash && keysEqual(keyClassId, slotKey, key)) {
+                    long oldVal = ForeignMemory.getLongVolatile(slot + 8L);
+                    ForeignMemory.putLongVolatile(slot + 24L, STATE_DELETED);
+                    int count = size(mapPtr);
+                    ForeignMemory.putInt(mapPtr - 4L, count - 1);
+                    return oldVal;
+                }
+            }
+            idx = (idx + 1) & mask;
+        }
+        return 0L;
+    }
+
+    public static boolean containsKeyVolatile(long mapPtr, long key) {
+        return getVolatile(mapPtr, key) != 0L || containsKey(mapPtr, key);
+    }
+
+    public static synchronized boolean putIfAbsentVolatile(long mapPtr, long key, long value) {
+        if (containsKeyVolatile(mapPtr, key)) return false;
+        putVolatile(mapPtr, key, value);
+        return true;
+    }
+
+    public static synchronized boolean compareAndSetVolatile(long mapPtr, long key, long expectedValue, long newValue) {
+        long currentVal = getVolatile(mapPtr, key);
+        if (currentVal != expectedValue) return false;
+        putVolatile(mapPtr, key, newValue);
+        return true;
+    }
+
+    public static synchronized void putObject(long mapPtr, long key, Object obj) {
+        if (mapPtr == 0L || obj == null) return;
+        long registryKey = (mapPtr ^ key);
+        OBJECT_REGISTRY.put(registryKey, obj);
+        putVolatile(mapPtr, key, registryKey);
+    }
+
+    public static Object getObject(long mapPtr, long key) {
+        if (mapPtr == 0L) return null;
+        long registryKey = getVolatile(mapPtr, key);
+        if (registryKey == 0L) return null;
+        return OBJECT_REGISTRY.get(registryKey);
+    }
+
+    public static synchronized Object removeObject(long mapPtr, long key) {
+        if (mapPtr == 0L) return null;
+        long registryKey = removeVolatile(mapPtr, key);
+        if (registryKey == 0L) return null;
+        return OBJECT_REGISTRY.remove(registryKey);
+    }
 }
+
 
