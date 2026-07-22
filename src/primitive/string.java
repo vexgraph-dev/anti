@@ -1,5 +1,6 @@
 package primitive;
 
+import annotation.Intention;
 import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
@@ -9,6 +10,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.charset.StandardCharsets;
 
+@Intention("Lowercase s to not get confused with java.lang.String")
 public final class string {
 
     @Required
@@ -441,6 +443,31 @@ public final class string {
         long currentPtr = destPtr;
         for (long srcPtr : srcPointers) {
             currentPtr = append(currentPtr, srcPtr);
+        }
+        return currentPtr;
+    }
+
+    public static long appendPop(long destPtr, long srcPtr) {
+        checkActive();
+        if (srcPtr == 0L) return destPtr;
+        if (destPtr == 0L) return srcPtr;
+        if (destPtr == srcPtr) {
+            long tempPtr = copy(srcPtr);
+            long result = append(destPtr, tempPtr);
+            free(tempPtr);
+            return result;
+        }
+        long result = append(destPtr, srcPtr);
+        free(srcPtr);
+        return result;
+    }
+
+    public static long appendPop(long destPtr, long... srcPointers) {
+        checkActive();
+        if (srcPointers == null || srcPointers.length == 0) return destPtr;
+        long currentPtr = destPtr;
+        for (long srcPtr : srcPointers) {
+            currentPtr = appendPop(currentPtr, srcPtr);
         }
         return currentPtr;
     }
