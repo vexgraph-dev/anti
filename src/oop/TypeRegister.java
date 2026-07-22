@@ -68,6 +68,9 @@ public class TypeRegister {
     public static final int ID_POLL_REQUEST     = 0x00002F; // PollRequest class // 47
     public static final int ID_TRANSPORT_PROTOCOL = 0x000030; // TransportProtocol class // 48
     public static final int ID_NETWORKING_THREAD  = 0x000031; // NetworkingThread class // 49
+    public static final int ID_HTTP_SERVER        = 0x000032; // HTTPServer class // 50
+    public static final int ID_WEBSOCKET_CLIENT   = 0x000033; // WebSocketClient class // 51
+
 
 
 
@@ -190,6 +193,17 @@ public class TypeRegister {
     public static final int NETWORKING_THREAD_SINGLETON = FORM_SINGLETON | ID_NETWORKING_THREAD; // 0xAA000031
     public static final int NETWORKING_THREAD_ARRAY     = FORM_ARRAY     | ID_NETWORKING_THREAD; // 0xBB000031
     public static final int NETWORKING_THREAD_POINTER   = FORM_POINTER   | ID_NETWORKING_THREAD; // 0xCC000031
+
+    // HTTPServer class
+    public static final int HTTP_SERVER_SINGLETON = FORM_SINGLETON | ID_HTTP_SERVER; // 0xAA000032
+    public static final int HTTP_SERVER_ARRAY     = FORM_ARRAY     | ID_HTTP_SERVER; // 0xBB000032
+    public static final int HTTP_SERVER_POINTER   = FORM_POINTER   | ID_HTTP_SERVER; // 0xCC000032
+
+    // WebSocketClient class
+    public static final int WEBSOCKET_CLIENT_SINGLETON = FORM_SINGLETON | ID_WEBSOCKET_CLIENT; // 0xAA000033
+    public static final int WEBSOCKET_CLIENT_ARRAY     = FORM_ARRAY     | ID_WEBSOCKET_CLIENT; // 0xBB000033
+    public static final int WEBSOCKET_CLIENT_POINTER   = FORM_POINTER   | ID_WEBSOCKET_CLIENT; // 0xCC000033
+
 
 
 
