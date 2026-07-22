@@ -7,6 +7,7 @@ import annotation.Volatile;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 import primitive.string;
+import struct.Map;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -14,13 +15,12 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Off-heap zero-GC non-blocking HTTP server operating on raw long memory pointer handles.
  */
 @Draft
-@Intention("Data-Oriented Design (DOD) off-heap non-blocking HTTP server handle layout and connection dispatcher.")
+@Intention("Data-Oriented Design (DOD) off-heap non-blocking HTTP server dogfooding struct.Map for socket channels.")
 @Volatile
 public final class HTTPServer {
 
@@ -28,8 +28,8 @@ public final class HTTPServer {
     public static final int CLASS_ID = TypeRegister.ID_HTTP_SERVER;
     public static final int TYPE_HTTP_SERVER = TypeRegister.HTTP_SERVER_SINGLETON;
 
-    private static final ConcurrentHashMap<Long, ServerSocketChannel> CHANNEL_MAP = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<Long, SocketChannel> REQUEST_CHANNEL_MAP = new ConcurrentHashMap<>();
+    private static final long CHANNEL_MAP_PTR = Map.instant(TypeRegister.ID_LONG, TypeRegister.ID_VARIABLE, 64);
+    private static final long REQUEST_CHANNEL_MAP_PTR = Map.instant(TypeRegister.ID_LONG, TypeRegister.ID_VARIABLE, 128);
 
     private HTTPServer() {}
 
@@ -75,7 +75,7 @@ public final class HTTPServer {
             ServerSocketChannel ssc = ServerSocketChannel.open();
             ssc.configureBlocking(false);
             ssc.bind(new InetSocketAddress(port));
-            CHANNEL_MAP.put(serverPtr, ssc);
+            Map.putObject(CHANNEL_MAP_PTR, serverPtr, ssc);
             ForeignMemory.putInt(serverPtr, 1); // Set state to RUNNING
             return true;
         } catch (IOException e) {
@@ -90,7 +90,7 @@ public final class HTTPServer {
     public static long pollRequest(long serverPtr) {
         if (!isRunning(serverPtr)) return 0L;
 
-        ServerSocketChannel ssc = CHANNEL_MAP.get(serverPtr);
+        ServerSocketChannel ssc = (ServerSocketChannel) Map.getObject(CHANNEL_MAP_PTR, serverPtr);
         if (ssc == null) return 0L;
 
         try {
@@ -133,7 +133,7 @@ public final class HTTPServer {
             ForeignMemory.putLong(reqPtr + 8L, uriPtr);
             ForeignMemory.putLong(reqPtr + 16L, serverPtr);
 
-            REQUEST_CHANNEL_MAP.put(reqPtr, sc);
+            Map.putObject(REQUEST_CHANNEL_MAP_PTR, reqPtr, sc);
             return reqPtr;
         } catch (IOException e) {
             return 0L;
@@ -156,7 +156,7 @@ public final class HTTPServer {
     public static boolean sendResponse(long reqPtr, int statusCode, String responseBody) {
         if (reqPtr == 0L) return false;
 
-        SocketChannel sc = REQUEST_CHANNEL_MAP.remove(reqPtr);
+        SocketChannel sc = (SocketChannel) Map.removeObject(REQUEST_CHANNEL_MAP_PTR, reqPtr);
         if (sc == null) return false;
 
         try {
@@ -205,7 +205,7 @@ public final class HTTPServer {
         if (serverPtr == 0L) return;
         ForeignMemory.putInt(serverPtr, 0); // State = STOPPED
 
-        ServerSocketChannel ssc = CHANNEL_MAP.remove(serverPtr);
+        ServerSocketChannel ssc = (ServerSocketChannel) Map.removeObject(CHANNEL_MAP_PTR, serverPtr);
         if (ssc != null) {
             try {
                 ssc.close();
