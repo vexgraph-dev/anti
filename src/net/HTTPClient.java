@@ -37,6 +37,7 @@ public final class HTTPClient {
     private static final int CURLOPT_POSTFIELDS = 10015;
     private static final int CURLOPT_POSTFIELDSIZE = 60;
     private static final int CURLOPT_CUSTOMREQUEST = 10036;
+    private static final int CURLOPT_HTTPHEADER = 10023;
     private static final int CURLOPT_TIMEOUT = 13;
     private static final int CURLOPT_FOLLOWLOCATION = 52;
     private static final int CURLOPT_SSL_VERIFYPEER = 64;
@@ -50,6 +51,8 @@ public final class HTTPClient {
     private static final MethodHandle curl_easy_perform;
     private static final MethodHandle curl_easy_cleanup;
     private static final MethodHandle curl_easy_getinfo_long;
+    private static final MethodHandle curl_slist_append;
+    private static final MethodHandle curl_slist_free_all;
 
     private static final MemorySegment writeCallbackStub;
     private static final boolean libcurlAvailable;
@@ -61,6 +64,8 @@ public final class HTTPClient {
         MethodHandle perform = null;
         MethodHandle cleanup = null;
         MethodHandle getinfoLong = null;
+        MethodHandle slistAppend = null;
+        MethodHandle slistFreeAll = null;
         MemorySegment stub = null;
         boolean available = false;
 
@@ -73,6 +78,8 @@ public final class HTTPClient {
             MemorySegment performSym = lookup.find("curl_easy_perform").orElse(null);
             MemorySegment cleanupSym = lookup.find("curl_easy_cleanup").orElse(null);
             MemorySegment getinfoSym = lookup.find("curl_easy_getinfo").orElse(null);
+            MemorySegment slistAppendSym = lookup.find("curl_slist_append").orElse(null);
+            MemorySegment slistFreeSym = lookup.find("curl_slist_free_all").orElse(null);
 
             if (initSym != null && setoptSym != null && performSym != null && cleanupSym != null) {
                 init = linker.downcallHandle(initSym, FunctionDescriptor.of(ValueLayout.ADDRESS));
@@ -81,9 +88,14 @@ public final class HTTPClient {
                 perform = linker.downcallHandle(performSym, FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
                 cleanup = linker.downcallHandle(cleanupSym, FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
 
-
                 if (getinfoSym != null) {
                     getinfoLong = linker.downcallHandle(getinfoSym, FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                }
+                if (slistAppendSym != null) {
+                    slistAppend = linker.downcallHandle(slistAppendSym, FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+                }
+                if (slistFreeSym != null) {
+                    slistFreeAll = linker.downcallHandle(slistFreeSym, FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
                 }
 
                 MethodHandle writeCbMethod = MethodHandles.lookup().findStatic(
@@ -111,6 +123,8 @@ public final class HTTPClient {
         curl_easy_perform = perform;
         curl_easy_cleanup = cleanup;
         curl_easy_getinfo_long = getinfoLong;
+        curl_slist_append = slistAppend;
+        curl_slist_free_all = slistFreeAll;
         writeCallbackStub = stub;
         libcurlAvailable = available;
     }
@@ -171,36 +185,25 @@ public final class HTTPClient {
 
     public static long get(long urlPtr) {
         if (urlPtr == 0L) return 0L;
-        return executeNative("GET", urlPtr, 0L);
+        return executeNative("GET", urlPtr, 0L, 0L);
     }
 
     public static long post(long urlPtr, long bodyPtr) {
         if (urlPtr == 0L) return 0L;
-        return executeNative("POST", urlPtr, bodyPtr);
+        return executeNative("POST", urlPtr, 0L, bodyPtr);
     }
 
     public static long request(long methodPtr, long urlPtr, long bodyPtr) {
         if (urlPtr == 0L) return 0L;
         String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
-        return executeNative(method, urlPtr, bodyPtr);
+        return executeNative(method, urlPtr, 0L, bodyPtr);
     }
 
     public static long request(long methodPtr, long urlPtr, long headersPtr, long bodyPtr) {
         if (urlPtr == 0L) return 0L;
         String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
-        return executeNative(method, urlPtr, bodyPtr);
+        return executeNative(method, urlPtr, headersPtr, bodyPtr);
     }
-
-    public static long request(String method, String urlStr, String headersStr, String bodyStr) {
-        if (urlStr == null || urlStr.isEmpty()) return 0L;
-        long urlPtr = string.allocate(urlStr);
-        long bodyPtr = bodyStr != null ? string.allocate(bodyStr) : 0L;
-        long res = executeNative(method != null ? method : "GET", urlPtr, bodyPtr);
-        string.free(urlPtr);
-        if (bodyPtr != 0L) string.free(bodyPtr);
-        return res;
-    }
-
 
     // Direct string overloads allocating off-heap pointers
     public static long get(String urlStr) {
@@ -221,16 +224,28 @@ public final class HTTPClient {
         return res;
     }
 
+    public static long request(String method, String urlStr, String headersStr, String bodyStr) {
+        if (urlStr == null || urlStr.isEmpty()) return 0L;
+        long urlPtr = string.allocate(urlStr);
+        long headersPtr = headersStr != null ? string.allocate(headersStr) : 0L;
+        long bodyPtr = bodyStr != null ? string.allocate(bodyStr) : 0L;
+        long res = executeNative(method != null ? method : "GET", urlPtr, headersPtr, bodyPtr);
+        string.free(urlPtr);
+        if (headersPtr != 0L) string.free(headersPtr);
+        if (bodyPtr != 0L) string.free(bodyPtr);
+        return res;
+    }
+
     // --- CORE NATIVE LIBCURL EXECUTION ENGINE ---
 
-    private static long executeNative(String method, long urlPtr, long bodyPtr) {
+    private static long executeNative(String method, long urlPtr, long headersPtr, long bodyPtr) {
         if (!libcurlAvailable || urlPtr == 0L) {
-            return fallbackExecute(method, urlPtr, bodyPtr);
+            return fallbackExecute(method, urlPtr, headersPtr, bodyPtr);
         }
 
         try {
             MemorySegment curl = (MemorySegment) curl_easy_init.invokeExact();
-            if (curl.address() == 0L) return fallbackExecute(method, urlPtr, bodyPtr);
+            if (curl.address() == 0L) return fallbackExecute(method, urlPtr, headersPtr, bodyPtr);
 
             // 1. Set URL pointer directly
             curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_URL, MemorySegment.ofAddress(urlPtr));
@@ -241,7 +256,33 @@ public final class HTTPClient {
             curl_easy_setopt_long.invokeExact(curl, CURLOPT_SSL_VERIFYPEER, 0L);
             curl_easy_setopt_long.invokeExact(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
-            // 3. Set Custom Method & Post Fields
+            // 3. Set Headers (including Content-Type: application/json for POST)
+            MemorySegment slistHead = MemorySegment.NULL;
+            if (headersPtr != 0L && curl_slist_append != null) {
+                String headersStr = string.get(headersPtr);
+                if (headersStr != null && !headersStr.isEmpty()) {
+                    String[] lines = headersStr.split("\n");
+                    try (Arena tempArena = Arena.ofConfined()) {
+                        for (String line : lines) {
+                            if (!line.trim().isEmpty()) {
+                                MemorySegment lineSeg = tempArena.allocateFrom(line.trim());
+                                slistHead = (MemorySegment) curl_slist_append.invokeExact(slistHead, lineSeg);
+                            }
+                        }
+                    }
+                }
+            } else if ("POST".equalsIgnoreCase(method) && curl_slist_append != null) {
+                try (Arena tempArena = Arena.ofConfined()) {
+                    MemorySegment defaultHeaderSeg = tempArena.allocateFrom("Content-Type: application/json");
+                    slistHead = (MemorySegment) curl_slist_append.invokeExact(slistHead, defaultHeaderSeg);
+                }
+            }
+
+            if (slistHead.address() != 0L) {
+                curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_HTTPHEADER, slistHead);
+            }
+
+            // 4. Set Custom Method & Post Fields
             if ("POST".equalsIgnoreCase(method)) {
                 curl_easy_setopt_long.invokeExact(curl, CURLOPT_POSTFIELDSIZE, (long) string.length(bodyPtr));
                 if (bodyPtr != 0L) {
@@ -258,7 +299,7 @@ public final class HTTPClient {
                 }
             }
 
-            // 4. Setup Off-Heap Response State Buffer [destPtr (8B), currentLen (8B), capacity (8B)]
+            // 5. Setup Off-Heap Response State Buffer [destPtr (8B), currentLen (8B), capacity (8B)]
             long userStateAddr = ForeignMemory.allocateNative(24L);
             long initialCap = 4096L;
             long initialBuf = ForeignMemory.allocateNative(initialCap);
@@ -267,12 +308,16 @@ public final class HTTPClient {
             ForeignMemory.putLong(userStateAddr + 8L, 0L);
             ForeignMemory.putLong(userStateAddr + 16L, initialCap);
 
-            // 5. Set Write Callback and User Data State Address
+            // 6. Set Write Callback and User Data State Address
             curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_WRITEFUNCTION, writeCallbackStub);
             curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_WRITEDATA, MemorySegment.ofAddress(userStateAddr));
 
-            // 6. Perform native HTTP Request
+            // 7. Perform native HTTP Request
             int res = (int) curl_easy_perform.invokeExact(curl);
+
+            if (slistHead.address() != 0L && curl_slist_free_all != null) {
+                curl_slist_free_all.invokeExact(slistHead);
+            }
             curl_easy_cleanup.invokeExact(curl);
 
             if (res == 0) { // CURLE_OK
@@ -298,10 +343,10 @@ public final class HTTPClient {
             // Fallback if libcurl downcall encounters native issue
         }
 
-        return fallbackExecute(method, urlPtr, bodyPtr);
+        return fallbackExecute(method, urlPtr, headersPtr, bodyPtr);
     }
 
-    private static long fallbackExecute(String method, long urlPtr, long bodyPtr) {
+    private static long fallbackExecute(String method, long urlPtr, long headersPtr, long bodyPtr) {
         String urlStr = string.get(urlPtr);
         if (urlStr == null || urlStr.isEmpty()) return 0L;
         try {
@@ -311,6 +356,22 @@ public final class HTTPClient {
                     .build();
 
             HttpRequest.Builder builder = HttpRequest.newBuilder().uri(uri);
+
+            if (headersPtr != 0L) {
+                String headersStr = string.get(headersPtr);
+                if (headersStr != null && !headersStr.isEmpty()) {
+                    String[] lines = headersStr.split("\n");
+                    for (String line : lines) {
+                        int idx = line.indexOf(':');
+                        if (idx > 0) {
+                            builder.header(line.substring(0, idx).trim(), line.substring(idx + 1).trim());
+                        }
+                    }
+                }
+            } else if ("POST".equalsIgnoreCase(method)) {
+                builder.header("Content-Type", "application/json");
+            }
+
             if ("POST".equalsIgnoreCase(method) && bodyPtr != 0L) {
                 byte[] bytes = string.get(bodyPtr).getBytes(StandardCharsets.UTF_8);
                 builder.POST(HttpRequest.BodyPublishers.ofByteArray(bytes));
