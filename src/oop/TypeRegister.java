@@ -62,6 +62,7 @@ public class TypeRegister {
     public static final int ID_BRAIN            = 0x000029; // Brain class // 41
     public static final int ID_FIXED32          = 0x00002A; // Fixed32 class // 42
     public static final int ID_FIXED64          = 0x00002B; // Fixed64 class // 43
+    public static final int ID_STRING_BUILDER   = 0x00002C; // StringBuilder class // 44
 
 
 
@@ -151,6 +152,11 @@ public class TypeRegister {
     public static final int FIXED64_SINGLETON = FORM_SINGLETON | ID_FIXED64; // 0xAA00002B
     public static final int FIXED64_ARRAY     = FORM_ARRAY     | ID_FIXED64; // 0xBB00002B
     public static final int FIXED64_POINTER   = FORM_POINTER   | ID_FIXED64; // 0xCC00002B
+
+    // StringBuilder class
+    public static final int STRING_BUILDER_SINGLETON = FORM_SINGLETON | ID_STRING_BUILDER; // 0xAA00002C
+    public static final int STRING_BUILDER_ARRAY     = FORM_ARRAY     | ID_STRING_BUILDER; // 0xBB00002C
+    public static final int STRING_BUILDER_POINTER   = FORM_POINTER   | ID_STRING_BUILDER; // 0xCC00002C
 
     // --- HELPER BITWISE METHODS ---
     public static boolean isSingleton(int typeId) {
