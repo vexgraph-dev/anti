@@ -7,6 +7,7 @@ import annotation.Volatile;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 import primitive.string;
+import struct.Map;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -14,16 +15,14 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Off-heap zero-GC WebSocket client operating on raw long memory pointer handles.
  */
 @Draft
-@Intention("Data-Oriented Design (DOD) off-heap WebSocket client handle layout, framing, masking, and streaming engine.")
+@Intention("Data-Oriented Design (DOD) off-heap WebSocket client dogfooding struct.Map for channel mapping.")
 @Volatile
 public final class WebSocketClient {
 
@@ -31,7 +30,7 @@ public final class WebSocketClient {
     public static final int CLASS_ID = TypeRegister.ID_WEBSOCKET_CLIENT;
     public static final int TYPE_WEBSOCKET_CLIENT = TypeRegister.WEBSOCKET_CLIENT_SINGLETON;
 
-    private static final ConcurrentHashMap<Long, SocketChannel> CHANNEL_MAP = new ConcurrentHashMap<>();
+    private static final long CHANNEL_MAP_PTR = Map.instant(TypeRegister.ID_LONG, TypeRegister.ID_VARIABLE, 64);
     private static final Random RNG = new Random();
 
     private WebSocketClient() {}
@@ -118,7 +117,7 @@ public final class WebSocketClient {
 
             if (handshakeResp.contains("101 Switching Protocols")) {
                 sc.configureBlocking(false);
-                CHANNEL_MAP.put(wsPtr, sc);
+                Map.putObject(CHANNEL_MAP_PTR, wsPtr, sc);
                 ForeignMemory.putInt(wsPtr, 1); // State = CONNECTED
                 return true;
             } else {
@@ -144,7 +143,7 @@ public final class WebSocketClient {
     public static boolean send(long wsPtr, long textPtr) {
         if (!isConnected(wsPtr) || textPtr == 0L) return false;
 
-        SocketChannel sc = CHANNEL_MAP.get(wsPtr);
+        SocketChannel sc = (SocketChannel) Map.getObject(CHANNEL_MAP_PTR, wsPtr);
         if (sc == null) return false;
 
         try {
@@ -157,8 +156,7 @@ public final class WebSocketClient {
             int headerLen = 2 + (len > 65535 ? 8 : (len > 125 ? 2 : 0)) + 4;
             ByteBuffer frame = ByteBuffer.allocateDirect(headerLen + len);
 
-            // FIN bit (0x80) + Text opcode (0x01)
-            frame.put((byte) 0x81);
+            frame.put((byte) 0x81); // FIN + Text opcode
 
             if (len <= 125) {
                 frame.put((byte) (0x80 | len));
@@ -193,7 +191,7 @@ public final class WebSocketClient {
     public static long poll(long wsPtr) {
         if (!isConnected(wsPtr)) return 0L;
 
-        SocketChannel sc = CHANNEL_MAP.get(wsPtr);
+        SocketChannel sc = (SocketChannel) Map.getObject(CHANNEL_MAP_PTR, wsPtr);
         if (sc == null) return 0L;
 
         try {
@@ -254,7 +252,7 @@ public final class WebSocketClient {
         if (wsPtr == 0L) return;
         ForeignMemory.putInt(wsPtr, 0); // State = DISCONNECTED
 
-        SocketChannel sc = CHANNEL_MAP.remove(wsPtr);
+        SocketChannel sc = (SocketChannel) Map.removeObject(CHANNEL_MAP_PTR, wsPtr);
         if (sc != null) {
             try {
                 sc.close();
