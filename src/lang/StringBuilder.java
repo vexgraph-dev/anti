@@ -7,51 +7,49 @@ import oop.TypeRegister;
 import primitive.string;
 
 @Draft
-@Intention("Off-heap StringBuilder using raw pointer manipulation and appendPop memory recycling over primitive.string")
+@Intention("Pure static utility class for off-heap string manipulation, appending, appendPop memory recycling, and substring operations over primitive.string")
 public final class StringBuilder {
 
     @Required
     public static final int CLASS_ID = TypeRegister.ID_STRING_BUILDER;
 
-    private long pointer;
+    private StringBuilder() {}
 
-    public StringBuilder() {
-        this.pointer = 0L;
+    // --- ALLOCATION & FREE MANAGEMENT ---
+
+    public static long allocate(String value) {
+        return string.allocate(value);
     }
 
-    public StringBuilder(long initialStringPointer) {
-        this.pointer = initialStringPointer;
+    public static long allocate(char[] value) {
+        return string.allocate(value);
     }
 
-    public StringBuilder(String initialValue) {
-        this.pointer = string.allocate(initialValue);
+    public static long allocate(byte[] value) {
+        return string.allocate(value);
     }
 
-    public StringBuilder(char[] initialValue) {
-        this.pointer = string.allocate(initialValue);
+    public static void free(long pointer) {
+        string.free(pointer);
     }
 
-    public StringBuilder(byte[] initialValue) {
-        this.pointer = string.allocate(initialValue);
+    public static String get(long pointer) {
+        return string.get(pointer);
     }
 
-    public StringBuilder(int initialValue) {
-        this.pointer = string.allocate(java.lang.String.valueOf(initialValue));
+    public static int length(long pointer) {
+        return string.length(pointer);
     }
 
-    public StringBuilder(float initialValue) {
-        this.pointer = string.allocate(java.lang.String.valueOf(initialValue));
+    public static int capacity(long pointer) {
+        return string.capacity(pointer);
     }
 
-    public StringBuilder(double initialValue) {
-        this.pointer = string.allocate(java.lang.String.valueOf(initialValue));
+    public static long copy(long srcPtr) {
+        return string.copy(srcPtr);
     }
 
-    public StringBuilder(boolean initialValue) {
-        this.pointer = string.allocate(java.lang.String.valueOf(initialValue));
-    }
-
-    // --- STATIC POINTER-BASED BUILDER OPERATIONS (ZERO-GC ALLOCATION) ---
+    // --- STATIC APPEND OPERATIONS ---
 
     public static long append(long destPtr, long srcPtr) {
         return string.append(destPtr, srcPtr);
@@ -70,28 +68,30 @@ public final class StringBuilder {
     }
 
     public static long append(long destPtr, int value) {
-        return string.append(destPtr, java.lang.String.valueOf(value));
+        return string.append(destPtr, String.valueOf(value));
     }
 
     public static long append(long destPtr, float value) {
-        return string.append(destPtr, java.lang.String.valueOf(value));
+        return string.append(destPtr, String.valueOf(value));
     }
 
     public static long append(long destPtr, double value) {
-        return string.append(destPtr, java.lang.String.valueOf(value));
+        return string.append(destPtr, String.valueOf(value));
     }
 
     public static long append(long destPtr, boolean value) {
-        return string.append(destPtr, java.lang.String.valueOf(value));
+        return string.append(destPtr, String.valueOf(value));
     }
 
     public static long append(long destPtr, Object value) {
-        return string.append(destPtr, java.lang.String.valueOf(value));
+        return string.append(destPtr, String.valueOf(value));
     }
 
     public static long append(long destPtr, long... srcPointers) {
         return string.append(destPtr, srcPointers);
     }
+
+    // --- STATIC APPENDPOP OPERATIONS (APPEND & FREE SOURCE POINTER) ---
 
     public static long appendPop(long destPtr, long srcPtr) {
         return string.appendPop(destPtr, srcPtr);
@@ -114,168 +114,40 @@ public final class StringBuilder {
     }
 
     public static long appendPop(long destPtr, int value) {
-        return string.append(destPtr, java.lang.String.valueOf(value));
+        return string.append(destPtr, String.valueOf(value));
     }
 
     public static long appendPop(long destPtr, float value) {
-        return string.append(destPtr, java.lang.String.valueOf(value));
+        return string.append(destPtr, String.valueOf(value));
     }
 
     public static long appendPop(long destPtr, double value) {
-        return string.append(destPtr, java.lang.String.valueOf(value));
+        return string.append(destPtr, String.valueOf(value));
     }
 
     public static long appendPop(long destPtr, boolean value) {
-        return string.append(destPtr, java.lang.String.valueOf(value));
+        return string.append(destPtr, String.valueOf(value));
     }
 
     public static long appendPop(long destPtr, Object value) {
-        return string.append(destPtr, java.lang.String.valueOf(value));
+        return string.append(destPtr, String.valueOf(value));
     }
 
-    // --- INSTANCE / HANDLE-BASED BUILDER OPERATIONS ---
+    // --- STATIC SUBSTRING OPERATIONS ---
 
-    public StringBuilder append(long value) {
-        this.pointer = string.append(this.pointer, java.lang.String.valueOf(value));
-        return this;
+    public static long substring(long srcPtr, int start) {
+        return string.substring(srcPtr, start);
     }
 
-    public StringBuilder append(String value) {
-        this.pointer = string.append(this.pointer, value);
-        return this;
+    public static long substring(long srcPtr, int start, int end) {
+        return string.substring(srcPtr, start, end);
     }
 
-    public StringBuilder append(char[] value) {
-        this.pointer = string.append(this.pointer, value);
-        return this;
+    public static long substringPop(long srcPtr, int start) {
+        return string.substringPop(srcPtr, start);
     }
 
-    public StringBuilder append(byte[] value) {
-        this.pointer = string.append(this.pointer, value);
-        return this;
-    }
-
-    public StringBuilder append(int value) {
-        this.pointer = string.append(this.pointer, java.lang.String.valueOf(value));
-        return this;
-    }
-
-    public StringBuilder append(float value) {
-        this.pointer = string.append(this.pointer, java.lang.String.valueOf(value));
-        return this;
-    }
-
-    public StringBuilder append(double value) {
-        this.pointer = string.append(this.pointer, java.lang.String.valueOf(value));
-        return this;
-    }
-
-    public StringBuilder append(boolean value) {
-        this.pointer = string.append(this.pointer, java.lang.String.valueOf(value));
-        return this;
-    }
-
-    public StringBuilder append(Object value) {
-        this.pointer = string.append(this.pointer, java.lang.String.valueOf(value));
-        return this;
-    }
-
-    public StringBuilder append(long... srcPointers) {
-        this.pointer = string.append(this.pointer, srcPointers);
-        return this;
-    }
-
-    public StringBuilder appendPointer(long srcPtr) {
-        this.pointer = string.append(this.pointer, srcPtr);
-        return this;
-    }
-
-    public StringBuilder appendPop(long srcPtr) {
-        this.pointer = string.appendPop(this.pointer, srcPtr);
-        return this;
-    }
-
-    public StringBuilder appendPopPointer(long srcPtr) {
-        this.pointer = string.appendPop(this.pointer, srcPtr);
-        return this;
-    }
-
-    public StringBuilder appendPop(long... srcPointers) {
-        this.pointer = string.appendPop(this.pointer, srcPointers);
-        return this;
-    }
-
-    public StringBuilder appendPop(String value) {
-        this.pointer = string.append(this.pointer, value);
-        return this;
-    }
-
-    public StringBuilder appendPop(char[] value) {
-        this.pointer = string.append(this.pointer, value);
-        return this;
-    }
-
-    public StringBuilder appendPop(byte[] value) {
-        this.pointer = string.append(this.pointer, value);
-        return this;
-    }
-
-    public StringBuilder appendPop(int value) {
-        this.pointer = string.append(this.pointer, java.lang.String.valueOf(value));
-        return this;
-    }
-
-    public StringBuilder appendPop(float value) {
-        this.pointer = string.append(this.pointer, java.lang.String.valueOf(value));
-        return this;
-    }
-
-    public StringBuilder appendPop(double value) {
-        this.pointer = string.append(this.pointer, java.lang.String.valueOf(value));
-        return this;
-    }
-
-    public StringBuilder appendPop(boolean value) {
-        this.pointer = string.append(this.pointer, java.lang.String.valueOf(value));
-        return this;
-    }
-
-    public StringBuilder appendPop(Object value) {
-        this.pointer = string.append(this.pointer, java.lang.String.valueOf(value));
-        return this;
-    }
-
-    public long pointer() {
-        return this.pointer;
-    }
-
-    public long build() {
-        return this.pointer;
-    }
-
-    public int length() {
-        return string.length(this.pointer);
-    }
-
-    public int capacity() {
-        return string.capacity(this.pointer);
-    }
-
-    public void free() {
-        if (this.pointer != 0L) {
-            string.free(this.pointer);
-            this.pointer = 0L;
-        }
-    }
-
-    public static void free(long pointer) {
-        if (pointer != 0L) {
-            string.free(pointer);
-        }
-    }
-
-    @Override
-    public String toString() {
-        return string.get(this.pointer);
+    public static long substringPop(long srcPtr, int start, int end) {
+        return string.substringPop(srcPtr, start, end);
     }
 }
