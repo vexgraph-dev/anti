@@ -13,9 +13,10 @@ import java.lang.foreign.Arena;
 
 /**
  * Off-heap Circular Polar Grid Spatial Partitioning Array implementation.
+ * Modified to be Integer Index based (chunk/view based).
  */
 @Draft
-@Intention("Zero-GC off-heap circular polar spatial partitioning array mapping concentric rings and angular slices to coordinate entity lists.")
+@Intention("Zero-GC off-heap circular polar spatial partitioning array mapping concentric rings and angular slices by integer indices to coordinate entity lists.")
 @Volatile
 public final class CircularArray {
 
@@ -24,8 +25,7 @@ public final class CircularArray {
 
     public static final int TYPE_CIRCULAR_ARRAY = TypeRegister.FORM_ARRAY | CLASS_ID; // 0xBB000028
 
-    private static final long HEADER_SIZE = 40L; // 8B metadata header + 32B slot layout
-    private static final double PI2 = Math.PI * 2.0;
+    private static final long HEADER_SIZE = 24L; // 8B metadata header + 16B slot layout
 
     private static Arena poolArena;
     private static volatile boolean active;
@@ -55,10 +55,9 @@ public final class CircularArray {
         }
     }
 
-    // create a new off-heap polar spatial grid
-    public static long instant(float centerX, float centerY, float ringWidth, int numRings, int numSlices) {
+    // create a new off-heap index-based polar spatial grid
+    public static long instant(int numRings, int numSlices) {
         checkActive();
-        if (ringWidth <= 0.0f) throw new IllegalArgumentException("ringWidth must be positive!");
         if (numRings <= 0 || numSlices <= 0) throw new IllegalArgumentException("Rings and slices must be positive!");
 
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
@@ -67,45 +66,29 @@ public final class CircularArray {
         ForeignMemory.putInt(headerBlock, TYPE_CIRCULAR_ARRAY);
         ForeignMemory.putInt(headerBlock + 4L, 0); // total size of entities
 
-        ForeignMemory.putFloat(userPtr, centerX);
-        ForeignMemory.putFloat(userPtr + 4L, centerY);
-        ForeignMemory.putFloat(userPtr + 8L, ringWidth);
-        ForeignMemory.putInt(userPtr + 12L, numRings);
-        ForeignMemory.putInt(userPtr + 16L, numSlices);
-        ForeignMemory.putInt(userPtr + 20L, 0); // padding
+        ForeignMemory.putInt(userPtr, numRings);
+        ForeignMemory.putInt(userPtr + 4L, numSlices);
 
         long cellCount = (long) numRings * numSlices;
         long bufferBytes = cellCount * 8L; // array of 64-bit List pointers
         long dataBuffer = ForeignMemory.allocateNative(bufferBytes);
         ForeignMemory.setMemory(dataBuffer, bufferBytes, (byte) 0); // clear cell pointers to 0L
 
-        ForeignMemory.putLong(userPtr + 24L, dataBuffer);
+        ForeignMemory.putLong(userPtr + 8L, dataBuffer);
 
         return userPtr;
     }
 
-    public static float centerX(long circularPtr) {
-        return ForeignMemory.getFloat(circularPtr);
-    }
-
-    public static float centerY(long circularPtr) {
-        return ForeignMemory.getFloat(circularPtr + 4L);
-    }
-
-    public static float ringWidth(long circularPtr) {
-        return ForeignMemory.getFloat(circularPtr + 8L);
-    }
-
     public static int numRings(long circularPtr) {
-        return ForeignMemory.getInt(circularPtr + 12L);
+        return ForeignMemory.getInt(circularPtr);
     }
 
     public static int numSlices(long circularPtr) {
-        return ForeignMemory.getInt(circularPtr + 16L);
+        return ForeignMemory.getInt(circularPtr + 4L);
     }
 
     public static long dataBuffer(long circularPtr) {
-        return ForeignMemory.getLong(circularPtr + 24L);
+        return ForeignMemory.getLong(circularPtr + 8L);
     }
 
     public static int size(long circularPtr) {
@@ -116,29 +99,17 @@ public final class CircularArray {
         return val < min ? min : (val > max ? max : val);
     }
 
-    // insert an entity based on its coordinate position (x, y)
-    public static synchronized void insert(long circularPtr, float x, float y, long entityId) {
+    // insert an entity based on its index coordinates
+    public static synchronized void insert(long circularPtr, int ring, int slice, long entityId) {
         checkActive();
         checkValid(circularPtr);
 
-        float cx = centerX(circularPtr);
-        float cy = centerY(circularPtr);
-        float rw = ringWidth(circularPtr);
         int rings = numRings(circularPtr);
         int slices = numSlices(circularPtr);
 
-        float dx = x - cx;
-        float dy = y - cy;
-        double r = Math.sqrt(dx * dx + dy * dy);
-        double theta = Math.atan2(dy, dx);
-
-        // Normalize angle to [0, 2PI]
-        if (theta < 0.0) {
-            theta += PI2;
-        }
-
-        int ir = clamp((int) (r / rw), 0, rings - 1);
-        int it = clamp((int) (theta / (PI2 / slices)), 0, slices - 1);
+        int ir = clamp(ring, 0, rings - 1);
+        int it = slice % slices;
+        if (it < 0) it += slices;
 
         long dataBuffer = dataBuffer(circularPtr);
         long cellOffset = ((long) ir * slices + it) * 8L;
@@ -153,28 +124,17 @@ public final class CircularArray {
         ForeignMemory.putInt(circularPtr - 4L, size(circularPtr) + 1);
     }
 
-    // remove an entity based on its coordinates
-    public static synchronized boolean remove(long circularPtr, float x, float y, long entityId) {
+    // remove an entity based on its index coordinates
+    public static synchronized boolean remove(long circularPtr, int ring, int slice, long entityId) {
         checkActive();
         checkValid(circularPtr);
 
-        float cx = centerX(circularPtr);
-        float cy = centerY(circularPtr);
-        float rw = ringWidth(circularPtr);
         int rings = numRings(circularPtr);
         int slices = numSlices(circularPtr);
 
-        float dx = x - cx;
-        float dy = y - cy;
-        double r = Math.sqrt(dx * dx + dy * dy);
-        double theta = Math.atan2(dy, dx);
-
-        if (theta < 0.0) {
-            theta += PI2;
-        }
-
-        int ir = clamp((int) (r / rw), 0, rings - 1);
-        int it = clamp((int) (theta / (PI2 / slices)), 0, slices - 1);
+        int ir = clamp(ring, 0, rings - 1);
+        int it = slice % slices;
+        if (it < 0) it += slices;
 
         long dataBuffer = dataBuffer(circularPtr);
         long cellOffset = ((long) ir * slices + it) * 8L;
@@ -194,78 +154,116 @@ public final class CircularArray {
         return false;
     }
 
-    // update position coordinates
-    public static synchronized void update(long circularPtr, float oldX, float oldY, float newX, float newY, long entityId) {
+    // update index coordinates
+    public static synchronized void update(long circularPtr, int oldRing, int oldSlice, int newRing, int newSlice, long entityId) {
         checkActive();
         checkValid(circularPtr);
-
-        float cx = centerX(circularPtr);
-        float cy = centerY(circularPtr);
-        float rw = ringWidth(circularPtr);
+        
         int rings = numRings(circularPtr);
         int slices = numSlices(circularPtr);
+        
+        int oIr = clamp(oldRing, 0, rings - 1);
+        int oIt = oldSlice % slices;
+        if (oIt < 0) oIt += slices;
+        
+        int nIr = clamp(newRing, 0, rings - 1);
+        int nIt = newSlice % slices;
+        if (nIt < 0) nIt += slices;
 
-        // check old cell
-        float odx = oldX - cx;
-        float ody = oldY - cy;
-        double oldR = Math.sqrt(odx * odx + ody * ody);
-        double oldTheta = Math.atan2(ody, odx);
-        if (oldTheta < 0.0) oldTheta += PI2;
-
-        int oldIr = clamp((int) (oldR / rw), 0, rings - 1);
-        int oldIt = clamp((int) (oldTheta / (PI2 / slices)), 0, slices - 1);
-
-        // check new cell
-        float ndx = newX - cx;
-        float ndy = newY - cy;
-        double newR = Math.sqrt(ndx * ndx + ndy * ndy);
-        double newTheta = Math.atan2(ndy, ndx);
-        if (newTheta < 0.0) newTheta += PI2;
-
-        int newIr = clamp((int) (newR / rw), 0, rings - 1);
-        int newIt = clamp((int) (newTheta / (PI2 / slices)), 0, slices - 1);
-
-        if (oldIr == newIr && oldIt == newIt) {
+        if (oIr == nIr && oIt == nIt) {
             return; // same cell
         }
 
-        if (remove(circularPtr, oldX, oldY, entityId)) {
-            insert(circularPtr, newX, newY, entityId);
+        if (remove(circularPtr, oldRing, oldSlice, entityId)) {
+            insert(circularPtr, newRing, newSlice, entityId);
         }
     }
 
-    // query all entities inside a concentric ring band [minRadius, maxRadius] and/or angular slices [minAngle, maxAngle]
-    // angles should be in radians in range [0, 2PI].
-    public static synchronized void query(long circularPtr, float minRadius, float maxRadius, double minAngle, double maxAngle, long resultListPtr) {
+    // check if an entity exists anywhere in the polar grid
+    public static synchronized boolean contains(long circularPtr, long entityId) {
+        checkActive();
+        checkValid(circularPtr);
+
+        int rings = numRings(circularPtr);
+        int slices = numSlices(circularPtr);
+        long cellCount = (long) rings * slices;
+        long dataBuffer = dataBuffer(circularPtr);
+
+        for (int i = 0; i < cellCount; i++) {
+            long listPtr = ForeignMemory.getLong(dataBuffer + i * 8L);
+            if (listPtr != 0L) {
+                int listSize = List.size(listPtr);
+                for (int j = 0; j < listSize; j++) {
+                    if (List.get(listPtr, j) == entityId) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // fetch all entities in the polar grid and append them to resultListPtr
+    public static synchronized void getAll(long circularPtr, long resultListPtr) {
         checkActive();
         checkValid(circularPtr);
         if (resultListPtr == 0L) throw new NullPointerException("Result List pointer cannot be NULL!");
 
-        float rw = ringWidth(circularPtr);
+        int rings = numRings(circularPtr);
+        int slices = numSlices(circularPtr);
+        long cellCount = (long) rings * slices;
+        long dataBuffer = dataBuffer(circularPtr);
+
+        for (int i = 0; i < cellCount; i++) {
+            long listPtr = ForeignMemory.getLong(dataBuffer + i * 8L);
+            if (listPtr != 0L) {
+                int listSize = List.size(listPtr);
+                for (int j = 0; j < listSize; j++) {
+                    List.add(resultListPtr, List.get(listPtr, j));
+                }
+            }
+        }
+    }
+
+    // clear all entities from the polar grid without deallocating cells
+    public static synchronized void clear(long circularPtr) {
+        checkActive();
+        checkValid(circularPtr);
+
+        int rings = numRings(circularPtr);
+        int slices = numSlices(circularPtr);
+        long cellCount = (long) rings * slices;
+        long dataBuffer = dataBuffer(circularPtr);
+
+        for (int i = 0; i < cellCount; i++) {
+            long listPtr = ForeignMemory.getLong(dataBuffer + i * 8L);
+            if (listPtr != 0L) {
+                ForeignMemory.putInt(listPtr - 4L, 0); // clear the cell list
+            }
+        }
+        ForeignMemory.putInt(circularPtr - 4L, 0); // reset total size
+    }
+
+    // query all entities inside a concentric ring index band and/or angular slice index band
+    public static synchronized void query(long circularPtr, int minRing, int maxRing, int minSlice, int maxSlice, long resultListPtr) {
+        checkActive();
+        checkValid(circularPtr);
+        if (resultListPtr == 0L) throw new NullPointerException("Result List pointer cannot be NULL!");
+
         int rings = numRings(circularPtr);
         int slices = numSlices(circularPtr);
 
-        int irMin = clamp((int) (minRadius / rw), 0, rings - 1);
-        int irMax = clamp((int) (maxRadius / rw), 0, rings - 1);
+        int irMin = clamp(minRing, 0, rings - 1);
+        int irMax = clamp(maxRing, 0, rings - 1);
 
-        double sliceWidth = PI2 / slices;
+        int itMin = minSlice % slices;
+        if (itMin < 0) itMin += slices;
         
-        // Normalize search angles to [0, 2PI]
-        double minAn = minAngle;
-        while (minAn < 0.0) minAn += PI2;
-        while (minAn >= PI2) minAn -= PI2;
-
-        double maxAn = maxAngle;
-        while (maxAn < 0.0) maxAn += PI2;
-        while (maxAn >= PI2) maxAn -= PI2;
-
-        int itMin = clamp((int) (minAn / sliceWidth), 0, slices - 1);
-        int itMax = clamp((int) (maxAn / sliceWidth), 0, slices - 1);
+        int itMax = maxSlice % slices;
+        if (itMax < 0) itMax += slices;
 
         long dataBuffer = dataBuffer(circularPtr);
 
         for (int ir = irMin; ir <= irMax; ir++) {
-            if (minAn <= maxAn) {
+            if (minSlice <= maxSlice && itMin <= itMax) {
                 // standard slice sweep
                 for (int it = itMin; it <= itMax; it++) {
                     long cellOffset = ((long) ir * slices + it) * 8L;
@@ -278,7 +276,7 @@ public final class CircularArray {
                     }
                 }
             } else {
-                // sweep wraps around 2PI boundary
+                // sweep wraps around the circle
                 // Part 1: from itMin to last slice
                 for (int it = itMin; it < slices; it++) {
                     long cellOffset = ((long) ir * slices + it) * 8L;
