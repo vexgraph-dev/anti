@@ -201,6 +201,22 @@ public final class List {
         writeSlot(targetSlot, stride, valueOrPointer);
     }
 
+    // get value or pointer at index (unsafe volatile, no bounds check)
+    public static long unsafeVolatileGet(long listPtr, int index) {
+        int stride = stride(listPtr);
+        long dataBuffer = dataBuffer(listPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        return readSlotVolatile(targetSlot, stride);
+    }
+
+    // set value or pointer at index (unsafe volatile, no bounds check)
+    public static void unsafeVolatileSet(long listPtr, int index, long valueOrPointer) {
+        int stride = stride(listPtr);
+        long dataBuffer = dataBuffer(listPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        writeSlotVolatile(targetSlot, stride, valueOrPointer);
+    }
+
     // remove element at index and shift remaining left
     public static synchronized void remove(long listPtr, int index) {
         checkBounds(listPtr, index);
