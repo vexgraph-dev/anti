@@ -22,6 +22,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Objects;
 
 @Draft
 @Intention("Pure native FFM libcurl HTTP client operating directly on raw long off-heap memory pointers with zero Java heap allocations")
@@ -113,9 +114,7 @@ public final class HTTPClient {
                 stub = linker.upcallStub(writeCbMethod, writeCbDesc, Arena.global());
                 available = true;
             }
-        } catch (Throwable t) {
-            available = false;
-        }
+        } catch (Throwable ignored) {}
 
         curl_easy_init = init;
         curl_easy_setopt_ptr = setoptPtr;
@@ -312,7 +311,7 @@ public final class HTTPClient {
             curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_WRITEFUNCTION, writeCallbackStub);
             curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_WRITEDATA, MemorySegment.ofAddress(userStateAddr));
 
-            // 7. Perform native HTTP Request
+            // 7. Perform a native HTTP Request
             int res = (int) curl_easy_perform.invokeExact(curl);
 
             if (slistHead.address() != 0L && curl_slist_free_all != null) {
@@ -320,8 +319,8 @@ public final class HTTPClient {
             }
             curl_easy_cleanup.invokeExact(curl);
 
+            long rawBuf = ForeignMemory.getLong(userStateAddr);
             if (res == 0) { // CURLE_OK
-                long rawBuf = ForeignMemory.getLong(userStateAddr);
                 long bytesLen = ForeignMemory.getLong(userStateAddr + 8L);
                 ForeignMemory.freeNative(userStateAddr);
 
@@ -335,7 +334,6 @@ public final class HTTPClient {
                     ForeignMemory.freeNative(rawBuf);
                 }
             } else {
-                long rawBuf = ForeignMemory.getLong(userStateAddr);
                 if (rawBuf != 0L) ForeignMemory.freeNative(rawBuf);
                 ForeignMemory.freeNative(userStateAddr);
             }
@@ -349,12 +347,11 @@ public final class HTTPClient {
     private static long fallbackExecute(String method, long urlPtr, long headersPtr, long bodyPtr) {
         String urlStr = string.get(urlPtr);
         if (urlStr == null || urlStr.isEmpty()) return 0L;
-        try {
-            URI uri = URI.create(urlStr);
-            HttpClient fallbackClient = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
-                    .build();
-
+        URI uri = URI.create(urlStr);
+        try(HttpClient fallbackClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build())
+        {
             HttpRequest.Builder builder = HttpRequest.newBuilder().uri(uri);
 
             if (headersPtr != 0L) {
@@ -373,7 +370,7 @@ public final class HTTPClient {
             }
 
             if ("POST".equalsIgnoreCase(method) && bodyPtr != 0L) {
-                byte[] bytes = string.get(bodyPtr).getBytes(StandardCharsets.UTF_8);
+                byte[] bytes = Objects.requireNonNull(string.get(bodyPtr)).getBytes(StandardCharsets.UTF_8);
                 builder.POST(HttpRequest.BodyPublishers.ofByteArray(bytes));
             } else {
                 builder.GET();
@@ -418,9 +415,9 @@ public final class HTTPClient {
     }
 
     private static int fallbackStatus(String urlStr) {
-        if (urlStr == null || urlStr.isEmpty()) return 500;
-        try {
-            HttpClient fallbackClient = HttpClient.newBuilder().build();
+        if (urlStr == null || urlStr.isEmpty())
+            return 500;
+        try (HttpClient fallbackClient = HttpClient.newBuilder().build()) {
             HttpRequest req = HttpRequest.newBuilder().uri(URI.create(urlStr)).GET().build();
             return fallbackClient.send(req, HttpResponse.BodyHandlers.discarding()).statusCode();
         } catch (Exception e) {

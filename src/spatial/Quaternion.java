@@ -1,8 +1,8 @@
 package spatial;
 
-public class Quat
+public class Quaternion
 {
-    public Quat()
+    public Quaternion()
     {
 
     }

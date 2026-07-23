@@ -1,9 +1,9 @@
 package serial;
 
-public class FileObject
+public class PersistentObject
 {
-    // obect allocation, but its more of like...
-    public FileObject()
+    // object allocation, but its more of like... allocate the things into a storage, and then insert into it
+    public PersistentObject()
     {
 
     }

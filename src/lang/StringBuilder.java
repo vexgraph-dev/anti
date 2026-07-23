@@ -91,7 +91,7 @@ public final class StringBuilder {
         return string.append(destPtr, srcPointers);
     }
 
-    // --- STATIC APPENDPOP OPERATIONS (APPEND & FREE SOURCE POINTER) ---
+    // --- STATIC AppendPop OPERATIONS (APPEND & FREE SOURCE POINTER) ---
 
     public static long appendPop(long destPtr, long srcPtr) {
         return string.appendPop(destPtr, srcPtr);

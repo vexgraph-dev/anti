@@ -11,7 +11,7 @@ import struct.Array;
 
 /**
  * Data-Oriented Design (DOD) off-heap Scripting Thread Pool Manager.
- * 
+ * <p>
  * Manages multiple independent off-heap scripting worker thread handles.
  */
 @Draft

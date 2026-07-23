@@ -4,7 +4,6 @@ import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import annotation.Volatile;
-import nio.ForeignMemory;
 import oop.TypeRegister;
 import primitive.string;
 
@@ -47,7 +46,7 @@ public final class TouchID {
 
     /**
      * Triggers hardware TouchID biometric verification prompt on macOS.
-     * Returns true if TouchID fingerprint authentication succeeded, or false if cancelled/failed/unsupported.
+     * Returns true if TouchID fingerprint authentication succeeded, or false if canceled/failed/unsupported.
      */
     public static boolean authenticate(String reasonPrompt) {
         if (!isMac) return false;
@@ -65,21 +64,23 @@ public final class TouchID {
             reason = "Authenticate with TouchID for Anti Security Subsystem";
         }
 
-        String swiftScript = "import LocalAuthentication\n" +
-                "import Foundation\n" +
-                "let context = LAContext()\n" +
-                "var error: NSError?\n" +
-                "let reason = \"" + reason.replace("\"", "\\\"") + "\"\n" +
-                "if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) || context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {\n" +
-                "    let semaphore = DispatchSemaphore(value: 0)\n" +
-                "    var authenticated = false\n" +
-                "    context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, authError in\n" +
-                "        authenticated = success\n" +
-                "        semaphore.signal()\n" +
-                "    }\n" +
-                "    semaphore.wait()\n" +
-                "    if authenticated { print(\"TOUCHID_SUCCESS\"); exit(0); } else { print(\"TOUCHID_FAILED\"); exit(1); }\n" +
-                "} else { print(\"TOUCHID_UNAVAILABLE\"); exit(2); }\n";
+        String swiftScript = """
+                import LocalAuthentication
+                import Foundation
+                let context = LAContext()
+                var error: NSError?
+                let reason = "%s"
+                if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) || context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
+                    let semaphore = DispatchSemaphore(value: 0)
+                    var authenticated = false
+                    context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, authError in
+                        authenticated = success
+                        semaphore.signal()
+                    }
+                    semaphore.wait()
+                    if authenticated { print("TOUCHID_SUCCESS"); exit(0); } else { print("TOUCHID_FAILED"); exit(1); }
+                } else { print("TOUCHID_UNAVAILABLE"); exit(2); }
+                """.formatted(reason.replace("\"", "\\\""));
 
         try {
             ProcessBuilder pb = new ProcessBuilder("swift", "-");
@@ -101,10 +102,9 @@ public final class TouchID {
         } catch (Exception ignored) {}
 
         // Fallback to macOS AppleScript system dialog if Swift is unavailable
-        try {
-            ProcessBuilder pb = new ProcessBuilder("osascript", "-e",
-                    "display dialog \"" + reason + "\" with title \"Anti Security Subsystem\" buttons {\"Cancel\", \"Authenticate\"} default button \"Authenticate\" with icon caution");
-            Process p = pb.start();
+        ProcessBuilder pb = new ProcessBuilder("osascript", "-e",
+                "display dialog \"" + reason + "\" with title \"Anti Security Subsystem\" buttons {\"Cancel\", \"Authenticate\"} default button \"Authenticate\" with icon caution");
+        try(Process p = pb.start()) {
             return p.waitFor() == 0;
         } catch (Exception e) {
             return false;

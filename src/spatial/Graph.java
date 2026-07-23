@@ -1,7 +1,9 @@
-package spatial;public class Graph 
+package spatial;
+
+public class Graph
 {
     public Graph()
     {
-    
+
     }
 }

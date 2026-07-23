@@ -1,7 +1,10 @@
-package relational;public class ACID 
+package relational;
+
+public class ACID
 {
+    // acid doing stuff
     public ACID()
     {
-    
+
     }
 }

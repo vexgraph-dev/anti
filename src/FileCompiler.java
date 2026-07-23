@@ -21,10 +21,7 @@ void main()
 
 
                     // exclude files here:
-                    boolean inResourcesDir = fullPath.contains("\\resources\\") ||
-                            fullPath.contains("/resources/") ||
-                            fullPath.contains("\\resources") ||
-                            fullPath.contains("/resources");
+                    boolean inResourcesDir = false;
 
                     return isTargetFile && !inResourcesDir;
                 })

@@ -1,7 +1,9 @@
-package spatial;public class DAG 
+package spatial;
+
+public class DAG
 {
     public DAG()
     {
-    
+
     }
 }

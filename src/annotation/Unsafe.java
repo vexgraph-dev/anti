@@ -1,4 +1,5 @@
 package annotation;
 
-public @interface Unsafe {
+public @interface Unsafe
+{
 }

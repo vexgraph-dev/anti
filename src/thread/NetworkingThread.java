@@ -12,7 +12,7 @@ import struct.Array;
 
 /**
  * Data-Oriented Design (DOD) off-heap Networking Thread Pool Manager.
- * 
+ * <p>
  * Manages multiple independent off-heap worker thread handles (e.g. networking, pollingrequest, apirequests).
  */
 @Draft

@@ -1,7 +1,9 @@
-package database;public class DataManager 
-{
+package database;
+
+public class DataManager
+ {
     public DataManager()
     {
-    
+
     }
 }

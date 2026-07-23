@@ -34,13 +34,19 @@ bin/
 *.iml
 preferences.txt
 lib/
+
+### testing grounds ###
 ScratchTest.java
 src/ScratchTest.java
 **/ScratchTest.java
+ScratchTest2.java
+src/ScratchTest2.java
+**/ScratchTest2.java
 FileCompiler.java
 LOCounter.java
 
-### Private / Regurgitation Files ###
+### Private / Regurgitation / Config Files ###
+.gemini/
 regurgitation/
 code.txt
 *.regurgitation

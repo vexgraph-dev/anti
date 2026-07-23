@@ -82,7 +82,7 @@ public final class Brain {
     }
 
     // --- CONVERSION METHODS ---
-    public static short floatToBfloat16(float val) {
+    public static short floatToBFloat16(float val) {
         int bits = java.lang.Float.floatToIntBits(val);
         // Round to nearest even to prevent truncation bias
         int lsb = (bits >>> 16) & 1;
@@ -91,7 +91,7 @@ public final class Brain {
         return (short) (bits >>> 16);
     }
 
-    public static float bfloat16ToFloat(short val) {
+    public static float bFloat16ToFloat(short val) {
         int bits = (val & 0xFFFF) << 16;
         return java.lang.Float.intBitsToFloat(bits);
     }
@@ -352,43 +352,43 @@ public final class Brain {
     public static float get(long pointer) {
         if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
         short rawVal = ForeignMemory.getShort(pointer);
-        return bfloat16ToFloat(rawVal);
+        return bFloat16ToFloat(rawVal);
     }
 
     public static float get(long pointer, int index) {
         checkBounds(pointer, index);
         short rawVal = ForeignMemory.getShort(pointer + (index * 2L));
-        return bfloat16ToFloat(rawVal);
+        return bFloat16ToFloat(rawVal);
     }
 
     public static void set(long pointer, float value) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        short rawVal = floatToBfloat16(value);
+        short rawVal = floatToBFloat16(value);
         ForeignMemory.putShort(pointer, rawVal);
     }
 
     public static void set(long pointer, int index, float value) {
         checkBounds(pointer, index);
-        short rawVal = floatToBfloat16(value);
+        short rawVal = floatToBFloat16(value);
         ForeignMemory.putShort(pointer + (index * 2L), rawVal);
     }
 
     public static float getVolatile(long pointer) {
         if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
         short rawVal = ForeignMemory.getShortVolatile(pointer);
-        return bfloat16ToFloat(rawVal);
+        return bFloat16ToFloat(rawVal);
     }
 
     public static void setVolatile(long pointer, float value) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        short rawVal = floatToBfloat16(value);
+        short rawVal = floatToBFloat16(value);
         ForeignMemory.putShortVolatile(pointer, rawVal);
     }
 
     public static boolean compareAndSet(long pointer, float expected, float value) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        short expectedRaw = floatToBfloat16(expected);
-        short valueRaw = floatToBfloat16(value);
+        short expectedRaw = floatToBFloat16(expected);
+        short valueRaw = floatToBFloat16(value);
         return ForeignMemory.compareAndSetShort(pointer, expectedRaw, valueRaw);
     }
 

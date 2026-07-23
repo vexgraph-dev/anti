@@ -1,6 +1,7 @@
 package nio;
 
 import annotation.HotCode;
+import net.HTTPClient;
 import oop.Struct;
 import primitive.Byte;
 import primitive.Double;
