@@ -43,10 +43,16 @@ ScratchTest2.java
 src/ScratchTest2.java
 **/ScratchTest2.java
 FileCompiler.java
+src/FileCompiler.java
+**/FileCompiler.java
 LOCounter.java
+src/LOCounter.java
+**/LOCounter.java
 
-### Private / Regurgitation / Config Files ###
+### Private / Regurgi
+tation / Config Files ###
 .gemini/
 regurgitation/
 code.txt
+
 *.regurgitation
