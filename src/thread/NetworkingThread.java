@@ -21,7 +21,7 @@ public final class NetworkingThread {
     public static final int CLASS_ID = TypeRegister.ID_NETWORKING_THREAD;
     public static final int TYPE_NETWORKING_THREAD = TypeRegister.NETWORKING_THREAD_SINGLETON;
 
-    private static final int DEFAULT_POOL_SIZE = 4;
+    private static final int DEFAULT_POOL_SIZE = 1;
     private static final long WORKER_MAP_PTR = Map.instant(TypeRegister.ID_LONG, TypeRegister.ID_VARIABLE, 64);
 
     private NetworkingThread() {}
@@ -31,7 +31,7 @@ public final class NetworkingThread {
     }
 
     /**
-     * Allocates a new off-heap NetworkingThread instance handle.
+     * Allocates a new off-heap NetworkingThread instance handle (defaulting to 1 worker thread).
      */
     public static long invoke() {
         return invoke(DEFAULT_POOL_SIZE);
@@ -72,7 +72,7 @@ public final class NetworkingThread {
     }
 
     /**
-     * Launches background worker threads for the given off-heap handle.
+     * Instantiates and launches background worker thread(s) for the given off-heap handle.
      */
     public static synchronized boolean run(long threadPtr) {
         if (threadPtr == 0L) return false;
@@ -98,18 +98,19 @@ public final class NetworkingThread {
 
     /**
      * Submits a PollRequest batch handle to the off-heap thread queue.
+     * Returns false if thread is not running.
      */
     public static boolean submit(long threadPtr, long batchPtr) {
         if (threadPtr == 0L || batchPtr == 0L) return false;
         if (!isRunning(threadPtr)) {
-            run(threadPtr);
+            return false;
         }
         long queuePtr = getQueue(threadPtr);
         return RingBuffer.offer(queuePtr, batchPtr);
     }
 
     /**
-     * Stops the worker threads for the given off-heap handle.
+     * Stops the worker thread object for the given off-heap handle.
      */
     public static synchronized void stop(long threadPtr) {
         if (threadPtr == 0L) return;
