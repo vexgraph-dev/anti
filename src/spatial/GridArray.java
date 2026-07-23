@@ -201,6 +201,69 @@ public final class GridArray {
         }
     }
 
+    // check if an entity exists anywhere in the grid
+    public static synchronized boolean contains(long gridPtr, long entityId) {
+        checkActive();
+        checkValid(gridPtr);
+
+        int rx = resX(gridPtr);
+        int ry = resY(gridPtr);
+        long cellCount = (long) rx * ry;
+        long dataBuffer = dataBuffer(gridPtr);
+
+        for (int i = 0; i < cellCount; i++) {
+            long listPtr = ForeignMemory.getLong(dataBuffer + i * 8L);
+            if (listPtr != 0L) {
+                int listSize = List.size(listPtr);
+                for (int j = 0; j < listSize; j++) {
+                    if (List.get(listPtr, j) == entityId) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // fetch all entities in the grid and append them to resultListPtr
+    public static synchronized void getAll(long gridPtr, long resultListPtr) {
+        checkActive();
+        checkValid(gridPtr);
+        if (resultListPtr == 0L) throw new NullPointerException("Result List pointer cannot be NULL!");
+
+        int rx = resX(gridPtr);
+        int ry = resY(gridPtr);
+        long cellCount = (long) rx * ry;
+        long dataBuffer = dataBuffer(gridPtr);
+
+        for (int i = 0; i < cellCount; i++) {
+            long listPtr = ForeignMemory.getLong(dataBuffer + i * 8L);
+            if (listPtr != 0L) {
+                int listSize = List.size(listPtr);
+                for (int j = 0; j < listSize; j++) {
+                    List.add(resultListPtr, List.get(listPtr, j));
+                }
+            }
+        }
+    }
+
+    // clear all entities from the grid without deallocating cells
+    public static synchronized void clear(long gridPtr) {
+        checkActive();
+        checkValid(gridPtr);
+
+        int rx = resX(gridPtr);
+        int ry = resY(gridPtr);
+        long cellCount = (long) rx * ry;
+        long dataBuffer = dataBuffer(gridPtr);
+
+        for (int i = 0; i < cellCount; i++) {
+            long listPtr = ForeignMemory.getLong(dataBuffer + i * 8L);
+            if (listPtr != 0L) {
+                ForeignMemory.putInt(listPtr - 4L, 0); // clear the cell list
+            }
+        }
+        ForeignMemory.putInt(gridPtr - 4L, 0); // reset total size
+    }
+
     // query all entities overlapping the bounding box [minX, minY, maxX, maxY]
     // appends matching entity IDs directly to the resultListPtr
     public static synchronized void query(long gridPtr, float minX, float minY, float maxX, float maxY, long resultListPtr) {
