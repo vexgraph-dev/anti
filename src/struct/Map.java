@@ -267,6 +267,30 @@ public final class Map {
         return 0L;
     }
 
+    /**
+     * Returns an off-heap Array containing all active keys in the map.
+     */
+    public static synchronized long getKeys(long mapPtr) {
+        checkActive();
+        checkValid(mapPtr);
+        int size = size(mapPtr);
+        long arrayPtr = Array.instant(keyClassId(mapPtr), size);
+        if (size == 0) return arrayPtr;
+
+        int cap = capacity(mapPtr);
+        long buffer = dataBuffer(mapPtr);
+        int idx = 0;
+        for (int i = 0; i < cap; i++) {
+            long slot = buffer + ((long) i * SLOT_SIZE);
+            long st = ForeignMemory.getLong(slot + 24L);
+            if (st == STATE_OCCUPIED) {
+                long key = ForeignMemory.getLong(slot);
+                Array.set(arrayPtr, idx++, key);
+            }
+        }
+        return arrayPtr;
+    }
+
     private static void rehash(long mapPtr, int newCap) {
         int oldCap = capacity(mapPtr);
         long oldBuffer = dataBuffer(mapPtr);
