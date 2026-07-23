@@ -19,34 +19,34 @@ public class TypeRegister {
     public static final int CUSTOM_STRUCT     = 0x00110000; // custom struct
 
     // --- RAW CLASS IDS (Lower 24 bits) ---
-    public static final int ID_INT      = 0x000001; // Int class // 1
-    public static final int ID_LONG      = 0x000002; // Long class // 2
-    public static final int ID_FLOAT    = 0x000003; // Float class // 3
-    public static final int ID_DOUBLE    = 0x000004; // Double class // 4
-    public static final int ID_BYTE       = 0x000005; // Byte class // 5
-    public static final int ID_SHORT      = 0x000006; // Short class // 6
-    public static final int ID_STRING     = 0x000007; // string class // 7
-    public static final int ID_INT_FLOAT = 0x000008; // IntFloat class // 8
-    public static final int ID_INT_DOUBLE = 0x000009; // IntDouble class // 9
-    public static final int ID_LONG_FLOAT = 0x00000A; // LongFloat class // 10
-    public static final int ID_LONG_DOUBLE = 0x00000B; // LongDouble class // 11
-    public static final int ID_VARIABLE   = 0x00000C; // Variable class // 12
-    public static final int ID_PACK       = 0x00000D; // Pack class // 13
-    public static final int ID_ARRAYS     = 0x00000E; // Arrays class // 14
-    public static final int ID_HASH       = 0x00000F; // Hash class // 15
-    public static final int ID_CLASS      = 0x000010; // Class class // 16
-    public static final int ID_STRIDE     = 0x000011; // Stride class // 17
-    public static final int ID_LIST       = 0x000012; // List class // 18
-    public static final int ID_MAP        = 0x000013; // Map class // 19
-    public static final int ID_SET        = 0x000014; // Set class // 20
-    public static final int ID_STACK          = 0x000015; // Stack class // 21
-    public static final int ID_DEQUE          = 0x000016; // Deque class // 22
-    public static final int ID_SLAB_ALLOCATOR = 0x000017; // SlabAllocator class // 23
-    public static final int ID_STRING_ENGINE  = 0x000018; // StringEngine class // 24
-    public static final int ID_SPIN_LOCK       = 0x000019; // SpinLock class // 25
-    public static final int ID_RING_BUFFER     = 0x00001A; // RingBuffer class // 26
+    public static final int ID_INT                      = 0x000001; // Int class // 1
+    public static final int ID_LONG                     = 0x000002; // Long class // 2
+    public static final int ID_FLOAT                    = 0x000003; // Float class // 3
+    public static final int ID_DOUBLE                   = 0x000004; // Double class // 4
+    public static final int ID_BYTE                     = 0x000005; // Byte class // 5
+    public static final int ID_SHORT                    = 0x000006; // Short class // 6
+    public static final int ID_STRING             = 0x000007; // string class // 7
+    public static final int ID_INT_FLOAT          = 0x000008; // IntFloat class // 8
+    public static final int ID_INT_DOUBLE         = 0x000009; // IntDouble class // 9
+    public static final int ID_LONG_FLOAT         = 0x00000A; // LongFloat class // 10
+    public static final int ID_LONG_DOUBLE        = 0x00000B; // LongDouble class // 11
+    public static final int ID_VARIABLE           = 0x00000C; // Variable class // 12
+    public static final int ID_PACK               = 0x00000D; // Pack class // 13
+    public static final int ID_ARRAYS             = 0x00000E; // Arrays class // 14
+    public static final int ID_HASH               = 0x00000F; // Hash class // 15
+    public static final int ID_CLASS              = 0x000010; // Class class // 16
+    public static final int ID_STRIDE             = 0x000011; // Stride class // 17
+    public static final int ID_LIST               = 0x000012; // List class // 18
+    public static final int ID_MAP                = 0x000013; // Map class // 19
+    public static final int ID_SET                = 0x000014; // Set class // 20
+    public static final int ID_STACK              = 0x000015; // Stack class // 21
+    public static final int ID_DEQUE              = 0x000016; // Deque class // 22
+    public static final int ID_SLAB_ALLOCATOR     = 0x000017; // SlabAllocator class // 23
+    public static final int ID_STRING_ENGINE      = 0x000018; // StringEngine class // 24
+    public static final int ID_SPIN_LOCK          = 0x000019; // SpinLock class // 25
+    public static final int ID_RING_BUFFER        = 0x00001A; // RingBuffer class // 26
     public static final int ID_MEMORY_MAP_MANAGER = 0x00001B; // MemoryMapManager class // 27
-    public static final int ID_TRIE            = 0x00001C; // Trie class // 28
+    public static final int ID_TRIE               = 0x00001C; // Trie class // 28
     public static final int ID_SEARCH_VARIABLE  = 0x00001D; // SearchVariable class // 29
     public static final int ID_RANDOM           = 0x00001E; // Random class // 30
     public static final int ID_INDEX_RANDOM     = 0x00001F; // IndexRandom class // 31
@@ -70,6 +70,15 @@ public class TypeRegister {
     public static final int ID_NETWORKING_THREAD  = 0x000031; // NetworkingThread class // 49
     public static final int ID_HTTP_SERVER        = 0x000032; // HTTPServer class // 50
     public static final int ID_WEBSOCKET_CLIENT   = 0x000033; // WebSocketClient class // 51
+    public static final int ID_HASH_VARIABLE      = 0x000034; // HashVariable class // 52
+    public static final int ID_SECURE_PACKET      = 0x000035; // SecurePacket class // 53
+    public static final int ID_SECURE_RANDOM      = 0x000036; // SecureRandom class // 54
+    public static final int ID_SERVER_CLIENT_CHECKER = 0x000037; // ServerClientChecker class // 55
+    public static final int ID_TOUCH_ID           = 0x000038; // TouchID class // 56
+    public static final int ID_SERVER_JAR_BUILDER = 0x000039; // ServerJarBuilder class // 57
+    public static final int ID_SCRIPTING_THREAD   = 0x00003A; // ScriptingThread class // 58
+    public static final int ID_DRAW_THREAD        = 0x00003B; // DrawThread class // 59
+
 
 
 
@@ -203,6 +212,16 @@ public class TypeRegister {
     public static final int WEBSOCKET_CLIENT_SINGLETON = FORM_SINGLETON | ID_WEBSOCKET_CLIENT; // 0xAA000033
     public static final int WEBSOCKET_CLIENT_ARRAY     = FORM_ARRAY     | ID_WEBSOCKET_CLIENT; // 0xBB000033
     public static final int WEBSOCKET_CLIENT_POINTER   = FORM_POINTER   | ID_WEBSOCKET_CLIENT; // 0xCC000033
+
+    // ScriptingThread class
+    public static final int SCRIPTING_THREAD_SINGLETON = FORM_SINGLETON | ID_SCRIPTING_THREAD; // 0xAA00003A
+    public static final int SCRIPTING_THREAD_ARRAY     = FORM_ARRAY     | ID_SCRIPTING_THREAD; // 0xBB00003A
+    public static final int SCRIPTING_THREAD_POINTER   = FORM_POINTER   | ID_SCRIPTING_THREAD; // 0xCC00003A
+
+    // DrawThread class
+    public static final int DRAW_THREAD_SINGLETON = FORM_SINGLETON | ID_DRAW_THREAD; // 0xAA00003B
+    public static final int DRAW_THREAD_ARRAY     = FORM_ARRAY     | ID_DRAW_THREAD; // 0xBB00003B
+    public static final int DRAW_THREAD_POINTER   = FORM_POINTER   | ID_DRAW_THREAD; // 0xCC00003B
 
 
 
