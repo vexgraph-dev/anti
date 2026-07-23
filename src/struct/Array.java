@@ -155,6 +155,22 @@ public final class Array {
         writeSlot(targetSlot, stride, valueOrPointer);
     }
 
+    // get value or pointer at index (unsafe volatile, no bounds check)
+    public static long unsafeVolatileGet(long arrayPtr, int index) {
+        int stride = stride(arrayPtr);
+        long dataBuffer = dataBuffer(arrayPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        return readSlotVolatile(targetSlot, stride);
+    }
+
+    // set value or pointer at index (unsafe volatile, no bounds check)
+    public static void unsafeVolatileSet(long arrayPtr, int index, long valueOrPointer) {
+        int stride = stride(arrayPtr);
+        long dataBuffer = dataBuffer(arrayPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        writeSlotVolatile(targetSlot, stride, valueOrPointer);
+    }
+
     // get pointer to struct element at index
     public static long getStruct(long arrayPtr, int index) {
         checkBounds(arrayPtr, index);
