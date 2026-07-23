@@ -89,8 +89,22 @@ public final class Array {
         else ForeignMemory.putLong(slot, val);
     }
 
-    // get value or pointer at index
-    public static synchronized long get(long arrayPtr, int index) {
+    private static long readSlotVolatile(long slot, int stride) {
+        if (stride == 1) return ForeignMemory.getByteVolatile(slot) & 0xFF;
+        if (stride == 2) return ForeignMemory.getShortVolatile(slot) & 0xFFFF;
+        if (stride == 4) return ForeignMemory.getIntVolatile(slot) & 0xFFFFFFFFL;
+        return ForeignMemory.getLongVolatile(slot);
+    }
+
+    private static void writeSlotVolatile(long slot, int stride, long val) {
+        if (stride == 1) ForeignMemory.putByteVolatile(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.putShortVolatile(slot, (short) val);
+        else if (stride == 4) ForeignMemory.putIntVolatile(slot, (int) val);
+        else ForeignMemory.putLongVolatile(slot, val);
+    }
+
+    // get value or pointer at index (standard)
+    public static long get(long arrayPtr, int index) {
         checkBounds(arrayPtr, index);
         int stride = stride(arrayPtr);
         long dataBuffer = dataBuffer(arrayPtr);
@@ -98,8 +112,8 @@ public final class Array {
         return readSlot(targetSlot, stride);
     }
 
-    // set value or pointer at index
-    public static synchronized void set(long arrayPtr, int index, long valueOrPointer) {
+    // set value or pointer at index (standard)
+    public static void set(long arrayPtr, int index, long valueOrPointer) {
         checkBounds(arrayPtr, index);
         int stride = stride(arrayPtr);
         long dataBuffer = dataBuffer(arrayPtr);
@@ -107,8 +121,42 @@ public final class Array {
         writeSlot(targetSlot, stride, valueOrPointer);
     }
 
+    // get value or pointer at index (volatile)
+    public static long getVolatile(long arrayPtr, int index) {
+        checkBounds(arrayPtr, index);
+        int stride = stride(arrayPtr);
+        long dataBuffer = dataBuffer(arrayPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        return readSlotVolatile(targetSlot, stride);
+    }
+
+    // set value or pointer at index (volatile)
+    public static void setVolatile(long arrayPtr, int index, long valueOrPointer) {
+        checkBounds(arrayPtr, index);
+        int stride = stride(arrayPtr);
+        long dataBuffer = dataBuffer(arrayPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        writeSlotVolatile(targetSlot, stride, valueOrPointer);
+    }
+
+    // get value or pointer at index (unsafe, no bounds check)
+    public static long unsafeGet(long arrayPtr, int index) {
+        int stride = stride(arrayPtr);
+        long dataBuffer = dataBuffer(arrayPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        return readSlot(targetSlot, stride);
+    }
+
+    // set value or pointer at index (unsafe, no bounds check)
+    public static void unsafeSet(long arrayPtr, int index, long valueOrPointer) {
+        int stride = stride(arrayPtr);
+        long dataBuffer = dataBuffer(arrayPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        writeSlot(targetSlot, stride, valueOrPointer);
+    }
+
     // get pointer to struct element at index
-    public static synchronized long getStruct(long arrayPtr, int index) {
+    public static long getStruct(long arrayPtr, int index) {
         checkBounds(arrayPtr, index);
         int stride = stride(arrayPtr);
         long dataBuffer = dataBuffer(arrayPtr);
