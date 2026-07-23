@@ -121,30 +121,84 @@ public final class List {
         ForeignMemory.putInt(listPtr - 4L, count + 1);
     }
 
-    // get value or pointer at index
-    public static synchronized long get(long listPtr, int index) {
-        checkBounds(listPtr, index);
-        int stride = stride(listPtr);
-        long dataBuffer = dataBuffer(listPtr);
-        long targetSlot = dataBuffer + ((long) index * stride);
-
-        if (stride == 1) return ForeignMemory.getByte(targetSlot) & 0xFF;
-        if (stride == 2) return ForeignMemory.getShort(targetSlot) & 0xFFFF;
-        if (stride == 4) return ForeignMemory.getInt(targetSlot) & 0xFFFFFFFFL;
-        return ForeignMemory.getLong(targetSlot);
+    private static long readSlot(long slot, int stride) {
+        if (stride == 1) return ForeignMemory.getByte(slot) & 0xFF;
+        if (stride == 2) return ForeignMemory.getShort(slot) & 0xFFFF;
+        if (stride == 4) return ForeignMemory.getInt(slot) & 0xFFFFFFFFL;
+        return ForeignMemory.getLong(slot);
     }
 
-    // set value or pointer at index
-    public static synchronized void set(long listPtr, int index, long valueOrPointer) {
+    private static void writeSlot(long slot, int stride, long val) {
+        if (stride == 1) ForeignMemory.putByte(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.putShort(slot, (short) val);
+        else if (stride == 4) ForeignMemory.putInt(slot, (int) val);
+        else ForeignMemory.putLong(slot, val);
+    }
+
+    private static long readSlotVolatile(long slot, int stride) {
+        if (stride == 1) return ForeignMemory.getByteVolatile(slot) & 0xFF;
+        if (stride == 2) return ForeignMemory.getShortVolatile(slot) & 0xFFFF;
+        if (stride == 4) return ForeignMemory.getIntVolatile(slot) & 0xFFFFFFFFL;
+        return ForeignMemory.getLongVolatile(slot);
+    }
+
+    private static void writeSlotVolatile(long slot, int stride, long val) {
+        if (stride == 1) ForeignMemory.putByteVolatile(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.putShortVolatile(slot, (short) val);
+        else if (stride == 4) ForeignMemory.putIntVolatile(slot, (int) val);
+        else ForeignMemory.putLongVolatile(slot, val);
+    }
+
+    // get value or pointer at index (standard)
+    public static long get(long listPtr, int index) {
         checkBounds(listPtr, index);
         int stride = stride(listPtr);
         long dataBuffer = dataBuffer(listPtr);
         long targetSlot = dataBuffer + ((long) index * stride);
+        return readSlot(targetSlot, stride);
+    }
 
-        if (stride == 1) ForeignMemory.putByte(targetSlot, (byte) valueOrPointer);
-        else if (stride == 2) ForeignMemory.putShort(targetSlot, (short) valueOrPointer);
-        else if (stride == 4) ForeignMemory.putInt(targetSlot, (int) valueOrPointer);
-        else ForeignMemory.putLong(targetSlot, valueOrPointer);
+    // set value or pointer at index (standard)
+    public static void set(long listPtr, int index, long valueOrPointer) {
+        checkBounds(listPtr, index);
+        int stride = stride(listPtr);
+        long dataBuffer = dataBuffer(listPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        writeSlot(targetSlot, stride, valueOrPointer);
+    }
+
+    // get value or pointer at index (volatile)
+    public static long getVolatile(long listPtr, int index) {
+        checkBounds(listPtr, index);
+        int stride = stride(listPtr);
+        long dataBuffer = dataBuffer(listPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        return readSlotVolatile(targetSlot, stride);
+    }
+
+    // set value or pointer at index (volatile)
+    public static void setVolatile(long listPtr, int index, long valueOrPointer) {
+        checkBounds(listPtr, index);
+        int stride = stride(listPtr);
+        long dataBuffer = dataBuffer(listPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        writeSlotVolatile(targetSlot, stride, valueOrPointer);
+    }
+
+    // get value or pointer at index (unsafe, no bounds check)
+    public static long unsafeGet(long listPtr, int index) {
+        int stride = stride(listPtr);
+        long dataBuffer = dataBuffer(listPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        return readSlot(targetSlot, stride);
+    }
+
+    // set value or pointer at index (unsafe, no bounds check)
+    public static void unsafeSet(long listPtr, int index, long valueOrPointer) {
+        int stride = stride(listPtr);
+        long dataBuffer = dataBuffer(listPtr);
+        long targetSlot = dataBuffer + ((long) index * stride);
+        writeSlot(targetSlot, stride, valueOrPointer);
     }
 
     // remove element at index and shift remaining left
@@ -289,7 +343,7 @@ public final class List {
     }
 
     // get pointer to struct element at index
-    public static synchronized long getStruct(long listPtr, int index) {
+    public static long getStruct(long listPtr, int index) {
         checkBounds(listPtr, index);
         int stride = stride(listPtr);
         long dataBuffer = dataBuffer(listPtr);
