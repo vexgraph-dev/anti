@@ -8,12 +8,15 @@ import net.PollRequest;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 import struct.Map;
+import struct.Array;
 
 /**
- * Data-Oriented Design (DOD) off-heap Networking Thread instance manager.
+ * Data-Oriented Design (DOD) off-heap Networking Thread Pool Manager.
+ * 
+ * Manages multiple independent off-heap worker thread handles (e.g. networking, pollingrequest, apirequests).
  */
 @Draft
-@Intention("Off-heap networking worker handle lifecycle dogfooding struct.Map for worker registry.")
+@Intention("Off-heap thread pool manager tracking worker handles via dogfooded struct.Map")
 @Volatile
 public final class NetworkingThread {
 
@@ -21,8 +24,8 @@ public final class NetworkingThread {
     public static final int CLASS_ID = TypeRegister.ID_NETWORKING_THREAD;
     public static final int TYPE_NETWORKING_THREAD = TypeRegister.NETWORKING_THREAD_SINGLETON;
 
-    private static final int DEFAULT_POOL_SIZE = 1;
-    private static final long WORKER_MAP_PTR = Map.instant(TypeRegister.ID_LONG, TypeRegister.ID_VARIABLE, 64);
+    // Central off-heap manager registry mapping workerPtr -> Thread instance
+    private static final long WORKER_MAP_PTR = Map.instant(TypeRegister.ID_LONG, TypeRegister.ID_VARIABLE, 128);
 
     private NetworkingThread() {}
 
@@ -31,119 +34,165 @@ public final class NetworkingThread {
     }
 
     /**
-     * Allocates a new off-heap NetworkingThread instance handle (defaulting to 1 worker thread).
+     * Creates and registers a new off-heap worker thread handle.
+     * Example usage:
+     *   long networking = NetworkingThread.invoke();
+     *   long pollingrequest = NetworkingThread.invoke();
+     *   long apirequests = NetworkingThread.invoke();
      */
     public static long invoke() {
-        return invoke(DEFAULT_POOL_SIZE);
-    }
-
-    public static long invoke(int poolSize) {
         long block = ForeignMemory.allocateNative(56);
-        long userPtr = block + 8L;
+        long workerPtr = block + 8L;
 
-        // Write bit-packed header ID & stride length
+        // Write bit-packed header ID & length header
         ForeignMemory.putInt(block, TYPE_NETWORKING_THREAD);
         ForeignMemory.putInt(block + 4L, 1);
 
-        int threads = Math.max(1, poolSize);
         long workQueuePtr = RingBuffer.instant(TypeRegister.ID_POLL_REQUEST, 2048);
 
-        // Off-heap memory fields
-        ForeignMemory.putInt(userPtr, 0);                 // state: 0 = STOPPED, 1 = RUNNING
-        ForeignMemory.putInt(userPtr + 4L, threads);      // poolSize
-        ForeignMemory.putLong(userPtr + 8L, workQueuePtr); // RingBuffer handle ptr
+        // Off-heap worker fields:
+        // workerPtr + 0: state (0 = STOPPED, 1 = RUNNING)
+        // workerPtr + 4: poolSize (1 thread per worker handle)
+        // workerPtr + 8: workQueuePtr (RingBuffer handle)
+        ForeignMemory.putInt(workerPtr, 0);                 // STOPPED
+        ForeignMemory.putInt(workerPtr + 4L, 1);             // 1 thread
+        ForeignMemory.putLong(workerPtr + 8L, workQueuePtr);
 
-        return userPtr;
+        // Register worker handle in central pool manager registry
+        Map.put(WORKER_MAP_PTR, workerPtr, 1L);
+        return workerPtr;
     }
 
-    public static boolean isRunning(long threadPtr) {
-        if (threadPtr == 0L) return false;
-        return ForeignMemory.getInt(threadPtr) == 1;
+    public static boolean isRegistered(long workerPtr) {
+        if (workerPtr == 0L) return false;
+        return Map.containsKey(WORKER_MAP_PTR, workerPtr);
     }
 
-    public static int getPoolSize(long threadPtr) {
-        if (threadPtr == 0L) return 0;
-        return ForeignMemory.getInt(threadPtr + 4L);
+    public static boolean isRunning(long workerPtr) {
+        if (workerPtr == 0L) return false;
+        return ForeignMemory.getInt(workerPtr) == 1;
     }
 
-    public static long getQueue(long threadPtr) {
-        if (threadPtr == 0L) return 0L;
-        return ForeignMemory.getLong(threadPtr + 8L);
+    public static long getQueue(long workerPtr) {
+        if (workerPtr == 0L) return 0L;
+        return ForeignMemory.getLong(workerPtr + 8L);
     }
 
     /**
-     * Instantiates and launches background worker thread(s) for the given off-heap handle.
+     * Instantiates and launches the background worker thread for the specified worker handle.
      */
-    public static synchronized boolean run(long threadPtr) {
-        if (threadPtr == 0L) return false;
-        int state = ForeignMemory.getInt(threadPtr);
-        if (state == 1) return true; // Already running
+    public static synchronized boolean run(long workerPtr) {
+        if (workerPtr == 0L || !isRegistered(workerPtr)) return false;
+        if (isRunning(workerPtr)) return true; // Already running
 
-        int threads = getPoolSize(threadPtr);
-        long queuePtr = getQueue(threadPtr);
+        long queuePtr = getQueue(workerPtr);
 
-        Thread[] pool = new Thread[threads];
-        for (int i = 0; i < threads; i++) {
-            final int workerIdx = i;
-            pool[i] = Thread.ofPlatform()
-                    .name("Anti-NetWorker-0x" + Long.toHexString(threadPtr).toUpperCase() + "-" + workerIdx)
-                    .daemon(true)
-                    .start(() -> processQueue(threadPtr, queuePtr));
-        }
+        Thread worker = Thread.ofPlatform()
+                .name("Anti-NetWorker-0x" + Long.toHexString(workerPtr).toUpperCase())
+                .daemon(true)
+                .start(() -> processQueue(workerPtr, queuePtr));
 
-        Map.putObject(WORKER_MAP_PTR, threadPtr, pool);
-        ForeignMemory.putInt(threadPtr, 1); // Set state to RUNNING
+        Map.putObject(WORKER_MAP_PTR, workerPtr, worker);
+        ForeignMemory.putInt(workerPtr, 1); // Set state to RUNNING
         return true;
     }
 
     /**
-     * Submits a PollRequest batch handle to the off-heap thread queue.
-     * Returns false if thread is not running.
+     * Submits a PollRequest batch handle to the specified worker thread instance queue.
+     * Returns false if worker thread is not running.
      */
-    public static boolean submit(long threadPtr, long batchPtr) {
-        if (threadPtr == 0L || batchPtr == 0L) return false;
-        if (!isRunning(threadPtr)) {
+    public static boolean submit(long workerPtr, long batchPtr) {
+        if (workerPtr == 0L || batchPtr == 0L) return false;
+        if (!isRunning(workerPtr)) {
             return false;
         }
-        long queuePtr = getQueue(threadPtr);
+        long queuePtr = getQueue(workerPtr);
         return RingBuffer.offer(queuePtr, batchPtr);
     }
 
     /**
-     * Stops the worker thread object for the given off-heap handle.
+     * Stops execution for the specified worker thread handle.
      */
-    public static synchronized void stop(long threadPtr) {
-        if (threadPtr == 0L) return;
-        ForeignMemory.putInt(threadPtr, 0); // Set state to STOPPED
+    public static synchronized void stop(long workerPtr) {
+        if (workerPtr == 0L) return;
+        ForeignMemory.putInt(workerPtr, 0); // Set state to STOPPED
 
-        Thread[] pool = (Thread[]) Map.removeObject(WORKER_MAP_PTR, threadPtr);
-        if (pool != null) {
-            for (Thread t : pool) {
-                if (t != null) {
-                    t.interrupt();
-                }
-            }
+        Thread worker = (Thread) Map.getObject(WORKER_MAP_PTR, workerPtr);
+        if (worker != null) {
+            worker.interrupt();
         }
+        Map.put(WORKER_MAP_PTR, workerPtr, 1L);
     }
 
     /**
-     * Stops workers and frees the off-heap native memory block.
+     * Stops the worker thread and frees its off-heap native memory block, unregistering from manager pool.
      */
-    public static void free(long threadPtr) {
-        if (threadPtr == 0L) return;
-        stop(threadPtr);
+    public static synchronized void free(long workerPtr) {
+        if (workerPtr == 0L) return;
+        stop(workerPtr);
 
-        long queuePtr = getQueue(threadPtr);
+        long queuePtr = getQueue(workerPtr);
         if (queuePtr != 0L) {
             RingBuffer.free(queuePtr);
         }
 
-        long block = threadPtr - 8L;
+        Map.remove(WORKER_MAP_PTR, workerPtr);
+
+        long block = workerPtr - 8L;
         ForeignMemory.freeNative(block);
     }
 
-    private static void processQueue(long threadPtr, long queuePtr) {
-        while (ForeignMemory.getInt(threadPtr) == 1 && !Thread.currentThread().isInterrupted()) {
+    /**
+     * Returns total number of registered worker thread handles in the manager pool.
+     */
+    public static int getWorkerCount() {
+        return Map.size(WORKER_MAP_PTR);
+    }
+
+    /**
+     * Launches all registered worker thread handles in the pool.
+     */
+    public static synchronized void runAll() {
+        long keysPtr = Map.getKeys(WORKER_MAP_PTR);
+        if (keysPtr == 0L) return;
+        int count = Array.length(keysPtr);
+        for (int i = 0; i < count; i++) {
+            long workerPtr = Array.get(keysPtr, i);
+            run(workerPtr);
+        }
+        Array.free(keysPtr);
+    }
+
+    /**
+     * Stops all registered worker thread handles in the pool.
+     */
+    public static synchronized void stopAll() {
+        long keysPtr = Map.getKeys(WORKER_MAP_PTR);
+        if (keysPtr == 0L) return;
+        int count = Array.length(keysPtr);
+        for (int i = 0; i < count; i++) {
+            long workerPtr = Array.get(keysPtr, i);
+            stop(workerPtr);
+        }
+        Array.free(keysPtr);
+    }
+
+    /**
+     * Stops and frees all registered worker thread handles in the pool.
+     */
+    public static synchronized void freeAll() {
+        long keysPtr = Map.getKeys(WORKER_MAP_PTR);
+        if (keysPtr == 0L) return;
+        int count = Array.length(keysPtr);
+        for (int i = 0; i < count; i++) {
+            long workerPtr = Array.get(keysPtr, i);
+            free(workerPtr);
+        }
+        Array.free(keysPtr);
+    }
+
+    private static void processQueue(long workerPtr, long queuePtr) {
+        while (ForeignMemory.getInt(workerPtr) == 1 && !Thread.currentThread().isInterrupted()) {
             if (queuePtr != 0L && !RingBuffer.isEmpty(queuePtr)) {
                 long batchPtr = RingBuffer.poll(queuePtr);
                 if (batchPtr != 0L) {
