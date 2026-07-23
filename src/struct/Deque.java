@@ -163,6 +163,20 @@ public final class Deque {
         else ForeignMemory.putLong(slot, val);
     }
 
+    private static long readSlotVolatile(long slot, int stride) {
+        if (stride == 1) return ForeignMemory.getByteVolatile(slot) & 0xFF;
+        if (stride == 2) return ForeignMemory.getShortVolatile(slot) & 0xFFFF;
+        if (stride == 4) return ForeignMemory.getIntVolatile(slot) & 0xFFFFFFFFL;
+        return ForeignMemory.getLongVolatile(slot);
+    }
+
+    private static void writeSlotVolatile(long slot, int stride, long val) {
+        if (stride == 1) ForeignMemory.putByteVolatile(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.putShortVolatile(slot, (short) val);
+        else if (stride == 4) ForeignMemory.putIntVolatile(slot, (int) val);
+        else ForeignMemory.putLongVolatile(slot, val);
+    }
+
     // append value or pointer to back of deque
     public static synchronized void addLast(long dequePtr, long valueOrPointer) {
         checkActive();
@@ -246,7 +260,7 @@ public final class Deque {
     }
 
     // retrieve the first element without removing it
-    public static synchronized long peekFirst(long dequePtr) {
+    public static long peekFirst(long dequePtr) {
         if (isEmpty(dequePtr)) return 0L;
         int stride = stride(dequePtr);
         long dataBuffer = dataBuffer(dequePtr);
@@ -256,7 +270,7 @@ public final class Deque {
     }
 
     // retrieve the last element without removing it
-    public static synchronized long peekLast(long dequePtr) {
+    public static long peekLast(long dequePtr) {
         if (isEmpty(dequePtr)) return 0L;
         int count = size(dequePtr);
         int cap = capacity(dequePtr);
@@ -269,7 +283,7 @@ public final class Deque {
     }
 
     // retrieve element at logical index from the front
-    public static synchronized long get(long dequePtr, int index) {
+    public static long get(long dequePtr, int index) {
         checkBounds(dequePtr, index);
         int cap = capacity(dequePtr);
         int stride = stride(dequePtr);
@@ -280,8 +294,31 @@ public final class Deque {
         return readSlot(slot, stride);
     }
 
+    // retrieve element at logical index from the front (volatile)
+    public static long getVolatile(long dequePtr, int index) {
+        checkBounds(dequePtr, index);
+        int cap = capacity(dequePtr);
+        int stride = stride(dequePtr);
+        long dataBuffer = dataBuffer(dequePtr);
+        int head = head(dequePtr);
+        int targetIndex = (head + index) % cap;
+        long slot = dataBuffer + ((long) targetIndex * stride);
+        return readSlotVolatile(slot, stride);
+    }
+
+    // retrieve element at logical index from the front (unsafe)
+    public static long unsafeGet(long dequePtr, int index) {
+        int cap = capacity(dequePtr);
+        int stride = stride(dequePtr);
+        long dataBuffer = dataBuffer(dequePtr);
+        int head = head(dequePtr);
+        int targetIndex = (head + index) % cap;
+        long slot = dataBuffer + ((long) targetIndex * stride);
+        return readSlot(slot, stride);
+    }
+
     // get pointer to struct element at logical index from the front
-    public static synchronized long getStruct(long dequePtr, int index) {
+    public static long getStruct(long dequePtr, int index) {
         checkBounds(dequePtr, index);
         int cap = capacity(dequePtr);
         int stride = stride(dequePtr);
