@@ -45,15 +45,14 @@ src/ScratchTest2.java
 FileCompiler.java
 src/FileCompiler.java
 **/FileCompiler.java
-LOCcounter.java
-src/LOCcounter.java
-**/LOCcounter.java
-LOCounter.java
-src/LOCounter.java
-**/LOCounter.java
 
 ### Private / Regurgitation / Config Files ###
 .gemini/
 regurgitation/
 code.txt
 *.regurgitation
+
+### not ready for presenting
+src/api/
+api/
+**/api/
