@@ -2,6 +2,7 @@ package util;
 
 import annotation.Draft;
 import annotation.Required;
+import annotation.HotCode;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
@@ -42,15 +43,37 @@ public final class Hash {
     }
 
     // fnv1a 64-bit hash for off-heap memory block
-    @Draft
-    public static long fnv1a64(long pointer, int length) {
+    @HotCode
+    public static long fnv1a64(long pointer, long length) {
         if (pointer == 0L || length <= 0) return 0L;
         long hash = 0xcbf29ce484222325L;
-        for (int i = 0; i < length; i++) {
+        for (long i = 0; i < length; i++) {
             hash ^= (ForeignMemory.getByte(pointer + i) & 0xff);
             hash *= 0x100000001b3L;
         }
         return hash;
+    }
+
+    // smart generic hashCode for any off-heap object/array pointer
+    @HotCode
+    public static long hashCode(long pointer) {
+        if (pointer == 0L) return 0L;
+        int type = ForeignMemory.getInt(pointer - 8L);
+        int length = ForeignMemory.getInt(pointer - 4L);
+
+        int form = type & TypeRegister.MASK_FORM;
+        int classId = type & TypeRegister.MASK_CLASS;
+
+        long totalBytes = 0;
+        if (form == TypeRegister.FORM_SINGLETON) {
+            totalBytes = oop.Stride.get(classId);
+        } else if (form == TypeRegister.FORM_ARRAY) {
+            totalBytes = (long) length * oop.Stride.get(classId);
+        } else if (form == TypeRegister.FORM_POINTER) {
+            totalBytes = (long) length * 8L;
+        }
+
+        return fnv1a64(pointer, totalBytes);
     }
 
     // murmurhash3 64-bit finalizer mix
