@@ -342,6 +342,14 @@ public class ForeignMemory
         return (long) LONG_VH.getAndSet(GLOBAL_MEMORY, address, value);
     }
 
+    public static long getAndBitwiseOrLong(long address, long mask) {
+        return (long) LONG_VH.getAndBitwiseOr(GLOBAL_MEMORY, address, mask);
+    }
+
+    public static long getAndBitwiseAndLong(long address, long mask) {
+        return (long) LONG_VH.getAndBitwiseAnd(GLOBAL_MEMORY, address, mask);
+    }
+
     public static float getFloatVolatile(long address) {
         return (float) FLOAT_VH.getVolatile(GLOBAL_MEMORY, address);
     }

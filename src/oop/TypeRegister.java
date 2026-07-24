@@ -78,6 +78,7 @@ public class TypeRegister {
     public static final int ID_SERVER_JAR_BUILDER = 0x000039; // ServerJarBuilder class // 57
     public static final int ID_SCRIPTING_THREAD   = 0x00003A; // ScriptingThread class // 58
     public static final int ID_DRAW_THREAD        = 0x00003B; // DrawThread class // 59
+    public static final int ID_BOOL               = 0x00003C; // Bool class // 60
 
 
 
@@ -88,6 +89,11 @@ public class TypeRegister {
 
 
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
+
+    // Bool class
+    public static final int BOOL_SINGLETON = FORM_SINGLETON | ID_BOOL;
+    public static final int BOOL_ARRAY     = FORM_ARRAY     | ID_BOOL;
+    public static final int BOOL_POINTER   = FORM_POINTER   | ID_BOOL;
 
     // Int class
     public static final int INT_SINGLETON = FORM_SINGLETON | ID_INT; // 0xAA000001 // -1442840575
