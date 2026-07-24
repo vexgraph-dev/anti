@@ -1,4 +1,4 @@
-package util;
+package objects;
 
 public class ProbableObjects
 {
