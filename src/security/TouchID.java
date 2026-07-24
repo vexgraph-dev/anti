@@ -75,7 +75,7 @@ public final class TouchID {
                 if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) || context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
                     let semaphore = DispatchSemaphore(value: 0)
                     var authenticated = false
-                    context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, authError in
+                    context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, authError in
                         authenticated = success
                         semaphore.signal()
                     }
@@ -101,15 +101,14 @@ public final class TouchID {
             }
             int exitCode = p.waitFor();
             if (exitCode == 0 && success) return true;
-        } catch (Exception ignored) {}
-
-        // Fallback to macOS AppleScript system dialog if Swift is unavailable
-        ProcessBuilder pb = new ProcessBuilder("osascript", "-e",
-                "display dialog \"" + reason + "\" with title \"Anti Security Subsystem\" buttons {\"Cancel\", \"Authenticate\"} default button \"Authenticate\" with icon caution");
-        try(Process p = pb.start()) {
-            return p.waitFor() == 0;
+            
+            // exitCode 1 = User cancelled/failed. exitCode 2 = TouchID unavailable on this Mac.
+            if (exitCode == 1) return false;
+            if (exitCode == 2) return false;
+            
         } catch (Exception e) {
-            return false;
+            throw new RuntimeException("Swift is not installed or available on this Mac! The Anti Security Subsystem requires the Swift CLI to execute biometric authentication.", e);
         }
+        return false;
     }
 }
