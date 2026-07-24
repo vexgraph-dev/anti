@@ -47,7 +47,6 @@ src/FileCompiler.java
 **/FileCompiler.java
 
 ### Private / Regurgitation / Config Files ###
-.gemini/
 regurgitation/
 code.txt
 *.regurgitation

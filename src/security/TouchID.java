@@ -2,6 +2,7 @@ package security;
 
 import annotation.Draft;
 import annotation.Intention;
+import annotation.PlatformExclusive;
 import annotation.Required;
 import annotation.Volatile;
 import oop.TypeRegister;
@@ -17,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 @Draft
 @Intention("Native macOS LocalAuthentication TouchID / FaceID biometric authentication via swift/AppleScript with fallback.")
 @Volatile
+@PlatformExclusive("Mac")
 public final class TouchID {
 
     @Required
