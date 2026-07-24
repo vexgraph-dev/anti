@@ -1,5 +1,7 @@
 package struct;
 
+import annotation.Unsafe;
+
 import annotation.Volatile;
 import annotation.Draft;
 import annotation.Intention;
@@ -89,6 +91,7 @@ public final class Array {
         else ForeignMemory.putLong(slot, val);
     }
 
+    @Volatile
     private static long readSlotVolatile(long slot, int stride) {
         if (stride == 1) return ForeignMemory.getByteVolatile(slot) & 0xFF;
         if (stride == 2) return ForeignMemory.getShortVolatile(slot) & 0xFFFF;
@@ -96,6 +99,7 @@ public final class Array {
         return ForeignMemory.getLongVolatile(slot);
     }
 
+    @Volatile
     private static void writeSlotVolatile(long slot, int stride, long val) {
         if (stride == 1) ForeignMemory.putByteVolatile(slot, (byte) val);
         else if (stride == 2) ForeignMemory.putShortVolatile(slot, (short) val);
@@ -122,6 +126,7 @@ public final class Array {
     }
 
     // get value or pointer at index (volatile)
+    @Volatile
     public static long getVolatile(long arrayPtr, int index) {
         checkBounds(arrayPtr, index);
         int stride = stride(arrayPtr);
@@ -131,6 +136,7 @@ public final class Array {
     }
 
     // set value or pointer at index (volatile)
+    @Volatile
     public static void setVolatile(long arrayPtr, int index, long valueOrPointer) {
         checkBounds(arrayPtr, index);
         int stride = stride(arrayPtr);
@@ -140,6 +146,7 @@ public final class Array {
     }
 
     // get value or pointer at index (unsafe, no bounds check)
+    @Unsafe
     public static long unsafeGet(long arrayPtr, int index) {
         int stride = stride(arrayPtr);
         long dataBuffer = dataBuffer(arrayPtr);
@@ -148,6 +155,7 @@ public final class Array {
     }
 
     // set value or pointer at index (unsafe, no bounds check)
+    @Unsafe
     public static void unsafeSet(long arrayPtr, int index, long valueOrPointer) {
         int stride = stride(arrayPtr);
         long dataBuffer = dataBuffer(arrayPtr);
@@ -156,6 +164,8 @@ public final class Array {
     }
 
     // get value or pointer at index (unsafe volatile, no bounds check)
+    @Unsafe
+    @Volatile
     public static long unsafeVolatileGet(long arrayPtr, int index) {
         int stride = stride(arrayPtr);
         long dataBuffer = dataBuffer(arrayPtr);
@@ -164,6 +174,8 @@ public final class Array {
     }
 
     // set value or pointer at index (unsafe volatile, no bounds check)
+    @Unsafe
+    @Volatile
     public static void unsafeVolatileSet(long arrayPtr, int index, long valueOrPointer) {
         int stride = stride(arrayPtr);
         long dataBuffer = dataBuffer(arrayPtr);

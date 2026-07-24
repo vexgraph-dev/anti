@@ -383,6 +383,7 @@ public final class Map {
     private static volatile Object[] OBJECT_TABLE = new Object[1024];
     private static volatile int OBJECT_ID_COUNTER = 1;
 
+    @Volatile
     public static long getVolatile(long mapPtr, long key) {
         if (mapPtr == 0L) return 0L;
         int cap = capacity(mapPtr);
@@ -411,6 +412,7 @@ public final class Map {
         return 0L;
     }
 
+    @Volatile
     public static synchronized void putVolatile(long mapPtr, long key, long value) {
         checkActive();
         checkValid(mapPtr);
@@ -456,6 +458,7 @@ public final class Map {
         }
     }
 
+    @Volatile
     public static synchronized long removeVolatile(long mapPtr, long key) {
         checkValid(mapPtr);
         int cap = capacity(mapPtr);
@@ -488,16 +491,19 @@ public final class Map {
         return 0L;
     }
 
+    @Volatile
     public static boolean containsKeyVolatile(long mapPtr, long key) {
         return getVolatile(mapPtr, key) != 0L || containsKey(mapPtr, key);
     }
 
+    @Volatile
     public static synchronized boolean putIfAbsentVolatile(long mapPtr, long key, long value) {
         if (containsKeyVolatile(mapPtr, key)) return false;
         putVolatile(mapPtr, key, value);
         return true;
     }
 
+    @Volatile
     public static synchronized boolean compareAndSetVolatile(long mapPtr, long key, long expectedValue, long newValue) {
         long currentVal = getVolatile(mapPtr, key);
         if (currentVal != expectedValue) return false;

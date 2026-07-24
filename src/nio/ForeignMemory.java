@@ -1,5 +1,7 @@
 package nio;
 
+import annotation.Volatile;
+
 import annotation.HotCode;
 import net.HTTPClient;
 import oop.Struct;
@@ -258,10 +260,12 @@ public class ForeignMemory
     // ATOMIC & VOLATILE DEREFERENCING METHODS (VarHandles)
     // =========================================================================
 
+    @Volatile
     public static byte getByteVolatile(long address) {
         return (byte) BYTE_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
+    @Volatile
     public static void putByteVolatile(long address, byte value) {
         BYTE_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
@@ -284,10 +288,12 @@ public class ForeignMemory
         }
     }
 
+    @Volatile
     public static short getShortVolatile(long address) {
         return (short) SHORT_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
+    @Volatile
     public static void putShortVolatile(long address, short value) {
         SHORT_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
@@ -310,10 +316,12 @@ public class ForeignMemory
         }
     }
 
+    @Volatile
     public static int getIntVolatile(long address) {
         return (int) INT_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
+    @Volatile
     public static void putIntVolatile(long address, int value) {
         INT_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
@@ -326,10 +334,12 @@ public class ForeignMemory
         return (int) INT_VH.getAndSet(GLOBAL_MEMORY, address, value);
     }
 
+    @Volatile
     public static long getLongVolatile(long address) {
         return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
+    @Volatile
     public static void putLongVolatile(long address, long value) {
         LONG_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
@@ -350,10 +360,12 @@ public class ForeignMemory
         return (long) LONG_VH.getAndBitwiseAnd(GLOBAL_MEMORY, address, mask);
     }
 
+    @Volatile
     public static float getFloatVolatile(long address) {
         return (float) FLOAT_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
+    @Volatile
     public static void putFloatVolatile(long address, float value) {
         FLOAT_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
@@ -362,10 +374,12 @@ public class ForeignMemory
         return (boolean) FLOAT_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
     }
 
+    @Volatile
     public static double getDoubleVolatile(long address) {
         return (double) DOUBLE_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
+    @Volatile
     public static void putDoubleVolatile(long address, double value) {
         DOUBLE_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }

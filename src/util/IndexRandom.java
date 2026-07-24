@@ -13,7 +13,8 @@ import oop.TypeRegister;
  */
 @Draft
 @Intention("Zero-allocation off-heap stateless PRNG mapping deterministic seed/ptr contexts and sequence indices to pseudo-random numbers.")
-public final class IndexRandom {
+public final class
+IndexRandom {
 
     @Required
     public static final int CLASS_ID = TypeRegister.ID_INDEX_RANDOM;

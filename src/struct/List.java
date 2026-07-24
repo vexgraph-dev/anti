@@ -1,5 +1,7 @@
 package struct;
 
+import annotation.Unsafe;
+
 import annotation.Volatile;
 
 import annotation.Intention;
@@ -135,6 +137,7 @@ public final class List {
         else ForeignMemory.putLong(slot, val);
     }
 
+    @Volatile
     private static long readSlotVolatile(long slot, int stride) {
         if (stride == 1) return ForeignMemory.getByteVolatile(slot) & 0xFF;
         if (stride == 2) return ForeignMemory.getShortVolatile(slot) & 0xFFFF;
@@ -142,6 +145,7 @@ public final class List {
         return ForeignMemory.getLongVolatile(slot);
     }
 
+    @Volatile
     private static void writeSlotVolatile(long slot, int stride, long val) {
         if (stride == 1) ForeignMemory.putByteVolatile(slot, (byte) val);
         else if (stride == 2) ForeignMemory.putShortVolatile(slot, (short) val);
@@ -168,6 +172,7 @@ public final class List {
     }
 
     // get value or pointer at index (volatile)
+    @Volatile
     public static long getVolatile(long listPtr, int index) {
         checkBounds(listPtr, index);
         int stride = stride(listPtr);
@@ -177,6 +182,7 @@ public final class List {
     }
 
     // set value or pointer at index (volatile)
+    @Volatile
     public static void setVolatile(long listPtr, int index, long valueOrPointer) {
         checkBounds(listPtr, index);
         int stride = stride(listPtr);
@@ -186,6 +192,7 @@ public final class List {
     }
 
     // get value or pointer at index (unsafe, no bounds check)
+    @Unsafe
     public static long unsafeGet(long listPtr, int index) {
         int stride = stride(listPtr);
         long dataBuffer = dataBuffer(listPtr);
@@ -194,6 +201,7 @@ public final class List {
     }
 
     // set value or pointer at index (unsafe, no bounds check)
+    @Unsafe
     public static void unsafeSet(long listPtr, int index, long valueOrPointer) {
         int stride = stride(listPtr);
         long dataBuffer = dataBuffer(listPtr);
@@ -202,6 +210,8 @@ public final class List {
     }
 
     // get value or pointer at index (unsafe volatile, no bounds check)
+    @Unsafe
+    @Volatile
     public static long unsafeVolatileGet(long listPtr, int index) {
         int stride = stride(listPtr);
         long dataBuffer = dataBuffer(listPtr);
@@ -210,6 +220,8 @@ public final class List {
     }
 
     // set value or pointer at index (unsafe volatile, no bounds check)
+    @Unsafe
+    @Volatile
     public static void unsafeVolatileSet(long listPtr, int index, long valueOrPointer) {
         int stride = stride(listPtr);
         long dataBuffer = dataBuffer(listPtr);

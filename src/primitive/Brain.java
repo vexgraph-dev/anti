@@ -1,5 +1,7 @@
 package primitive;
 
+import annotation.Volatile;
+
 import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
@@ -373,12 +375,14 @@ public final class Brain {
         ForeignMemory.putShort(pointer + (index * 2L), rawVal);
     }
 
+    @Volatile
     public static float getVolatile(long pointer) {
         if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
         short rawVal = ForeignMemory.getShortVolatile(pointer);
         return bFloat16ToFloat(rawVal);
     }
 
+    @Volatile
     public static void setVolatile(long pointer, float value) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         short rawVal = floatToBFloat16(value);

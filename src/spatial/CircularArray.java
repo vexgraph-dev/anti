@@ -96,7 +96,7 @@ public final class CircularArray {
     }
 
     private static int clamp(int val, int min, int max) {
-        return val < min ? min : (val > max ? max : val);
+        return val < min ? min : Math.min(val, max);
     }
 
     // insert an entity based on its index coordinates

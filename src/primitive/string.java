@@ -1,5 +1,7 @@
 package primitive;
 
+import annotation.Volatile;
+
 import annotation.Intention;
 import annotation.Required;
 import nio.ForeignMemory;
@@ -276,12 +278,14 @@ public final class string {
         return ForeignMemory.getString(pointer);
     }
 
+    @Volatile
     public static long getVolatile(long pointerAddress) {
         checkActive();
         if (pointerAddress == 0L) return 0L;
         return ForeignMemory.getLongVolatile(pointerAddress);
     }
 
+    @Volatile
     public static void setVolatile(long pointerAddress, long stringPointer) {
         checkActive();
         if (pointerAddress == 0L) throw new NullPointerException("Writing to NULL pointer address!");

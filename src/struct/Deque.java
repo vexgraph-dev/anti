@@ -1,5 +1,7 @@
 package struct;
 
+import annotation.Unsafe;
+
 import annotation.Volatile;
 
 import annotation.Draft;
@@ -163,6 +165,7 @@ public final class Deque {
         else ForeignMemory.putLong(slot, val);
     }
 
+    @Volatile
     private static long readSlotVolatile(long slot, int stride) {
         if (stride == 1) return ForeignMemory.getByteVolatile(slot) & 0xFF;
         if (stride == 2) return ForeignMemory.getShortVolatile(slot) & 0xFFFF;
@@ -170,6 +173,7 @@ public final class Deque {
         return ForeignMemory.getLongVolatile(slot);
     }
 
+    @Volatile
     private static void writeSlotVolatile(long slot, int stride, long val) {
         if (stride == 1) ForeignMemory.putByteVolatile(slot, (byte) val);
         else if (stride == 2) ForeignMemory.putShortVolatile(slot, (short) val);
@@ -295,6 +299,7 @@ public final class Deque {
     }
 
     // retrieve element at logical index from the front (volatile)
+    @Volatile
     public static long getVolatile(long dequePtr, int index) {
         checkBounds(dequePtr, index);
         int cap = capacity(dequePtr);
@@ -307,6 +312,7 @@ public final class Deque {
     }
 
     // retrieve element at logical index from the front (unsafe)
+    @Unsafe
     public static long unsafeGet(long dequePtr, int index) {
         int cap = capacity(dequePtr);
         int stride = stride(dequePtr);
