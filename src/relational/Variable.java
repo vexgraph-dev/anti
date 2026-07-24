@@ -7,6 +7,7 @@ import annotation.Draft;
 import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
+import search.SearchVariable;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;

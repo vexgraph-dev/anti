@@ -1,11 +1,10 @@
-package relational;
+package search;
 
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import oop.TypeRegister;
 import primitive.Long;
-import struct.Trie;
 
 import java.nio.charset.StandardCharsets;
 
@@ -13,7 +12,7 @@ import java.nio.charset.StandardCharsets;
  * Symbol Search and Autocomplete Index using an off-heap Trie structure.
  */
 @Draft
-@Intention("High-speed prefix lookup and variable autocomplete search index wrapper referencing an off-heap struct.Trie.")
+@Intention("High-speed prefix lookup and variable autocomplete search index wrapper referencing an off-heap search.Trie.")
 public final class SearchVariable {
 
     @Required

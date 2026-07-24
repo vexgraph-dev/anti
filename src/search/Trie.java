@@ -1,10 +1,11 @@
-package struct;
+package search;
 
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
+import struct.List;
 
 import java.lang.foreign.Arena;
 
