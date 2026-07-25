@@ -108,7 +108,7 @@ public class TypeRegister
     public static final int ID_DRAW_THREAD = 0x00003B; // DrawThread class // 59
     public static final int ID_BOOL = 0x00003C; // Bool class // 60
 
-
+    public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
     // Bool class

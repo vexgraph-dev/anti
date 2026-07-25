@@ -18,7 +18,7 @@ public final class Struct {
     @Required
     public static final int CLASS_ID = TypeRegister.CUSTOM_STRUCT;
 
-    private static final int MAX_STRUCTS = 65536;
+    private static final int MAX_STRUCTS = 65000;
     private static final long SLOT_SIZE = 24L;
 
     private static final long REGISTRY_BASE;
