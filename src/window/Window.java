@@ -1,55 +1,60 @@
-package hardware;
+package window;
 
 /**
  * Static pointer-handler wrapper for Native Windows.
- * Follows the primitive value-class structure.
+ * Follows the primitive value-class structure and routes pointers to the correct OS backend.
  */
 public final class Window {
 
     private Window() {}
 
+    private static final String OS = System.getProperty("os.name").toLowerCase();
+    private static final boolean IS_MAC = OS.contains("mac");
+    private static final boolean IS_WIN = OS.contains("win");
+    private static final boolean IS_LINUX = OS.contains("nix") || OS.contains("nux") || OS.contains("aix");
+
     public static long allocate() {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-            return macOSWindow.allocate();
-        }
-        throw new UnsupportedOperationException("Only Mac supported right now!");
+        if (IS_MAC) return macOSWindow.allocate();
+        if (IS_WIN) return windowsWindow.allocate();
+        if (IS_LINUX) return linuxWindow.allocate();
+        throw new UnsupportedOperationException("Unsupported OS: " + OS);
     }
 
     public static void free(long pointer) {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-            macOSWindow.free(pointer);
-        }
+        if (IS_MAC) macOSWindow.free(pointer);
+        else if (IS_WIN) windowsWindow.free(pointer);
+        else if (IS_LINUX) linuxWindow.free(pointer);
     }
 
     public static void setSize(long pointer, int width, int height) {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-            macOSWindow.setSize(pointer, width, height);
-        }
+        if (IS_MAC) macOSWindow.setSize(pointer, width, height);
+        else if (IS_WIN) windowsWindow.setSize(pointer, width, height);
+        else if (IS_LINUX) linuxWindow.setSize(pointer, width, height);
     }
 
     public static void show(long pointer) {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-            macOSWindow.show(pointer);
-        }
+        if (IS_MAC) macOSWindow.show(pointer);
+        else if (IS_WIN) windowsWindow.show(pointer);
+        else if (IS_LINUX) linuxWindow.show(pointer);
     }
 
     public static long createSurface(long pointer) {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-            return macOSWindow.createSurface(pointer);
-        }
+        if (IS_MAC) return macOSWindow.createSurface(pointer);
+        if (IS_WIN) return windowsWindow.createSurface(pointer);
+        if (IS_LINUX) return linuxWindow.createSurface(pointer);
         return 0L;
     }
 
     public static boolean shouldClose(long pointer) {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-            return macOSWindow.shouldClose(pointer);
-        }
+        if (IS_MAC) return macOSWindow.shouldClose(pointer);
+        if (IS_WIN) return windowsWindow.shouldClose(pointer);
+        if (IS_LINUX) return linuxWindow.shouldClose(pointer);
         return true;
     }
 
     public static void pollEvents() {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-            macOSWindow.pollEvents();
-        }
+        if (IS_MAC) macOSWindow.pollEvents();
+        else if (IS_WIN) windowsWindow.pollEvents();
+        else if (IS_LINUX) linuxWindow.pollEvents();
     }
 }
