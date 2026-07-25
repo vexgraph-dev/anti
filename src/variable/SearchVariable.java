@@ -1,10 +1,11 @@
-package search;
+package variable;
 
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import oop.TypeRegister;
 import primitive.Long;
+import search.Trie;
 
 import java.nio.charset.StandardCharsets;
 
@@ -113,7 +114,7 @@ public final class SearchVariable {
         checkActive();
         int varId = Trie.search(trieRoot, nameBytes);
         if (varId != -1) {
-            String varName = relational.Variable.getName(varId);
+            String varName = Variable.getName(varId);
             if (isExactMatch(varName, nameBytes)) {
                 return varId;
             }
@@ -144,7 +145,7 @@ public final class SearchVariable {
         int count = struct.List.size(listPtr);
         for (int i = 0; i < count; i++) {
             int varId = (int) struct.List.get(listPtr, i);
-            String varName = relational.Variable.getName(varId);
+            String varName = Variable.getName(varId);
             if (startsWithPrefix(varName, prefixBytes)) {
                 struct.List.add(filteredList, varId);
             }
@@ -188,7 +189,7 @@ public final class SearchVariable {
         long tempArrayPtr = Long.allocateArray(count);
         for (int i = 0; i < count; i++) {
             int varId = (int) struct.List.get(listPtr, i);
-            long pointer = relational.Variable.getPointer(varId);
+            long pointer = Variable.getPointer(varId);
             Long.set(tempArrayPtr, i, pointer);
         }
 

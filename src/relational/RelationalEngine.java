@@ -6,6 +6,7 @@ import annotation.Required;
 import oop.TypeRegister;
 import primitive.Int;
 import primitive.Long;
+import variable.Variable;
 
 /**
  * High-level dynamic dispatcher and query resolver for relational variables.
