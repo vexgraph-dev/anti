@@ -23,20 +23,20 @@ void main() throws Throwable
     }
 
     // 2. ACTUAL ENGINE LOGIC
-    IO.println("Starting Engine Window Test...");
-    long windowPtr = Window.invoke();
-    IO.println("Window spawned at: " + windowPtr);
+    System.out.println("Starting Engine Window Test...");
+    long windowPtr = Window.allocate();
+    System.out.println("Window spawned at: " + windowPtr);
 
     Window.setSize(windowPtr, 800, 600);
     Window.show(windowPtr);
 
     long surfacePtr = Window.createSurface(windowPtr);
-    IO.println("Surface created at (CAMetalLayer): " + surfacePtr);
+    System.out.println("Surface created at (CAMetalLayer): " + surfacePtr);
 
     // 3. START BACKGROUND GAME THREAD
     Thread gameThread = new Thread(() ->
     {
-        IO.println("[Game Thread] Booting up 60 FPS logic loop...");
+        System.out.println("[Game Thread] Booting up 60 FPS logic loop...");
         while(!Window.shouldClose(windowPtr)) {
             // TODO: Add your Vulkan/Metal rendering and game logic here!
             try {
@@ -46,25 +46,25 @@ void main() throws Throwable
                 break;
             }
         }
-        IO.println("[Game Thread] Shutting down...");
+        System.out.println("[Game Thread] Shutting down...");
     });
     gameThread.start();
 
     // 4. MAIN THREAD: DEDICATED EVENT PUMP
-    IO.println("[Main Thread] Pumping macOS events...");
+    System.out.println("[Main Thread] Pumping macOS events...");
     while(!Window.shouldClose(windowPtr)) {
         Window.pollEvents();
 
         // We sleep just 2ms. This prevents the while-loop from burning 100% CPU,
         // but is fast enough that the macOS WindowServer (and the Dock) remain buttery smooth!
         try {
-            Thread.sleep(4);
+            Thread.sleep(2);
         }
         catch(InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
 
-    Window.destroy(windowPtr);
-    IO.println("Test complete.");
+    Window.free(windowPtr);
+    System.out.println("Test complete.");
 }
