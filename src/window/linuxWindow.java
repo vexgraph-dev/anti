@@ -31,6 +31,10 @@ final class linuxWindow {
         throw new UnsupportedOperationException("Linux FFM Window not implemented yet");
     }
 
+    public static void setTitle(long pointer, String title) {
+        // TODO: Implement X11 XStoreName
+    }
+
     public static void setSize(long pointer, int width, int height) {
         // TODO: Implement X11 XResizeWindow
     }

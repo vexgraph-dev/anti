@@ -26,6 +26,12 @@ public final class Window {
         else if (IS_LINUX) linuxWindow.free(pointer);
     }
 
+    public static void setTitle(long pointer, String title) {
+        if (IS_MAC) macOSWindow.setTitle(pointer, title);
+        else if (IS_WIN) windowsWindow.setTitle(pointer, title);
+        else if (IS_LINUX) linuxWindow.setTitle(pointer, title);
+    }
+
     public static void setSize(long pointer, int width, int height) {
         if (IS_MAC) macOSWindow.setSize(pointer, width, height);
         else if (IS_WIN) windowsWindow.setSize(pointer, width, height);

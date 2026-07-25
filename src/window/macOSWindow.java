@@ -1,4 +1,4 @@
-package hardware;
+package window;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -150,6 +150,24 @@ final class macOSWindow {
             t.printStackTrace();
         }
         return 0L;
+    }
+
+    public static void setTitle(long pointer, String title) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            MemorySegment nsStringClass = getObjcClass(arena, "NSString");
+            MemorySegment allocSel = getSel(arena, "alloc");
+            MemorySegment initWithUTF8StringSel = getSel(arena, "initWithUTF8String:");
+            
+            MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, allocSel);
+            MemorySegment titleStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, initWithUTF8StringSel, arena.allocateFrom(title));
+            
+            MemorySegment setTitleSel = getSel(arena, "setTitle:");
+            MSG_SEND_VOID_PTR.invoke(window, setTitleSel, titleStr);
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
     }
 
     public static void setSize(long pointer, int width, int height) {

@@ -1,4 +1,4 @@
-package hardware;
+package window;
 
 import java.lang.foreign.*;
 
@@ -28,6 +28,10 @@ final class windowsWindow {
     public static long allocate() {
         // TODO: Implement Win32 CreateWindowExA via FFM
         throw new UnsupportedOperationException("Windows FFM Window not implemented yet");
+    }
+
+    public static void setTitle(long pointer, String title) {
+        // TODO: Implement Win32 SetWindowTextA
     }
 
     public static void setSize(long pointer, int width, int height) {
