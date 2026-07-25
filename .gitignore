@@ -45,6 +45,9 @@ src/ScratchTest2.java
 FileCompiler.java
 src/FileCompiler.java
 **/FileCompiler.java
+EngineTest.java
+src/EngineTest.java
+**/EngineTest.java
 
 ### Private / Regurgitation / Config Files ###
 regurgitation/
