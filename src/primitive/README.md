@@ -22,12 +22,15 @@ In the Anti framework, a Primitive (`Int`, `Long`, `IntFloat`, `Bool`) is **not*
 When you allocate a primitive, the engine does not return an object reference; it returns a raw 64-bit `long` **memory address pointer**. All read and write operations are performed statically by passing this pointer back to the subsystem.
 
 ```java
-// ❌ Traditional Java (Creates Garbage, poor cache locality)
+// ❌ Traditional Java 
 Integer myInt = new Integer(42); 
 
-// ✅ Anti Framework (Zero-GC, Direct native memory)
+// 🟠 Direct primitive but lives on the heap
+int x = 42;
+
+// ✅ Anti Framework
 long ptr = Int.allocateSingleton();
-Int.set(ptr, 0, 42); 
+Int.unsafeGet(ptr, 42); 
 Int.free(ptr);
 ```
 
@@ -52,5 +55,5 @@ To pack massive amounts of data into custom `Struct` layouts without wasting byt
 ---
 
 > [!WARNING]  
-> **Manual Memory Management Required**
+> **Manual Memory Management Required**<p>
 > Because these primitives exist outside the JVM Heap, they are completely invisible to the Garbage Collector. You **must** call `.free(ptr)` when you are done with a pointer, otherwise you will cause a native memory leak.

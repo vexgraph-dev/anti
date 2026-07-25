@@ -1,5 +1,8 @@
 package actions;
 
+import annotation.HotCode;
+
+@HotCode
 public class OperationTypes
 {
     //
