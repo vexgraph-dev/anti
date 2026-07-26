@@ -306,7 +306,7 @@ final class macOSWindow {
                     if (macKeyCode >= 0 && macKeyCode < 128) {
                         int stdKey = MAC_KEY_MAP[macKeyCode];
                         if (stdKey != -1) {
-                            input.Key.setKey(stdKey, eventType == 10, 250_000_000L); // 250ms multi-tap window
+                            input.Key.pushEvent(stdKey, eventType == 10 ? 1 : 0, 250_000_000L); // 250ms multi-tap window
                         }
                     }
                 }
