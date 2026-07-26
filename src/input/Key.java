@@ -247,4 +247,32 @@ public final class Key
         if (keyCode < 0 || keyCode >= 512) return 0;
         return STATE.get(ValueLayout.JAVA_INT, (keyCode * 32L) + 16L);
     }
+
+    // -------------------------------------------------------------------------
+    // String Conversion (Zero-Allocation O(1) Lookup)
+    // -------------------------------------------------------------------------
+    
+    private static final String[] NAMES = new String[512];
+    static {
+        for (int i = 0; i < 512; i++) NAMES[i] = "Unknown";
+        try {
+            for (java.lang.reflect.Field f : Key.class.getDeclaredFields()) {
+                if (java.lang.reflect.Modifier.isStatic(f.getModifiers()) && f.getType() == int.class) {
+                    if (f.getName().equals("listenerCount")) continue;
+                    int val = f.getInt(null);
+                    if (val >= 0 && val < 512) {
+                        // Prefer the first assigned name (e.g. A over MAC_COMMAND for duplicates)
+                        if (NAMES[val].equals("Unknown")) {
+                            NAMES[val] = f.getName();
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {}
+    }
+    
+    public static String getString(int keyCode) {
+        if (keyCode < 0 || keyCode >= 512) return "Unknown";
+        return NAMES[keyCode];
+    }
 }

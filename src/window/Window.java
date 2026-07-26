@@ -66,6 +66,11 @@ public final class Window {
         else if (IS_LINUX) linuxWindow.pollEvents();
     }
 
+    public static void setKeyEvent(long pointer, event.KeyEvent listener) {
+        if (pointer == 0L) return;
+        input.Key.addKeyEvent(listener);
+    }
+
     public static void run(long pointer, EngineLoop loop) {
         Thread.ofPlatform().name("Anti-Engine-Loop").daemon(false).start(() -> {
             System.out.println("[Game Thread] Booting up loop...");
