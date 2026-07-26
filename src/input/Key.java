@@ -5,6 +5,9 @@ import annotation.Volatile;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import event.KeyEvent;
+import thread.RingBuffer;
+import oop.TypeRegister;
 
 @Volatile
 public final class Key
@@ -148,27 +151,45 @@ public final class Key
     
     // We allocate 512 slots. 
     // Each key gets a 32-byte struct:
-    //   0-7:   long currentPressTime
-    //   8-15:  long lastReleaseTime
+    //   0-7: long currentPressTime
+    //   8-15: long lastReleaseTime
     //   16-19: int tapCount
     //   20-31: padding (alignment)
     // 512 keys * 32 bytes = 16,384 bytes (16 KB)
     private static final MemorySegment STATE = Arena.global().allocate(512 * 32);
 
+    // --- New RingBuffer Queue ---
+    private static final long QUEUE_PTR = RingBuffer.instant(TypeRegister.ID_LONG, 1024);
+
+    // --- Listeners ---
+    private static final KeyEvent[] listeners = new KeyEvent[64];
+    private static int listenerCount = 0;
+
     private Key() {}
 
+    public static void addKeyEvent(KeyEvent listener) {
+        if (listenerCount < listeners.length) {
+            listeners[listenerCount++] = listener;
+        }
+    }
+
     /**
-     * Called by the Window Event Loop (Thread 0)
+     * Producer: Called by the Window Event Loop (Thread 0)
      */
-    public static void setKey(int keyCode, boolean down, long thresholdNanos) {
+    public static void pushEvent(int keyCode, int action, long thresholdNanos) {
         if (keyCode < 0 || keyCode >= 512) return;
         
         long offset = keyCode * 32L;
         long now = System.nanoTime();
         
-        if (down) {
-            // Already down? Do nothing (ignore OS key repeats)
-            if (STATE.get(ValueLayout.JAVA_LONG, offset) != 0L) return;
+        if (action == 1) { // Down
+            if (STATE.get(ValueLayout.JAVA_LONG, offset) != 0L) {
+                // If it's already down, it's an OS repeat event.
+                // We push ACTION_REPEAT to the queue, but don't touch the timestamp.
+                long packed = ((long) keyCode << 8) | 2L; // 2 = Repeat
+                RingBuffer.offer(QUEUE_PTR, packed);
+                return;
+            }
             
             long lastRelease = STATE.get(ValueLayout.JAVA_LONG, offset + 8L);
             int currentTaps = STATE.get(ValueLayout.JAVA_INT, offset + 16L);
@@ -179,9 +200,30 @@ public final class Key
                 STATE.set(ValueLayout.JAVA_INT, offset + 16L, 1);
             }
             STATE.set(ValueLayout.JAVA_LONG, offset, now);
-        } else {
+        } else if (action == 0) { // Up
             STATE.set(ValueLayout.JAVA_LONG, offset + 8L, now);
             STATE.set(ValueLayout.JAVA_LONG, offset, 0L);
+        }
+        
+        // Push the event lock-free to the RingBuffer
+        long packed = ((long) keyCode << 8) | (action & 0xFF);
+        RingBuffer.offer(QUEUE_PTR, packed);
+    }
+    
+    /**
+     * Consumer: Called by Game Thread before loop.tick()
+     */
+    public static void dispatchEvents() {
+        long packed;
+        while ((packed = RingBuffer.poll(QUEUE_PTR)) != 0L) {
+            int key = (int) ((packed >> 8) & 0xFF);
+            int action = (int) (packed & 0xFF);
+            
+            for (int i = 0; i < listenerCount; i++) {
+                if (action == 1) listeners[i].onKeyDown(key);
+                else if (action == 0) listeners[i].onKeyUp(key);
+                else if (action == 2) listeners[i].onKeyRepeat(key);
+            }
         }
     }
 
