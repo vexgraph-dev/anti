@@ -25,12 +25,14 @@ final class macOSWindow {
     private static final MethodHandle MSG_SEND_BOOL_RET;
     private static final MethodHandle MSG_SEND_INIT_WINDOW;
     private static final MethodHandle MSG_SEND_NEXT_EVENT;
+    private static final MethodHandle MSG_SEND_LONG_RET;
+    private static final MethodHandle MSG_SEND_SHORT_RET;
     private static final StructLayout CG_RECT;
     private static final StructLayout CG_SIZE;
 
     static {
         SymbolLookup objcLib = null;
-        MethodHandle getClass = null, selRegName = null, msgSendPtr = null, msgSendPtrPtr = null, msgSendPtrSize = null, msgSendVoid = null, msgSendVoidPtr = null, msgSendInt = null, msgSendBool = null, msgSendBoolRet = null, msgSendInitWindow = null, msgSendNextEvent = null;
+        MethodHandle getClass = null, selRegName = null, msgSendPtr = null, msgSendPtrPtr = null, msgSendPtrSize = null, msgSendVoid = null, msgSendVoidPtr = null, msgSendInt = null, msgSendBool = null, msgSendBoolRet = null, msgSendInitWindow = null, msgSendNextEvent = null, msgSendLongRet = null, msgSendShortRet = null;
         StructLayout cgRect = null, cgSize = null;
 
         try {
@@ -68,6 +70,9 @@ final class macOSWindow {
                 ValueLayout.ADDRESS, ValueLayout.ADDRESS,
                 ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BYTE
             ));
+            
+            msgSendLongRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+            msgSendShortRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_SHORT, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
             cgRect = MemoryLayout.structLayout(
                 ValueLayout.JAVA_DOUBLE.withName("x"),
@@ -98,6 +103,8 @@ final class macOSWindow {
         MSG_SEND_BOOL_RET = msgSendBoolRet;
         MSG_SEND_INIT_WINDOW = msgSendInitWindow;
         MSG_SEND_NEXT_EVENT = msgSendNextEvent;
+        MSG_SEND_LONG_RET = msgSendLongRet;
+        MSG_SEND_SHORT_RET = msgSendShortRet;
         CG_RECT = cgRect;
         CG_SIZE = cgSize;
     }
@@ -120,6 +127,19 @@ final class macOSWindow {
 
                 MemorySegment setActivationPolicySel = getSel(arena, "setActivationPolicy:");
                 MSG_SEND_INT.invoke(app, setActivationPolicySel, 0L);
+
+                MemorySegment nsProcessInfoClass = getObjcClass(arena, "NSProcessInfo");
+                MemorySegment processInfoSel = getSel(arena, "processInfo");
+                MemorySegment processInfo = (MemorySegment) MSG_SEND_PTR.invoke(nsProcessInfoClass, processInfoSel);
+
+                MemorySegment nsStringClass = getObjcClass(arena, "NSString");
+                MemorySegment allocSelStr = getSel(arena, "alloc");
+                MemorySegment initWithUTF8StringSel = getSel(arena, "initWithUTF8String:");
+                MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, allocSelStr);
+                MemorySegment nameStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, initWithUTF8StringSel, arena.allocateFrom("Anti Engine"));
+
+                MemorySegment setProcessNameSel = getSel(arena, "setProcessName:");
+                MSG_SEND_VOID_PTR.invoke(processInfo, setProcessNameSel, nameStr);
 
                 MemorySegment nsWindowClass = getObjcClass(arena, "NSWindow");
                 MemorySegment allocSel = getSel(arena, "alloc");
@@ -269,12 +289,28 @@ final class macOSWindow {
             MemorySegment nextEventSel = getSel(arena, "nextEventMatchingMask:untilDate:inMode:dequeue:");
             MemorySegment sendEventSel = getSel(arena, "sendEvent:");
             MemorySegment updateWindowsSel = getSel(arena, "updateWindows");
+            MemorySegment typeSel = getSel(arena, "type");
+            MemorySegment keyCodeSel = getSel(arena, "keyCode");
 
             long NSAnyEventMask = -1L;
 
             while (true) {
                 MemorySegment event = (MemorySegment) MSG_SEND_NEXT_EVENT.invoke(app, nextEventSel, NSAnyEventMask, MemorySegment.NULL, runLoopMode, (byte)1);
                 if (event.address() == 0L) break;
+                
+                long eventType = (long) MSG_SEND_LONG_RET.invoke(event, typeSel);
+                
+                // 10 = KeyDown, 11 = KeyUp
+                if (eventType == 10 || eventType == 11) {
+                    short macKeyCode = (short) MSG_SEND_SHORT_RET.invoke(event, keyCodeSel);
+                    if (macKeyCode >= 0 && macKeyCode < 128) {
+                        int stdKey = MAC_KEY_MAP[macKeyCode];
+                        if (stdKey != -1) {
+                            input.Key.setKey(stdKey, eventType == 10, 250_000_000L); // 250ms multi-tap window
+                        }
+                    }
+                }
+
                 MSG_SEND_VOID_PTR.invoke(app, sendEventSel, event);
             }
             
@@ -293,5 +329,30 @@ final class macOSWindow {
         } catch (Throwable t) {
             t.printStackTrace();
         }
+    }
+    
+    // Translation map for macOS virtual key codes -> cross-platform Key constants
+    private static final int[] MAC_KEY_MAP = new int[128];
+    static {
+        for(int i = 0; i < 128; i++) MAC_KEY_MAP[i] = -1;
+        MAC_KEY_MAP[0] = input.Key.A; MAC_KEY_MAP[1] = input.Key.S; MAC_KEY_MAP[2] = input.Key.D;
+        MAC_KEY_MAP[3] = input.Key.F; MAC_KEY_MAP[4] = input.Key.H; MAC_KEY_MAP[5] = input.Key.G;
+        MAC_KEY_MAP[6] = input.Key.Z; MAC_KEY_MAP[7] = input.Key.X; MAC_KEY_MAP[8] = input.Key.C;
+        MAC_KEY_MAP[9] = input.Key.V; MAC_KEY_MAP[11] = input.Key.B; MAC_KEY_MAP[12] = input.Key.Q;
+        MAC_KEY_MAP[13] = input.Key.W; MAC_KEY_MAP[14] = input.Key.E; MAC_KEY_MAP[15] = input.Key.R;
+        MAC_KEY_MAP[16] = input.Key.Y; MAC_KEY_MAP[17] = input.Key.T; MAC_KEY_MAP[18] = input.Key.NUM_1;
+        MAC_KEY_MAP[19] = input.Key.NUM_2; MAC_KEY_MAP[20] = input.Key.NUM_3; MAC_KEY_MAP[21] = input.Key.NUM_4;
+        MAC_KEY_MAP[22] = input.Key.NUM_6; MAC_KEY_MAP[23] = input.Key.NUM_5; MAC_KEY_MAP[24] = input.Key.EQUAL;
+        MAC_KEY_MAP[25] = input.Key.NUM_9; MAC_KEY_MAP[26] = input.Key.NUM_7; MAC_KEY_MAP[27] = input.Key.MINUS;
+        MAC_KEY_MAP[28] = input.Key.NUM_8; MAC_KEY_MAP[29] = input.Key.NUM_0; MAC_KEY_MAP[30] = input.Key.RIGHT_BRACKET;
+        MAC_KEY_MAP[31] = input.Key.O; MAC_KEY_MAP[32] = input.Key.U; MAC_KEY_MAP[33] = input.Key.LEFT_BRACKET;
+        MAC_KEY_MAP[34] = input.Key.I; MAC_KEY_MAP[35] = input.Key.P; MAC_KEY_MAP[36] = input.Key.ENTER;
+        MAC_KEY_MAP[37] = input.Key.L; MAC_KEY_MAP[38] = input.Key.J; MAC_KEY_MAP[39] = input.Key.APOSTROPHE;
+        MAC_KEY_MAP[40] = input.Key.K; MAC_KEY_MAP[41] = input.Key.SEMICOLON; MAC_KEY_MAP[42] = input.Key.BACKSLASH;
+        MAC_KEY_MAP[43] = input.Key.COMMA; MAC_KEY_MAP[44] = input.Key.SLASH; MAC_KEY_MAP[45] = input.Key.N;
+        MAC_KEY_MAP[46] = input.Key.M; MAC_KEY_MAP[47] = input.Key.PERIOD; MAC_KEY_MAP[48] = input.Key.TAB;
+        MAC_KEY_MAP[49] = input.Key.SPACE; MAC_KEY_MAP[50] = input.Key.GRAVE_ACCENT; MAC_KEY_MAP[51] = input.Key.BACKSPACE;
+        MAC_KEY_MAP[53] = input.Key.ESCAPE; MAC_KEY_MAP[123] = input.Key.LEFT; MAC_KEY_MAP[124] = input.Key.RIGHT;
+        MAC_KEY_MAP[125] = input.Key.DOWN; MAC_KEY_MAP[126] = input.Key.UP;
     }
 }
