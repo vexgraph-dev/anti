@@ -1,5 +1,7 @@
 package window;
 
+import engine.EngineLoop;
+
 /**
  * Static pointer-handler wrapper for Native Windows.
  * Follows the primitive value-class structure and routes pointers to the correct OS backend.
@@ -62,5 +64,25 @@ public final class Window {
         if (IS_MAC) macOSWindow.pollEvents();
         else if (IS_WIN) windowsWindow.pollEvents();
         else if (IS_LINUX) linuxWindow.pollEvents();
+    }
+
+    public static void run(long pointer, EngineLoop loop) {
+        Thread.ofPlatform().name("Anti-Engine-Loop").daemon(false).start(() -> {
+            System.out.println("[Game Thread] Booting up loop...");
+            while (!shouldClose(pointer)) {
+                loop.tick();
+            }
+            System.out.println("[Game Thread] Shutting down...");
+        });
+
+        System.out.println("[Main Thread] Pumping window events...");
+        while (!shouldClose(pointer)) {
+            pollEvents();
+            try {
+                Thread.sleep(1); // 1000 hz way
+            } catch (InterruptedException e) {
+                break;
+            }
+        }
     }
 }
