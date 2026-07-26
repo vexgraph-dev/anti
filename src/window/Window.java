@@ -70,6 +70,7 @@ public final class Window {
         Thread.ofPlatform().name("Anti-Engine-Loop").daemon(false).start(() -> {
             System.out.println("[Game Thread] Booting up loop...");
             while (!shouldClose(pointer)) {
+                input.Key.dispatchEvents(); // Drain DOD queue & trigger OOP callbacks
                 loop.tick();
             }
             System.out.println("[Game Thread] Shutting down...");
