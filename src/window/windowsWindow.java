@@ -1,11 +1,13 @@
 package window;
 
 import java.lang.foreign.*;
+import annotation.PlatformExclusive;
 
 /**
  * Pure Win32 FFM backend for the Window system.
  * (Skeleton ready for implementation)
  */
+@PlatformExclusive("Windows")
 final class windowsWindow {
 
     private static final Linker LINKER = Linker.nativeLinker();
