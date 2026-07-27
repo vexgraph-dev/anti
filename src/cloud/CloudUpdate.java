@@ -1,7 +1,9 @@
-package cloud;public class CloudUpdate 
+package cloud;
+
+public class CloudUpdate
 {
     public CloudUpdate()
     {
-    
+
     }
 }
