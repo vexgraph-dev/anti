@@ -46,6 +46,18 @@ public final class Window {
         else if (IS_LINUX) linuxWindow.show(pointer);
     }
 
+    public static void setVisible(long pointer, boolean visible) {
+        if (IS_MAC) macOSWindow.setVisible(pointer, visible);
+        else if (IS_WIN) windowsWindow.setVisible(pointer, visible);
+        else if (IS_LINUX) linuxWindow.setVisible(pointer, visible);
+    }
+
+    public static void setLocation(long pointer, int x, int y) {
+        if (IS_MAC) macOSWindow.setLocation(pointer, x, y);
+        else if (IS_WIN) windowsWindow.setLocation(pointer, x, y);
+        else if (IS_LINUX) linuxWindow.setLocation(pointer, x, y);
+    }
+
     public static long createSurface(long pointer) {
         if (IS_MAC) return macOSWindow.createSurface(pointer);
         if (IS_WIN) return windowsWindow.createSurface(pointer);
