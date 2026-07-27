@@ -1,7 +1,9 @@
-package geometry;public class GeometryMaker 
+package geometry;
+
+public class GeometryMaker
 {
     public GeometryMaker()
     {
-    
+
     }
 }
