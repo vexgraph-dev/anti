@@ -1,7 +1,9 @@
-package render;public class RenderMode 
+package render;
+
+public class RenderMode
 {
     public RenderMode()
     {
-    
+
     }
 }
