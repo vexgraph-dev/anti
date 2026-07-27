@@ -203,7 +203,7 @@ public final class Key
         } else if (action == 0) { // Up
             long pressTime = STATE.get(ValueLayout.JAVA_LONG, offset);
             if (pressTime != 0L) {
-                STATE.set(ValueLayout.JAVA_LONG, offset + 20L, now - pressTime); // Store lastHoldDuration
+                STATE.set(ValueLayout.JAVA_LONG, offset + 24L, now - pressTime); // Store lastHoldDuration (Aligned to 24L instead of 20L)
             }
             STATE.set(ValueLayout.JAVA_LONG, offset + 8L, now);
             STATE.set(ValueLayout.JAVA_LONG, offset, 0L);
@@ -223,13 +223,15 @@ public final class Key
             int key = (int) ((packed >> 8) & 0xFF);
             int action = (int) (packed & 0xFF);
             
+            KeyResolve resolve = KeyResolve.get(key);
             for (int i = 0; i < listenerCount; i++) {
-                if (action == 1) listeners[i].onKeyDown(key);
-                else if (action == 0) listeners[i].onKeyUp(key);
-                else if (action == 2) listeners[i].onKeyRepeat(key);
+                if (action == 1) listeners[i].onKeyDown(resolve);
+                else if (action == 0) listeners[i].onKeyUp(resolve);
+                else if (action == 2) listeners[i].onKeyRepeat(resolve);
             }
         }
     }
+
 
 
 
