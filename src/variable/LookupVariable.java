@@ -1,7 +1,9 @@
-package variable;public class LookupVariable 
+package variable;
+
+public class LookupVariable
 {
     public LookupVariable()
     {
-    
+
     }
 }
