@@ -215,17 +215,42 @@ final class macOSWindow {
     }
 
     public static void show(long pointer) {
+        setVisible(pointer, true);
+    }
+
+    public static void setVisible(long pointer, boolean visible) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment makeKeyAndOrderFrontSel = getSel(arena, "makeKeyAndOrderFront:");
-            MSG_SEND_PTR_PTR.invoke(window, makeKeyAndOrderFrontSel, MemorySegment.NULL);
+            if (visible) {
+                MemorySegment makeKeyAndOrderFrontSel = getSel(arena, "makeKeyAndOrderFront:");
+                MSG_SEND_PTR_PTR.invoke(window, makeKeyAndOrderFrontSel, MemorySegment.NULL);
+                
+                MemorySegment nsAppClass = getObjcClass(arena, "NSApplication");
+                MemorySegment sharedAppSel = getSel(arena, "sharedApplication");
+                MemorySegment app = (MemorySegment) MSG_SEND_PTR.invoke(nsAppClass, sharedAppSel);
+                MemorySegment activateSel = getSel(arena, "activateIgnoringOtherApps:");
+                MSG_SEND_BOOL.invoke(app, activateSel, (byte)1);
+            } else {
+                MemorySegment orderOutSel = getSel(arena, "orderOut:");
+                MSG_SEND_PTR_PTR.invoke(window, orderOutSel, MemorySegment.NULL);
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    }
+
+    public static void setLocation(long pointer, int x, int y) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            MemorySegment setFrameTopLeftPointSel = getSel(arena, "setFrameTopLeftPoint:");
             
-            MemorySegment nsAppClass = getObjcClass(arena, "NSApplication");
-            MemorySegment sharedAppSel = getSel(arena, "sharedApplication");
-            MemorySegment app = (MemorySegment) MSG_SEND_PTR.invoke(nsAppClass, sharedAppSel);
-            MemorySegment activateSel = getSel(arena, "activateIgnoringOtherApps:");
-            MSG_SEND_BOOL.invoke(app, activateSel, (byte)1);
+            MemorySegment point = arena.allocate(CG_SIZE); // Reusing 2-double layout
+            point.set(ValueLayout.JAVA_DOUBLE, 0, x);
+            point.set(ValueLayout.JAVA_DOUBLE, 8, y);
+            
+            MSG_SEND_PTR_SIZE.invoke(window, setFrameTopLeftPointSel, point);
         } catch (Throwable t) {
             t.printStackTrace();
         }
