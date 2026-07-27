@@ -3,6 +3,7 @@ package window;
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import annotation.PlatformExclusive;
+import annotation.Draft;
 
 /**
  * Pure macOS FFM backend for the Window system.
@@ -218,6 +219,7 @@ final class macOSWindow {
         setVisible(pointer, true);
     }
 
+    @Draft
     public static void setVisible(long pointer, boolean visible) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
@@ -240,6 +242,7 @@ final class macOSWindow {
         }
     }
 
+    @Draft
     public static void setLocation(long pointer, int x, int y) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
@@ -305,6 +308,7 @@ final class macOSWindow {
         return false;
     }
 
+    @Draft
     public static void waitEvents() {
         if (OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
