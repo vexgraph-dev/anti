@@ -42,7 +42,15 @@ final class linuxWindow {
     }
 
     public static void show(long pointer) {
-        // TODO: Implement X11 XMapWindow
+        setVisible(pointer, true);
+    }
+
+    public static void setVisible(long pointer, boolean visible) {
+        // TODO: XMapWindow(display, window) / XUnmapWindow(display, window)
+    }
+
+    public static void setLocation(long pointer, int x, int y) {
+        // TODO: XMoveWindow(display, window, x, y)
     }
 
     public static long createSurface(long pointer) {
