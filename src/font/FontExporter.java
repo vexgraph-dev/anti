@@ -1,7 +1,9 @@
-package font;public class FontExporter 
+package font;
+
+public class FontExporter
 {
     public FontExporter()
     {
-    
+
     }
 }
