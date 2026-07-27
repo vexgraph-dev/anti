@@ -1,6 +1,7 @@
 package window;
 
 import engine.EngineLoop;
+import annotation.Draft;
 
 /**
  * Static pointer-handler wrapper for Native Windows.
@@ -46,12 +47,14 @@ public final class Window {
         else if (IS_LINUX) linuxWindow.show(pointer);
     }
 
+    @Draft
     public static void setVisible(long pointer, boolean visible) {
         if (IS_MAC) macOSWindow.setVisible(pointer, visible);
         else if (IS_WIN) windowsWindow.setVisible(pointer, visible);
         else if (IS_LINUX) linuxWindow.setVisible(pointer, visible);
     }
 
+    @Draft
     public static void setLocation(long pointer, int x, int y) {
         if (IS_MAC) macOSWindow.setLocation(pointer, x, y);
         else if (IS_WIN) windowsWindow.setLocation(pointer, x, y);
@@ -78,6 +81,7 @@ public final class Window {
         else if (IS_LINUX) linuxWindow.pollEvents();
     }
 
+    @Draft
     public static void waitEvents() {
         if (IS_MAC) macOSWindow.waitEvents();
         else if (IS_WIN) {
