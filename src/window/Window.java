@@ -71,12 +71,24 @@ public final class Window {
         input.Key.addKeyEvent(listener);
     }
 
+    public static void setMouseEvent(long pointer, event.MouseEvent listener) {
+        if (pointer == 0L) return;
+        input.Mouse.addMouseEvent(listener);
+    }
+
     public static void run(long pointer, EngineLoop loop) {
+        // Shared flag so we only evaluate the heavy FFI shouldClose() on the Main Thread
+        final java.util.concurrent.atomic.AtomicBoolean isClosed = new java.util.concurrent.atomic.AtomicBoolean(false);
+
         Thread.ofPlatform().name("Anti-Engine-Loop").daemon(false).start(() -> {
             System.out.println("[Game Thread] Booting up loop...");
-            while (!shouldClose(pointer)) {
+            while (!isClosed.get()) {
                 input.Key.dispatchEvents(); // Drain DOD queue & trigger OOP callbacks
+                input.Mouse.dispatchEvents(); // Same for Mouse
                 loop.tick();
+                
+                // Throttle Game Thread to exactly 1000 FPS to prevent 100% CPU core burn
+                java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
             }
             System.out.println("[Game Thread] Shutting down...");
         });
@@ -84,11 +96,10 @@ public final class Window {
         System.out.println("[Main Thread] Pumping window events...");
         while (!shouldClose(pointer)) {
             pollEvents();
-            try {
-                Thread.sleep(1); // 1000 hz way
-            } catch (InterruptedException e) {
-                break;
-            }
+            java.util.concurrent.locks.LockSupport.parkNanos(500_000L); // 2000Hz ultra-low latency polling
         }
+        
+        // Window was closed; notify the Game Thread to stop
+        isClosed.set(true);
     }
 }
