@@ -1,4 +1,8 @@
 package annotation;
 
-public @interface Citatiom {
+// we are citing things to the CITATION.md
+// the IEEE way as well...
+public @interface Citatiom
+{
+    int cite();
 }
