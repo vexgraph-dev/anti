@@ -309,7 +309,7 @@ final class macOSWindow {
             while (true) {
                 MemorySegment timeout = MemorySegment.NULL;
                 if (first) {
-                    timeout = (MemorySegment) MSG_SEND_PTR_DOUBLE.invoke(nsDateClass, dateWithTimeIntervalSel, 0.016);
+                    timeout = (MemorySegment) MSG_SEND_PTR_DOUBLE.invoke(nsDateClass, dateWithTimeIntervalSel, 1.0);
                 }
                 
                 MemorySegment event = (MemorySegment) MSG_SEND_NEXT_EVENT.invoke(app, nextEventSel, NSAnyEventMask, timeout, runLoopMode, (byte)1);
