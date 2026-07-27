@@ -153,10 +153,10 @@ public final class Key
     // Each key gets a 32-byte struct:
     //   0-7: long currentPressTime
     //   8-15: long lastReleaseTime
-    //   16-19: int tapCount
-    //   20-31: padding (alignment)
+    //   20-27: long lastHoldDuration
+    //   28-31: padding (alignment)
     // 512 keys * 32 bytes = 16,384 bytes (16 KB)
-    private static final MemorySegment STATE = Arena.global().allocate(512 * 32);
+    static final MemorySegment STATE = Arena.global().allocate(512 * 32);
 
     // --- New RingBuffer Queue ---
     private static final long QUEUE_PTR = RingBuffer.instant(TypeRegister.ID_LONG, 1024);
@@ -201,6 +201,10 @@ public final class Key
             }
             STATE.set(ValueLayout.JAVA_LONG, offset, now);
         } else if (action == 0) { // Up
+            long pressTime = STATE.get(ValueLayout.JAVA_LONG, offset);
+            if (pressTime != 0L) {
+                STATE.set(ValueLayout.JAVA_LONG, offset + 20L, now - pressTime); // Store lastHoldDuration
+            }
             STATE.set(ValueLayout.JAVA_LONG, offset + 8L, now);
             STATE.set(ValueLayout.JAVA_LONG, offset, 0L);
         }
@@ -227,26 +231,7 @@ public final class Key
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Read API (Game Thread)
-    // -------------------------------------------------------------------------
-    
-    public static boolean isDown(int keyCode) {
-        if (keyCode < 0 || keyCode >= 512) return false;
-        return STATE.get(ValueLayout.JAVA_LONG, (keyCode * 32L)) != 0L;
-    }
-    
-    public static long getDurationNanos(int keyCode) {
-        if (keyCode < 0 || keyCode >= 512) return 0L;
-        long pressTime = STATE.get(ValueLayout.JAVA_LONG, (keyCode * 32L));
-        if (pressTime == 0L) return 0L;
-        return System.nanoTime() - pressTime;
-    }
-    
-    public static int getTapCount(int keyCode) {
-        if (keyCode < 0 || keyCode >= 512) return 0;
-        return STATE.get(ValueLayout.JAVA_INT, (keyCode * 32L) + 16L);
-    }
+
 
     // -------------------------------------------------------------------------
     // String Conversion (Zero-Allocation O(1) Lookup)
