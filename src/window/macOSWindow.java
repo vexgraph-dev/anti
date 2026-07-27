@@ -373,7 +373,7 @@ final class macOSWindow {
                 } else if (eventType == 5 || eventType == 6 || eventType == 7 || eventType == 27) { // Mouse Move/Drag
                     try {
                         MemorySegment locationSel = getSel(arena, "locationInWindow");
-                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(event, locationSel);
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
                         double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
                         double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
                         input.Mouse.pushMoveEvent(x, y);
@@ -384,7 +384,7 @@ final class macOSWindow {
                 if (eventType == 1 || eventType == 2 || eventType == 3 || eventType == 4 || eventType == 25 || eventType == 26) {
                     try {
                         MemorySegment locationSel = getSel(arena, "locationInWindow");
-                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(event, locationSel);
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
                         input.Mouse.pushMoveEvent(point.get(ValueLayout.JAVA_DOUBLE, 0), point.get(ValueLayout.JAVA_DOUBLE, 8));
                     } catch (Throwable ignore) {}
                 }
@@ -456,7 +456,7 @@ final class macOSWindow {
                 } else if (eventType == 5 || eventType == 6 || eventType == 7 || eventType == 27) { // Mouse Move/Drag
                     try {
                         MemorySegment locationSel = getSel(arena, "locationInWindow");
-                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(event, locationSel);
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
                         double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
                         double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
                         
@@ -469,7 +469,7 @@ final class macOSWindow {
                 if (eventType == 1 || eventType == 2 || eventType == 3 || eventType == 4 || eventType == 25 || eventType == 26) {
                     try {
                         MemorySegment locationSel = getSel(arena, "locationInWindow");
-                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(event, locationSel);
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
                         input.Mouse.pushMoveEvent(point.get(ValueLayout.JAVA_DOUBLE, 0), point.get(ValueLayout.JAVA_DOUBLE, 8));
                     } catch (Throwable ignore) {}
                 }
