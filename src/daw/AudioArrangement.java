@@ -1,7 +1,9 @@
-package daw;public class AudioArrangement 
+package daw;
+
+public class AudioArrangement
 {
     public AudioArrangement()
     {
-    
+
     }
 }
