@@ -2,10 +2,12 @@ package window;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
+import annotation.PlatformExclusive;
 
 /**
  * Pure macOS FFM backend for the Window system.
  */
+@PlatformExclusive("Mac")
 final class macOSWindow {
 
     // --- FFI Linker ---
@@ -23,6 +25,7 @@ final class macOSWindow {
     private static final MethodHandle MSG_SEND_INT;
     private static final MethodHandle MSG_SEND_BOOL;
     private static final MethodHandle MSG_SEND_BOOL_RET;
+    private static final MethodHandle MSG_SEND_PTR_DOUBLE;
     private static final MethodHandle MSG_SEND_INIT_WINDOW;
     private static final MethodHandle MSG_SEND_NEXT_EVENT;
     private static final MethodHandle MSG_SEND_LONG_RET;
@@ -33,7 +36,7 @@ final class macOSWindow {
 
     static {
         SymbolLookup objcLib = null;
-        MethodHandle getClass = null, selRegName = null, msgSendPtr = null, msgSendPtrPtr = null, msgSendPtrSize = null, msgSendVoid = null, msgSendVoidPtr = null, msgSendInt = null, msgSendBool = null, msgSendBoolRet = null, msgSendInitWindow = null, msgSendNextEvent = null, msgSendLongRet = null, msgSendShortRet = null, msgSendPointRet = null;
+        MethodHandle getClass = null, selRegName = null, msgSendPtr = null, msgSendPtrPtr = null, msgSendPtrSize = null, msgSendVoid = null, msgSendVoidPtr = null, msgSendInt = null, msgSendBool = null, msgSendBoolRet = null, msgSendInitWindow = null, msgSendNextEvent = null, msgSendLongRet = null, msgSendShortRet = null, msgSendPointRet = null, msgSendPtrDouble = null;
         StructLayout cgRect = null, cgSize = null;
 
         try {
@@ -65,6 +68,7 @@ final class macOSWindow {
             msgSendInt = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
             msgSendBool = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BYTE));
             msgSendBoolRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+            msgSendPtrDouble = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_DOUBLE));
 
             msgSendNextEvent = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(
                 ValueLayout.ADDRESS,
@@ -103,6 +107,7 @@ final class macOSWindow {
         MSG_SEND_INT = msgSendInt;
         MSG_SEND_BOOL = msgSendBool;
         MSG_SEND_BOOL_RET = msgSendBoolRet;
+        MSG_SEND_PTR_DOUBLE = msgSendPtrDouble;
         MSG_SEND_INIT_WINDOW = msgSendInitWindow;
         MSG_SEND_NEXT_EVENT = msgSendNextEvent;
         MSG_SEND_LONG_RET = msgSendLongRet;
@@ -273,6 +278,99 @@ final class macOSWindow {
             t.printStackTrace();
         }
         return false;
+    }
+
+    public static void waitEvents() {
+        if (OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment nsAppClass = getObjcClass(arena, "NSApplication");
+            MemorySegment sharedAppSel = getSel(arena, "sharedApplication");
+            MemorySegment app = (MemorySegment) MSG_SEND_PTR.invoke(nsAppClass, sharedAppSel);
+
+            MemorySegment nsStringClass = getObjcClass(arena, "NSString");
+            MemorySegment allocSel = getSel(arena, "alloc");
+            MemorySegment initWithUTF8StringSel = getSel(arena, "initWithUTF8String:");
+            
+            MemorySegment modeAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, allocSel);
+            MemorySegment runLoopMode = (MemorySegment) MSG_SEND_PTR_PTR.invoke(modeAlloc, initWithUTF8StringSel, arena.allocateFrom("kCFRunLoopDefaultMode"));
+
+            MemorySegment nsDateClass = getObjcClass(arena, "NSDate");
+            MemorySegment dateWithTimeIntervalSel = getSel(arena, "dateWithTimeIntervalSinceNow:");
+
+            MemorySegment nextEventSel = getSel(arena, "nextEventMatchingMask:untilDate:inMode:dequeue:");
+            MemorySegment sendEventSel = getSel(arena, "sendEvent:");
+            MemorySegment updateWindowsSel = getSel(arena, "updateWindows");
+            MemorySegment typeSel = getSel(arena, "type");
+            MemorySegment keyCodeSel = getSel(arena, "keyCode");
+
+            long NSAnyEventMask = -1L;
+            boolean first = true;
+
+            while (true) {
+                MemorySegment timeout = MemorySegment.NULL;
+                if (first) {
+                    timeout = (MemorySegment) MSG_SEND_PTR_DOUBLE.invoke(nsDateClass, dateWithTimeIntervalSel, 0.016);
+                }
+                
+                MemorySegment event = (MemorySegment) MSG_SEND_NEXT_EVENT.invoke(app, nextEventSel, NSAnyEventMask, timeout, runLoopMode, (byte)1);
+                if (event.address() == 0L) break;
+                first = false;
+                
+                long eventType = (long) MSG_SEND_LONG_RET.invoke(event, typeSel);
+                
+                // 10 = KeyDown, 11 = KeyUp
+                if (eventType == 10 || eventType == 11) {
+                    short macKeyCode = (short) MSG_SEND_SHORT_RET.invoke(event, keyCodeSel);
+                    if (macKeyCode >= 0 && macKeyCode < 128) {
+                        int stdKey = MAC_KEY_MAP[macKeyCode];
+                        if (stdKey != -1) {
+                            input.Key.pushEvent(stdKey, eventType == 10 ? 1 : 0, 250_000_000L); // 250ms multi-tap window
+                        }
+                    }
+                } else if (eventType == 1 || eventType == 3 || eventType == 25) { // Mouse Down
+                    int button = (eventType == 1) ? input.Mouse.LEFT : ((eventType == 3) ? input.Mouse.RIGHT : -1);
+                    if (eventType == 25) {
+                        try {
+                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
+                            button = (int) btnNum;
+                        } catch (Throwable ignore) {}
+                    }
+                    if (button != -1) input.Mouse.pushButtonEvent(button, 1, 250_000_000L);
+                } else if (eventType == 2 || eventType == 4 || eventType == 26) { // Mouse Up
+                    int button = (eventType == 2) ? input.Mouse.LEFT : ((eventType == 4) ? input.Mouse.RIGHT : -1);
+                    if (eventType == 26) {
+                        try {
+                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
+                            button = (int) btnNum;
+                        } catch (Throwable ignore) {}
+                    }
+                    if (button != -1) input.Mouse.pushButtonEvent(button, 0, 250_000_000L);
+                } else if (eventType == 5 || eventType == 6 || eventType == 7 || eventType == 27) { // Mouse Move/Drag
+                    try {
+                        MemorySegment locationSel = getSel(arena, "locationInWindow");
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(event, locationSel);
+                        double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
+                        double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
+                        input.Mouse.pushMoveEvent(x, y);
+                    } catch (Throwable ignore) {}
+                }
+                
+                // For Mouse clicks, we can also extract the coordinate so the state has it
+                if (eventType == 1 || eventType == 2 || eventType == 3 || eventType == 4 || eventType == 25 || eventType == 26) {
+                    try {
+                        MemorySegment locationSel = getSel(arena, "locationInWindow");
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(event, locationSel);
+                        input.Mouse.pushMoveEvent(point.get(ValueLayout.JAVA_DOUBLE, 0), point.get(ValueLayout.JAVA_DOUBLE, 8));
+                    } catch (Throwable ignore) {}
+                }
+
+                MSG_SEND_VOID_PTR.invoke(app, sendEventSel, event);
+            }
+            
+            MSG_SEND_VOID.invoke(app, updateWindowsSel);
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
     }
 
     public static void pollEvents() {
