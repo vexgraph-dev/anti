@@ -1,7 +1,9 @@
-package material;public class Material 
+package material;
+
+public class Material
 {
     public Material()
     {
-    
+
     }
 }
