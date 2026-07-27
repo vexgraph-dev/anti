@@ -2,6 +2,7 @@ package window;
 
 import java.lang.foreign.*;
 import annotation.PlatformExclusive;
+import annotation.Draft;
 
 /**
  * Pure Linux/X11 FFM backend for the Window system.
@@ -45,10 +46,12 @@ final class linuxWindow {
         setVisible(pointer, true);
     }
 
+    @Draft
     public static void setVisible(long pointer, boolean visible) {
         // TODO: XMapWindow(display, window) / XUnmapWindow(display, window)
     }
 
+    @Draft
     public static void setLocation(long pointer, int x, int y) {
         // TODO: XMoveWindow(display, window, x, y)
     }
