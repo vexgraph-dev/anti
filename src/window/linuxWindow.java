@@ -1,11 +1,13 @@
 package window;
 
 import java.lang.foreign.*;
+import annotation.PlatformExclusive;
 
 /**
  * Pure Linux/X11 FFM backend for the Window system.
  * (Skeleton ready for implementation)
  */
+@PlatformExclusive("Linux")
 final class linuxWindow {
 
     private static final Linker LINKER = Linker.nativeLinker();
