@@ -41,7 +41,15 @@ final class windowsWindow {
     }
 
     public static void show(long pointer) {
-        // TODO: Implement Win32 ShowWindow
+        setVisible(pointer, true);
+    }
+
+    public static void setVisible(long pointer, boolean visible) {
+        // TODO: ShowWindow(hwnd, SW_SHOW) / ShowWindow(hwnd, SW_HIDE)
+    }
+
+    public static void setLocation(long pointer, int x, int y) {
+        // TODO: SetWindowPos(hwnd, ...)
     }
 
     public static long createSurface(long pointer) {
