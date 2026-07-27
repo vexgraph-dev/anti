@@ -66,6 +66,18 @@ public final class Window {
         else if (IS_LINUX) linuxWindow.pollEvents();
     }
 
+    public static void waitEvents() {
+        if (IS_MAC) macOSWindow.waitEvents();
+        else if (IS_WIN) {
+            windowsWindow.pollEvents();
+            java.util.concurrent.locks.LockSupport.parkNanos(16_000_000L); // Fallback timeout polling
+        }
+        else if (IS_LINUX) {
+            linuxWindow.pollEvents();
+            java.util.concurrent.locks.LockSupport.parkNanos(16_000_000L); // Fallback timeout polling
+        }
+    }
+
     public static void setKeyEvent(long pointer, event.KeyEvent listener) {
         if (pointer == 0L) return;
         input.Key.addKeyEvent(listener);
@@ -95,8 +107,7 @@ public final class Window {
 
         System.out.println("[Main Thread] Pumping window events...");
         while (!shouldClose(pointer)) {
-            pollEvents();
-            java.util.concurrent.locks.LockSupport.parkNanos(500_000L); // 2000Hz ultra-low latency polling
+            waitEvents(); // Blocks up to 16ms (60Hz) or wakes instantly on input
         }
         
         // Window was closed; notify the Game Thread to stop
