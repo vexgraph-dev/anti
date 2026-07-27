@@ -2,6 +2,7 @@ package window;
 
 import java.lang.foreign.*;
 import annotation.PlatformExclusive;
+import annotation.Draft;
 
 /**
  * Pure Win32 FFM backend for the Window system.
@@ -44,10 +45,12 @@ final class windowsWindow {
         setVisible(pointer, true);
     }
 
+    @Draft
     public static void setVisible(long pointer, boolean visible) {
         // TODO: ShowWindow(hwnd, SW_SHOW) / ShowWindow(hwnd, SW_HIDE)
     }
 
+    @Draft
     public static void setLocation(long pointer, int x, int y) {
         // TODO: SetWindowPos(hwnd, ...)
     }
