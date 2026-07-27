@@ -27,12 +27,13 @@ final class macOSWindow {
     private static final MethodHandle MSG_SEND_NEXT_EVENT;
     private static final MethodHandle MSG_SEND_LONG_RET;
     private static final MethodHandle MSG_SEND_SHORT_RET;
+    private static final MethodHandle MSG_SEND_POINT_RET;
     private static final StructLayout CG_RECT;
     private static final StructLayout CG_SIZE;
 
     static {
         SymbolLookup objcLib = null;
-        MethodHandle getClass = null, selRegName = null, msgSendPtr = null, msgSendPtrPtr = null, msgSendPtrSize = null, msgSendVoid = null, msgSendVoidPtr = null, msgSendInt = null, msgSendBool = null, msgSendBoolRet = null, msgSendInitWindow = null, msgSendNextEvent = null, msgSendLongRet = null, msgSendShortRet = null;
+        MethodHandle getClass = null, selRegName = null, msgSendPtr = null, msgSendPtrPtr = null, msgSendPtrSize = null, msgSendVoid = null, msgSendVoidPtr = null, msgSendInt = null, msgSendBool = null, msgSendBoolRet = null, msgSendInitWindow = null, msgSendNextEvent = null, msgSendLongRet = null, msgSendShortRet = null, msgSendPointRet = null;
         StructLayout cgRect = null, cgSize = null;
 
         try {
@@ -73,6 +74,7 @@ final class macOSWindow {
             
             msgSendLongRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
             msgSendShortRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_SHORT, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+            msgSendPointRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(cgSize, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
             cgRect = MemoryLayout.structLayout(
                 ValueLayout.JAVA_DOUBLE.withName("x"),
@@ -105,6 +107,7 @@ final class macOSWindow {
         MSG_SEND_NEXT_EVENT = msgSendNextEvent;
         MSG_SEND_LONG_RET = msgSendLongRet;
         MSG_SEND_SHORT_RET = msgSendShortRet;
+        MSG_SEND_POINT_RET = msgSendPointRet;
         CG_RECT = cgRect;
         CG_SIZE = cgSize;
     }
@@ -309,6 +312,43 @@ final class macOSWindow {
                             input.Key.pushEvent(stdKey, eventType == 10 ? 1 : 0, 250_000_000L); // 250ms multi-tap window
                         }
                     }
+                } else if (eventType == 1 || eventType == 3 || eventType == 25) { // Mouse Down (Left=1, Right=3, Other=25)
+                    int button = (eventType == 1) ? input.Mouse.LEFT : ((eventType == 3) ? input.Mouse.RIGHT : -1);
+                    if (eventType == 25) {
+                        try {
+                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
+                            button = (int) btnNum;
+                        } catch (Throwable ignore) {}
+                    }
+                    if (button != -1) input.Mouse.pushButtonEvent(button, 1, 250_000_000L);
+                } else if (eventType == 2 || eventType == 4 || eventType == 26) { // Mouse Up (Left=2, Right=4, Other=26)
+                    int button = (eventType == 2) ? input.Mouse.LEFT : ((eventType == 4) ? input.Mouse.RIGHT : -1);
+                    if (eventType == 26) {
+                        try {
+                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
+                            button = (int) btnNum;
+                        } catch (Throwable ignore) {}
+                    }
+                    if (button != -1) input.Mouse.pushButtonEvent(button, 0, 250_000_000L);
+                } else if (eventType == 5 || eventType == 6 || eventType == 7 || eventType == 27) { // Mouse Move/Drag
+                    try {
+                        MemorySegment locationSel = getSel(arena, "locationInWindow");
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(event, locationSel);
+                        double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
+                        double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
+                        
+                        // Convert bottom-left origin to top-left origin if desired, or just pass raw
+                        input.Mouse.pushMoveEvent(x, y);
+                    } catch (Throwable ignore) {}
+                }
+                
+                // For Mouse clicks, we can also extract the coordinate so the state has it
+                if (eventType == 1 || eventType == 2 || eventType == 3 || eventType == 4 || eventType == 25 || eventType == 26) {
+                    try {
+                        MemorySegment locationSel = getSel(arena, "locationInWindow");
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(event, locationSel);
+                        input.Mouse.pushMoveEvent(point.get(ValueLayout.JAVA_DOUBLE, 0), point.get(ValueLayout.JAVA_DOUBLE, 8));
+                    } catch (Throwable ignore) {}
                 }
 
                 MSG_SEND_VOID_PTR.invoke(app, sendEventSel, event);
