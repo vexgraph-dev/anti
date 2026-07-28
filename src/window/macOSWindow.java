@@ -32,12 +32,13 @@ final class macOSWindow {
     private static final MethodHandle MSG_SEND_LONG_RET;
     private static final MethodHandle MSG_SEND_SHORT_RET;
     private static final MethodHandle MSG_SEND_POINT_RET;
+    private static final MethodHandle MSG_SEND_RECT_RET;
     private static final StructLayout CG_RECT;
     private static final StructLayout CG_SIZE;
 
     static {
         SymbolLookup objcLib = null;
-        MethodHandle getClass = null, selRegName = null, msgSendPtr = null, msgSendPtrPtr = null, msgSendPtrSize = null, msgSendVoid = null, msgSendVoidPtr = null, msgSendInt = null, msgSendBool = null, msgSendBoolRet = null, msgSendInitWindow = null, msgSendNextEvent = null, msgSendLongRet = null, msgSendShortRet = null, msgSendPointRet = null, msgSendPtrDouble = null;
+        MethodHandle getClass = null, selRegName = null, msgSendPtr = null, msgSendPtrPtr = null, msgSendPtrSize = null, msgSendVoid = null, msgSendVoidPtr = null, msgSendInt = null, msgSendBool = null, msgSendBoolRet = null, msgSendInitWindow = null, msgSendNextEvent = null, msgSendLongRet = null, msgSendShortRet = null, msgSendPointRet = null, msgSendPtrDouble = null, msgSendRectRet = null;
         StructLayout cgRect = null, cgSize = null;
 
         try {
@@ -87,6 +88,7 @@ final class macOSWindow {
                 ValueLayout.JAVA_DOUBLE.withName("width"),
                 ValueLayout.JAVA_DOUBLE.withName("height")
             );
+            msgSendRectRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(cgRect, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
             msgSendInitWindow = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(
                 ValueLayout.ADDRESS,
@@ -114,6 +116,7 @@ final class macOSWindow {
         MSG_SEND_LONG_RET = msgSendLongRet;
         MSG_SEND_SHORT_RET = msgSendShortRet;
         MSG_SEND_POINT_RET = msgSendPointRet;
+        MSG_SEND_RECT_RET = msgSendRectRet;
         CG_RECT = cgRect;
         CG_SIZE = cgSize;
     }
@@ -380,6 +383,20 @@ final class macOSWindow {
                         MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
                         double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
                         double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
+                        
+                        MemorySegment windowSel = getSel(arena, "window");
+                        MemorySegment eventWindow = (MemorySegment) MSG_SEND_PTR.invoke(event, windowSel);
+                        if (eventWindow.address() != 0L) {
+                            MemorySegment contentViewSel = getSel(arena, "contentView");
+                            MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(eventWindow, contentViewSel);
+                            if (contentView.address() != 0L) {
+                                MemorySegment frameSel = getSel(arena, "frame");
+                                MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, contentView, frameSel);
+                                double height = rect.get(ValueLayout.JAVA_DOUBLE, 24);
+                                y = height - y;
+                            }
+                        }
+                        
                         input.Mouse.pushMoveEvent(x, y);
                     } catch (Throwable ignore) {}
                 }
@@ -389,7 +406,23 @@ final class macOSWindow {
                     try {
                         MemorySegment locationSel = getSel(arena, "locationInWindow");
                         MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
-                        input.Mouse.pushMoveEvent(point.get(ValueLayout.JAVA_DOUBLE, 0), point.get(ValueLayout.JAVA_DOUBLE, 8));
+                        double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
+                        double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
+                        
+                        MemorySegment windowSel = getSel(arena, "window");
+                        MemorySegment eventWindow = (MemorySegment) MSG_SEND_PTR.invoke(event, windowSel);
+                        if (eventWindow.address() != 0L) {
+                            MemorySegment contentViewSel = getSel(arena, "contentView");
+                            MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(eventWindow, contentViewSel);
+                            if (contentView.address() != 0L) {
+                                MemorySegment frameSel = getSel(arena, "frame");
+                                MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, contentView, frameSel);
+                                double height = rect.get(ValueLayout.JAVA_DOUBLE, 24);
+                                y = height - y;
+                            }
+                        }
+                        
+                        input.Mouse.pushMoveEvent(x, y);
                     } catch (Throwable ignore) {}
                 }
 
@@ -474,7 +507,23 @@ final class macOSWindow {
                     try {
                         MemorySegment locationSel = getSel(arena, "locationInWindow");
                         MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
-                        input.Mouse.pushMoveEvent(point.get(ValueLayout.JAVA_DOUBLE, 0), point.get(ValueLayout.JAVA_DOUBLE, 8));
+                        double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
+                        double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
+                        
+                        MemorySegment windowSel = getSel(arena, "window");
+                        MemorySegment eventWindow = (MemorySegment) MSG_SEND_PTR.invoke(event, windowSel);
+                        if (eventWindow.address() != 0L) {
+                            MemorySegment contentViewSel = getSel(arena, "contentView");
+                            MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(eventWindow, contentViewSel);
+                            if (contentView.address() != 0L) {
+                                MemorySegment frameSel = getSel(arena, "frame");
+                                MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, contentView, frameSel);
+                                double height = rect.get(ValueLayout.JAVA_DOUBLE, 24);
+                                y = height - y;
+                            }
+                        }
+                        
+                        input.Mouse.pushMoveEvent(x, y);
                     } catch (Throwable ignore) {}
                 }
 
