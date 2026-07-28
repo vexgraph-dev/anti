@@ -129,7 +129,7 @@ final class macOSWindow {
         return (MemorySegment) SEL_REGISTER_NAME.invoke(arena.allocateFrom(name));
     }
 
-    public static long allocate() {
+    public static long allocate(boolean borderless) {
         if (OBJC_GET_CLASS == null) return 0L;
         try {
             try (Arena arena = Arena.ofConfined()) {
@@ -163,15 +163,18 @@ final class macOSWindow {
                 rect.set(ValueLayout.JAVA_DOUBLE, 16, 1280);
                 rect.set(ValueLayout.JAVA_DOUBLE, 24, 720);
 
-                // NSWindowStyleMaskTitled (1) | Closable (2) | Miniaturizable (4) | Resizable (8) | FullSizeContentView (32768)
-                long styleMask = 1 | 2 | 4 | 8 | 32768;
+                long styleMask = 1 | 2 | 4 | 8;
+                if (borderless) styleMask |= 32768; // FullSizeContentView
+                
                 long backingStore = 2;
 
                 MemorySegment initWithContentRectSel = getSel(arena, "initWithContentRect:styleMask:backing:defer:");
                 MemorySegment window = (MemorySegment) MSG_SEND_INIT_WINDOW.invoke(windowAlloc, initWithContentRectSel, rect, styleMask, backingStore, (byte)0);
 
-                MemorySegment setTitlebarAppearsTransparentSel = getSel(arena, "setTitlebarAppearsTransparent:");
-                MSG_SEND_BOOL.invoke(window, setTitlebarAppearsTransparentSel, (byte)1);
+                if (borderless) {
+                    MemorySegment setTitlebarAppearsTransparentSel = getSel(arena, "setTitlebarAppearsTransparent:");
+                    MSG_SEND_BOOL.invoke(window, setTitlebarAppearsTransparentSel, (byte)1);
+                }
 
                 MemorySegment centerSel = getSel(arena, "center");
                 MSG_SEND_VOID.invoke(window, centerSel);

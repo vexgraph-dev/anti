@@ -28,9 +28,9 @@ final class windowsWindow {
         USER32 = user32;
     }
 
-    public static long allocate() {
-        // TODO: Implement Win32 CreateWindowExA via FFM
-        throw new UnsupportedOperationException("Windows FFM Window not implemented yet");
+    public static long allocate(boolean borderless) {
+        // TODO: Implement Win32 window creation
+        return 0L;
     }
 
     public static void setTitle(long pointer, String title) {

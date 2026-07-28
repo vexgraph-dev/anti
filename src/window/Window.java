@@ -16,10 +16,10 @@ public final class Window {
     private static final boolean IS_WIN = OS.contains("win");
     private static final boolean IS_LINUX = OS.contains("nix") || OS.contains("nux") || OS.contains("aix");
 
-    public static long allocate() {
-        if (IS_MAC) return macOSWindow.allocate();
-        if (IS_WIN) return windowsWindow.allocate();
-        if (IS_LINUX) return linuxWindow.allocate();
+    public static long allocate(boolean borderless) {
+        if (IS_MAC) return macOSWindow.allocate(borderless);
+        if (IS_WIN) return windowsWindow.allocate(borderless);
+        if (IS_LINUX) return linuxWindow.allocate(borderless);
         throw new UnsupportedOperationException("Unsupported OS: " + OS);
     }
 

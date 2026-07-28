@@ -29,8 +29,8 @@ final class linuxWindow {
         LIB_X11 = libX11;
     }
 
-    public static long allocate() {
-        // TODO: Implement X11 XCreateWindow or Wayland wl_display_connect via FFM
+    public static long allocate(boolean borderless) {
+        // TODO: Implement X11 XCreateWindow via FFM
         throw new UnsupportedOperationException("Linux FFM Window not implemented yet");
     }
 
