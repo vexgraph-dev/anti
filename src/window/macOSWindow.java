@@ -396,7 +396,7 @@ final class macOSWindow {
                             if (nsString != null && !nsString.equals(MemorySegment.NULL)) {
                                 MemorySegment cStr = (MemorySegment) MSG_SEND_PTR.invoke(nsString, utf8StringSel);
                                 if (cStr != null && !cStr.equals(MemorySegment.NULL)) {
-                                    byte b0 = cStr.get(ValueLayout.JAVA_BYTE, 0);
+                                    byte b0 = cStr.reinterpret(1).get(ValueLayout.JAVA_BYTE, 0);
                                     if (b0 > 0) input.Key.pushCharEvent((char) b0);
                                 }
                             }
@@ -551,7 +551,7 @@ final class macOSWindow {
                             if (nsString != null && !nsString.equals(MemorySegment.NULL)) {
                                 MemorySegment cStr = (MemorySegment) MSG_SEND_PTR.invoke(nsString, utf8StringSel);
                                 if (cStr != null && !cStr.equals(MemorySegment.NULL)) {
-                                    byte b0 = cStr.get(ValueLayout.JAVA_BYTE, 0);
+                                    byte b0 = cStr.reinterpret(1).get(ValueLayout.JAVA_BYTE, 0);
                                     if (b0 > 0) input.Key.pushCharEvent((char) b0);
                                 }
                             }
