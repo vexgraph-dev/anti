@@ -33,6 +33,7 @@ final class macOSWindow {
     private static final MethodHandle MSG_SEND_SHORT_RET;
     private static final MethodHandle MSG_SEND_POINT_RET;
     private static final MethodHandle MSG_SEND_RECT_RET;
+    private static final MethodHandle MSG_SEND_DOUBLE_RET;
     private static final StructLayout CG_RECT;
     private static final StructLayout CG_SIZE;
 
@@ -40,9 +41,9 @@ final class macOSWindow {
     private static final int[] MAC_KEY_MAP = new int[128];
 
     static {
-        SymbolLookup objcLib = null;
-        MethodHandle getClass = null, selRegName = null, msgSendPtr = null, msgSendPtrPtr = null, msgSendPtrSize = null, msgSendVoid = null, msgSendVoidPtr = null, msgSendInt = null, msgSendBool = null, msgSendBoolRet = null, msgSendInitWindow = null, msgSendNextEvent = null, msgSendLongRet = null, msgSendShortRet = null, msgSendPointRet = null, msgSendPtrDouble = null, msgSendRectRet = null;
-        StructLayout cgRect = null, cgSize = null;
+        SymbolLookup objcLib;
+        MethodHandle getClass, selRegName, msgSendPtr, msgSendPtrPtr, msgSendPtrSize, msgSendVoid, msgSendVoidPtr, msgSendInt, msgSendBool, msgSendBoolRet, msgSendInitWindow, msgSendNextEvent, msgSendLongRet, msgSendShortRet, msgSendPointRet, msgSendPtrDouble, msgSendRectRet, msgSendDoubleRet;
+        StructLayout cgRect, cgSize;
 
         try {
             objcLib = SymbolLookup.libraryLookup("libobjc.A.dylib", Arena.global());
@@ -94,6 +95,7 @@ final class macOSWindow {
                 ValueLayout.JAVA_DOUBLE.withName("height")
             );
             msgSendRectRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(cgRect, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+            msgSendDoubleRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_DOUBLE, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
             msgSendInitWindow = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(
                 ValueLayout.ADDRESS,
@@ -122,6 +124,7 @@ final class macOSWindow {
         MSG_SEND_SHORT_RET = msgSendShortRet;
         MSG_SEND_POINT_RET = msgSendPointRet;
         MSG_SEND_RECT_RET = msgSendRectRet;
+        MSG_SEND_DOUBLE_RET = msgSendDoubleRet;
         CG_RECT = cgRect;
         CG_SIZE = cgSize;
 
@@ -327,10 +330,7 @@ final class macOSWindow {
             if (visible == 0) {
                 MemorySegment isMiniaturizedSel = getSel(arena, "isMiniaturized");
                 byte minimized = (byte) MSG_SEND_BOOL_RET.invoke(window, isMiniaturizedSel);
-                if (minimized != 0) {
-                    return false; 
-                }
-                return true; 
+                return minimized == 0;
             }
             return false;
         } catch (Throwable t) {
@@ -361,15 +361,19 @@ final class macOSWindow {
             MemorySegment updateWindowsSel = getSel(arena, "updateWindows");
             MemorySegment typeSel = getSel(arena, "type");
             MemorySegment keyCodeSel = getSel(arena, "keyCode");
+            MemorySegment scrollingDeltaXSel = getSel(arena, "scrollingDeltaX");
+            MemorySegment scrollingDeltaYSel = getSel(arena, "scrollingDeltaY");
+            MemorySegment charactersSel = getSel(arena, "characters");
+            MemorySegment utf8StringSel = getSel(arena, "UTF8String");
 
             long NSAnyEventMask = -1L;
             boolean first = true;
 
             while (true) {
                 MemorySegment timeout = MemorySegment.NULL;
-                if (first) {
+                if (first)
                     timeout = (MemorySegment) MSG_SEND_PTR_DOUBLE.invoke(nsDateClass, dateWithTimeIntervalSel, 1.0);
-                }
+
                 
                 MemorySegment event = (MemorySegment) MSG_SEND_NEXT_EVENT.invoke(app, nextEventSel, NSAnyEventMask, timeout, runLoopMode, (byte)1);
                 if (event.address() == 0L) break;
@@ -385,7 +389,21 @@ final class macOSWindow {
                         if (stdKey != -1) {
                             input.Key.pushEvent(stdKey, eventType == 10 ? 1 : 0, 250_000_000L); // 250ms multi-tap window
                         }
+                        if (eventType == 10) {
+                            MemorySegment nsString = (MemorySegment) MSG_SEND_PTR.invoke(event, charactersSel);
+                            if (nsString != null && !nsString.equals(MemorySegment.NULL)) {
+                                MemorySegment cStr = (MemorySegment) MSG_SEND_PTR.invoke(nsString, utf8StringSel);
+                                if (cStr != null && !cStr.equals(MemorySegment.NULL)) {
+                                    byte b0 = cStr.get(ValueLayout.JAVA_BYTE, 0);
+                                    if (b0 > 0) input.Key.pushCharEvent((char) b0);
+                                }
+                            }
+                        }
                     }
+                } else if (eventType == 22) {
+                    double dx = (double) MSG_SEND_DOUBLE_RET.invoke(event, scrollingDeltaXSel);
+                    double dy = (double) MSG_SEND_DOUBLE_RET.invoke(event, scrollingDeltaYSel);
+                    input.Mouse.pushScrollEvent(dx, dy);
                 } else if (eventType == 1 || eventType == 3 || eventType == 25) { // Mouse Down
                     int button = (eventType == 1) ? input.Mouse.LEFT : ((eventType == 3) ? input.Mouse.RIGHT : -1);
                     if (eventType == 25) {
@@ -489,6 +507,10 @@ final class macOSWindow {
             MemorySegment updateWindowsSel = getSel(arena, "updateWindows");
             MemorySegment typeSel = getSel(arena, "type");
             MemorySegment keyCodeSel = getSel(arena, "keyCode");
+            MemorySegment scrollingDeltaXSel = getSel(arena, "scrollingDeltaX");
+            MemorySegment scrollingDeltaYSel = getSel(arena, "scrollingDeltaY");
+            MemorySegment charactersSel = getSel(arena, "characters");
+            MemorySegment utf8StringSel = getSel(arena, "UTF8String");
 
             long NSAnyEventMask = -1L;
 
@@ -506,7 +528,21 @@ final class macOSWindow {
                         if (stdKey != -1) {
                             input.Key.pushEvent(stdKey, eventType == 10 ? 1 : 0, 250_000_000L); // 250ms multi-tap window
                         }
+                        if (eventType == 10) {
+                            MemorySegment nsString = (MemorySegment) MSG_SEND_PTR.invoke(event, charactersSel);
+                            if (nsString != null && !nsString.equals(MemorySegment.NULL)) {
+                                MemorySegment cStr = (MemorySegment) MSG_SEND_PTR.invoke(nsString, utf8StringSel);
+                                if (cStr != null && !cStr.equals(MemorySegment.NULL)) {
+                                    byte b0 = cStr.get(ValueLayout.JAVA_BYTE, 0);
+                                    if (b0 > 0) input.Key.pushCharEvent((char) b0);
+                                }
+                            }
+                        }
                     }
+                } else if (eventType == 22) {
+                    double dx = (double) MSG_SEND_DOUBLE_RET.invoke(event, scrollingDeltaXSel);
+                    double dy = (double) MSG_SEND_DOUBLE_RET.invoke(event, scrollingDeltaYSel);
+                    input.Mouse.pushScrollEvent(dx, dy);
                 } else if (eventType == 1 || eventType == 3 || eventType == 25) { // Mouse Down (Left=1, Right=3, Other=25)
                     int button = (eventType == 1) ? input.Mouse.LEFT : ((eventType == 3) ? input.Mouse.RIGHT : -1);
                     if (eventType == 25) {

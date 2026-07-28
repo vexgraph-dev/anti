@@ -12,4 +12,5 @@ public interface KeyEvent {
     void onKeyDown(KeyResolve resolve);
     void onKeyUp(KeyResolve resolve);
     void onKeyRepeat(KeyResolve resolve);
+    default void onCharTyped(char character) {}
 }

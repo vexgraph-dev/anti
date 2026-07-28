@@ -81,6 +81,15 @@ public final class Mouse {
         RingBuffer.offer(QUEUE_PTR, packed);
     }
     
+    public static void pushScrollEvent(double dx, double dy) {
+        short sdx = (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, dx * 100.0));
+        short sdy = (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, dy * 100.0));
+        long packed = (254L << 8) | 6L; 
+        packed |= ((long) (sdx & 0xFFFF) << 16);
+        packed |= ((long) (sdy & 0xFFFF) << 32);
+        RingBuffer.offer(QUEUE_PTR, packed);
+    }
+
     public static double getX() { return POS.get(ValueLayout.JAVA_DOUBLE, 0); }
     public static double getY() { return POS.get(ValueLayout.JAVA_DOUBLE, 8); }
     
@@ -95,6 +104,16 @@ public final class Mouse {
                 double y = POS.get(ValueLayout.JAVA_DOUBLE, 8);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onMouseMove(x, y);
+                }
+                continue;
+            }
+            
+            if (button == 254 && action == 6) {
+                double dx = (short) ((packed >> 16) & 0xFFFF) / 100.0;
+                double dy = (short) ((packed >> 32) & 0xFFFF) / 100.0;
+                System.out.println("[Scroll Debug] dx: " + dx + " dy: " + dy);
+                for (int i = 0; i < listenerCount; i++) {
+                    listeners[i].onMouseScroll(dx, dy);
                 }
                 continue;
             }

@@ -173,6 +173,12 @@ public final class Key
         }
     }
 
+    public static void pushCharEvent(char c) {
+        long packed = (255L << 8) | 3L; 
+        packed |= ((long) c << 16);
+        RingBuffer.offer(QUEUE_PTR, packed);
+    }
+
     /**
      * Producer: Called by the Window Event Loop (Thread 0)
      */
@@ -222,6 +228,14 @@ public final class Key
         while ((packed = RingBuffer.poll(QUEUE_PTR)) != 0L) {
             int key = (int) ((packed >> 8) & 0xFF);
             int action = (int) (packed & 0xFF);
+            
+            if (key == 255 && action == 3) {
+                char c = (char) ((packed >> 16) & 0xFFFF);
+                for (int i = 0; i < listenerCount; i++) {
+                    listeners[i].onCharTyped(c);
+                }
+                continue;
+            }
             
             KeyResolve resolve = KeyResolve.get(key);
             for (int i = 0; i < listenerCount; i++) {
