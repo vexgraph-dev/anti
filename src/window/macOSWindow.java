@@ -131,6 +131,7 @@ final class macOSWindow {
 
         for(int i = 0; i < 128; i++)
             MAC_KEY_MAP[i] = -1;
+
         MAC_KEY_MAP[0] = input.Key.A; MAC_KEY_MAP[1] = input.Key.S; MAC_KEY_MAP[2] = input.Key.D;
         MAC_KEY_MAP[3] = input.Key.F; MAC_KEY_MAP[4] = input.Key.H; MAC_KEY_MAP[5] = input.Key.G;
         MAC_KEY_MAP[6] = input.Key.Z; MAC_KEY_MAP[7] = input.Key.X; MAC_KEY_MAP[8] = input.Key.C;
@@ -170,6 +171,9 @@ final class macOSWindow {
 
                 MemorySegment setActivationPolicySel = getSel(arena, "setActivationPolicy:");
                 MSG_SEND_INT.invoke(app, setActivationPolicySel, 0L);
+                
+                MemorySegment finishLaunchingSel = getSel(arena, "finishLaunching");
+                MSG_SEND_VOID.invoke(app, finishLaunchingSel);
 
                 MemorySegment nsProcessInfoClass = getObjcClass(arena, "NSProcessInfo");
                 MemorySegment processInfoSel = getSel(arena, "processInfo");
@@ -255,7 +259,6 @@ final class macOSWindow {
         setVisible(pointer, true);
     }
 
-    @Draft
     public static void setVisible(long pointer, boolean visible) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
@@ -278,7 +281,6 @@ final class macOSWindow {
         }
     }
 
-    @Draft
     public static void setLocation(long pointer, int x, int y) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
@@ -339,7 +341,6 @@ final class macOSWindow {
         }
     }
 
-    @Draft
     public static void waitEvents() {
         if (OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
