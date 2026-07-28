@@ -114,6 +114,7 @@ public final class Mouse {
             if (button == 255 && action == 5) {
                 double x = POS.get(ValueLayout.JAVA_DOUBLE, 0);
                 double y = POS.get(ValueLayout.JAVA_DOUBLE, 8);
+                System.out.println("[Move Debug] x: " + x + " y: " + y);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onMouseMove(x, y);
                 }
@@ -133,6 +134,7 @@ public final class Mouse {
             if (action == 7) {
                 double x = POS.get(ValueLayout.JAVA_DOUBLE, 0);
                 double y = POS.get(ValueLayout.JAVA_DOUBLE, 8);
+                System.out.println("[Drag Debug] button: " + button + " x: " + x + " y: " + y);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onMouseDrag(button, x, y);
                 }
@@ -142,6 +144,7 @@ public final class Mouse {
             if (action == 8) {
                 int floatBits = (int) ((packed >> 16) & 0xFFFFFFFFL);
                 double magnification = Float.intBitsToFloat(floatBits);
+                System.out.println("[Zoom Debug] magnification: " + magnification);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onMouseZoom(magnification);
                 }
@@ -149,6 +152,10 @@ public final class Mouse {
             }
             
             MouseResolve resolve = MouseResolve.get(button);
+            if (action == 1) System.out.println("[Mouse Down] " + getString(button));
+            else if (action == 0) System.out.println("[Mouse Up] " + getString(button));
+            else if (action == 2) System.out.println("[Mouse Repeat] " + getString(button));
+            
             for (int i = 0; i < listenerCount; i++) {
                 if (action == 1) listeners[i].onMouseDown(resolve);
                 else if (action == 0) listeners[i].onMouseUp(resolve);
