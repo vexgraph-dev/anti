@@ -36,6 +36,9 @@ final class macOSWindow {
     private static final StructLayout CG_RECT;
     private static final StructLayout CG_SIZE;
 
+    // Translation map for macOS virtual key codes -> cross-platform Key constants
+    private static final int[] MAC_KEY_MAP = new int[128];
+
     static {
         SymbolLookup objcLib = null;
         MethodHandle getClass = null, selRegName = null, msgSendPtr = null, msgSendPtrPtr = null, msgSendPtrSize = null, msgSendVoid = null, msgSendVoidPtr = null, msgSendInt = null, msgSendBool = null, msgSendBoolRet = null, msgSendInitWindow = null, msgSendNextEvent = null, msgSendLongRet = null, msgSendShortRet = null, msgSendPointRet = null, msgSendPtrDouble = null, msgSendRectRet = null;
@@ -46,7 +49,9 @@ final class macOSWindow {
             
             try {
                 SymbolLookup.libraryLookup("/System/Library/Frameworks/QuartzCore.framework/QuartzCore", Arena.global());
-            } catch (Throwable ignore) {}
+            } catch (Throwable t) {
+                throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            }
 
             MemorySegment getClassSym = objcLib.find("objc_getClass").orElseThrow();
             MemorySegment selRegNameSym = objcLib.find("sel_registerName").orElseThrow();
@@ -96,7 +101,7 @@ final class macOSWindow {
                 cgRect, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE
             ));
         } catch (Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
         }
         
         OBJC_LIB = objcLib;
@@ -119,6 +124,28 @@ final class macOSWindow {
         MSG_SEND_RECT_RET = msgSendRectRet;
         CG_RECT = cgRect;
         CG_SIZE = cgSize;
+
+        for(int i = 0; i < 128; i++)
+            MAC_KEY_MAP[i] = -1;
+        MAC_KEY_MAP[0] = input.Key.A; MAC_KEY_MAP[1] = input.Key.S; MAC_KEY_MAP[2] = input.Key.D;
+        MAC_KEY_MAP[3] = input.Key.F; MAC_KEY_MAP[4] = input.Key.H; MAC_KEY_MAP[5] = input.Key.G;
+        MAC_KEY_MAP[6] = input.Key.Z; MAC_KEY_MAP[7] = input.Key.X; MAC_KEY_MAP[8] = input.Key.C;
+        MAC_KEY_MAP[9] = input.Key.V; MAC_KEY_MAP[11] = input.Key.B; MAC_KEY_MAP[12] = input.Key.Q;
+        MAC_KEY_MAP[13] = input.Key.W; MAC_KEY_MAP[14] = input.Key.E; MAC_KEY_MAP[15] = input.Key.R;
+        MAC_KEY_MAP[16] = input.Key.Y; MAC_KEY_MAP[17] = input.Key.T; MAC_KEY_MAP[18] = input.Key.NUM_1;
+        MAC_KEY_MAP[19] = input.Key.NUM_2; MAC_KEY_MAP[20] = input.Key.NUM_3; MAC_KEY_MAP[21] = input.Key.NUM_4;
+        MAC_KEY_MAP[22] = input.Key.NUM_6; MAC_KEY_MAP[23] = input.Key.NUM_5; MAC_KEY_MAP[24] = input.Key.EQUAL;
+        MAC_KEY_MAP[25] = input.Key.NUM_9; MAC_KEY_MAP[26] = input.Key.NUM_7; MAC_KEY_MAP[27] = input.Key.MINUS;
+        MAC_KEY_MAP[28] = input.Key.NUM_8; MAC_KEY_MAP[29] = input.Key.NUM_0; MAC_KEY_MAP[30] = input.Key.RIGHT_BRACKET;
+        MAC_KEY_MAP[31] = input.Key.O; MAC_KEY_MAP[32] = input.Key.U; MAC_KEY_MAP[33] = input.Key.LEFT_BRACKET;
+        MAC_KEY_MAP[34] = input.Key.I; MAC_KEY_MAP[35] = input.Key.P; MAC_KEY_MAP[36] = input.Key.ENTER;
+        MAC_KEY_MAP[37] = input.Key.L; MAC_KEY_MAP[38] = input.Key.J; MAC_KEY_MAP[39] = input.Key.APOSTROPHE;
+        MAC_KEY_MAP[40] = input.Key.K; MAC_KEY_MAP[41] = input.Key.SEMICOLON; MAC_KEY_MAP[42] = input.Key.BACKSLASH;
+        MAC_KEY_MAP[43] = input.Key.COMMA; MAC_KEY_MAP[44] = input.Key.SLASH; MAC_KEY_MAP[45] = input.Key.N;
+        MAC_KEY_MAP[46] = input.Key.M; MAC_KEY_MAP[47] = input.Key.PERIOD; MAC_KEY_MAP[48] = input.Key.TAB;
+        MAC_KEY_MAP[49] = input.Key.SPACE; MAC_KEY_MAP[50] = input.Key.GRAVE_ACCENT; MAC_KEY_MAP[51] = input.Key.BACKSPACE;
+        MAC_KEY_MAP[53] = input.Key.ESCAPE; MAC_KEY_MAP[123] = input.Key.LEFT; MAC_KEY_MAP[124] = input.Key.RIGHT;
+        MAC_KEY_MAP[125] = input.Key.DOWN; MAC_KEY_MAP[126] = input.Key.UP;
     }
 
     private static MemorySegment getObjcClass(Arena arena, String name) throws Throwable {
@@ -182,9 +209,8 @@ final class macOSWindow {
                 return window.address();
             }
         } catch (Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
         }
-        return 0L;
     }
 
     public static void setTitle(long pointer, String title) {
@@ -201,7 +227,7 @@ final class macOSWindow {
             MemorySegment setTitleSel = getSel(arena, "setTitle:");
             MSG_SEND_VOID_PTR.invoke(window, setTitleSel, titleStr);
         } catch (Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -217,7 +243,7 @@ final class macOSWindow {
             
             MSG_SEND_PTR_SIZE.invoke(window, setContentSizeSel, size);
         } catch (Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -244,7 +270,7 @@ final class macOSWindow {
                 MSG_SEND_PTR_PTR.invoke(window, orderOutSel, MemorySegment.NULL);
             }
         } catch (Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -261,7 +287,7 @@ final class macOSWindow {
             
             MSG_SEND_PTR_SIZE.invoke(window, setFrameTopLeftPointSel, point);
         } catch (Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -287,9 +313,8 @@ final class macOSWindow {
             
             return metalLayer.address();
         } catch (Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
         }
-        return 0L;
     }
 
     public static boolean shouldClose(long pointer) {
@@ -309,9 +334,8 @@ final class macOSWindow {
             }
             return false;
         } catch (Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
         }
-        return false;
     }
 
     @Draft
@@ -368,7 +392,9 @@ final class macOSWindow {
                         try {
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
                             button = (int) btnNum;
-                        } catch (Throwable ignore) {}
+                        } catch (Throwable t) {
+                            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                        }
                     }
                     if (button != -1) input.Mouse.pushButtonEvent(button, 1, 250_000_000L);
                 } else if (eventType == 2 || eventType == 4 || eventType == 26) { // Mouse Up
@@ -377,7 +403,9 @@ final class macOSWindow {
                         try {
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
                             button = (int) btnNum;
-                        } catch (Throwable ignore) {}
+                        } catch (Throwable t) {
+                            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                        }
                     }
                     if (button != -1) input.Mouse.pushButtonEvent(button, 0, 250_000_000L);
                 } else if (eventType == 5 || eventType == 6 || eventType == 7 || eventType == 27) { // Mouse Move/Drag
@@ -401,7 +429,9 @@ final class macOSWindow {
                         }
                         
                         input.Mouse.pushMoveEvent(x, y);
-                    } catch (Throwable ignore) {}
+                    } catch (Throwable t) {
+                        throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                    }
                 }
                 
                 // For Mouse clicks, we can also extract the coordinate so the state has it
@@ -426,7 +456,9 @@ final class macOSWindow {
                         }
                         
                         input.Mouse.pushMoveEvent(x, y);
-                    } catch (Throwable ignore) {}
+                    } catch (Throwable t) {
+                        throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                    }
                 }
 
                 MSG_SEND_VOID_PTR.invoke(app, sendEventSel, event);
@@ -434,7 +466,7 @@ final class macOSWindow {
             
             MSG_SEND_VOID.invoke(app, updateWindowsSel);
         } catch (Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -481,7 +513,9 @@ final class macOSWindow {
                         try {
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
                             button = (int) btnNum;
-                        } catch (Throwable ignore) {}
+                        } catch (Throwable t) {
+                            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                        }
                     }
                     if (button != -1) input.Mouse.pushButtonEvent(button, 1, 250_000_000L);
                 } else if (eventType == 2 || eventType == 4 || eventType == 26) { // Mouse Up (Left=2, Right=4, Other=26)
@@ -490,7 +524,9 @@ final class macOSWindow {
                         try {
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
                             button = (int) btnNum;
-                        } catch (Throwable ignore) {}
+                        } catch (Throwable t) {
+                            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                        }
                     }
                     if (button != -1) input.Mouse.pushButtonEvent(button, 0, 250_000_000L);
                 } else if (eventType == 5 || eventType == 6 || eventType == 7 || eventType == 27) { // Mouse Move/Drag
@@ -502,7 +538,9 @@ final class macOSWindow {
                         
                         // Convert bottom-left origin to top-left origin if desired, or just pass raw
                         input.Mouse.pushMoveEvent(x, y);
-                    } catch (Throwable ignore) {}
+                    } catch (Throwable t) {
+                        throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                    }
                 }
                 
                 // For Mouse clicks, we can also extract the coordinate so the state has it
@@ -527,7 +565,9 @@ final class macOSWindow {
                         }
                         
                         input.Mouse.pushMoveEvent(x, y);
-                    } catch (Throwable ignore) {}
+                    } catch (Throwable t) {
+                        throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                    }
                 }
 
                 MSG_SEND_VOID_PTR.invoke(app, sendEventSel, event);
@@ -535,7 +575,7 @@ final class macOSWindow {
             
             MSG_SEND_VOID.invoke(app, updateWindowsSel);
         } catch (Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -546,32 +586,7 @@ final class macOSWindow {
             MemorySegment closeSel = getSel(arena, "close");
             MSG_SEND_VOID.invoke(window, closeSel);
         } catch (Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
         }
-    }
-    
-    // Translation map for macOS virtual key codes -> cross-platform Key constants
-    private static final int[] MAC_KEY_MAP = new int[128];
-    static {
-        for(int i = 0; i < 128; i++) MAC_KEY_MAP[i] = -1;
-        MAC_KEY_MAP[0] = input.Key.A; MAC_KEY_MAP[1] = input.Key.S; MAC_KEY_MAP[2] = input.Key.D;
-        MAC_KEY_MAP[3] = input.Key.F; MAC_KEY_MAP[4] = input.Key.H; MAC_KEY_MAP[5] = input.Key.G;
-        MAC_KEY_MAP[6] = input.Key.Z; MAC_KEY_MAP[7] = input.Key.X; MAC_KEY_MAP[8] = input.Key.C;
-        MAC_KEY_MAP[9] = input.Key.V; MAC_KEY_MAP[11] = input.Key.B; MAC_KEY_MAP[12] = input.Key.Q;
-        MAC_KEY_MAP[13] = input.Key.W; MAC_KEY_MAP[14] = input.Key.E; MAC_KEY_MAP[15] = input.Key.R;
-        MAC_KEY_MAP[16] = input.Key.Y; MAC_KEY_MAP[17] = input.Key.T; MAC_KEY_MAP[18] = input.Key.NUM_1;
-        MAC_KEY_MAP[19] = input.Key.NUM_2; MAC_KEY_MAP[20] = input.Key.NUM_3; MAC_KEY_MAP[21] = input.Key.NUM_4;
-        MAC_KEY_MAP[22] = input.Key.NUM_6; MAC_KEY_MAP[23] = input.Key.NUM_5; MAC_KEY_MAP[24] = input.Key.EQUAL;
-        MAC_KEY_MAP[25] = input.Key.NUM_9; MAC_KEY_MAP[26] = input.Key.NUM_7; MAC_KEY_MAP[27] = input.Key.MINUS;
-        MAC_KEY_MAP[28] = input.Key.NUM_8; MAC_KEY_MAP[29] = input.Key.NUM_0; MAC_KEY_MAP[30] = input.Key.RIGHT_BRACKET;
-        MAC_KEY_MAP[31] = input.Key.O; MAC_KEY_MAP[32] = input.Key.U; MAC_KEY_MAP[33] = input.Key.LEFT_BRACKET;
-        MAC_KEY_MAP[34] = input.Key.I; MAC_KEY_MAP[35] = input.Key.P; MAC_KEY_MAP[36] = input.Key.ENTER;
-        MAC_KEY_MAP[37] = input.Key.L; MAC_KEY_MAP[38] = input.Key.J; MAC_KEY_MAP[39] = input.Key.APOSTROPHE;
-        MAC_KEY_MAP[40] = input.Key.K; MAC_KEY_MAP[41] = input.Key.SEMICOLON; MAC_KEY_MAP[42] = input.Key.BACKSLASH;
-        MAC_KEY_MAP[43] = input.Key.COMMA; MAC_KEY_MAP[44] = input.Key.SLASH; MAC_KEY_MAP[45] = input.Key.N;
-        MAC_KEY_MAP[46] = input.Key.M; MAC_KEY_MAP[47] = input.Key.PERIOD; MAC_KEY_MAP[48] = input.Key.TAB;
-        MAC_KEY_MAP[49] = input.Key.SPACE; MAC_KEY_MAP[50] = input.Key.GRAVE_ACCENT; MAC_KEY_MAP[51] = input.Key.BACKSPACE;
-        MAC_KEY_MAP[53] = input.Key.ESCAPE; MAC_KEY_MAP[123] = input.Key.LEFT; MAC_KEY_MAP[124] = input.Key.RIGHT;
-        MAC_KEY_MAP[125] = input.Key.DOWN; MAC_KEY_MAP[126] = input.Key.UP;
     }
 }
