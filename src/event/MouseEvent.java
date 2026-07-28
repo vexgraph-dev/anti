@@ -7,5 +7,6 @@ public interface MouseEvent {
     void onMouseUp(MouseResolve resolve);
     void onMouseRepeat(MouseResolve resolve);
     void onMouseMove(double x, double y);
+    default void onMouseDrag(int button, double x, double y) {}
     default void onMouseScroll(double dx, double dy) {}
 }

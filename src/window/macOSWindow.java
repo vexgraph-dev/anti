@@ -4,6 +4,7 @@ import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import annotation.PlatformExclusive;
 import annotation.Draft;
+import exception.macOSWindowException;
 
 /**
  * Pure macOS FFM backend for the Window system.
@@ -51,7 +52,7 @@ final class macOSWindow {
             try {
                 SymbolLookup.libraryLookup("/System/Library/Frameworks/QuartzCore.framework/QuartzCore", Arena.global());
             } catch (Throwable t) {
-                throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
             }
 
             MemorySegment getClassSym = objcLib.find("objc_getClass").orElseThrow();
@@ -103,7 +104,7 @@ final class macOSWindow {
                 cgRect, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE
             ));
         } catch (Throwable t) {
-            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
         
         OBJC_LIB = objcLib;
@@ -212,7 +213,7 @@ final class macOSWindow {
                 return window.address();
             }
         } catch (Throwable t) {
-            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -230,7 +231,7 @@ final class macOSWindow {
             MemorySegment setTitleSel = getSel(arena, "setTitle:");
             MSG_SEND_VOID_PTR.invoke(window, setTitleSel, titleStr);
         } catch (Throwable t) {
-            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -246,7 +247,7 @@ final class macOSWindow {
             
             MSG_SEND_PTR_SIZE.invoke(window, setContentSizeSel, size);
         } catch (Throwable t) {
-            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -273,7 +274,7 @@ final class macOSWindow {
                 MSG_SEND_PTR_PTR.invoke(window, orderOutSel, MemorySegment.NULL);
             }
         } catch (Throwable t) {
-            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -290,7 +291,7 @@ final class macOSWindow {
             
             MSG_SEND_PTR_SIZE.invoke(window, setFrameTopLeftPointSel, point);
         } catch (Throwable t) {
-            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -316,7 +317,7 @@ final class macOSWindow {
             
             return metalLayer.address();
         } catch (Throwable t) {
-            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -334,7 +335,7 @@ final class macOSWindow {
             }
             return false;
         } catch (Throwable t) {
-            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -411,7 +412,7 @@ final class macOSWindow {
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
                             button = (int) btnNum;
                         } catch (Throwable t) {
-                            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
                         }
                     }
                     if (button != -1) input.Mouse.pushButtonEvent(button, 1, 250_000_000L);
@@ -422,7 +423,7 @@ final class macOSWindow {
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
                             button = (int) btnNum;
                         } catch (Throwable t) {
-                            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
                         }
                     }
                     if (button != -1) input.Mouse.pushButtonEvent(button, 0, 250_000_000L);
@@ -446,9 +447,21 @@ final class macOSWindow {
                             }
                         }
                         
-                        input.Mouse.pushMoveEvent(x, y);
+                        if (eventType == 5) {
+                            input.Mouse.pushMoveEvent(x, y);
+                        } else {
+                            int button = 0;
+                            if (eventType == 6) button = input.Mouse.LEFT;
+                            else if (eventType == 7) button = input.Mouse.RIGHT;
+                            else if (eventType == 27) {
+                                MemorySegment buttonNumberSel = getSel(arena, "buttonNumber");
+                                long btn = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
+                                button = (int) btn;
+                            }
+                            input.Mouse.pushDragEvent(button, x, y);
+                        }
                     } catch (Throwable t) {
-                        throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                        throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
                     }
                 }
                 
@@ -475,7 +488,7 @@ final class macOSWindow {
                         
                         input.Mouse.pushMoveEvent(x, y);
                     } catch (Throwable t) {
-                        throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                        throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
                     }
                 }
 
@@ -484,7 +497,7 @@ final class macOSWindow {
             
             MSG_SEND_VOID.invoke(app, updateWindowsSel);
         } catch (Throwable t) {
-            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -550,7 +563,7 @@ final class macOSWindow {
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
                             button = (int) btnNum;
                         } catch (Throwable t) {
-                            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
                         }
                     }
                     if (button != -1) input.Mouse.pushButtonEvent(button, 1, 250_000_000L);
@@ -561,7 +574,7 @@ final class macOSWindow {
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
                             button = (int) btnNum;
                         } catch (Throwable t) {
-                            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
                         }
                     }
                     if (button != -1) input.Mouse.pushButtonEvent(button, 0, 250_000_000L);
@@ -575,7 +588,7 @@ final class macOSWindow {
                         // Convert bottom-left origin to top-left origin if desired, or just pass raw
                         input.Mouse.pushMoveEvent(x, y);
                     } catch (Throwable t) {
-                        throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                        throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
                     }
                 }
                 
@@ -600,9 +613,21 @@ final class macOSWindow {
                             }
                         }
                         
-                        input.Mouse.pushMoveEvent(x, y);
+                        if (eventType == 5) {
+                            input.Mouse.pushMoveEvent(x, y);
+                        } else {
+                            int button = 0;
+                            if (eventType == 6) button = input.Mouse.LEFT;
+                            else if (eventType == 7) button = input.Mouse.RIGHT;
+                            else if (eventType == 27) {
+                                MemorySegment buttonNumberSel = getSel(arena, "buttonNumber");
+                                long btn = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
+                                button = (int) btn;
+                            }
+                            input.Mouse.pushDragEvent(button, x, y);
+                        }
                     } catch (Throwable t) {
-                        throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+                        throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
                     }
                 }
 
@@ -611,7 +636,7 @@ final class macOSWindow {
             
             MSG_SEND_VOID.invoke(app, updateWindowsSel);
         } catch (Throwable t) {
-            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
@@ -622,7 +647,7 @@ final class macOSWindow {
             MemorySegment closeSel = getSel(arena, "close");
             MSG_SEND_VOID.invoke(window, closeSel);
         } catch (Throwable t) {
-            throw new RuntimeException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 }

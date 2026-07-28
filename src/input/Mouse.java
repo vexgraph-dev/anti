@@ -75,9 +75,14 @@ public final class Mouse {
     public static void pushMoveEvent(double x, double y) {
         POS.set(ValueLayout.JAVA_DOUBLE, 0, x);
         POS.set(ValueLayout.JAVA_DOUBLE, 8, y);
-        
-        // Use button 255 to signify a move event in the RingBuffer
         long packed = (255L << 8) | 5L; 
+        RingBuffer.offer(QUEUE_PTR, packed);
+    }
+    
+    public static void pushDragEvent(int button, double x, double y) {
+        POS.set(ValueLayout.JAVA_DOUBLE, 0, x);
+        POS.set(ValueLayout.JAVA_DOUBLE, 8, y);
+        long packed = ((long) button << 8) | 7L; 
         RingBuffer.offer(QUEUE_PTR, packed);
     }
     
@@ -114,6 +119,15 @@ public final class Mouse {
                 System.out.println("[Scroll Debug] dx: " + dx + " dy: " + dy);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onMouseScroll(dx, dy);
+                }
+                continue;
+            }
+            
+            if (action == 7) {
+                double x = POS.get(ValueLayout.JAVA_DOUBLE, 0);
+                double y = POS.get(ValueLayout.JAVA_DOUBLE, 8);
+                for (int i = 0; i < listenerCount; i++) {
+                    listeners[i].onMouseDrag(button, x, y);
                 }
                 continue;
             }
