@@ -44,7 +44,15 @@ public final class Mouse {
         
         if (action == 1) { // Down
             if (STATE.get(ValueLayout.JAVA_LONG, offset) != 0L) {
-                long packed = ((long) button << 8) | 2L; // 2 = Repeat
+                int modifiers = 0;
+                if (Key.isDown(Key.LEFT_SHIFT) || Key.isDown(Key.RIGHT_SHIFT)) modifiers |= 1;
+                if (Key.isDown(Key.LEFT_CONTROL) || Key.isDown(Key.RIGHT_CONTROL)) modifiers |= 2;
+                if (Key.isDown(Key.LEFT_ALT) || Key.isDown(Key.RIGHT_ALT)) modifiers |= 4;
+                if (Key.isDown(Key.LEFT_SUPER) || Key.isDown(Key.RIGHT_SUPER)) modifiers |= 8;
+                
+                long timeDeltaMicros = (System.nanoTime() - Key.ENGINE_START_NANOS) / 1000L;
+                timeDeltaMicros &= 0x3FFFFFFFFFFFL;
+                long packed = (timeDeltaMicros << 18) | (((long) modifiers & 0xF) << 14) | (((long) button & 0xFFF) << 2) | 2L;
                 RingBuffer.offer(QUEUE_PTR, packed);
                 return;
             }
@@ -67,8 +75,18 @@ public final class Mouse {
             STATE.set(ValueLayout.JAVA_LONG, offset, 0L);
         }
         
-        // Push the event lock-free to the RingBuffer
-        long packed = ((long) button << 8) | (action & 0xFF);
+        // Push the event lock-free to the RingBuffer (64-bit Epoch Packed - 2.2 Years)
+        int modifiers = 0;
+        if (Key.isDown(Key.LEFT_SHIFT) || Key.isDown(Key.RIGHT_SHIFT)) modifiers |= 1;
+        if (Key.isDown(Key.LEFT_CONTROL) || Key.isDown(Key.RIGHT_CONTROL)) modifiers |= 2;
+        if (Key.isDown(Key.LEFT_ALT) || Key.isDown(Key.RIGHT_ALT)) modifiers |= 4;
+        if (Key.isDown(Key.LEFT_SUPER) || Key.isDown(Key.RIGHT_SUPER)) modifiers |= 8;
+        
+        long timeDeltaMicros = (System.nanoTime() - Key.ENGINE_START_NANOS) / 1000L;
+        timeDeltaMicros &= 0x3FFFFFFFFFFFL; // 46 bits modulo
+        
+        // 46 bits time | 4 bits modifiers | 12 bits button | 2 bits action
+        long packed = (timeDeltaMicros << 18) | (((long) modifiers & 0xF) << 14) | (((long) button & 0xFFF) << 2) | (action & 0x3);
         RingBuffer.offer(QUEUE_PTR, packed);
     }
     
@@ -108,8 +126,36 @@ public final class Mouse {
     public static void dispatchEvents() {
         long packed;
         while ((packed = RingBuffer.poll(QUEUE_PTR)) != 0L) {
-            int button = (int) ((packed >> 8) & 0xFF);
             int action = (int) (packed & 0xFF);
+            int button = (int) ((packed >> 8) & 0xFF); // Used for non-button events initially
+            
+            // Re-extract action for button events which use 0x3 mask
+            if ((packed & 0x3) <= 2 && (action != 5 && action != 6 && action != 7 && action != 8)) {
+                action = (int) (packed & 0x3);
+                button = (int) ((packed >> 2) & 0xFFF);
+                int modifiers = (int) ((packed >> 14) & 0xF);
+                long timeDeltaMicros = (packed >>> 18) & 0x3FFFFFFFFFFFL;
+                long exactNanos = Key.ENGINE_START_NANOS + (timeDeltaMicros * 1000L);
+                
+                int mappedMods = 0;
+                if ((modifiers & 1) != 0) mappedMods |= Key.MOD_SHIFT;
+                if ((modifiers & 2) != 0) mappedMods |= Key.MOD_CONTROL;
+                if ((modifiers & 4) != 0) mappedMods |= Key.MOD_OPTION;
+                if ((modifiers & 8) != 0) mappedMods |= Key.MOD_COMMAND;
+                
+                int mouseEvent = button | mappedMods;
+                
+                if (action == 1) System.out.println("[Mouse Down] " + getString(button));
+                else if (action == 0) System.out.println("[Mouse Up] " + getString(button));
+                else if (action == 2) System.out.println("[Mouse Repeat] " + getString(button));
+                
+                for (int i = 0; i < listenerCount; i++) {
+                    if (action == 1) listeners[i].onMouseDown(mouseEvent, exactNanos);
+                    else if (action == 0) listeners[i].onMouseUp(mouseEvent, exactNanos);
+                    else if (action == 2) listeners[i].onMouseRepeat(mouseEvent, exactNanos);
+                }
+                continue;
+            }
             
             if (button == 255 && action == 5) {
                 double x = POS.get(ValueLayout.JAVA_DOUBLE, 0);
@@ -151,19 +197,26 @@ public final class Mouse {
                 continue;
             }
             
-            MouseResolve resolve = MouseResolve.get(button);
-            if (action == 1) System.out.println("[Mouse Down] " + getString(button));
-            else if (action == 0) System.out.println("[Mouse Up] " + getString(button));
-            else if (action == 2) System.out.println("[Mouse Repeat] " + getString(button));
-            
-            for (int i = 0; i < listenerCount; i++) {
-                if (action == 1) listeners[i].onMouseDown(resolve);
-                else if (action == 0) listeners[i].onMouseUp(resolve);
-                else if (action == 2) listeners[i].onMouseRepeat(resolve);
-            }
         }
     }
     
+    
+    public static int getButton(int mouseEvent) { return mouseEvent & 0xFFFF; }
+    public static boolean hasShift(int mouseEvent) { return (mouseEvent & Key.MOD_SHIFT) != 0; }
+    public static boolean hasControl(int mouseEvent) { return (mouseEvent & Key.MOD_CONTROL) != 0; }
+    public static boolean hasOption(int mouseEvent) { return (mouseEvent & Key.MOD_OPTION) != 0; }
+    public static boolean hasCommand(int mouseEvent) { return (mouseEvent & Key.MOD_COMMAND) != 0; }
+
+    public static boolean isDown(int button) { return STATE.get(ValueLayout.JAVA_LONG, (button * 32L)) != 0L; }
+    public static long getPressTime(int button) { return STATE.get(ValueLayout.JAVA_LONG, (button * 32L)); }
+    public static long getLastReleaseTime(int button) { return STATE.get(ValueLayout.JAVA_LONG, (button * 32L) + 8L); }
+    public static long getLastHoldDurationNanos(int button) { return STATE.get(ValueLayout.JAVA_LONG, (button * 32L) + 24L); }
+    public static long getCurrentHoldDurationNanos(int button) {
+        long p = getPressTime(button);
+        return p == 0L ? 0L : System.nanoTime() - p;
+    }
+    public static int getKeystrokeAmount(int button) { return STATE.get(ValueLayout.JAVA_INT, (button * 32L) + 16L); }
+
     public static String getString(int button) {
         switch(button) {
             case 0: return "Left";

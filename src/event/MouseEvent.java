@@ -3,11 +3,11 @@ package event;
 import input.MouseResolve;
 
 public interface MouseEvent {
-    void onMouseDown(MouseResolve resolve);
-    void onMouseUp(MouseResolve resolve);
-    void onMouseRepeat(MouseResolve resolve);
+    void onMouseDown(int mouseEvent, long exactNanos);
+    void onMouseUp(int mouseEvent, long exactNanos);
+    void onMouseRepeat(int mouseEvent, long exactNanos);
     void onMouseMove(double x, double y);
-    default void onMouseDrag(int button, double x, double y) {}
+    default void onMouseDrag(int mouseEvent, double x, double y) {}
     default void onMouseScroll(double dx, double dy) {}
     
     /**
