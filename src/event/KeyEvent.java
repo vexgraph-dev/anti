@@ -1,6 +1,5 @@
 package event;
 
-import input.KeyResolve;
 
 /**
  * High-level OOP listener interface for hardware key events.
@@ -9,8 +8,8 @@ import input.KeyResolve;
  * guaranteeing zero Thread 0 blocking or GC pressure from event objects.
  */
 public interface KeyEvent {
-    void onKeyDown(KeyResolve resolve);
-    void onKeyUp(KeyResolve resolve);
-    void onKeyRepeat(KeyResolve resolve);
+    void onKeyDown(int keyEvent, long exactNanos);
+    void onKeyUp(int keyEvent, long exactNanos);
+    void onKeyRepeat(int keyEvent, long exactNanos);
     default void onCharTyped(char character) {}
 }

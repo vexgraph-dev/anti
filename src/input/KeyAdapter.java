@@ -7,7 +7,7 @@ import event.KeyEvent;
  * without implementing the entire interface.
  */
 public abstract class KeyAdapter implements KeyEvent {
-    @Override public void onKeyDown(KeyResolve resolve) {}
-    @Override public void onKeyUp(KeyResolve resolve) {}
-    @Override public void onKeyRepeat(KeyResolve resolve) {}
+    @Override public void onKeyDown(int keyEvent, long exactNanos) {}
+    @Override public void onKeyUp(int keyEvent, long exactNanos) {}
+    @Override public void onKeyRepeat(int keyEvent, long exactNanos) {}
 }

@@ -12,6 +12,7 @@ import oop.TypeRegister;
 @Volatile
 public final class Key
 {
+    public static final long ENGINE_START_NANOS = System.nanoTime();
 
     // -------------------------------------------------------------------------
     // GLFW-style Standard Cross-Platform Key Codes
@@ -165,6 +166,7 @@ public final class Key
     private static final KeyEvent[] listeners = new KeyEvent[64];
     private static int listenerCount = 0;
 
+    // keytryer (do not remove this comment)
     private Key() {}
 
     public static void addKeyEvent(KeyEvent listener) {
@@ -174,8 +176,9 @@ public final class Key
     }
 
     public static void pushCharEvent(char c) {
-        long packed = (255L << 8) | 3L; 
-        packed |= ((long) c << 16);
+        long timeDeltaMicros = (System.nanoTime() - ENGINE_START_NANOS) / 1000L;
+        timeDeltaMicros &= 0x3FFFFFFFFFFL; // 42 bits modulo
+        long packed = (timeDeltaMicros << 22) | (((long) c & 0xFFFF) << 2) | 3L;
         RingBuffer.offer(QUEUE_PTR, packed);
     }
 
@@ -215,8 +218,17 @@ public final class Key
             STATE.set(ValueLayout.JAVA_LONG, offset, 0L);
         }
         
-        // Push the event lock-free to the RingBuffer
-        long packed = ((long) keyCode << 8) | (action & 0xFF);
+        // Push the event lock-free to the RingBuffer (64-bit Epoch Packed)
+        int modifiers = 0;
+        if (isDown(LEFT_SHIFT) || isDown(RIGHT_SHIFT)) modifiers |= 1;
+        if (isDown(LEFT_CONTROL) || isDown(RIGHT_CONTROL)) modifiers |= 2;
+        if (isDown(LEFT_ALT) || isDown(RIGHT_ALT)) modifiers |= 4;
+        if (isDown(LEFT_SUPER) || isDown(RIGHT_SUPER)) modifiers |= 8;
+        
+        long timeDeltaMicros = (System.nanoTime() - ENGINE_START_NANOS) / 1000L;
+        timeDeltaMicros &= 0x3FFFFFFFFFFL;
+        
+        long packed = (timeDeltaMicros << 22) | (((long) modifiers & 0xF) << 18) | (((long) keyCode & 0xFFFF) << 2) | (action & 0x3);
         RingBuffer.offer(QUEUE_PTR, packed);
     }
     
@@ -226,22 +238,33 @@ public final class Key
     public static void dispatchEvents() {
         long packed;
         while ((packed = RingBuffer.poll(QUEUE_PTR)) != 0L) {
-            int key = (int) ((packed >> 8) & 0xFF);
-            int action = (int) (packed & 0xFF);
+            int action = (int) (packed & 0x3);
+            long timeDeltaMicros = (packed >>> 22) & 0x3FFFFFFFFFFL;
+            long exactNanos = ENGINE_START_NANOS + (timeDeltaMicros * 1000L);
             
-            if (key == 255 && action == 3) {
-                char c = (char) ((packed >> 16) & 0xFFFF);
+            if (action == 3) {
+                char c = (char) ((packed >> 2) & 0xFFFF);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onCharTyped(c);
                 }
                 continue;
             }
             
-            KeyResolve resolve = KeyResolve.get(key);
+            int keyCode = (int) ((packed >> 2) & 0xFFFF);
+            int modifiers = (int) ((packed >> 18) & 0xF);
+            
+            int mappedMods = 0;
+            if ((modifiers & 1) != 0) mappedMods |= MOD_SHIFT;
+            if ((modifiers & 2) != 0) mappedMods |= MOD_CONTROL;
+            if ((modifiers & 4) != 0) mappedMods |= MOD_OPTION;
+            if ((modifiers & 8) != 0) mappedMods |= MOD_COMMAND;
+            
+            int keyEvent = keyCode | mappedMods;
+            
             for (int i = 0; i < listenerCount; i++) {
-                if (action == 1) listeners[i].onKeyDown(resolve);
-                else if (action == 0) listeners[i].onKeyUp(resolve);
-                else if (action == 2) listeners[i].onKeyRepeat(resolve);
+                if (action == 1) listeners[i].onKeyDown(keyEvent, exactNanos);
+                else if (action == 0) listeners[i].onKeyUp(keyEvent, exactNanos);
+                else if (action == 2) listeners[i].onKeyRepeat(keyEvent, exactNanos);
             }
         }
     }
@@ -250,6 +273,65 @@ public final class Key
 
 
     // -------------------------------------------------------------------------
+    
+    // -------------------------------------------------------------------------
+    // Bit-Packed Event Layout & State Queries
+    // -------------------------------------------------------------------------
+    public static final int MASK_KEYCODE = 0x0000FFFF;
+    public static final int MOD_SHIFT    = 0x01000000;
+    
+    @PlatformExclusive("Mac")
+    public static final int MOD_CONTROL  = 0x02000000;
+    @PlatformExclusive("Mac")
+    public static final int MOD_OPTION   = 0x04000000;
+    @PlatformExclusive("Mac")
+    public static final int MOD_COMMAND  = 0x08000000;
+    
+    @PlatformExclusive("Windows")
+    public static final int MOD_WINDOWS  = MOD_COMMAND;
+    @PlatformExclusive("Windows")
+    public static final int MOD_ALT      = MOD_OPTION;
+    
+    @PlatformExclusive("Linux")
+    public static final int MOD_SUPER    = MOD_COMMAND;
+
+    public static int getCode(int keyEvent) { return keyEvent & MASK_KEYCODE; }
+    public static boolean hasShift(int keyEvent) { return (keyEvent & MOD_SHIFT) != 0; }
+
+    @PlatformExclusive("Mac")
+    public static boolean hasControl(int keyEvent) { return (keyEvent & MOD_CONTROL) != 0; }
+    @PlatformExclusive("Mac")
+    public static boolean hasOption(int keyEvent) { return (keyEvent & MOD_OPTION) != 0; }
+    @PlatformExclusive("Mac")
+    public static boolean hasCommand(int keyEvent) { return (keyEvent & MOD_COMMAND) != 0; }
+    
+    @PlatformExclusive("Windows")
+    public static boolean hasWindows(int keyEvent) { return hasCommand(keyEvent); }
+    @PlatformExclusive("Windows")
+    public static boolean hasAlt(int keyEvent) { return hasOption(keyEvent); }
+    
+    @PlatformExclusive("Linux")
+    public static boolean hasSuper(int keyEvent) { return hasCommand(keyEvent); }
+
+    public static boolean isDown(int keyCode) { return STATE.get(ValueLayout.JAVA_LONG, (keyCode * 32L)) != 0L; }
+    public static long getPressTime(int keyCode) { return STATE.get(ValueLayout.JAVA_LONG, (keyCode * 32L)); }
+    public static long getLastReleaseTime(int keyCode) { return STATE.get(ValueLayout.JAVA_LONG, (keyCode * 32L) + 8L); }
+    public static long getLastHoldDurationNanos(int keyCode) { return STATE.get(ValueLayout.JAVA_LONG, (keyCode * 32L) + 24L); }
+    public static long getCurrentHoldDurationNanos(int keyCode) {
+        long p = getPressTime(keyCode);
+        return p == 0L ? 0L : System.nanoTime() - p;
+    }
+    public static long getHoldDurationNanos(int keyCode) {
+        long p = getPressTime(keyCode);
+        return p != 0L ? System.nanoTime() - p : getLastHoldDurationNanos(keyCode);
+    }
+    public static long getDurationSinceReleaseNanos(int keyCode) {
+        long r = getLastReleaseTime(keyCode);
+        return r == 0L ? 0L : System.nanoTime() - r;
+    }
+    public static int getKeystrokeAmount(int keyCode) { return STATE.get(ValueLayout.JAVA_INT, (keyCode * 32L) + 16L); }
+    public static void resetKeystrokeAmount(int keyCode) { STATE.set(ValueLayout.JAVA_INT, (keyCode * 32L) + 16L, 0); }
+
     // String Conversion (Zero-Allocation O(1) Lookup)
     // -------------------------------------------------------------------------
     
