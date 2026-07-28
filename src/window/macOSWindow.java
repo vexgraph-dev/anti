@@ -285,11 +285,20 @@ final class macOSWindow {
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
+            
+            // Get screen height to invert Y axis to top-left origin
+            MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
+            MemorySegment mainScreenSel = getSel(arena, "mainScreen");
+            MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, mainScreenSel);
+            MemorySegment frameSel = getSel(arena, "frame");
+            MemorySegment screenRect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, frameSel);
+            double screenHeight = screenRect.get(ValueLayout.JAVA_DOUBLE, 24);
+            
             MemorySegment setFrameTopLeftPointSel = getSel(arena, "setFrameTopLeftPoint:");
             
             MemorySegment point = arena.allocate(CG_SIZE); // Reusing 2-double layout
             point.set(ValueLayout.JAVA_DOUBLE, 0, x);
-            point.set(ValueLayout.JAVA_DOUBLE, 8, y);
+            point.set(ValueLayout.JAVA_DOUBLE, 8, screenHeight - y);
             
             MSG_SEND_PTR_SIZE.invoke(window, setFrameTopLeftPointSel, point);
         } catch (Throwable t) {
