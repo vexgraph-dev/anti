@@ -3,6 +3,8 @@ package window;
 import engine.EngineLoop;
 import annotation.Draft;
 
+import static java.util.concurrent.locks.LockSupport.*;
+
 /**
  * Static pointer-handler wrapper for Native Windows.
  * Follows the primitive value-class structure and routes pointers to the correct OS backend.
@@ -47,14 +49,12 @@ public final class Window {
         else if (IS_LINUX) linuxWindow.show(pointer);
     }
 
-    @Draft
     public static void setVisible(long pointer, boolean visible) {
         if (IS_MAC) macOSWindow.setVisible(pointer, visible);
         else if (IS_WIN) windowsWindow.setVisible(pointer, visible);
         else if (IS_LINUX) linuxWindow.setVisible(pointer, visible);
     }
 
-    @Draft
     public static void setLocation(long pointer, int x, int y) {
         if (IS_MAC) macOSWindow.setLocation(pointer, x, y);
         else if (IS_WIN) windowsWindow.setLocation(pointer, x, y);
@@ -81,16 +81,16 @@ public final class Window {
         else if (IS_LINUX) linuxWindow.pollEvents();
     }
 
-    @Draft
     public static void waitEvents() {
-        if (IS_MAC) macOSWindow.waitEvents();
+        if (IS_MAC)
+            macOSWindow.waitEvents();
         else if (IS_WIN) {
             windowsWindow.pollEvents();
-            java.util.concurrent.locks.LockSupport.parkNanos(16_000_000L); // Fallback timeout polling
+            parkNanos(16_000_000L); // Fallback timeout polling
         }
         else if (IS_LINUX) {
             linuxWindow.pollEvents();
-            java.util.concurrent.locks.LockSupport.parkNanos(16_000_000L); // Fallback timeout polling
+            parkNanos(16_000_000L); // Fallback timeout polling
         }
     }
 
@@ -116,7 +116,7 @@ public final class Window {
                 loop.tick();
                 
                 // Throttle Game Thread to exactly 1000 FPS to prevent 100% CPU core burn
-                java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
+                parkNanos(1_000_000L);
             }
             System.out.println("[Game Thread] Shutting down...");
         });
