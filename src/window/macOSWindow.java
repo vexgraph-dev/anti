@@ -365,6 +365,7 @@ final class macOSWindow {
             MemorySegment scrollingDeltaXSel = getSel(arena, "scrollingDeltaX");
             MemorySegment scrollingDeltaYSel = getSel(arena, "scrollingDeltaY");
             MemorySegment charactersSel = getSel(arena, "characters");
+            MemorySegment magnificationSel = getSel(arena, "magnification");
             MemorySegment utf8StringSel = getSel(arena, "UTF8String");
 
             long NSAnyEventMask = -1L;
@@ -405,6 +406,9 @@ final class macOSWindow {
                     double dx = (double) MSG_SEND_DOUBLE_RET.invoke(event, scrollingDeltaXSel);
                     double dy = (double) MSG_SEND_DOUBLE_RET.invoke(event, scrollingDeltaYSel);
                     input.Mouse.pushScrollEvent(dx, dy);
+                } else if (eventType == 30) {
+                    double magnification = (double) MSG_SEND_DOUBLE_RET.invoke(event, magnificationSel);
+                    input.Mouse.pushZoomEvent(magnification);
                 } else if (eventType == 1 || eventType == 3 || eventType == 25) { // Mouse Down
                     int button = (eventType == 1) ? input.Mouse.LEFT : ((eventType == 3) ? input.Mouse.RIGHT : -1);
                     if (eventType == 25) {
@@ -523,6 +527,7 @@ final class macOSWindow {
             MemorySegment scrollingDeltaXSel = getSel(arena, "scrollingDeltaX");
             MemorySegment scrollingDeltaYSel = getSel(arena, "scrollingDeltaY");
             MemorySegment charactersSel = getSel(arena, "characters");
+            MemorySegment magnificationSel = getSel(arena, "magnification");
             MemorySegment utf8StringSel = getSel(arena, "UTF8String");
 
             long NSAnyEventMask = -1L;
@@ -556,6 +561,9 @@ final class macOSWindow {
                     double dx = (double) MSG_SEND_DOUBLE_RET.invoke(event, scrollingDeltaXSel);
                     double dy = (double) MSG_SEND_DOUBLE_RET.invoke(event, scrollingDeltaYSel);
                     input.Mouse.pushScrollEvent(dx, dy);
+                } else if (eventType == 30) {
+                    double magnification = (double) MSG_SEND_DOUBLE_RET.invoke(event, magnificationSel);
+                    input.Mouse.pushZoomEvent(magnification);
                 } else if (eventType == 1 || eventType == 3 || eventType == 25) { // Mouse Down (Left=1, Right=3, Other=25)
                     int button = (eventType == 1) ? input.Mouse.LEFT : ((eventType == 3) ? input.Mouse.RIGHT : -1);
                     if (eventType == 25) {

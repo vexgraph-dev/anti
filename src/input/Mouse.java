@@ -95,6 +95,13 @@ public final class Mouse {
         RingBuffer.offer(QUEUE_PTR, packed);
     }
 
+    public static void pushZoomEvent(double magnification) {
+        int floatBits = Float.floatToIntBits((float) magnification);
+        long packed = (255L << 8) | 8L; 
+        packed |= ((long) (floatBits & 0xFFFFFFFFL) << 16);
+        RingBuffer.offer(QUEUE_PTR, packed);
+    }
+
     public static double getX() { return POS.get(ValueLayout.JAVA_DOUBLE, 0); }
     public static double getY() { return POS.get(ValueLayout.JAVA_DOUBLE, 8); }
     
@@ -128,6 +135,15 @@ public final class Mouse {
                 double y = POS.get(ValueLayout.JAVA_DOUBLE, 8);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onMouseDrag(button, x, y);
+                }
+                continue;
+            }
+            
+            if (action == 8) {
+                int floatBits = (int) ((packed >> 16) & 0xFFFFFFFFL);
+                double magnification = Float.intBitsToFloat(floatBits);
+                for (int i = 0; i < listenerCount; i++) {
+                    listeners[i].onMouseZoom(magnification);
                 }
                 continue;
             }
