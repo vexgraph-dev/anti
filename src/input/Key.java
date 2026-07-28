@@ -196,8 +196,16 @@ public final class Key
         if (action == 1) { // Down
             if (STATE.get(ValueLayout.JAVA_LONG, offset) != 0L) {
                 // If it's already down, it's an OS repeat event.
-                // We push ACTION_REPEAT to the queue, but don't touch the timestamp.
-                long packed = ((long) keyCode << 8) | 2L; // 2 = Repeat
+                int modifiers = 0;
+                if (isDown(LEFT_SHIFT) || isDown(RIGHT_SHIFT)) modifiers |= 1;
+                if (isDown(LEFT_CONTROL) || isDown(RIGHT_CONTROL)) modifiers |= 2;
+                if (isDown(LEFT_ALT) || isDown(RIGHT_ALT)) modifiers |= 4;
+                if (isDown(LEFT_SUPER) || isDown(RIGHT_SUPER)) modifiers |= 8;
+                
+                long timeDeltaMicros = (System.nanoTime() - ENGINE_START_NANOS) / 1000L;
+                timeDeltaMicros &= 0x3FFFFFFFFFFFL; // 46 bits modulo
+                
+                long packed = (timeDeltaMicros << 18) | (((long) modifiers & 0xF) << 14) | (((long) keyCode & 0xFFF) << 2) | 2L;
                 RingBuffer.offer(QUEUE_PTR, packed);
                 return;
             }
@@ -268,6 +276,7 @@ public final class Key
                 if (action == 1) listeners[i].onKeyDown(keyEvent, exactNanos);
                 else if (action == 0) listeners[i].onKeyUp(keyEvent, exactNanos);
                 else if (action == 2) listeners[i].onKeyRepeat(keyEvent, exactNanos);
+                else; // placeholder
             }
         }
     }
@@ -354,7 +363,7 @@ public final class Key
                     }
                 }
             }
-        } catch (Throwable t) {}
+        } catch (Throwable ignored) {}
     }
     
     public static String getString(int keyCode) {
