@@ -177,8 +177,10 @@ public final class Key
 
     public static void pushCharEvent(char c) {
         long timeDeltaMicros = (System.nanoTime() - ENGINE_START_NANOS) / 1000L;
-        timeDeltaMicros &= 0x3FFFFFFFFFFL; // 42 bits modulo
-        long packed = (timeDeltaMicros << 22) | (((long) c & 0xFFFF) << 2) | 3L;
+        timeDeltaMicros &= 0x3FFFFFFFFFFFL; // 46 bits modulo
+        
+        // 46 bits time | 16 bits char | 2 bits action
+        long packed = (timeDeltaMicros << 18) | (((long) c & 0xFFFF) << 2) | 3L;
         RingBuffer.offer(QUEUE_PTR, packed);
     }
 
@@ -218,7 +220,7 @@ public final class Key
             STATE.set(ValueLayout.JAVA_LONG, offset, 0L);
         }
         
-        // Push the event lock-free to the RingBuffer (64-bit Epoch Packed)
+        // Push the event lock-free to the RingBuffer (64-bit Epoch Packed - 2.2 Years)
         int modifiers = 0;
         if (isDown(LEFT_SHIFT) || isDown(RIGHT_SHIFT)) modifiers |= 1;
         if (isDown(LEFT_CONTROL) || isDown(RIGHT_CONTROL)) modifiers |= 2;
@@ -226,9 +228,10 @@ public final class Key
         if (isDown(LEFT_SUPER) || isDown(RIGHT_SUPER)) modifiers |= 8;
         
         long timeDeltaMicros = (System.nanoTime() - ENGINE_START_NANOS) / 1000L;
-        timeDeltaMicros &= 0x3FFFFFFFFFFL;
+        timeDeltaMicros &= 0x3FFFFFFFFFFFL; // 46 bits modulo
         
-        long packed = (timeDeltaMicros << 22) | (((long) modifiers & 0xF) << 18) | (((long) keyCode & 0xFFFF) << 2) | (action & 0x3);
+        // 46 bits time | 4 bits modifiers | 12 bits keyCode | 2 bits action
+        long packed = (timeDeltaMicros << 18) | (((long) modifiers & 0xF) << 14) | (((long) keyCode & 0xFFF) << 2) | (action & 0x3);
         RingBuffer.offer(QUEUE_PTR, packed);
     }
     
@@ -239,7 +242,7 @@ public final class Key
         long packed;
         while ((packed = RingBuffer.poll(QUEUE_PTR)) != 0L) {
             int action = (int) (packed & 0x3);
-            long timeDeltaMicros = (packed >>> 22) & 0x3FFFFFFFFFFL;
+            long timeDeltaMicros = (packed >>> 18) & 0x3FFFFFFFFFFFL;
             long exactNanos = ENGINE_START_NANOS + (timeDeltaMicros * 1000L);
             
             if (action == 3) {
@@ -250,8 +253,8 @@ public final class Key
                 continue;
             }
             
-            int keyCode = (int) ((packed >> 2) & 0xFFFF);
-            int modifiers = (int) ((packed >> 18) & 0xF);
+            int keyCode = (int) ((packed >> 2) & 0xFFF);
+            int modifiers = (int) ((packed >> 14) & 0xF);
             
             int mappedMods = 0;
             if ((modifiers & 1) != 0) mappedMods |= MOD_SHIFT;
