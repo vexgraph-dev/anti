@@ -15,6 +15,7 @@ import annotation.Volatile;
 import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
+import primitive.Long;
 
 import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandles;
@@ -365,8 +366,7 @@ public final class CommandBuffer {
 
     // --- DATA ACCESSORS & BOUNDS CHECKS ---
     public static long get(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return ForeignMemory.getLong(pointer);
+        return Long.get(pointer);
     }
 
     public static long get(long pointer, int index) { 
@@ -384,8 +384,7 @@ public final class CommandBuffer {
     }
 
     public static void set(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        ForeignMemory.putLong(pointer, value);
+        Long.set(pointer, value);
     }
 
     public static void set(long pointer, int index, long value) { 
@@ -395,24 +394,20 @@ public final class CommandBuffer {
 
     @Volatile
     public static long getVolatile(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return ForeignMemory.getLongVolatile(pointer);
+        return Long.getVolatile(pointer);
     }
 
     @Volatile
     public static void setVolatile(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        ForeignMemory.putLongVolatile(pointer, value);
+        Long.setVolatile(pointer, value);
     }
 
     public static boolean compareAndSet(long pointer, long expected, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        return ForeignMemory.compareAndSetLong(pointer, expected, value);
+        return Long.compareAndSet(pointer, expected, value);
     }
 
     public static long getAndSet(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        return ForeignMemory.getAndSetLong(pointer, value);
+        return Long.getAndSet(pointer, value);
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 

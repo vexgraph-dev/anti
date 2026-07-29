@@ -362,8 +362,7 @@ public final class Fence {
 
     // --- DATA ACCESSORS & BOUNDS CHECKS ---
     public static long get(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return ForeignMemory.getLong(pointer);
+        return primitive.Long.get(pointer);
     }
 
     public static long get(long pointer, int index) { 

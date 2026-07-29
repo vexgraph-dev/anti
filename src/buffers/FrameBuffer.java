@@ -8,6 +8,7 @@ import annotation.Volatile;
 import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
+import primitive.Long;
 
 import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandles;
@@ -358,8 +359,7 @@ public final class FrameBuffer {
 
     // --- DATA ACCESSORS & BOUNDS CHECKS ---
     public static long get(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return ForeignMemory.getLong(pointer);
+        return Long.get(pointer);
     }
 
     public static long get(long pointer, int index) { 
