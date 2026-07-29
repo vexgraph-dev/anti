@@ -118,6 +118,8 @@ public class TypeRegister
     public static final int ID_VK_SHADER_MODULE = 0x000045; // VKShaderModule class // 69
     public static final int ID_VK_BUFFER = 0x000046; // VKBuffer class // 70
     public static final int ID_VK_DEVICE_MEMORY = 0x000047; // VKDeviceMemory class // 71
+    public static final int ID_VK_IMAGE_VIEW = 0x000048; // VKImageView class // 72
+    public static final int ID_VK_FRAMEBUFFER = 0x000049; // VKFramebuffer class // 73
 
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
@@ -181,6 +183,16 @@ public class TypeRegister
     public static final int VK_DEVICE_MEMORY_SINGLETON = FORM_SINGLETON | ID_VK_DEVICE_MEMORY;
     public static final int VK_DEVICE_MEMORY_ARRAY = FORM_ARRAY | ID_VK_DEVICE_MEMORY;
     public static final int VK_DEVICE_MEMORY_POINTER = FORM_POINTER | ID_VK_DEVICE_MEMORY;
+
+    // VKImageView class
+    public static final int VK_IMAGE_VIEW_SINGLETON = FORM_SINGLETON | ID_VK_IMAGE_VIEW;
+    public static final int VK_IMAGE_VIEW_ARRAY = FORM_ARRAY | ID_VK_IMAGE_VIEW;
+    public static final int VK_IMAGE_VIEW_POINTER = FORM_POINTER | ID_VK_IMAGE_VIEW;
+
+    // VKFramebuffer class
+    public static final int VK_FRAMEBUFFER_SINGLETON = FORM_SINGLETON | ID_VK_FRAMEBUFFER;
+    public static final int VK_FRAMEBUFFER_ARRAY = FORM_ARRAY | ID_VK_FRAMEBUFFER;
+    public static final int VK_FRAMEBUFFER_POINTER = FORM_POINTER | ID_VK_FRAMEBUFFER;
 
     // Int class
     public static final int INT_SINGLETON = FORM_SINGLETON | ID_INT;
