@@ -107,6 +107,8 @@ public class TypeRegister
     public static final int ID_SCRIPTING_THREAD = 0x00003A; // ScriptingThread class // 58
     public static final int ID_DRAW_THREAD = 0x00003B; // DrawThread class // 59
     public static final int ID_BOOL = 0x00003C; // Bool class // 60
+    public static final int ID_SEMAPHORE = 0x00003D; // Semaphore class // 61
+    public static final int ID_SWAPCHAIN = 0x00003E; // Swapchain class // 62
 
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
@@ -115,6 +117,16 @@ public class TypeRegister
     public static final int BOOL_SINGLETON = FORM_SINGLETON | ID_BOOL;
     public static final int BOOL_ARRAY = FORM_ARRAY | ID_BOOL;
     public static final int BOOL_POINTER = FORM_POINTER | ID_BOOL;
+
+    // Semaphore class
+    public static final int SEMAPHORE_SINGLETON = FORM_SINGLETON | ID_SEMAPHORE;
+    public static final int SEMAPHORE_ARRAY = FORM_ARRAY | ID_SEMAPHORE;
+    public static final int SEMAPHORE_POINTER = FORM_POINTER | ID_SEMAPHORE;
+
+    // Swapchain class
+    public static final int SWAPCHAIN_SINGLETON = FORM_SINGLETON | ID_SWAPCHAIN;
+    public static final int SWAPCHAIN_ARRAY = FORM_ARRAY | ID_SWAPCHAIN;
+    public static final int SWAPCHAIN_POINTER = FORM_POINTER | ID_SWAPCHAIN;
 
     // Int class
     public static final int INT_SINGLETON = FORM_SINGLETON | ID_INT;
