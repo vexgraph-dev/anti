@@ -121,6 +121,28 @@ public class TypeRegister
     public static final int ID_VK_IMAGE_VIEW = 0x000048; // VKImageView class // 72
     public static final int ID_VK_FRAMEBUFFER = 0x000049; // VKFramebuffer class // 73
 
+
+    // --- BUFFER CLASSES ---
+    public static final int ID_ACCUMULUATION_BUFFER = 0x000050; // AccumuluationBuffer class
+    public static final int ID_AMBIENT_BUFFER = 0x000051; // AmbientBuffer class
+    public static final int ID_COLOR_BUFFER = 0x000052; // ColorBuffer class
+    public static final int ID_DEFAULT_PIXEL_BUFFER = 0x000053; // DefaultPixelBuffer class
+    public static final int ID_DEPTH_BUFFER = 0x000054; // DepthBuffer class
+    public static final int ID_FILTER_BUFFER = 0x000055; // FilterBuffer class
+    public static final int ID_FRAME_BUFFER = 0x000056; // FrameBuffer class
+    public static final int ID_HEIGHT_BUFFER = 0x000057; // HeightBuffer class
+    public static final int ID_LIGHT_BUFFER = 0x000058; // LightBuffer class
+    public static final int ID_MATERIAL_RESOLVE = 0x000059; // MaterialResolve class
+    public static final int ID_MOTION_VECTOR_BUFFER = 0x00005A; // MotionVectorBuffer class
+    public static final int ID_NORMAL_BUFFER = 0x00005B; // NormalBuffer class
+    public static final int ID_PHYSICAL_BUFFER = 0x00005C; // PhysicalBuffer class
+    public static final int ID_POST_PROCESSING_BUFFER = 0x00005D; // PostProcessingBuffer class
+    public static final int ID_REFLECTIVITY_BUFFER = 0x00005E; // ReflectivityBuffer class
+    public static final int ID_SHADOW_BUFFER = 0x00005F; // ShadowBuffer class
+    public static final int ID_SPECULAR_BUFFER = 0x000060; // SpecularBuffer class
+    public static final int ID_STENCIL_BUFFER = 0x000061; // StencilBuffer class
+    public static final int ID_TRANSPARENCY_BUFFER = 0x000062; // TransparencyBuffer class
+    public static final int ID_VISIBILITY_BUFFER = 0x000063; // VisibilityBuffer class
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
@@ -421,4 +443,105 @@ public class TypeRegister
     {
         return typeId & MASK_CLASS;
     }
+
+    // AccumuluationBuffer class
+    public static final int ACCUMULUATION_BUFFER_SINGLETON = FORM_SINGLETON | ID_ACCUMULUATION_BUFFER;
+    public static final int ACCUMULUATION_BUFFER_ARRAY = FORM_ARRAY | ID_ACCUMULUATION_BUFFER;
+    public static final int ACCUMULUATION_BUFFER_POINTER = FORM_POINTER | ID_ACCUMULUATION_BUFFER;
+
+    // AmbientBuffer class
+    public static final int AMBIENT_BUFFER_SINGLETON = FORM_SINGLETON | ID_AMBIENT_BUFFER;
+    public static final int AMBIENT_BUFFER_ARRAY = FORM_ARRAY | ID_AMBIENT_BUFFER;
+    public static final int AMBIENT_BUFFER_POINTER = FORM_POINTER | ID_AMBIENT_BUFFER;
+
+    // ColorBuffer class
+    public static final int COLOR_BUFFER_SINGLETON = FORM_SINGLETON | ID_COLOR_BUFFER;
+    public static final int COLOR_BUFFER_ARRAY = FORM_ARRAY | ID_COLOR_BUFFER;
+    public static final int COLOR_BUFFER_POINTER = FORM_POINTER | ID_COLOR_BUFFER;
+
+    // DefaultPixelBuffer class
+    public static final int DEFAULT_PIXEL_BUFFER_SINGLETON = FORM_SINGLETON | ID_DEFAULT_PIXEL_BUFFER;
+    public static final int DEFAULT_PIXEL_BUFFER_ARRAY = FORM_ARRAY | ID_DEFAULT_PIXEL_BUFFER;
+    public static final int DEFAULT_PIXEL_BUFFER_POINTER = FORM_POINTER | ID_DEFAULT_PIXEL_BUFFER;
+
+    // DepthBuffer class
+    public static final int DEPTH_BUFFER_SINGLETON = FORM_SINGLETON | ID_DEPTH_BUFFER;
+    public static final int DEPTH_BUFFER_ARRAY = FORM_ARRAY | ID_DEPTH_BUFFER;
+    public static final int DEPTH_BUFFER_POINTER = FORM_POINTER | ID_DEPTH_BUFFER;
+
+    // FilterBuffer class
+    public static final int FILTER_BUFFER_SINGLETON = FORM_SINGLETON | ID_FILTER_BUFFER;
+    public static final int FILTER_BUFFER_ARRAY = FORM_ARRAY | ID_FILTER_BUFFER;
+    public static final int FILTER_BUFFER_POINTER = FORM_POINTER | ID_FILTER_BUFFER;
+
+    // FrameBuffer class
+    public static final int FRAME_BUFFER_SINGLETON = FORM_SINGLETON | ID_FRAME_BUFFER;
+    public static final int FRAME_BUFFER_ARRAY = FORM_ARRAY | ID_FRAME_BUFFER;
+    public static final int FRAME_BUFFER_POINTER = FORM_POINTER | ID_FRAME_BUFFER;
+
+    // HeightBuffer class
+    public static final int HEIGHT_BUFFER_SINGLETON = FORM_SINGLETON | ID_HEIGHT_BUFFER;
+    public static final int HEIGHT_BUFFER_ARRAY = FORM_ARRAY | ID_HEIGHT_BUFFER;
+    public static final int HEIGHT_BUFFER_POINTER = FORM_POINTER | ID_HEIGHT_BUFFER;
+
+    // LightBuffer class
+    public static final int LIGHT_BUFFER_SINGLETON = FORM_SINGLETON | ID_LIGHT_BUFFER;
+    public static final int LIGHT_BUFFER_ARRAY = FORM_ARRAY | ID_LIGHT_BUFFER;
+    public static final int LIGHT_BUFFER_POINTER = FORM_POINTER | ID_LIGHT_BUFFER;
+
+    // MaterialResolve class
+    public static final int MATERIAL_RESOLVE_SINGLETON = FORM_SINGLETON | ID_MATERIAL_RESOLVE;
+    public static final int MATERIAL_RESOLVE_ARRAY = FORM_ARRAY | ID_MATERIAL_RESOLVE;
+    public static final int MATERIAL_RESOLVE_POINTER = FORM_POINTER | ID_MATERIAL_RESOLVE;
+
+    // MotionVectorBuffer class
+    public static final int MOTION_VECTOR_BUFFER_SINGLETON = FORM_SINGLETON | ID_MOTION_VECTOR_BUFFER;
+    public static final int MOTION_VECTOR_BUFFER_ARRAY = FORM_ARRAY | ID_MOTION_VECTOR_BUFFER;
+    public static final int MOTION_VECTOR_BUFFER_POINTER = FORM_POINTER | ID_MOTION_VECTOR_BUFFER;
+
+    // NormalBuffer class
+    public static final int NORMAL_BUFFER_SINGLETON = FORM_SINGLETON | ID_NORMAL_BUFFER;
+    public static final int NORMAL_BUFFER_ARRAY = FORM_ARRAY | ID_NORMAL_BUFFER;
+    public static final int NORMAL_BUFFER_POINTER = FORM_POINTER | ID_NORMAL_BUFFER;
+
+    // PhysicalBuffer class
+    public static final int PHYSICAL_BUFFER_SINGLETON = FORM_SINGLETON | ID_PHYSICAL_BUFFER;
+    public static final int PHYSICAL_BUFFER_ARRAY = FORM_ARRAY | ID_PHYSICAL_BUFFER;
+    public static final int PHYSICAL_BUFFER_POINTER = FORM_POINTER | ID_PHYSICAL_BUFFER;
+
+    // PostProcessingBuffer class
+    public static final int POST_PROCESSING_BUFFER_SINGLETON = FORM_SINGLETON | ID_POST_PROCESSING_BUFFER;
+    public static final int POST_PROCESSING_BUFFER_ARRAY = FORM_ARRAY | ID_POST_PROCESSING_BUFFER;
+    public static final int POST_PROCESSING_BUFFER_POINTER = FORM_POINTER | ID_POST_PROCESSING_BUFFER;
+
+    // ReflectivityBuffer class
+    public static final int REFLECTIVITY_BUFFER_SINGLETON = FORM_SINGLETON | ID_REFLECTIVITY_BUFFER;
+    public static final int REFLECTIVITY_BUFFER_ARRAY = FORM_ARRAY | ID_REFLECTIVITY_BUFFER;
+    public static final int REFLECTIVITY_BUFFER_POINTER = FORM_POINTER | ID_REFLECTIVITY_BUFFER;
+
+    // ShadowBuffer class
+    public static final int SHADOW_BUFFER_SINGLETON = FORM_SINGLETON | ID_SHADOW_BUFFER;
+    public static final int SHADOW_BUFFER_ARRAY = FORM_ARRAY | ID_SHADOW_BUFFER;
+    public static final int SHADOW_BUFFER_POINTER = FORM_POINTER | ID_SHADOW_BUFFER;
+
+    // SpecularBuffer class
+    public static final int SPECULAR_BUFFER_SINGLETON = FORM_SINGLETON | ID_SPECULAR_BUFFER;
+    public static final int SPECULAR_BUFFER_ARRAY = FORM_ARRAY | ID_SPECULAR_BUFFER;
+    public static final int SPECULAR_BUFFER_POINTER = FORM_POINTER | ID_SPECULAR_BUFFER;
+
+    // StencilBuffer class
+    public static final int STENCIL_BUFFER_SINGLETON = FORM_SINGLETON | ID_STENCIL_BUFFER;
+    public static final int STENCIL_BUFFER_ARRAY = FORM_ARRAY | ID_STENCIL_BUFFER;
+    public static final int STENCIL_BUFFER_POINTER = FORM_POINTER | ID_STENCIL_BUFFER;
+
+    // TransparencyBuffer class
+    public static final int TRANSPARENCY_BUFFER_SINGLETON = FORM_SINGLETON | ID_TRANSPARENCY_BUFFER;
+    public static final int TRANSPARENCY_BUFFER_ARRAY = FORM_ARRAY | ID_TRANSPARENCY_BUFFER;
+    public static final int TRANSPARENCY_BUFFER_POINTER = FORM_POINTER | ID_TRANSPARENCY_BUFFER;
+
+    // VisibilityBuffer class
+    public static final int VISIBILITY_BUFFER_SINGLETON = FORM_SINGLETON | ID_VISIBILITY_BUFFER;
+    public static final int VISIBILITY_BUFFER_ARRAY = FORM_ARRAY | ID_VISIBILITY_BUFFER;
+    public static final int VISIBILITY_BUFFER_POINTER = FORM_POINTER | ID_VISIBILITY_BUFFER;
+
 }
