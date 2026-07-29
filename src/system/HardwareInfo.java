@@ -1,8 +1,10 @@
 package system;
 
 import annotation.HotCode;
+import annotation.Required;
 
 @HotCode
+@Required
 public class HardwareInfo {
     private static long operatingSystem;
     private static long systemArchitecture;
