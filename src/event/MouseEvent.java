@@ -1,6 +1,5 @@
 package event;
 
-import input.MouseResolve;
 
 public interface MouseEvent {
     void onMouseDown(int mouseEvent, long exactNanos);

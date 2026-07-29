@@ -1,7 +1,7 @@
-package event;public class Event 
+package event;
+
+@FunctionalInterface
+public interface HardwareEvent
 {
-    public Event()
-    {
-    
-    }
+    long runEvent(Resolve resolve);
 }

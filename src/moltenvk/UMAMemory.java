@@ -2,6 +2,7 @@ package moltenvk;
 
 import annotation.PlatformExclusive;
 import annotation.Volatile;
+import exception.macOSWindowException;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 import static org.lwjgl.vulkan.VK10.*;
@@ -40,6 +41,6 @@ public final class UMAMemory {
         }
         
         memProperties.free();
-        throw new RuntimeException("Failed to find optimal UMA memory type on this Mac!");
+        throw new macOSWindowException("Failed to find optimal UMA memory type on this Mac!");
     }
 }
