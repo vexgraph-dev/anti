@@ -116,6 +116,7 @@ public class TypeRegister
     public static final int ID_VK_PIPELINE_LAYOUT = 0x000043; // VKPipelineLayout class // 67
     public static final int ID_VK_PIPELINE = 0x000044; // VKPipeline class // 68
     public static final int ID_VK_SHADER_MODULE = 0x000045; // VKShaderModule class // 69
+    public static final int ID_VK_BUFFER = 0x000046; // VKBuffer class // 70
 
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
@@ -169,6 +170,11 @@ public class TypeRegister
     public static final int VK_SHADER_MODULE_SINGLETON = FORM_SINGLETON | ID_VK_SHADER_MODULE;
     public static final int VK_SHADER_MODULE_ARRAY = FORM_ARRAY | ID_VK_SHADER_MODULE;
     public static final int VK_SHADER_MODULE_POINTER = FORM_POINTER | ID_VK_SHADER_MODULE;
+
+    // VKBuffer class
+    public static final int VK_BUFFER_SINGLETON = FORM_SINGLETON | ID_VK_BUFFER;
+    public static final int VK_BUFFER_ARRAY = FORM_ARRAY | ID_VK_BUFFER;
+    public static final int VK_BUFFER_POINTER = FORM_POINTER | ID_VK_BUFFER;
 
     // Int class
     public static final int INT_SINGLETON = FORM_SINGLETON | ID_INT;
