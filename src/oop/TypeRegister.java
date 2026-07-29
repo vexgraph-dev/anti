@@ -112,6 +112,7 @@ public class TypeRegister
     public static final int ID_FENCE = 0x00003F; // Fence class // 63
     public static final int ID_COMMAND_POOL = 0x000040; // CommandPool class // 64
     public static final int ID_RENDER_PASS = 0x000041; // RenderPass class // 65
+    public static final int ID_COMMAND_BUFFER = 0x000042; // CommandBuffer class // 66
 
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
@@ -145,6 +146,11 @@ public class TypeRegister
     public static final int RENDER_PASS_SINGLETON = FORM_SINGLETON | ID_RENDER_PASS;
     public static final int RENDER_PASS_ARRAY = FORM_ARRAY | ID_RENDER_PASS;
     public static final int RENDER_PASS_POINTER = FORM_POINTER | ID_RENDER_PASS;
+
+    // CommandBuffer class
+    public static final int COMMAND_BUFFER_SINGLETON = FORM_SINGLETON | ID_COMMAND_BUFFER;
+    public static final int COMMAND_BUFFER_ARRAY = FORM_ARRAY | ID_COMMAND_BUFFER;
+    public static final int COMMAND_BUFFER_POINTER = FORM_POINTER | ID_COMMAND_BUFFER;
 
     // Int class
     public static final int INT_SINGLETON = FORM_SINGLETON | ID_INT;
