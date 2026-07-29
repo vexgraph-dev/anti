@@ -109,6 +109,9 @@ public class TypeRegister
     public static final int ID_BOOL = 0x00003C; // Bool class // 60
     public static final int ID_SEMAPHORE = 0x00003D; // Semaphore class // 61
     public static final int ID_SWAPCHAIN = 0x00003E; // Swapchain class // 62
+    public static final int ID_FENCE = 0x00003F; // Fence class // 63
+    public static final int ID_COMMAND_POOL = 0x000040; // CommandPool class // 64
+    public static final int ID_RENDER_PASS = 0x000041; // RenderPass class // 65
 
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
@@ -127,6 +130,21 @@ public class TypeRegister
     public static final int SWAPCHAIN_SINGLETON = FORM_SINGLETON | ID_SWAPCHAIN;
     public static final int SWAPCHAIN_ARRAY = FORM_ARRAY | ID_SWAPCHAIN;
     public static final int SWAPCHAIN_POINTER = FORM_POINTER | ID_SWAPCHAIN;
+
+    // Fence class
+    public static final int FENCE_SINGLETON = FORM_SINGLETON | ID_FENCE;
+    public static final int FENCE_ARRAY = FORM_ARRAY | ID_FENCE;
+    public static final int FENCE_POINTER = FORM_POINTER | ID_FENCE;
+
+    // CommandPool class
+    public static final int COMMAND_POOL_SINGLETON = FORM_SINGLETON | ID_COMMAND_POOL;
+    public static final int COMMAND_POOL_ARRAY = FORM_ARRAY | ID_COMMAND_POOL;
+    public static final int COMMAND_POOL_POINTER = FORM_POINTER | ID_COMMAND_POOL;
+
+    // RenderPass class
+    public static final int RENDER_PASS_SINGLETON = FORM_SINGLETON | ID_RENDER_PASS;
+    public static final int RENDER_PASS_ARRAY = FORM_ARRAY | ID_RENDER_PASS;
+    public static final int RENDER_PASS_POINTER = FORM_POINTER | ID_RENDER_PASS;
 
     // Int class
     public static final int INT_SINGLETON = FORM_SINGLETON | ID_INT;
