@@ -58,3 +58,6 @@ code.txt
 src/api/
 api/
 **/api/
+compile_test.java
+test_lwjgl.java
+
