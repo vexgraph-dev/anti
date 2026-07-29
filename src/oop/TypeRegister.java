@@ -113,6 +113,9 @@ public class TypeRegister
     public static final int ID_COMMAND_POOL = 0x000040; // CommandPool class // 64
     public static final int ID_RENDER_PASS = 0x000041; // RenderPass class // 65
     public static final int ID_COMMAND_BUFFER = 0x000042; // CommandBuffer class // 66
+    public static final int ID_VK_PIPELINE_LAYOUT = 0x000043; // VKPipelineLayout class // 67
+    public static final int ID_VK_PIPELINE = 0x000044; // VKPipeline class // 68
+    public static final int ID_VK_SHADER_MODULE = 0x000045; // VKShaderModule class // 69
 
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
@@ -151,6 +154,21 @@ public class TypeRegister
     public static final int COMMAND_BUFFER_SINGLETON = FORM_SINGLETON | ID_COMMAND_BUFFER;
     public static final int COMMAND_BUFFER_ARRAY = FORM_ARRAY | ID_COMMAND_BUFFER;
     public static final int COMMAND_BUFFER_POINTER = FORM_POINTER | ID_COMMAND_BUFFER;
+
+    // VKPipelineLayout class
+    public static final int VK_PIPELINE_LAYOUT_SINGLETON = FORM_SINGLETON | ID_VK_PIPELINE_LAYOUT;
+    public static final int VK_PIPELINE_LAYOUT_ARRAY = FORM_ARRAY | ID_VK_PIPELINE_LAYOUT;
+    public static final int VK_PIPELINE_LAYOUT_POINTER = FORM_POINTER | ID_VK_PIPELINE_LAYOUT;
+
+    // VKPipeline class
+    public static final int VK_PIPELINE_SINGLETON = FORM_SINGLETON | ID_VK_PIPELINE;
+    public static final int VK_PIPELINE_ARRAY = FORM_ARRAY | ID_VK_PIPELINE;
+    public static final int VK_PIPELINE_POINTER = FORM_POINTER | ID_VK_PIPELINE;
+
+    // VKShaderModule class
+    public static final int VK_SHADER_MODULE_SINGLETON = FORM_SINGLETON | ID_VK_SHADER_MODULE;
+    public static final int VK_SHADER_MODULE_ARRAY = FORM_ARRAY | ID_VK_SHADER_MODULE;
+    public static final int VK_SHADER_MODULE_POINTER = FORM_POINTER | ID_VK_SHADER_MODULE;
 
     // Int class
     public static final int INT_SINGLETON = FORM_SINGLETON | ID_INT;
