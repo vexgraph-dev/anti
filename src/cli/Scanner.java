@@ -18,7 +18,7 @@ public class Scanner {
         try {
             int len = 0;
             while (true) {
-                int b = System.in.read();
+                int b = java.lang.System.in.read();
                 if (b == -1 || b == '\n') {
                     break;
                 }
@@ -45,7 +45,7 @@ public class Scanner {
     @Draft
     public static boolean hasNextLine() {
         try {
-            return System.in.available() > 0;
+            return java.lang.System.in.available() > 0;
         } catch (java.io.IOException e) {
             return false;
         }
@@ -58,17 +58,17 @@ public class Scanner {
             int b;
             // Skip leading whitespace
             while (true) {
-                b = System.in.read();
+                b = java.lang.System.in.read();
                 if (b == -1) return 0L;
-                if (!Character.isWhitespace(b)) {
+                if (!java.lang.Character.isWhitespace(b)) {
                     READ_BUFFER[len++] = (byte) b;
                     break;
                 }
             }
             // Read word
             while (true) {
-                b = System.in.read();
-                if (b == -1 || Character.isWhitespace(b)) {
+                b = java.lang.System.in.read();
+                if (b == -1 || java.lang.Character.isWhitespace(b)) {
                     break;
                 }
                 if (len < READ_BUFFER.length) {
