@@ -4,11 +4,16 @@ import annotation.HotCode;
 
 @HotCode
 public class Resolution {
-    private static int width;
-    private static int height;
+    private int width;
+    private int height;
 
-    public static int getWidth() { return width; }
-    public static void setWidth(int val) { width = val; }
-    public static int getHeight() { return height; }
-    public static void setHeight(int val) { height = val; }
+    public Resolution(int width, int height) {
+        this.width = width;
+        this.height = height;
+    }
+
+    public int getWidth() { return width; }
+    public void setWidth(int val) { width = val; }
+    public int getHeight() { return height; }
+    public void setHeight(int val) { height = val; }
 }
