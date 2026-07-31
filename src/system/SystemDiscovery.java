@@ -3,6 +3,7 @@ package system;
 import annotation.Draft;
 import annotation.Required;
 import primitive.string;
+import primitive.Long;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
@@ -126,52 +127,56 @@ public class SystemDiscovery {
                     DisplayInfo.setMonitorCount(count);
                     
                     int mainDisplayId = (int) MAIN_DISPLAY_ID.invokeExact();
-                    DisplayMonitor[] monitors = new DisplayMonitor[count];
-                    DisplayMonitor primary = null;
+                    long monitorsPtr = Long.allocateArray(count);
+                    long primaryPtr = 0L;
                     
                     for (int i = 0; i < count; i++) {
                         int displayId = displaysArray.getAtIndex(ValueLayout.JAVA_INT, i);
-                        DisplayMonitor monitor = new DisplayMonitor();
-                        monitor.setId(displayId);
+                        long monitorPtr = DisplayMonitor.allocate();
+                        DisplayMonitor.setId(monitorPtr, displayId);
                         
                         // Query resolution
                         long wide = (long) DISPLAY_PIXELS_WIDE.invokeExact(displayId);
                         long high = (long) DISPLAY_PIXELS_HIGH.invokeExact(displayId);
-                        Resolution currentRes = new Resolution((int) wide, (int) high);
-                        monitor.setCurrentResolution(currentRes);
-                        monitor.setNativeResolution(currentRes); // default to current
+                        DisplayMonitor.setCurrentWidth(monitorPtr, (int) wide);
+                        DisplayMonitor.setCurrentHeight(monitorPtr, (int) high);
+                        DisplayMonitor.setNativeWidth(monitorPtr, (int) wide);
+                        DisplayMonitor.setNativeHeight(monitorPtr, (int) high);
                         
                         // Query refresh rate
                         MemorySegment mode = (MemorySegment) DISPLAY_COPY_DISPLAY_MODE.invokeExact(displayId);
                         if (mode.address() != 0L) {
                             double refreshHz = (double) DISPLAY_MODE_GET_REFRESH_RATE.invokeExact(mode);
-                            monitor.setCurrentRefreshRate((int) refreshHz);
+                            DisplayMonitor.setRefreshRate(monitorPtr, (int) refreshHz);
                             DISPLAY_MODE_RELEASE.invokeExact(mode);
                         } else {
-                            monitor.setCurrentRefreshRate(60); // fallback
+                            DisplayMonitor.setRefreshRate(monitorPtr, 60); // fallback
                         }
                         
                         // Display Name
                         String nameStr = "Display-" + displayId;
-                        monitor.setName(string.allocate(nameStr));
+                        DisplayMonitor.setName(monitorPtr, string.allocate(nameStr));
                         
-                        monitors[i] = monitor;
+                        // Set in array
+                        Long.set(monitorsPtr, i, monitorPtr);
+                        
                         if (displayId == mainDisplayId) {
-                            primary = monitor;
+                            primaryPtr = monitorPtr;
                         }
                     }
                     
-                    DisplayInfo.setMonitors(monitors);
-                    if (primary != null) {
-                        DisplayInfo.setPrimaryMonitor(primary);
-                        DisplayInfo.setMonitorResolution(primary.getCurrentResolution());
-                        DisplayInfo.setNativeResolution(primary.getNativeResolution());
-                        DisplayInfo.setCurrentRefreshRate(primary.getCurrentRefreshRate());
-                    } else if (count > 0) {
-                        DisplayInfo.setPrimaryMonitor(monitors[0]);
-                        DisplayInfo.setMonitorResolution(monitors[0].getCurrentResolution());
-                        DisplayInfo.setNativeResolution(monitors[0].getNativeResolution());
-                        DisplayInfo.setCurrentRefreshRate(monitors[0].getCurrentRefreshRate());
+                    DisplayInfo.setMonitorsPointer(monitorsPtr);
+                    if (primaryPtr == 0L && count > 0) {
+                        primaryPtr = Long.get(monitorsPtr, 0);
+                    }
+                    
+                    if (primaryPtr != 0L) {
+                        DisplayInfo.setPrimaryMonitorPointer(primaryPtr);
+                        DisplayInfo.setMonitorResolutionWidth(DisplayMonitor.getCurrentWidth(primaryPtr));
+                        DisplayInfo.setMonitorResolutionHeight(DisplayMonitor.getCurrentHeight(primaryPtr));
+                        DisplayInfo.setNativeResolutionWidth(DisplayMonitor.getNativeWidth(primaryPtr));
+                        DisplayInfo.setNativeResolutionHeight(DisplayMonitor.getNativeHeight(primaryPtr));
+                        DisplayInfo.setCurrentRefreshRate(DisplayMonitor.getRefreshRate(primaryPtr));
                     }
                 }
             }
