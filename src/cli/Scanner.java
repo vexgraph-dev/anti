@@ -5,6 +5,10 @@ import annotation.Intention;
 import nio.ForeignMemory;
 import primitive.string;
 
+import java.lang.System;
+import java.lang.Character;
+import java.io.IOException;
+
 @Draft
 @Intention("Zero-allocation off-heap replacement for java.util.Scanner")
 public class Scanner {
@@ -18,7 +22,7 @@ public class Scanner {
         try {
             int len = 0;
             while (true) {
-                int b = java.lang.System.in.read();
+                int b = System.in.read();
                 if (b == -1 || b == '\n') {
                     break;
                 }
@@ -37,7 +41,7 @@ public class Scanner {
             ForeignMemory.copyFromHeap(READ_BUFFER, 0, pointer, len);
             ForeignMemory.putByte(pointer + len, (byte) 0); // null-terminator
             return pointer;
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             return 0L;
         }
     }
@@ -45,8 +49,8 @@ public class Scanner {
     @Draft
     public static boolean hasNextLine() {
         try {
-            return java.lang.System.in.available() > 0;
-        } catch (java.io.IOException e) {
+            return System.in.available() > 0;
+        } catch (IOException e) {
             return false;
         }
     }
@@ -58,17 +62,17 @@ public class Scanner {
             int b;
             // Skip leading whitespace
             while (true) {
-                b = java.lang.System.in.read();
+                b = System.in.read();
                 if (b == -1) return 0L;
-                if (!java.lang.Character.isWhitespace(b)) {
+                if (!Character.isWhitespace(b)) {
                     READ_BUFFER[len++] = (byte) b;
                     break;
                 }
             }
             // Read word
             while (true) {
-                b = java.lang.System.in.read();
-                if (b == -1 || java.lang.Character.isWhitespace(b)) {
+                b = System.in.read();
+                if (b == -1 || Character.isWhitespace(b)) {
                     break;
                 }
                 if (len < READ_BUFFER.length) {
@@ -83,7 +87,7 @@ public class Scanner {
             ForeignMemory.copyFromHeap(READ_BUFFER, 0, pointer, len);
             ForeignMemory.putByte(pointer + len, (byte) 0); // null-terminator
             return pointer;
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             return 0L;
         }
     }
