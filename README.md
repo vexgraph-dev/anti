@@ -44,8 +44,8 @@ For manual compilation:
 javac -d out/production/anti -cp "out/production/anti:lib/*:lib/oshi/*:lib/lwjgl-release-3.4.2-custom/*" src/<PreferredClass>.java
 ```
 
-All empirical verification and runtime testing is done strictly via `ScratchTest.java` (using Java 26 preview features):
+All empirical verification and runtime testing is done strictly via `scratch/ScratchTest.java` (using Java 26 preview features):
 ```bash
-java --enable-preview --source 26 -cp "out/production/anti:lib/*:lib/oshi/*:lib/lwjgl-release-3.4.2-custom/*" src/<PreferredClass>.java
+java --enable-preview --source 26 -cp "out/production/anti:lib/*:lib/oshi/*:lib/lwjgl-release-3.4.2-custom/*" scratch/ScratchTest.java
 ```
 Will be using GraalVM Native Image for native compilation anytime I can get around to it.
