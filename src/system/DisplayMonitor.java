@@ -1,32 +1,145 @@
 package system;
 
-import annotation.HotCode;
+import annotation.Draft;
+import annotation.Required;
+import annotation.Intention;
+import nio.ForeignMemory;
+import oop.TypeRegister;
+import primitive.string;
 
-@HotCode
-public class DisplayMonitor {
-    private long id;
-    private long name;
-    private Resolution currentResolution;
-    private Resolution nativeResolution;
-    private int[] supportedRefreshRates;
-    private int currentRefreshRate;
-    private boolean hdrSupported;
-    private float dpi;
+@Draft
+@Intention("Off-heap zero-allocation display monitor struct representation")
+public final class DisplayMonitor {
 
-    public long getId() { return id; }
-    public void setId(long val) { id = val; }
-    public long getName() { return name; }
-    public void setName(long val) { name = val; }
-    public Resolution getCurrentResolution() { return currentResolution; }
-    public void setCurrentResolution(Resolution val) { currentResolution = val; }
-    public Resolution getNativeResolution() { return nativeResolution; }
-    public void setNativeResolution(Resolution val) { nativeResolution = val; }
-    public int[] getSupportedRefreshRates() { return supportedRefreshRates; }
-    public void setSupportedRefreshRates(int[] val) { supportedRefreshRates = val; }
-    public int getCurrentRefreshRate() { return currentRefreshRate; }
-    public void setCurrentRefreshRate(int val) { currentRefreshRate = val; }
-    public boolean getHdrSupported() { return hdrSupported; }
-    public void setHdrSupported(boolean val) { hdrSupported = val; }
-    public float getDpi() { return dpi; }
-    public void setDpi(float val) { dpi = val; }
+    @Required
+    public static final int CLASS_ID = TypeRegister.ID_DISPLAY_MONITOR;
+
+    private DisplayMonitor() {}
+
+    public static long allocate() {
+        long block = ForeignMemory.allocateNative(8L + 48L);
+        long userPtr = block + 8L;
+
+        int type = TypeRegister.FORM_SINGLETON | CLASS_ID;
+        ForeignMemory.putInt(block, type);
+        ForeignMemory.putInt(block + 4L, 1);
+
+        // Zero memory
+        ForeignMemory.setMemory(userPtr, 48L, (byte) 0);
+        return userPtr;
+    }
+
+    private static void checkType(long monitorPtr) {
+        if (monitorPtr == 0L) throw new NullPointerException("Accessing NULL DisplayMonitor pointer!");
+        int type = ForeignMemory.getInt(monitorPtr - 8L);
+        int expected = TypeRegister.FORM_SINGLETON | CLASS_ID;
+        if (type != expected) {
+            throw new IllegalArgumentException("Expected DisplayMonitor pointer, but got Type: 0x" + Integer.toHexString(type).toUpperCase());
+        }
+    }
+
+    public static long getId(long monitorPtr) {
+        checkType(monitorPtr);
+        return ForeignMemory.getLong(monitorPtr);
+    }
+
+    public static void setId(long monitorPtr, long id) {
+        checkType(monitorPtr);
+        ForeignMemory.putLong(monitorPtr, id);
+    }
+
+    public static long getName(long monitorPtr) {
+        checkType(monitorPtr);
+        return ForeignMemory.getLong(monitorPtr + 8L);
+    }
+
+    public static void setName(long monitorPtr, long nameStrPtr) {
+        checkType(monitorPtr);
+        ForeignMemory.putLong(monitorPtr + 8L, nameStrPtr);
+    }
+
+    public static int getCurrentWidth(long monitorPtr) {
+        checkType(monitorPtr);
+        return ForeignMemory.getInt(monitorPtr + 16L);
+    }
+
+    public static void setCurrentWidth(long monitorPtr, int val) {
+        checkType(monitorPtr);
+        ForeignMemory.putInt(monitorPtr + 16L, val);
+    }
+
+    public static int getCurrentHeight(long monitorPtr) {
+        checkType(monitorPtr);
+        return ForeignMemory.getInt(monitorPtr + 20L);
+    }
+
+    public static void setCurrentHeight(long monitorPtr, int val) {
+        checkType(monitorPtr);
+        ForeignMemory.putInt(monitorPtr + 20L, val);
+    }
+
+    public static int getNativeWidth(long monitorPtr) {
+        checkType(monitorPtr);
+        return ForeignMemory.getInt(monitorPtr + 24L);
+    }
+
+    public static void setNativeWidth(long monitorPtr, int val) {
+        checkType(monitorPtr);
+        ForeignMemory.putInt(monitorPtr + 24L, val);
+    }
+
+    public static int getNativeHeight(long monitorPtr) {
+        checkType(monitorPtr);
+        return ForeignMemory.getInt(monitorPtr + 28L);
+    }
+
+    public static void setNativeHeight(long monitorPtr, int val) {
+        checkType(monitorPtr);
+        ForeignMemory.putInt(monitorPtr + 28L, val);
+    }
+
+    public static int getRefreshRate(long monitorPtr) {
+        checkType(monitorPtr);
+        return ForeignMemory.getInt(monitorPtr + 32L);
+    }
+
+    public static void setRefreshRate(long monitorPtr, int val) {
+        checkType(monitorPtr);
+        ForeignMemory.putInt(monitorPtr + 32L, val);
+    }
+
+    public static boolean getHdrSupported(long monitorPtr) {
+        checkType(monitorPtr);
+        return ForeignMemory.getInt(monitorPtr + 36L) == 1;
+    }
+
+    public static void setHdrSupported(long monitorPtr, boolean val) {
+        checkType(monitorPtr);
+        ForeignMemory.putInt(monitorPtr + 36L, val ? 1 : 0);
+    }
+
+    public static float getDpi(long monitorPtr) {
+        checkType(monitorPtr);
+        return ForeignMemory.getFloat(monitorPtr + 40L);
+    }
+
+    public static void setDpi(long monitorPtr, float val) {
+        checkType(monitorPtr);
+        ForeignMemory.putFloat(monitorPtr + 40L, val);
+    }
+
+    public static void free(long monitorPtr) {
+        if (monitorPtr == 0L) return;
+        checkType(monitorPtr);
+
+        long namePtr = getName(monitorPtr);
+        if (namePtr != 0L) {
+            string.free(namePtr);
+        }
+
+        long block = monitorPtr - 8L;
+        ForeignMemory.putInt(block, 0);
+        ForeignMemory.putInt(block + 4L, -1);
+        ForeignMemory.freeNative(block);
+    }
 }
