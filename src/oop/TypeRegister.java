@@ -143,6 +143,8 @@ public class TypeRegister
     public static final int ID_STENCIL_BUFFER = 0x000061; // StencilBuffer class
     public static final int ID_TRANSPARENCY_BUFFER = 0x000062; // TransparencyBuffer class
     public static final int ID_VISIBILITY_BUFFER = 0x000063; // VisibilityBuffer class
+    public static final int ID_COMMAND = 0x000064; // Command class
+    public static final int ID_CONSOLE_THREAD = 0x000065; // ConsoleThread class
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
