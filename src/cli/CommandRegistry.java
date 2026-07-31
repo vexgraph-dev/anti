@@ -5,6 +5,10 @@ import oop.TypeRegister;
 import primitive.string;
 import struct.Map;
 
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.ValueLayout;
+
 @Draft
 public class CommandRegistry {
 
@@ -12,9 +16,9 @@ public class CommandRegistry {
 
     private static final java.lang.invoke.MethodHandle INVOKER;
     static {
-        java.lang.foreign.Linker linker = java.lang.foreign.Linker.nativeLinker();
-        java.lang.foreign.FunctionDescriptor descriptor = java.lang.foreign.FunctionDescriptor.ofVoid(
-            java.lang.foreign.ValueLayout.JAVA_LONG
+        Linker linker = Linker.nativeLinker();
+        FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(
+            ValueLayout.JAVA_LONG
         );
         INVOKER = linker.downcallHandle(descriptor);
     }
