@@ -7,14 +7,16 @@ import struct.Map;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
 
 @Draft
 public class CommandRegistry {
 
     private static final long registryMapPtr = Map.instant(TypeRegister.ID_STRING, TypeRegister.ID_LONG);
 
-    private static final java.lang.invoke.MethodHandle INVOKER;
+    private static final MethodHandle INVOKER;
     static {
         Linker linker = Linker.nativeLinker();
         FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(
@@ -39,7 +41,7 @@ public class CommandRegistry {
         long targetPtr = Map.get(registryMapPtr, namePtr);
         if (targetPtr != 0L) {
             try {
-                java.lang.foreign.MemorySegment targetSegment = java.lang.foreign.MemorySegment.ofAddress(targetPtr);
+                MemorySegment targetSegment = MemorySegment.ofAddress(targetPtr);
                 INVOKER.bindTo(targetSegment).invokeExact(parsedCommandPointer);
             } catch (Throwable t) {
                 System.err.println("Failed to execute command target pointer: " + t.getMessage());
