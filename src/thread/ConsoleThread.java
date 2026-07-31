@@ -4,6 +4,11 @@ import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import annotation.Volatile;
+import cli.Console;
+import cli.Scanner;
+import cli.Command;
+import cli.CommandParser;
+import cli.CommandRegistry;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 import struct.Map;
@@ -45,7 +50,7 @@ public final class ConsoleThread {
         ForeignMemory.putLong(workerPtr + 8L, workQueuePtr);
 
         // Connect Console logging to the worker queue
-        cli.Console.setLogQueueHead(workQueuePtr);
+        Console.setLogQueueHead(workQueuePtr);
 
         // Register worker handle in central pool manager registry
         Map.put(WORKER_MAP_PTR, workerPtr, 1L);
@@ -96,7 +101,7 @@ public final class ConsoleThread {
         Map.put(WORKER_MAP_PTR, workerPtr, 1L);
 
         // Disconnect Console logging queue
-        cli.Console.setLogQueueHead(0L);
+        Console.setLogQueueHead(0L);
     }
 
     @Draft
@@ -130,15 +135,15 @@ public final class ConsoleThread {
 
             // 2. Non-blocking check for System.in bytes, feed into our off-heap Scanner
             try {
-                if (cli.Scanner.hasNextLine()) {
-                    long linePtr = cli.Scanner.nextLine();
+                if (Scanner.hasNextLine()) {
+                    long linePtr = Scanner.nextLine();
                     if (linePtr != 0L) {
-                        long parsedCommand = cli.CommandParser.parse(linePtr);
+                        long parsedCommand = CommandParser.parse(linePtr);
                         primitive.string.free(linePtr);
 
                         if (parsedCommand != 0L) {
-                            cli.CommandRegistry.execute(parsedCommand);
-                            cli.Command.free(parsedCommand);
+                            CommandRegistry.execute(parsedCommand);
+                            Command.free(parsedCommand);
                         }
                     }
                 }
