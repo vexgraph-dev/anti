@@ -74,31 +74,15 @@ public final class System {
         } catch (Throwable ignored) {}
 
         // ==========================================
-        // 2. DISPLAY TOPOLOGY SYSTEM
+        // 2. DISPLAY TOPOLOGY SYSTEM (Probing deferred to SystemDiscovery)
         // ==========================================
-        DisplayMonitor[] monitors = new DisplayMonitor[0];
-        DisplayMonitor primary = null;
-        Resolution res = null; // Will just initialize statically if needed
-        try {
-            if (!java.awt.GraphicsEnvironment.isHeadless()) {
-                java.awt.GraphicsDevice[] devices = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
-                monitors = new DisplayMonitor[devices.length];
-                for (int i = 0; i < devices.length; i++) {
-                    java.awt.GraphicsDevice gd = devices[i];
-                    java.awt.DisplayMode dm = gd.getDisplayMode();
-                    
-                    // Since it's DOD now, DisplayMonitor object creation needs a rethink if they are multiple.
-                    // For now, if there are multiple monitors, we skip or use a DOD array layout later.
-                }
-            }
-        } catch (Throwable ignored) {}
-
-        DisplayInfo.setMonitorCount(monitors.length);
-        DisplayInfo.setMonitors(monitors);
-        DisplayInfo.setPrimaryMonitor(primary);
-        DisplayInfo.setMonitorResolution(res);
-        DisplayInfo.setNativeResolution(res);
-        DisplayInfo.setRefreshRates(new int[]{60});
+        DisplayInfo.setMonitorCount(0);
+        DisplayInfo.setMonitorsPointer(0L);
+        DisplayInfo.setPrimaryMonitorPointer(0L);
+        DisplayInfo.setMonitorResolutionWidth(0);
+        DisplayInfo.setMonitorResolutionHeight(0);
+        DisplayInfo.setNativeResolutionWidth(0);
+        DisplayInfo.setNativeResolutionHeight(0);
         DisplayInfo.setCurrentRefreshRate(60);
         DisplayInfo.setHdrSupported(false);
         DisplayInfo.setDisplayDensity(1.0f);
