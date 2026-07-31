@@ -2,28 +2,89 @@ package cli;
 
 import annotation.Draft;
 import annotation.Intention;
+import nio.ForeignMemory;
+import primitive.string;
 
 @Draft
 @Intention("Zero-allocation off-heap replacement for java.util.Scanner")
 public class Scanner {
 
+    private static final byte[] READ_BUFFER = new byte[4096];
+
+    private Scanner() {}
+
     @Draft
     public static long nextLine() {
-        // TODO: Read raw bytes from native standard input (System.in.read)
-        // TODO: Append bytes directly to a primitive.string off-heap slot
-        // TODO: Return the long pointer to the string
-        return 0L;
+        try {
+            int len = 0;
+            while (true) {
+                int b = System.in.read();
+                if (b == -1 || b == '\n') {
+                    break;
+                }
+                if (b == '\r') {
+                    continue;
+                }
+                if (len < READ_BUFFER.length) {
+                    READ_BUFFER[len++] = (byte) b;
+                } else {
+                    break;
+                }
+            }
+            if (len == 0) return 0L;
+
+            long pointer = string.allocateUninitialized(len);
+            ForeignMemory.copyFromHeap(READ_BUFFER, 0, pointer, len);
+            ForeignMemory.putByte(pointer + len, (byte) 0); // null-terminator
+            return pointer;
+        } catch (java.io.IOException e) {
+            return 0L;
+        }
     }
 
     @Draft
     public static boolean hasNextLine() {
-        // TODO: Check if the input stream has available bytes to consume
-        return false;
+        try {
+            return System.in.available() > 0;
+        } catch (java.io.IOException e) {
+            return false;
+        }
     }
 
     @Draft
     public static long nextWord() {
-        // TODO: Scan bytes until a space/newline is found, return primitive.string pointer
-        return 0L;
+        try {
+            int len = 0;
+            int b;
+            // Skip leading whitespace
+            while (true) {
+                b = System.in.read();
+                if (b == -1) return 0L;
+                if (!Character.isWhitespace(b)) {
+                    READ_BUFFER[len++] = (byte) b;
+                    break;
+                }
+            }
+            // Read word
+            while (true) {
+                b = System.in.read();
+                if (b == -1 || Character.isWhitespace(b)) {
+                    break;
+                }
+                if (len < READ_BUFFER.length) {
+                    READ_BUFFER[len++] = (byte) b;
+                } else {
+                    break;
+                }
+            }
+            if (len == 0) return 0L;
+
+            long pointer = string.allocateUninitialized(len);
+            ForeignMemory.copyFromHeap(READ_BUFFER, 0, pointer, len);
+            ForeignMemory.putByte(pointer + len, (byte) 0); // null-terminator
+            return pointer;
+        } catch (java.io.IOException e) {
+            return 0L;
+        }
     }
 }
