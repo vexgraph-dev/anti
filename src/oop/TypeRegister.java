@@ -145,6 +145,7 @@ public class TypeRegister
     public static final int ID_VISIBILITY_BUFFER = 0x000063; // VisibilityBuffer class
     public static final int ID_COMMAND = 0x000064; // Command class
     public static final int ID_CONSOLE_THREAD = 0x000065; // ConsoleThread class
+    public static final int ID_DISPLAY_MONITOR = 0x000066; // DisplayMonitor class
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
