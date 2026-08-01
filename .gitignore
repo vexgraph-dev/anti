@@ -37,6 +37,9 @@ lib/
 
 ### testing grounds / scratch ###
 scratch/
+crash-dump.txt
+hs_err_pid*.log
+*.log
 
 ### Private / Regurgitation / Config Files ###
 regurgitation/
