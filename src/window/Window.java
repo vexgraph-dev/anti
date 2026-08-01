@@ -113,6 +113,7 @@ public final class Window {
             while (!isClosed.get()) {
                 input.Key.dispatchEvents(); // Drain DOD queue & trigger OOP callbacks
                 input.Mouse.dispatchEvents(); // Same for Mouse
+                input.Touch.update(); // Dispatches Touch Events
                 loop.tick();
                 
                 // Throttle Game Thread to exactly 1000 FPS to prevent 100% CPU core burn
