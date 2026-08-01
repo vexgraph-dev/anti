@@ -114,7 +114,15 @@ public final class CrashDumper
      */
     private static synchronized void flushTelemetryToFile(Throwable exception)
     {
-        try (FileOutputStream fos = new FileOutputStream(DUMP_FILE_PATH, false))
+        String filename = DUMP_FILE_PATH;
+        if (exception != null)
+        {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmmss");
+            filename = "crash-dump_" + now.format(dtf) + ".txt";
+        }
+
+        try (FileOutputStream fos = new FileOutputStream(filename, false))
         {
             long frame = ForeignMemory.getLong(TELEMETRY_BLOCK + OFFSET_FRAME);
             long lastPtr = ForeignMemory.getLong(TELEMETRY_BLOCK + OFFSET_LAST_PTR);
