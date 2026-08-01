@@ -2,6 +2,7 @@ package physics;
 
 import annotation.Draft;
 import annotation.Intention;
+import annotation.Unsafe;
 import lang.FastMath;
 import nio.ForeignMemory;
 
@@ -9,6 +10,7 @@ import nio.ForeignMemory;
  * High-performance, zero-allocation Data-Oriented Design (DOD) Physics Engine.
  * Manages an off-heap contiguous block of Physics Bodies.
  * Executes symplectic Euler integration and resolves Sphere-Sphere, AABB-AABB, and Sphere-AABB collisions.
+ * Uses Unsafe accesses inside hot paths to achieve maximum C-like pointer performance.
  */
 @Draft
 @Intention("Core DOD physics solver executing integration and impulse-based collision resolution off-heap")
@@ -98,6 +100,7 @@ public final class PhysicsEngine
     /**
      * Performs a single physics tick step.
      */
+    @Unsafe
     public static void step(float dt)
     {
         if (bodyCount == 0 || dt <= 0.0f) return;
@@ -106,7 +109,7 @@ public final class PhysicsEngine
         for (int i = 0; i < bodyCount; i++)
         {
             long ptr = bodiesBlockPtr + i * PhysicsBody.BYTES;
-            float invMass = PhysicsBody.getInverseMass(ptr);
+            float invMass = PhysicsBody.unsafeGetInverseMass(ptr);
             if (invMass <= 0.0f) continue; // Static body
 
             // Fetch forces
@@ -115,19 +118,19 @@ public final class PhysicsEngine
             float fz = ForeignMemory.getFloat(ptr + PhysicsBody.OFFSET_FORCE + 8L);
 
             // Compute velocities (Velocity += acceleration * dt)
-            float vx = PhysicsBody.getVelocityX(ptr) + (fx * invMass + gravityX) * dt;
-            float vy = PhysicsBody.getVelocityY(ptr) + (fy * invMass + gravityY) * dt;
-            float vz = PhysicsBody.getVelocityZ(ptr) + (fz * invMass + gravityZ) * dt;
-            PhysicsBody.setVelocity(ptr, vx, vy, vz);
+            float vx = PhysicsBody.unsafeGetVelocityX(ptr) + (fx * invMass + gravityX) * dt;
+            float vy = PhysicsBody.unsafeGetVelocityY(ptr) + (fy * invMass + gravityY) * dt;
+            float vz = PhysicsBody.unsafeGetVelocityZ(ptr) + (fz * invMass + gravityZ) * dt;
+            PhysicsBody.unsafeSetVelocity(ptr, vx, vy, vz);
 
             // Compute positions (Position += velocity * dt)
-            float px = PhysicsBody.getPositionX(ptr) + vx * dt;
-            float py = PhysicsBody.getPositionY(ptr) + vy * dt;
-            float pz = PhysicsBody.getPositionZ(ptr) + vz * dt;
-            PhysicsBody.setPosition(ptr, px, py, pz);
+            float px = PhysicsBody.unsafeGetPositionX(ptr) + vx * dt;
+            float py = PhysicsBody.unsafeGetPositionY(ptr) + vy * dt;
+            float pz = PhysicsBody.unsafeGetPositionZ(ptr) + vz * dt;
+            PhysicsBody.unsafeSetPosition(ptr, px, py, pz);
 
             // Clear forces for next tick
-            PhysicsBody.setForce(ptr, 0.0f, 0.0f, 0.0f);
+            PhysicsBody.unsafeSetForce(ptr, 0.0f, 0.0f, 0.0f);
         }
 
         // 2. Collision Pass (O(N^2) Narrowphase checks)
@@ -145,14 +148,15 @@ public final class PhysicsEngine
     /**
      * Narrowphase collision detection and impulse-based resolution dispatcher.
      */
+    @Unsafe
     private static void resolveCollision(long ptrA, long ptrB)
     {
-        float invMassA = PhysicsBody.getInverseMass(ptrA);
-        float invMassB = PhysicsBody.getInverseMass(ptrB);
+        float invMassA = PhysicsBody.unsafeGetInverseMass(ptrA);
+        float invMassB = PhysicsBody.unsafeGetInverseMass(ptrB);
         if (invMassA == 0.0f && invMassB == 0.0f) return; // Both static
 
-        float radiusA = PhysicsBody.getRadius(ptrA);
-        float radiusB = PhysicsBody.getRadius(ptrB);
+        float radiusA = PhysicsBody.unsafeGetRadius(ptrA);
+        float radiusB = PhysicsBody.unsafeGetRadius(ptrB);
 
         boolean isSphereA = radiusA > 0.0f;
         boolean isSphereB = radiusB > 0.0f;
@@ -180,10 +184,11 @@ public final class PhysicsEngine
         }
     }
 
+    @Unsafe
     private static void resolveSphereSphere(long ptrA, long ptrB, float rA, float rB, float invMassA, float invMassB)
     {
-        float ax = PhysicsBody.getPositionX(ptrA), ay = PhysicsBody.getPositionY(ptrA), az = PhysicsBody.getPositionZ(ptrA);
-        float bx = PhysicsBody.getPositionX(ptrB), by = PhysicsBody.getPositionY(ptrB), bz = PhysicsBody.getPositionZ(ptrB);
+        float ax = PhysicsBody.unsafeGetPositionX(ptrA), ay = PhysicsBody.unsafeGetPositionY(ptrA), az = PhysicsBody.unsafeGetPositionZ(ptrA);
+        float bx = PhysicsBody.unsafeGetPositionX(ptrB), by = PhysicsBody.unsafeGetPositionY(ptrB), bz = PhysicsBody.unsafeGetPositionZ(ptrB);
 
         float dx = bx - ax;
         float dy = by - ay;
@@ -207,10 +212,11 @@ public final class PhysicsEngine
         applyImpulse(ptrA, ptrB, normalX, normalY, normalZ, penetration, invMassA, invMassB);
     }
 
+    @Unsafe
     private static void resolveAabbAabb(long ptrA, long ptrB, float invMassA, float invMassB)
     {
-        float ax = PhysicsBody.getPositionX(ptrA), ay = PhysicsBody.getPositionY(ptrA), az = PhysicsBody.getPositionZ(ptrA);
-        float bx = PhysicsBody.getPositionX(ptrB), by = PhysicsBody.getPositionY(ptrB), bz = PhysicsBody.getPositionZ(ptrB);
+        float ax = PhysicsBody.unsafeGetPositionX(ptrA), ay = PhysicsBody.unsafeGetPositionY(ptrA), az = PhysicsBody.unsafeGetPositionZ(ptrA);
+        float bx = PhysicsBody.unsafeGetPositionX(ptrB), by = PhysicsBody.unsafeGetPositionY(ptrB), bz = PhysicsBody.unsafeGetPositionZ(ptrB);
 
         float hx_a = ForeignMemory.getFloat(ptrA + PhysicsBody.OFFSET_AABB_HALF);
         float hy_a = ForeignMemory.getFloat(ptrA + PhysicsBody.OFFSET_AABB_HALF + 4L);
@@ -256,10 +262,11 @@ public final class PhysicsEngine
         applyImpulse(ptrA, ptrB, normalX, normalY, normalZ, penetration, invMassA, invMassB);
     }
 
+    @Unsafe
     private static void resolveSphereAabb(long ptrSphere, long ptrAabb, float sphereRad, float invMassSphere, float invMassAabb)
     {
-        float sx = PhysicsBody.getPositionX(ptrSphere), sy = PhysicsBody.getPositionY(ptrSphere), sz = PhysicsBody.getPositionZ(ptrSphere);
-        float bx = PhysicsBody.getPositionX(ptrAabb), by = PhysicsBody.getPositionY(ptrAabb), bz = PhysicsBody.getPositionZ(ptrAabb);
+        float sx = PhysicsBody.unsafeGetPositionX(ptrSphere), sy = PhysicsBody.unsafeGetPositionY(ptrSphere), sz = PhysicsBody.unsafeGetPositionZ(ptrSphere);
+        float bx = PhysicsBody.unsafeGetPositionX(ptrAabb), by = PhysicsBody.unsafeGetPositionY(ptrAabb), bz = PhysicsBody.unsafeGetPositionZ(ptrAabb);
 
         float hx = ForeignMemory.getFloat(ptrAabb + PhysicsBody.OFFSET_AABB_HALF);
         float hy = ForeignMemory.getFloat(ptrAabb + PhysicsBody.OFFSET_AABB_HALF + 4L);
@@ -326,14 +333,15 @@ public final class PhysicsEngine
      * Resolves velocities and corrections via impulse physics.
      * Normal vector points from Body A towards Body B.
      */
+    @Unsafe
     private static void applyImpulse(
         long ptrA, long ptrB, 
         float normalX, float normalY, float normalZ, 
         float penetration, 
         float invMassA, float invMassB
     ) {
-        float vax = PhysicsBody.getVelocityX(ptrA), vay = PhysicsBody.getVelocityY(ptrA), vaz = PhysicsBody.getVelocityZ(ptrA);
-        float vbx = PhysicsBody.getVelocityX(ptrB), vby = PhysicsBody.getVelocityY(ptrB), vbz = PhysicsBody.getVelocityZ(ptrB);
+        float vax = PhysicsBody.unsafeGetVelocityX(ptrA), vay = PhysicsBody.unsafeGetVelocityY(ptrA), vaz = PhysicsBody.unsafeGetVelocityZ(ptrA);
+        float vbx = PhysicsBody.unsafeGetVelocityX(ptrB), vby = PhysicsBody.unsafeGetVelocityY(ptrB), vbz = PhysicsBody.unsafeGetVelocityZ(ptrB);
 
         // Relative velocity
         float rvx = vbx - vax;
@@ -347,15 +355,15 @@ public final class PhysicsEngine
         if (velAlongNormal >= 0.0f) return;
 
         // Restitution (bounciness factor, we take the minimum of both bodies)
-        float restitution = Math.min(PhysicsBody.getRestitution(ptrA), PhysicsBody.getRestitution(ptrB));
+        float restitution = Math.min(PhysicsBody.unsafeGetRestitution(ptrA), PhysicsBody.unsafeGetRestitution(ptrB));
 
         // Scalar impulse
         float totalInverseMass = invMassA + invMassB;
         float j = -(1.0f + restitution) * velAlongNormal / totalInverseMass;
 
         // Apply impulse to velocities
-        PhysicsBody.setVelocity(ptrA, vax - normalX * invMassA * j, vay - normalY * invMassA * j, vaz - normalZ * invMassA * j);
-        PhysicsBody.setVelocity(ptrB, vbx + normalX * invMassB * j, vby + normalY * invMassB * j, vbz + normalZ * invMassB * j);
+        PhysicsBody.unsafeSetVelocity(ptrA, vax - normalX * invMassA * j, vay - normalY * invMassA * j, vaz - normalZ * invMassA * j);
+        PhysicsBody.unsafeSetVelocity(ptrB, vbx + normalX * invMassB * j, vby + normalY * invMassB * j, vbz + normalZ * invMassB * j);
 
         // 3. Positional Correction to prevent sinking/overlap jitter
         float correctionMagnitude = Math.max(penetration - PENETRATION_ALLOWANCE, 0.0f) / totalInverseMass * PENETRATION_CORRECTION_PERCENT;
@@ -363,11 +371,11 @@ public final class PhysicsEngine
         float cy = correctionMagnitude * normalY;
         float cz = correctionMagnitude * normalZ;
 
-        float pax = PhysicsBody.getPositionX(ptrA), pay = PhysicsBody.getPositionY(ptrA), paz = PhysicsBody.getPositionZ(ptrA);
-        float pbx = PhysicsBody.getPositionX(ptrB), pby = PhysicsBody.getPositionY(ptrB), pbz = PhysicsBody.getPositionZ(ptrB);
+        float pax = PhysicsBody.unsafeGetPositionX(ptrA), pay = PhysicsBody.unsafeGetPositionY(ptrA), paz = PhysicsBody.unsafeGetPositionZ(ptrA);
+        float pbx = PhysicsBody.unsafeGetPositionX(ptrB), pby = PhysicsBody.unsafeGetPositionY(ptrB), pbz = PhysicsBody.unsafeGetPositionZ(ptrB);
 
-        PhysicsBody.setPosition(ptrA, pax - cx * invMassA, pay - cy * invMassA, paz - cz * invMassA);
-        PhysicsBody.setPosition(ptrB, pbx + cx * invMassB, pby + cy * invMassB, pbz + cz * invMassB);
+        PhysicsBody.unsafeSetPosition(ptrA, pax - cx * invMassA, pay - cy * invMassA, paz - cz * invMassA);
+        PhysicsBody.unsafeSetPosition(ptrB, pbx + cx * invMassB, pby + cy * invMassB, pbz + cz * invMassB);
     }
 
     /**
