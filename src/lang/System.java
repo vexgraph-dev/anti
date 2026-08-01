@@ -10,6 +10,9 @@ import java.io.InputStreamReader;
 public final class System {
 
     static {
+        // Initialize Native Signal and Telemetry Crash Handler
+        telemetry.CrashDumper.init();
+
         // base operating system and memory thingies
         String osName = java.lang.System.getProperty("os.name").toLowerCase();
         long osNamePtr = string.allocate(java.lang.System.getProperty("os.name"));
