@@ -1,0 +1,81 @@
+# "anti" Subsystem Architectural Preferences & Coding Standards
+
+## Mandatory First Step
+- BE AWARE OF ARCHITECTURAL PREFERENCES:
+  - The agent must be fully aware of the architectural preferences defined in `preferences.txt`. The rules herein are persistent, but there is no need to execute a file read tool call on it at the start of every single chat turn once established.
+
+## 1. Zero-Allocation & Off-Heap Memory Philosophy
+- NO 'new' KEYWORD FOR DATA / PRIMITIVES:
+  - Avoid Java heap allocations (`new Object()`, `new int[]`, `new String()`, etc.) in hot paths and system code.
+  - Data structures, primitives, strings, matrices, vectors, arrays, and native resources MUST be allocated off-heap using raw pointers (`long` memory addresses) managed by Java FFM (`java.lang.foreign`), `ForeignMemory`, `Arena`, and `MemoryRegistry`.
+
+- NO OBJECT WRAPPING OR BOXING:
+  - Never wrap primitive types into standard Java object wrappers (`Integer`, `Double`, `Float`, etc.).
+  - Pass raw `long` memory pointers and primitive types (`int`, `long`, `float`, `double`).
+  - Access fields directly via raw memory address offsets (`GLOBAL_MEMORY.get(...)` / `GLOBAL_MEMORY.set(...)` or VarHandles).
+
+## 2. Pure Foreign Function & Memory (FFM) Standards
+- Pure `java.lang.foreign` API usage:
+  - Leverage `MemorySegment`, `Arena`, `Linker`, `ValueLayout`, `FunctionDescriptor`, `VarHandle`, and `MethodHandle`.
+  - Global flat 64-bit virtual memory space addressing (`MemorySegment.ofAddress(0).reinterpret(Long.MAX_VALUE)`).
+  - Use lock-free / lockless free-lists with ABA-tagged generation pointers (top 16 bits = generation tag, bottom 48 bits = raw pointer).
+  - C-style manual memory lifecycle (`malloc`/`free` downcalls) combined with pooled Arenas for fixed-slot sizes (e.g. small/medium/large slots in `primitive.string`, singletons/arrays/matrices in `primitive.Int`).
+
+## 3. Preservation of Developer Comments & Intent
+- DO NOT REMOVE OR REWRITE DEVELOPER COMMENTS:
+  - Preserve all original author comments, notes, annotations, humor, and design notes intact (e.g., "// god, the lens of all things...", "// literally c flavored hell java version").
+  - Do NOT replace handwritten developer notes with generic, bland auto-generated docstrings.
+  - When extending or refactoring code, respect surrounding code formatting, naming conventions, and comment styles.
+- CLEAN TOP-LEVEL IMPORTS (NO INLINE FULLY-QUALIFIED CLASS NAMES):
+  - Do NOT write inline fully-qualified package names in code bodies (e.g. avoid `package.Class.method()` or `package.Class.field`).
+  - Always put clean imports at the top of the file and use simple `Class.method()` in the code body (allowing IDEs like IntelliJ to manage imports automatically).
+
+## 4. Subsystem & Threading Guidelines
+- Thread Safety: Ensure off-heap memory updates are atomic using `VarHandle` operations (`compareAndSet`, `getAndSet`), lockless pools, or dedicated execution threads (e.g., `DrawThread`, `NetworkingThread`, `ScriptingThread`).
+- Zero-GC Impact: Keep runtime data structures off-heap to prevent JVM Garbage Collection pauses.
+
+## 5. Private / Regurgitation Files & Privacy
+- REGURGITATION & PRIVATE FILES ARE STRICTLY IGNORED:
+  - Regurgitation code dumps, reference files, and aggregate files (e.g., `src/regurgitation/`, `code.txt`, `*.regurgitation`) are strictly private.
+  - They MUST be listed in `.gitignore` and NEVER committed to Git repositories.
+
+## 6. Git Commit & Push Workflow
+- AUTOMATIC LOCAL COMMITS AFTER TEST VERIFICATION:
+  - Automatically create a local Git commit after completing and verifying code modifications with `ScratchTest.java`.
+  - Commits MUST be made per-file (create a separate local commit for each modified file rather than grouping multiple changed files into a single commit).
+  - DO NOT execute `git push` automatically. Accumulate commits locally and only push to remote when explicitly requested by the user ("push", "push it all", etc.).
+  - Always preserve private author metadata (`vexgraph-dev <305705943+vexgraph-dev@users.noreply.github.com>`).
+- DUAL REPOSITORY ARCHITECTURE:
+  - The project operates with two active Git repositories:
+    1. Parent Repository: `anti` (root directory `/Users/vexgraph/IdeaProjects/anti/`).
+    2. Nested Repository: `anti-api-haven` (located inside the ignored folder `/Users/vexgraph/IdeaProjects/anti/src/api/`).
+  - Code changes made inside `src/api/` must be staged, committed, and managed inside the nested `anti-api-haven` Git repository.
+  - All other project files must be managed in the parent `anti` Git repository.
+  - Both repositories must use the same `vexgraph-dev` author metadata for commits.
+
+## 7. Mandatory Code Verification & Scratch Testing
+- MANDATORY RUNTIME TESTING IN ScratchTest.java:
+  - Every time new code or subsystems are created or modified, empirical compilation and execution testing MUST be performed via `ScratchTest.java` (or dedicated test suites).
+  - Never declare a task or feature completed without compiling, executing, and verifying clean runtime output.
+
+## 8. Custom Annotation Usage Rules
+- `@Draft` (`annotation.Draft`):
+  - Must be applied to any class, interface, or method that is newly created, experimental, or in a draft state (not yet ready for production release).
+- `@Intention(...)` (`annotation.Intention`):
+  - Must be applied to non-obvious architecture, core headers, or complex algorithms to state the design rationale and intent explicitly.
+- `@Required` (`annotation.Required`):
+  - Must be applied to mandatory class ID definitions (e.g. `public static final int CLASS_ID`), required framework hooks, or mandatory class contracts.
+- `@Volatile` (`annotation.Volatile`):
+  - Must be applied to framework-level classes that mutate engine state, modify core layout/memory contracts, or control thread dispatching (e.g. MemoryRegistry, off-heap collections, thread locks).
+- `@HotCode` (`annotation.HotCode`):
+  - Must be applied to classes or functions that require modification or updates every time a new class is added or registered in the framework (e.g. TypeRegister, Stride, ForeignMemory).
+
+## 9. Off-Heap Bit-Packed Type System Standards
+- 32-Bit Type ID Bit-Masking (`oop.TypeRegister`):
+  - Upper 8 Bits (`0xFF000000`): Form/Kind Mask
+    - `0xAA000000` = `FORM_SINGLETON` (Scalar primitive/struct)
+    - `0xBB000000` = `FORM_ARRAY` (Flat primitive/data array)
+    - `0xCC000000` = `FORM_POINTER` (Array of 64-bit off-heap pointers / matrix)
+  - Lower 24 Bits (`0x00FFFFFF`): Unique Class ID (e.g. `ID_INT32 = 0x000001`)
+- Off-Heap Header Protocol:
+  - Every off-heap payload address `userPtr` must be self-describing, prefixed with its 32-bit type ID and length header before the user memory boundary.
