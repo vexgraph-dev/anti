@@ -38,6 +38,7 @@ lib/
 ### testing grounds / scratch ###
 scratch/
 crash-dump.txt
+crash-dump_*.txt
 hs_err_pid*.log
 *.log
 
