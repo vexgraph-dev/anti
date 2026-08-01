@@ -92,6 +92,44 @@ public final class PhysicsBody
         return ForeignMemory.getFloat(bodyPtr + OFFSET_VEL + 4L);
     }
 
+    public static void getForce(long bodyPtr, long destVec3Ptr)
+    {
+        checkPointer(bodyPtr);
+        checkPointer(destVec3Ptr);
+        Vec3.set(destVec3Ptr, 
+            ForeignMemory.getFloat(bodyPtr + OFFSET_FORCE), 
+            ForeignMemory.getFloat(bodyPtr + OFFSET_FORCE + 4L), 
+            ForeignMemory.getFloat(bodyPtr + OFFSET_FORCE + 8L)
+        );
+    }
+
+    public static void setForce(long bodyPtr, float fx, float fy, float fz)
+    {
+        checkPointer(bodyPtr);
+        ForeignMemory.putFloat(bodyPtr + OFFSET_FORCE, fx);
+        ForeignMemory.putFloat(bodyPtr + OFFSET_FORCE + 4L, fy);
+        ForeignMemory.putFloat(bodyPtr + OFFSET_FORCE + 8L, fz);
+    }
+
+    public static void getAabbHalfExtents(long bodyPtr, long destVec3Ptr)
+    {
+        checkPointer(bodyPtr);
+        checkPointer(destVec3Ptr);
+        Vec3.set(destVec3Ptr, 
+            ForeignMemory.getFloat(bodyPtr + OFFSET_AABB_HALF), 
+            ForeignMemory.getFloat(bodyPtr + OFFSET_AABB_HALF + 4L), 
+            ForeignMemory.getFloat(bodyPtr + OFFSET_AABB_HALF + 8L)
+        );
+    }
+
+    public static void setAabbHalfExtents(long bodyPtr, float dx, float dy, float dz)
+    {
+        checkPointer(bodyPtr);
+        ForeignMemory.putFloat(bodyPtr + OFFSET_AABB_HALF, dx);
+        ForeignMemory.putFloat(bodyPtr + OFFSET_AABB_HALF + 4L, dy);
+        ForeignMemory.putFloat(bodyPtr + OFFSET_AABB_HALF + 8L, dz);
+    }
+
     public static float getInverseMass(long bodyPtr)
     {
         checkPointer(bodyPtr);
