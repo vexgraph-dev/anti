@@ -48,7 +48,7 @@ code.txt
 *.regurgitation
 
 ### not ready for presenting
-src/api/
+src/api/com/api/
 api/
 **/api/
 
