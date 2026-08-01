@@ -21,6 +21,8 @@ final class macOSWindow {
     private static final MethodHandle SEL_REGISTER_NAME;
     private static final MethodHandle MSG_SEND_PTR;
     private static final MethodHandle MSG_SEND_PTR_PTR;
+    private static final MethodHandle MSG_SEND_PTR_LONG;
+    private static final MethodHandle MSG_SEND_PTR_LONG_PTR;
     private static final MethodHandle MSG_SEND_PTR_SIZE;
     private static final MethodHandle MSG_SEND_VOID;
     private static final MethodHandle MSG_SEND_VOID_PTR;
@@ -43,7 +45,7 @@ final class macOSWindow {
 
     static {
         SymbolLookup objcLib;
-        MethodHandle getClass, selRegName, msgSendPtr, msgSendPtrPtr, msgSendPtrSize, msgSendVoid, msgSendVoidPtr, msgSendInt, msgSendBool, msgSendBoolRet, msgSendInitWindow, msgSendNextEvent, msgSendLongRet, msgSendShortRet, msgSendPointRet, msgSendPtrDouble, msgSendRectRet, msgSendDoubleRet;
+        MethodHandle getClass, selRegName, msgSendPtr, msgSendPtrPtr, msgSendPtrLong, msgSendPtrLongPtr, msgSendPtrSize, msgSendVoid, msgSendVoidPtr, msgSendInt, msgSendBool, msgSendBoolRet, msgSendInitWindow, msgSendNextEvent, msgSendLongRet, msgSendShortRet, msgSendPointRet, msgSendPtrDouble, msgSendRectRet, msgSendDoubleRet;
         StructLayout cgRect, cgSize;
 
         try {
@@ -64,6 +66,9 @@ final class macOSWindow {
 
             msgSendPtr = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
             msgSendPtrPtr = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+            
+            msgSendPtrLong = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+            msgSendPtrLongPtr = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
             
             cgSize = MemoryLayout.structLayout(
                 ValueLayout.JAVA_DOUBLE.withName("width"),
@@ -112,6 +117,8 @@ final class macOSWindow {
         SEL_REGISTER_NAME = selRegName;
         MSG_SEND_PTR = msgSendPtr;
         MSG_SEND_PTR_PTR = msgSendPtrPtr;
+        MSG_SEND_PTR_LONG = msgSendPtrLong;
+        MSG_SEND_PTR_LONG_PTR = msgSendPtrLongPtr;
         MSG_SEND_PTR_SIZE = msgSendPtrSize;
         MSG_SEND_VOID = msgSendVoid;
         MSG_SEND_VOID_PTR = msgSendVoidPtr;
@@ -213,6 +220,12 @@ final class macOSWindow {
 
                 MemorySegment centerSel = getSel(arena, "center");
                 MSG_SEND_VOID.invoke(window, centerSel);
+                
+                // Enable trackpad touch events on the window's content view
+                MemorySegment contentViewSel = getSel(arena, "contentView");
+                MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(window, contentViewSel);
+                MemorySegment setAcceptsTouchEventsSel = getSel(arena, "setAcceptsTouchEvents:");
+                MSG_SEND_BOOL.invoke(contentView, setAcceptsTouchEventsSel, (byte)1);
 
                 return window.address();
             }
@@ -378,6 +391,16 @@ final class macOSWindow {
             MemorySegment magnificationSel = getSel(arena, "magnification");
             MemorySegment utf8StringSel = getSel(arena, "UTF8String");
 
+            // Touch selectors
+            MemorySegment touchesMatchingPhaseSel = getSel(arena, "touchesMatchingPhase:inView:");
+            MemorySegment countSel = getSel(arena, "count");
+            MemorySegment allObjectsSel = getSel(arena, "allObjects");
+            MemorySegment objectAtIndexSel = getSel(arena, "objectAtIndex:");
+            MemorySegment identitySel = getSel(arena, "identity");
+            MemorySegment phaseSel = getSel(arena, "phase");
+            MemorySegment normalizedPositionSel = getSel(arena, "normalizedPosition");
+            MemorySegment isRestingSel = getSel(arena, "isResting");
+
             long NSAnyEventMask = -1L;
             boolean first = true;
 
@@ -477,6 +500,54 @@ final class macOSWindow {
                     } catch (Throwable t) {
                         throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
                     }
+                } else if (eventType == 29 || eventType == 19 || eventType == 20) { // Touch events
+                    try {
+                        MemorySegment windowSel = getSel(arena, "window");
+                        MemorySegment eventWindow = (MemorySegment) MSG_SEND_PTR.invoke(event, windowSel);
+                        if (eventWindow.address() != 0L) {
+                            MemorySegment contentViewSel = getSel(arena, "contentView");
+                            MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(eventWindow, contentViewSel);
+                            if (contentView.address() != 0L) {
+                                MemorySegment touchesSet = (MemorySegment) MSG_SEND_PTR_LONG_PTR.invoke(event, touchesMatchingPhaseSel, -1L, contentView);
+                                if (touchesSet != null && touchesSet.address() != 0L) {
+                                    long count = (long) MSG_SEND_LONG_RET.invoke(touchesSet, countSel);
+                                    if (count > 0) {
+                                        MemorySegment allObjs = (MemorySegment) MSG_SEND_PTR.invoke(touchesSet, allObjectsSel);
+                                        for (int j = 0; j < count; j++) {
+                                            MemorySegment touch = (MemorySegment) MSG_SEND_PTR_LONG.invoke(allObjs, objectAtIndexSel, (long)j);
+                                            MemorySegment touchIdObj = (MemorySegment) MSG_SEND_PTR.invoke(touch, identitySel);
+                                            long touchId = touchIdObj.address();
+                                            long touchPhase = (long) MSG_SEND_LONG_RET.invoke(touch, phaseSel);
+                                            
+                                            MemorySegment pt = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, touch, normalizedPositionSel);
+                                            double normX = pt.get(ValueLayout.JAVA_DOUBLE, 0);
+                                            double normY = pt.get(ValueLayout.JAVA_DOUBLE, 8);
+                                            
+                                            byte isResting = (byte) MSG_SEND_BOOL_RET.invoke(touch, isRestingSel);
+                                            
+                                            MemorySegment frameSel = getSel(arena, "frame");
+                                            MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, contentView, frameSel);
+                                            double winW = rect.get(ValueLayout.JAVA_DOUBLE, 16);
+                                            double winH = rect.get(ValueLayout.JAVA_DOUBLE, 24);
+                                            
+                                            double posX = normX * winW;
+                                            double posY = (1.0 - normY) * winH;
+                                            
+                                            int action = input.Touch.CANCEL;
+                                            if (touchPhase == 1) action = input.Touch.DOWN;      // Began
+                                            else if (touchPhase == 2 || touchPhase == 4) action = input.Touch.MOVE; // Moved/Stationary
+                                            else if (touchPhase == 8) action = input.Touch.UP;        // Ended
+                                            else if (touchPhase == 16) action = input.Touch.CANCEL;   // Cancelled
+                                            
+                                            double pressure = isResting == 1 ? 0.2 : 0.8;
+                                            
+                                            input.Touch.pushTouchEvent((int)(touchId & 0x7FFFFFFF) % 10, action, posX, posY, pressure, 250_000_000L);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Throwable ignored) {}
                 }
                 
                 // For Mouse clicks, we can also extract the coordinate so the state has it
