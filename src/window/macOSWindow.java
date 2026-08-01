@@ -227,6 +227,10 @@ final class macOSWindow {
                 MemorySegment setAcceptsTouchEventsSel = getSel(arena, "setAcceptsTouchEvents:");
                 MSG_SEND_BOOL.invoke(contentView, setAcceptsTouchEventsSel, (byte)1);
 
+                // Explicitly allow indirect (trackpad) touch event types (NSTouchTypeMaskIndirect = 2)
+                MemorySegment setAllowedTouchTypesSel = getSel(arena, "setAllowedTouchTypes:");
+                MSG_SEND_INT.invoke(contentView, setAllowedTouchTypesSel, 2L);
+
                 return window.address();
             }
         } catch (Throwable t) {
@@ -512,6 +516,7 @@ final class macOSWindow {
                                 if (touchesSet != null && touchesSet.address() != 0L) {
                                     long count = (long) MSG_SEND_LONG_RET.invoke(touchesSet, countSel);
                                     if (count > 0) {
+                                        System.out.printf("[macOSWindow Debug] Captured trackpad event type: %d with %d touches%n", eventType, count);
                                         MemorySegment allObjs = (MemorySegment) MSG_SEND_PTR.invoke(touchesSet, allObjectsSel);
                                         for (int j = 0; j < count; j++) {
                                             MemorySegment touch = (MemorySegment) MSG_SEND_PTR_LONG.invoke(allObjs, objectAtIndexSel, (long)j);
