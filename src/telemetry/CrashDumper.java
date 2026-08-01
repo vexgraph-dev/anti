@@ -108,9 +108,9 @@ public final class CrashDumper
             );
 
             // Register handlers: SIGILL (4), SIGBUS (10), SIGSEGV (11)
-            SIGNAL.invokeExact(4, handlerStub);
-            SIGNAL.invokeExact(10, handlerStub);
-            SIGNAL.invokeExact(11, handlerStub);
+            MemorySegment old4 = (MemorySegment) SIGNAL.invokeExact(4, handlerStub);
+            MemorySegment old10 = (MemorySegment) SIGNAL.invokeExact(10, handlerStub);
+            MemorySegment old11 = (MemorySegment) SIGNAL.invokeExact(11, handlerStub);
 
             System.out.println("[Telemetry] Segfault-Safe CrashDumper registered.");
         }
