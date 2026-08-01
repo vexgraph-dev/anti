@@ -195,13 +195,19 @@ public final class HTTPClient {
     public static long request(long methodPtr, long urlPtr, long bodyPtr) {
         if (urlPtr == 0L) return 0L;
         String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
-        return executeNative(method, urlPtr, 0L, bodyPtr);
+        return executeNative(method, urlPtr, 0L, bodyPtr, 0L);
     }
 
     public static long request(long methodPtr, long urlPtr, long headersPtr, long bodyPtr) {
         if (urlPtr == 0L) return 0L;
         String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
-        return executeNative(method, urlPtr, headersPtr, bodyPtr);
+        return executeNative(method, urlPtr, headersPtr, bodyPtr, 0L);
+    }
+
+    public static long request(long methodPtr, long urlPtr, long headersPtr, long bodyPtr, long bodyLen) {
+        if (urlPtr == 0L) return 0L;
+        String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
+        return executeNative(method, urlPtr, headersPtr, bodyPtr, bodyLen);
     }
 
     // Direct string overloads allocating off-heap pointers
@@ -238,13 +244,17 @@ public final class HTTPClient {
     // --- CORE NATIVE LIBCURL EXECUTION ENGINE ---
 
     private static long executeNative(String method, long urlPtr, long headersPtr, long bodyPtr) {
+        return executeNative(method, urlPtr, headersPtr, bodyPtr, 0L);
+    }
+
+    private static long executeNative(String method, long urlPtr, long headersPtr, long bodyPtr, long bodyLen) {
         if (!libcurlAvailable || urlPtr == 0L) {
-            return fallbackExecute(method, urlPtr, headersPtr, bodyPtr);
+            return fallbackExecute(method, urlPtr, headersPtr, bodyPtr, bodyLen);
         }
 
         try {
             MemorySegment curl = (MemorySegment) curl_easy_init.invokeExact();
-            if (curl.address() == 0L) return fallbackExecute(method, urlPtr, headersPtr, bodyPtr);
+            if (curl.address() == 0L) return fallbackExecute(method, urlPtr, headersPtr, bodyPtr, bodyLen);
 
             // 1. Set URL pointer directly
             curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_URL, MemorySegment.ofAddress(urlPtr));
@@ -282,8 +292,9 @@ public final class HTTPClient {
             }
 
             // 4. Set Custom Method & Post Fields
+            long size = bodyLen > 0L ? bodyLen : (bodyPtr != 0L ? (long) string.length(bodyPtr) : 0L);
             if ("POST".equalsIgnoreCase(method)) {
-                curl_easy_setopt_long.invokeExact(curl, CURLOPT_POSTFIELDSIZE, (long) string.length(bodyPtr));
+                curl_easy_setopt_long.invokeExact(curl, CURLOPT_POSTFIELDSIZE, size);
                 if (bodyPtr != 0L) {
                     curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_POSTFIELDS, MemorySegment.ofAddress(bodyPtr));
                 }
@@ -293,7 +304,7 @@ public final class HTTPClient {
                     curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_CUSTOMREQUEST, methodSeg);
                 }
                 if (bodyPtr != 0L) {
-                    curl_easy_setopt_long.invokeExact(curl, CURLOPT_POSTFIELDSIZE, (long) string.length(bodyPtr));
+                    curl_easy_setopt_long.invokeExact(curl, CURLOPT_POSTFIELDSIZE, size);
                     curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_POSTFIELDS, MemorySegment.ofAddress(bodyPtr));
                 }
             }
@@ -341,10 +352,14 @@ public final class HTTPClient {
             // Fallback if libcurl downcall encounters native issue
         }
 
-        return fallbackExecute(method, urlPtr, headersPtr, bodyPtr);
+        return fallbackExecute(method, urlPtr, headersPtr, bodyPtr, bodyLen);
     }
 
     private static long fallbackExecute(String method, long urlPtr, long headersPtr, long bodyPtr) {
+        return fallbackExecute(method, urlPtr, headersPtr, bodyPtr, 0L);
+    }
+
+    private static long fallbackExecute(String method, long urlPtr, long headersPtr, long bodyPtr, long bodyLen) {
         String urlStr = string.get(urlPtr);
         if (urlStr == null || urlStr.isEmpty()) return 0L;
         URI uri = URI.create(urlStr);
@@ -370,7 +385,11 @@ public final class HTTPClient {
             }
 
             if ("POST".equalsIgnoreCase(method) && bodyPtr != 0L) {
-                byte[] bytes = Objects.requireNonNull(string.get(bodyPtr)).getBytes(StandardCharsets.UTF_8);
+                long len = bodyLen > 0L ? bodyLen : (long) string.length(bodyPtr);
+                byte[] bytes = new byte[(int) len];
+                for (int i = 0; i < (int) len; i++) {
+                    bytes[i] = ForeignMemory.getByte(bodyPtr + i);
+                }
                 builder.POST(HttpRequest.BodyPublishers.ofByteArray(bytes));
             } else {
                 builder.GET();
