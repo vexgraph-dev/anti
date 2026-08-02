@@ -146,6 +146,9 @@ public class TypeRegister
     public static final int ID_COMMAND = 0x000064; // Command class
     public static final int ID_CONSOLE_THREAD = 0x000065; // ConsoleThread class
     public static final int ID_DISPLAY_MONITOR = 0x000066; // DisplayMonitor class
+    public static final int ID_AUDIO_SYSTEM = 0x000067; // AudioSystem class
+    public static final int ID_AUDIO_SOURCE = 0x000068; // AudioSource class
+    public static final int ID_AUDIO_BUFFER = 0x000069; // AudioBuffer class
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
@@ -546,5 +549,20 @@ public class TypeRegister
     public static final int VISIBILITY_BUFFER_SINGLETON = FORM_SINGLETON | ID_VISIBILITY_BUFFER;
     public static final int VISIBILITY_BUFFER_ARRAY = FORM_ARRAY | ID_VISIBILITY_BUFFER;
     public static final int VISIBILITY_BUFFER_POINTER = FORM_POINTER | ID_VISIBILITY_BUFFER;
+
+    // AudioSystem class
+    public static final int AUDIO_SYSTEM_SINGLETON = FORM_SINGLETON | ID_AUDIO_SYSTEM;
+    public static final int AUDIO_SYSTEM_ARRAY = FORM_ARRAY | ID_AUDIO_SYSTEM;
+    public static final int AUDIO_SYSTEM_POINTER = FORM_POINTER | ID_AUDIO_SYSTEM;
+
+    // AudioSource class
+    public static final int AUDIO_SOURCE_SINGLETON = FORM_SINGLETON | ID_AUDIO_SOURCE;
+    public static final int AUDIO_SOURCE_ARRAY = FORM_ARRAY | ID_AUDIO_SOURCE;
+    public static final int AUDIO_SOURCE_POINTER = FORM_POINTER | ID_AUDIO_SOURCE;
+
+    // AudioBuffer class
+    public static final int AUDIO_BUFFER_SINGLETON = FORM_SINGLETON | ID_AUDIO_BUFFER;
+    public static final int AUDIO_BUFFER_ARRAY = FORM_ARRAY | ID_AUDIO_BUFFER;
+    public static final int AUDIO_BUFFER_POINTER = FORM_POINTER | ID_AUDIO_BUFFER;
 
 }
