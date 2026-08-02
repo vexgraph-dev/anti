@@ -29,12 +29,13 @@ public final class AudioBufferLayer
 
     // Struct field offsets
     public static final long OFFSET_CAPACITY = 0L;             // Int32
-    public static final long OFFSET_BELOW_READ = 4L;           // Address (8B)
-    public static final long OFFSET_BELOW_WRITE = 12L;         // Address (8B)
-    public static final long OFFSET_ACTIVE_READ = 20L;         // Address (8B)
-    public static final long OFFSET_ACTIVE_WRITE = 28L;        // Address (8B)
-    public static final long OFFSET_ABOVE_READ = 36L;          // Address (8B)
-    public static final long OFFSET_ABOVE_WRITE = 44L;         // Address (8B)
+    public static final long OFFSET_PADDING = 4L;              // Padding (4B)
+    public static final long OFFSET_BELOW_READ = 8L;           // Address (8B)
+    public static final long OFFSET_BELOW_WRITE = 16L;         // Address (8B)
+    public static final long OFFSET_ACTIVE_READ = 24L;         // Address (8B)
+    public static final long OFFSET_ACTIVE_WRITE = 32L;        // Address (8B)
+    public static final long OFFSET_ABOVE_READ = 40L;          // Address (8B)
+    public static final long OFFSET_ABOVE_WRITE = 48L;         // Address (8B)
 
     private static final VarHandle SINGLETON_FREE_HEAD_VH;
     private static final VarHandle SINGLETON_EXPANDING_VH;
