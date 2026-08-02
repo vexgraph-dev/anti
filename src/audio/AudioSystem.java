@@ -1,5 +1,6 @@
 package audio;
 
+import annotation.Draft;
 import nio.ForeignMemory;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.AL10;
@@ -18,6 +19,7 @@ import static org.lwjgl.openal.ALC10.*;
  * Centrally managed, off-heap OpenAL Audio System conforming to the Anti Philosophy.
  * Exposes zero-GC static downcalls to play, pause, stop, and configure pooled sound sources.
  */
+@Draft
 public final class AudioSystem
 {
     private static long deviceHandle = 0L;
