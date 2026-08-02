@@ -46,7 +46,14 @@ public class TypeRegister
     public static final int WRAP_FUTURE             = 0x00030000;
     public static final int WRAP_CHOICE             = 0x00040000;
 
+
     // --- RAW CLASS IDS (Lower 16 bits) ---
+    // [comment] new classes are overriden and the new
+    // classes will be implemented last, it might change
+    // but this is/"will be" the actual versioning to handle
+    // reflections and other classloading techniques, :shrug:
+    @HotCode
+    @Intention("[comment]")
     public static final int ID_INT = 0x000001; // Int class // 1
     public static final int ID_LONG = 0x000002; // Long class // 2
     public static final int ID_FLOAT = 0x000003; // Float class // 3
