@@ -1,5 +1,6 @@
 package audio;
 
+import annotation.Draft;
 import exception.APIException;
 import nio.ForeignMemory;
 import org.lwjgl.openal.AL10;
@@ -15,6 +16,7 @@ import static org.lwjgl.openal.AL10.*;
  * Off-heap WAV audio decoder and loader conforming to the Anti Architecture.
  * Parses RIFF/WAVE binary format headers natively using zero Java heap allocation.
  */
+@Draft
 public final class AudioLoader
 {
     private AudioLoader() {}
