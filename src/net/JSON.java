@@ -190,63 +190,215 @@ public final class JSON {
 
     public static int getInt(long jsonPtr, String path) {
         long valPtr = get(jsonPtr, path);
-        if (valPtr == 0L) return 0;
-        String valStr = string.get(valPtr);
-        string.free(valPtr);
-        try {
-            assert valStr != null;
-            return Integer.parseInt(valStr.trim());
-        } catch (Exception e) {
+        if (valPtr == 0L)
             return 0;
+        int res = parseOffHeapInt(valPtr);
+        string.free(valPtr);
+        return res;
+    }
+
+    private static int parseOffHeapInt(long valPtr) {
+        if (valPtr == 0L)
+            return 0;
+        int len = string.length(valPtr);
+        int val = 0;
+        boolean negative = false;
+        int i = 0;
+        while (i < len && isWhitespace(ForeignMemory.getByte(valPtr + i)))
+            i++;
+        if (i < len) {
+            byte first = ForeignMemory.getByte(valPtr + i);
+            if (first == '-') {
+                negative = true;
+                i++;
+            } else if (first == '+') {
+                i++;
+            }
         }
+        while (i < len) {
+            byte b = ForeignMemory.getByte(valPtr + i);
+            if (b >= '0' && b <= '9')
+                val = (val * 10) + (b - '0');
+            else if (b == '.')
+                break;
+            else if (isWhitespace(b))
+                break;
+            else
+                break;
+            i++;
+        }
+        return negative ? -val : val;
     }
 
     public static long getLong(long jsonPtr, String path) {
         long valPtr = get(jsonPtr, path);
-        if (valPtr == 0L) return 0L;
-        String valStr = string.get(valPtr);
-        string.free(valPtr);
-        try {
-            assert valStr != null;
-            return Long.parseLong(valStr.trim());
-        } catch (Exception e) {
+        if (valPtr == 0L)
             return 0L;
+        long res = parseOffHeapLong(valPtr);
+        string.free(valPtr);
+        return res;
+    }
+
+    private static long parseOffHeapLong(long valPtr) {
+        if (valPtr == 0L)
+            return 0L;
+        int len = string.length(valPtr);
+        long val = 0;
+        boolean negative = false;
+        int i = 0;
+        while (i < len && isWhitespace(ForeignMemory.getByte(valPtr + i)))
+            i++;
+        if (i < len) {
+            byte first = ForeignMemory.getByte(valPtr + i);
+            if (first == '-') {
+                negative = true;
+                i++;
+            } else if (first == '+') {
+                i++;
+            }
         }
+        while (i < len) {
+            byte b = ForeignMemory.getByte(valPtr + i);
+            if (b >= '0' && b <= '9')
+                val = (val * 10L) + (b - '0');
+            else if (b == '.')
+                break;
+            else if (isWhitespace(b))
+                break;
+            else
+                break;
+            i++;
+        }
+        return negative ? -val : val;
     }
 
     public static float getFloat(long jsonPtr, String path) {
         long valPtr = get(jsonPtr, path);
-        if (valPtr == 0L) return 0.0f;
-        String valStr = string.get(valPtr);
-        string.free(valPtr);
-        try {
-            assert valStr != null;
-            return Float.parseFloat(valStr.trim());
-        } catch (Exception e) {
+        if (valPtr == 0L)
             return 0.0f;
-        }
+        float res = parseOffHeapFloat(valPtr);
+        string.free(valPtr);
+        return res;
+    }
+
+    private static float parseOffHeapFloat(long valPtr) {
+        return (float) parseOffHeapDouble(valPtr);
     }
 
     public static double getDouble(long jsonPtr, String path) {
         long valPtr = get(jsonPtr, path);
-        if (valPtr == 0L) return 0.0;
-        String valStr = string.get(valPtr);
-        string.free(valPtr);
-        try {
-            assert valStr != null;
-            return Double.parseDouble(valStr.trim());
-        } catch (Exception e) {
+        if (valPtr == 0L)
             return 0.0;
+        double res = parseOffHeapDouble(valPtr);
+        string.free(valPtr);
+        return res;
+    }
+
+    private static double parseOffHeapDouble(long valPtr) {
+        if (valPtr == 0L)
+            return 0.0;
+        int len = string.length(valPtr);
+        int i = 0;
+        while (i < len && isWhitespace(ForeignMemory.getByte(valPtr + i)))
+            i++;
+        if (i >= len)
+            return 0.0;
+        boolean negative = false;
+        byte first = ForeignMemory.getByte(valPtr + i);
+        if (first == '-') {
+            negative = true;
+            i++;
+        } else if (first == '+') {
+            i++;
         }
+        double val = 0.0;
+        while (i < len) {
+            byte b = ForeignMemory.getByte(valPtr + i);
+            if (b >= '0' && b <= '9')
+                val = (val * 10.0) + (b - '0');
+            else
+                break;
+            i++;
+        }
+        if (i < len && ForeignMemory.getByte(valPtr + i) == '.') {
+            i++;
+            double divisor = 10.0;
+            while (i < len) {
+                byte b = ForeignMemory.getByte(valPtr + i);
+                if (b >= '0' && b <= '9') {
+                    val += (b - '0') / divisor;
+                    divisor *= 10.0;
+                } else {
+                    break;
+                }
+                i++;
+            }
+        }
+        if (i < len && (ForeignMemory.getByte(valPtr + i) == 'e' || ForeignMemory.getByte(valPtr + i) == 'E')) {
+            i++;
+            if (i < len) {
+                boolean expNegative = false;
+                byte expFirst = ForeignMemory.getByte(valPtr + i);
+                if (expFirst == '-') {
+                    expNegative = true;
+                    i++;
+                } else if (expFirst == '+') {
+                    i++;
+                }
+                int exponent = 0;
+                while (i < len) {
+                    byte b = ForeignMemory.getByte(valPtr + i);
+                    if (b >= '0' && b <= '9')
+                        exponent = (exponent * 10) + (b - '0');
+                    else
+                        break;
+                    i++;
+                }
+                if (expNegative)
+                    val /= Math.pow(10.0, exponent);
+                else
+                    val *= Math.pow(10.0, exponent);
+            }
+        }
+        return negative ? -val : val;
     }
 
     public static boolean getBoolean(long jsonPtr, String path) {
         long valPtr = get(jsonPtr, path);
-        if (valPtr == 0L) return false;
-        String valStr = string.get(valPtr);
+        if (valPtr == 0L)
+            return false;
+        boolean res = parseOffHeapBool(valPtr);
         string.free(valPtr);
-        assert valStr != null;
-        return "true".equalsIgnoreCase(valStr.trim());
+        return res;
+    }
+
+    private static boolean parseOffHeapBool(long valPtr) {
+        if (valPtr == 0L)
+            return false;
+        int len = string.length(valPtr);
+        int i = 0;
+        while (i < len && isWhitespace(ForeignMemory.getByte(valPtr + i)))
+            i++;
+        if (len - i < 4)
+            return false;
+        byte b0 = ForeignMemory.getByte(valPtr + i);
+        byte b1 = ForeignMemory.getByte(valPtr + i + 1);
+        byte b2 = ForeignMemory.getByte(valPtr + i + 2);
+        byte b3 = ForeignMemory.getByte(valPtr + i + 3);
+
+        boolean isT = (b0 == 't' || b0 == 'T') &&
+                      (b1 == 'r' || b1 == 'R') &&
+                      (b2 == 'u' || b2 == 'U') &&
+                      (b3 == 'e' || b3 == 'E');
+        if (isT) {
+            if (len - i > 4) {
+                byte b4 = ForeignMemory.getByte(valPtr + i + 4);
+                if (!isWhitespace(b4) && b4 != 0)
+                    return false;
+            }
+            return true;
+        }
+        return false;
     }
 
     public static int getArrayLength(long jsonArrayPtr) {
