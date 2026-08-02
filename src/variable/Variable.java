@@ -28,11 +28,16 @@ public final class Variable {
     private static final long SLOT_SIZE = 48L;
     private static final int DEFAULT_CAPACITY = 1024;
 
+    private static final long MAP_SLOT_SIZE = 40L;
+
     private static Arena poolArena;
     private static long baseAddress;
     private static volatile int capacity;
     private static volatile int activeCount;
     private static volatile boolean active;
+
+    private static volatile long mapAddress;
+    private static volatile int mapCapacity;
 
     static {
         poolArena = Arena.ofShared();
@@ -44,6 +49,10 @@ public final class Variable {
         activeCount = 0;
         active = true;
 
+        mapCapacity = DEFAULT_CAPACITY * 2;
+        mapAddress = ForeignMemory.allocateNative(mapCapacity * MAP_SLOT_SIZE);
+        for (int i = 0; i < mapCapacity; i++)
+            ForeignMemory.putIntVolatile(mapAddress + (i * MAP_SLOT_SIZE) + 32L, -1);
     }
 
     private Variable() {}
@@ -54,18 +63,81 @@ public final class Variable {
 
     private static void checkBounds(int varId) {
         checkActive();
-        if (varId < 0 || varId >= activeCount) {
+        if (varId < 0 || varId >= activeCount)
             throw new IndexOutOfBoundsException("Variable ID " + varId + " out of bounds for active count " + activeCount);
-        }
     }
 
     // free all subsystem memory resources
     public static void freeAllClasses() {
         if (active) {
             active = false;
-            if (poolArena != null && poolArena.scope().isAlive()) {
-                poolArena.close();
+            long oldMap = mapAddress;
+            if (oldMap != 0L) {
+                mapAddress = 0L;
+                ForeignMemory.freeNative(oldMap);
             }
+            if (poolArena != null && poolArena.scope().isAlive())
+                poolArena.close();
+        }
+    }
+
+    private static int hashName(long l0, long l1, long l2, long l3) {
+        long mix = l0 ^ (l1 >>> 7) ^ (l2 << 9) ^ (l3 >>> 13);
+        return (int) (mix ^ (mix >>> 32));
+    }
+
+    private static void mapInsert(long mapAddr, int mapCap, long l0, long l1, long l2, long l3, int varId) {
+        int hash = hashName(l0, l1, l2, l3);
+        int index = Math.abs(hash) % mapCap;
+        while (true) {
+            long slotAddr = mapAddr + (index * MAP_SLOT_SIZE);
+            int storedId = ForeignMemory.getIntVolatile(slotAddr + 32L);
+            if (storedId == -1 || storedId == varId) {
+                ForeignMemory.putLong(slotAddr, l0);
+                ForeignMemory.putLong(slotAddr + 8L, l1);
+                ForeignMemory.putLong(slotAddr + 16L, l2);
+                ForeignMemory.putLong(slotAddr + 24L, l3);
+                ForeignMemory.putIntVolatile(slotAddr + 32L, varId);
+                break;
+            }
+            index = (index + 1) % mapCap;
+        }
+    }
+
+    private static void resizeMap() {
+        int newCapacity = mapCapacity * 2;
+        long newAddress = ForeignMemory.allocateNative(newCapacity * MAP_SLOT_SIZE);
+        for (int i = 0; i < newCapacity; i++)
+            ForeignMemory.putIntVolatile(newAddress + (i * MAP_SLOT_SIZE) + 32L, -1);
+
+        for (int i = 0; i < activeCount; i++) {
+            long slotAddr = baseAddress + (i * SLOT_SIZE);
+            long l0 = ForeignMemory.getLong(slotAddr);
+            long l1 = ForeignMemory.getLong(slotAddr + 8L);
+            long l2 = ForeignMemory.getLong(slotAddr + 16L);
+            long l3 = ForeignMemory.getLong(slotAddr + 24L);
+            mapInsert(newAddress, newCapacity, l0, l1, l2, l3, i);
+        }
+
+        long oldAddress = mapAddress;
+        mapAddress = newAddress;
+        mapCapacity = newCapacity;
+
+        if (oldAddress != 0L)
+            ForeignMemory.freeNative(oldAddress);
+    }
+
+    private static void rebuildMap() {
+        for (int i = 0; i < mapCapacity; i++)
+            ForeignMemory.putIntVolatile(mapAddress + (i * MAP_SLOT_SIZE) + 32L, -1);
+
+        for (int i = 0; i < activeCount; i++) {
+            long slotAddr = baseAddress + (i * SLOT_SIZE);
+            long l0 = ForeignMemory.getLong(slotAddr);
+            long l1 = ForeignMemory.getLong(slotAddr + 8L);
+            long l2 = ForeignMemory.getLong(slotAddr + 16L);
+            long l3 = ForeignMemory.getLong(slotAddr + 24L);
+            mapInsert(mapAddress, mapCapacity, l0, l1, l2, l3, i);
         }
     }
 
@@ -84,9 +156,8 @@ public final class Variable {
 
     @Draft
     public static int instant(byte[] nameBytes, int classId, long targetPointer) {
-        if (nameBytes == null || nameBytes.length > 32) {
+        if (nameBytes == null || nameBytes.length > 32)
             return -1;
-        }
 
         checkActive();
 
@@ -96,16 +167,12 @@ public final class Variable {
         long l3 = packLong(nameBytes, 24);
 
         synchronized (Variable.class) {
-            for (int i = 0; i < activeCount; i++) {
-                long slotAddr = baseAddress + (i * SLOT_SIZE);
-                if (ForeignMemory.getLong(slotAddr) == l0 &&
-                        ForeignMemory.getLong(slotAddr + 8L) == l1 &&
-                        ForeignMemory.getLong(slotAddr + 16L) == l2 &&
-                        ForeignMemory.getLong(slotAddr + 24L) == l3) {
-                    ForeignMemory.putInt(slotAddr + 32L, classId);
-                    ForeignMemory.putLong(slotAddr + 40L, targetPointer);
-                    return i;
-                }
+            int existingId = getId(nameBytes);
+            if (existingId != -1) {
+                long slotAddr = baseAddress + (existingId * SLOT_SIZE);
+                ForeignMemory.putInt(slotAddr + 32L, classId);
+                ForeignMemory.putLong(slotAddr + 40L, targetPointer);
+                return existingId;
             }
 
             if (activeCount >= capacity) {
@@ -130,13 +197,18 @@ public final class Variable {
 
             int assignedId = activeCount;
             activeCount++;
+
+            if (activeCount >= mapCapacity * 0.6)
+                resizeMap();
+            else
+                mapInsert(mapAddress, mapCapacity, l0, l1, l2, l3, assignedId);
+
             SearchVariable.insert(nameBytes, assignedId);
             return assignedId;
         }
     }
 
-
-    // draft linear search lookups
+    // draft search lookups
     @Draft
     public static int getId(String name) {
         if (name == null) return -1;
@@ -151,9 +223,8 @@ public final class Variable {
 
     @Draft
     public static int getId(byte[] nameBytes) {
-        if (nameBytes == null || nameBytes.length > 32) {
+        if (nameBytes == null || nameBytes.length > 32)
             return -1;
-        }
 
         checkActive();
         long l0 = packLong(nameBytes, 0);
@@ -161,14 +232,29 @@ public final class Variable {
         long l2 = packLong(nameBytes, 16);
         long l3 = packLong(nameBytes, 24);
 
-        for (int i = 0; i < activeCount; i++) {
-            long slotAddr = baseAddress + (i * SLOT_SIZE);
-            if (ForeignMemory.getLong(slotAddr) == l0 &&
-                    ForeignMemory.getLong(slotAddr + 8L) == l1 &&
-                    ForeignMemory.getLong(slotAddr + 16L) == l2 &&
-                    ForeignMemory.getLong(slotAddr + 24L) == l3) {
-                return i;
-            }
+        long currentMapAddr = mapAddress;
+        int currentCapacity = mapCapacity;
+        if (currentMapAddr == 0L)
+            return -1;
+
+        int hash = hashName(l0, l1, l2, l3);
+        int index = Math.abs(hash) % currentCapacity;
+
+        int limit = currentCapacity;
+        for (int i = 0; i < limit; i++) {
+            long slotAddr = currentMapAddr + (index * MAP_SLOT_SIZE);
+            int storedId = ForeignMemory.getIntVolatile(slotAddr + 32L);
+            if (storedId == -1)
+                return -1;
+
+            long curL0 = ForeignMemory.getLong(slotAddr);
+            long curL1 = ForeignMemory.getLong(slotAddr + 8L);
+            long curL2 = ForeignMemory.getLong(slotAddr + 16L);
+            long curL3 = ForeignMemory.getLong(slotAddr + 24L);
+
+            if (curL0 == l0 && curL1 == l1 && curL2 == l2 && curL3 == l3)
+                return storedId;
+            index = (index + 1) % currentCapacity;
         }
         return -1;
     }
@@ -206,9 +292,8 @@ public final class Variable {
 
     @Draft
     public static boolean rename(byte[] oldNameBytes, byte[] newNameBytes) {
-        if (oldNameBytes == null || newNameBytes == null || oldNameBytes.length > 32 || newNameBytes.length > 32) {
+        if (oldNameBytes == null || newNameBytes == null || oldNameBytes.length > 32 || newNameBytes.length > 32)
             return false;
-        }
 
         checkActive();
         long oldL0 = packLong(oldNameBytes, 0);
@@ -222,30 +307,20 @@ public final class Variable {
         long newL3 = packLong(newNameBytes, 24);
 
         synchronized (Variable.class) {
-            int targetIdx = -1;
+            if (getId(newNameBytes) != -1)
+                return false;
 
-            for (int i = 0; i < activeCount; i++) {
-                long slotAddr = baseAddress + (i * SLOT_SIZE);
-                long currentL0 = ForeignMemory.getLong(slotAddr);
-                long currentL1 = ForeignMemory.getLong(slotAddr + 8L);
-                long currentL2 = ForeignMemory.getLong(slotAddr + 16L);
-                long currentL3 = ForeignMemory.getLong(slotAddr + 24L);
-
-                if (currentL0 == newL0 && currentL1 == newL1 && currentL2 == newL2 && currentL3 == newL3) {
-                    return false;
-                }
-                if (currentL0 == oldL0 && currentL1 == oldL1 && currentL2 == oldL2 && currentL3 == oldL3) {
-                    targetIdx = i;
-                }
-            }
-
-            if (targetIdx == -1) return false;
+            int targetIdx = getId(oldNameBytes);
+            if (targetIdx == -1)
+                return false;
 
             long targetSlot = baseAddress + (targetIdx * SLOT_SIZE);
             ForeignMemory.putLong(targetSlot, newL0);
             ForeignMemory.putLong(targetSlot + 8L, newL1);
             ForeignMemory.putLong(targetSlot + 16L, newL2);
             ForeignMemory.putLong(targetSlot + 24L, newL3);
+
+            rebuildMap();
             return true;
         }
     }
