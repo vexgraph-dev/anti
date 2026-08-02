@@ -1,5 +1,6 @@
 package audio;
 
+import annotation.Draft;
 import annotation.Unsafe;
 import annotation.Volatile;
 import nio.ForeignMemory;
@@ -13,6 +14,7 @@ import java.lang.invoke.VarHandle;
  * Off-heap AudioBuffer component manager conforming to the Anti Architecture.
  * Packs Buffer properties contiguously into lock-free pooled memory slots.
  */
+@Draft
 public final class AudioBuffer
 {
     public static final int CLASS_ID = TypeRegister.ID_AUDIO_BUFFER;
