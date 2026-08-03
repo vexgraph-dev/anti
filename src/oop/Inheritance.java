@@ -10,6 +10,15 @@ import annotation.Intention;
 @Volatile
 public class Inheritance {
 
-    public Inheritance() {}
+    private Inheritance() {}
+
+    public static boolean isSubclassOf(int subClassId, int parentClassId) {
+        if (subClassId == parentClassId)
+            return true;
+        int parent = TypeRegister.getParentClass(subClassId);
+        if (parent != subClassId)
+            return isSubclassOf(parent, parentClassId);
+        return false;
+    }
 }
 
