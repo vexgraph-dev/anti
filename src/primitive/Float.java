@@ -6,6 +6,7 @@ import annotation.Volatile;
 import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
+import thread.ThreadRegistry;
 
 import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandles;
@@ -75,6 +76,29 @@ public final class Float {
     private static volatile long matrixFreeHead128;
     private static volatile long matrixFreeHead512;
 
+    private static final long CACHE_ARENA_BASE;
+
+    // Cache Arena Layout Offsets
+    private static final long OFFSET_COUNT_SINGLETON = 0L;
+    private static final long OFFSET_COUNT_ARRAY8 = 4L;
+    private static final long OFFSET_COUNT_ARRAY32 = 8L;
+    private static final long OFFSET_COUNT_ARRAY128 = 12L;
+    private static final long OFFSET_COUNT_ARRAY512 = 16L;
+    private static final long OFFSET_COUNT_MATRIX8 = 20L;
+    private static final long OFFSET_COUNT_MATRIX32 = 24L;
+    private static final long OFFSET_COUNT_MATRIX128 = 28L;
+    private static final long OFFSET_COUNT_MATRIX512 = 32L;
+
+    private static final long OFFSET_DATA_SINGLETON = 64L;
+    private static final long OFFSET_DATA_ARRAY8 = 128L;
+    private static final long OFFSET_DATA_ARRAY32 = 192L;
+    private static final long OFFSET_DATA_ARRAY128 = 256L;
+    private static final long OFFSET_DATA_ARRAY512 = 320L;
+    private static final long OFFSET_DATA_MATRIX8 = 384L;
+    private static final long OFFSET_DATA_MATRIX32 = 448L;
+    private static final long OFFSET_DATA_MATRIX128 = 512L;
+    private static final long OFFSET_DATA_MATRIX512 = 576L;
+
     static {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
@@ -105,6 +129,11 @@ public final class Float {
         poolArena = Arena.ofShared();
         active = true;
 
+        CACHE_ARENA_BASE = ForeignMemory.allocateNative(256 * 1024L);
+        for (long i = 0; i < 256 * 1024L; i += 8L) {
+            ForeignMemory.set(CACHE_ARENA_BASE + i, 0L);
+        }
+
         expandSingletonPool();
         expandArrayPool(BUCKET_8, ARRAY_FREE_HEAD_8_VH);
         expandArrayPool(BUCKET_32, ARRAY_FREE_HEAD_32_VH);
@@ -125,11 +154,20 @@ public final class Float {
         if(!active) throw new IllegalStateException("Float subsystem is not active!");
     }
 
+    private static long getThreadSlotBase()
+    {
+        int threadIdx = ThreadRegistry.getThreadIndex();
+        return CACHE_ARENA_BASE + (threadIdx * 1024L);
+    }
+
     public static void freeAll()
     {
         if(active) {
             active = false;
             if(poolArena != null && poolArena.scope().isAlive()) poolArena.close();
+            if(CACHE_ARENA_BASE != 0L) {
+                ForeignMemory.freeNative(CACHE_ARENA_BASE);
+            }
         }
     }
 
@@ -146,7 +184,7 @@ public final class Float {
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.set(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -170,7 +208,7 @@ public final class Float {
                 long oldTagged = (long) freeHeadVH.getVolatile();
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.set(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -194,7 +232,7 @@ public final class Float {
                 long oldTagged = (long) freeHeadVH.getVolatile();
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.set(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -207,6 +245,20 @@ public final class Float {
     public static long allocateSingleton()
     {
         checkActive();
+        int threadIdx = ThreadRegistry.getThreadIndex();
+        long slotBase = CACHE_ARENA_BASE + (threadIdx * 1024L);
+        int count = ForeignMemory.unsafeGetInt(slotBase + OFFSET_COUNT_SINGLETON);
+        if (count > 0) {
+            int newCount = count - 1;
+            long ptr = ForeignMemory.unsafeGetLong(slotBase + OFFSET_DATA_SINGLETON + (newCount * 8L));
+            ForeignMemory.unsafeSet(slotBase + OFFSET_COUNT_SINGLETON, newCount);
+            long base = ptr - 8L;
+            ForeignMemory.unsafeSet(base, TYPE_SINGLETON);
+            ForeignMemory.unsafeSet(base + 4L, 1);
+            ForeignMemory.set(ptr, 0L);
+            return ptr;
+        }
+
         while(true) {
             long oldTagged = singletonFreeHead;
             long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
@@ -220,15 +272,15 @@ public final class Float {
                 continue;
             }
 
-            long nextRawHead = ForeignMemory.getLong(rawHead);
+            long nextRawHead = ForeignMemory.unsafeGetLong(rawHead);
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
 
             if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.putInt(base, TYPE_SINGLETON);
-                ForeignMemory.putInt(base + 4L, 1);
-                ForeignMemory.putLong(rawHead, 0);
+                ForeignMemory.unsafeSet(base, TYPE_SINGLETON);
+                ForeignMemory.unsafeSet(base + 4L, 1);
+                ForeignMemory.set(rawHead, 0L);
                 return rawHead;
             }
         }
@@ -237,6 +289,36 @@ public final class Float {
     public static long allocateArray(int length)
     {
         checkActive();
+        if (length <= BUCKET_512) {
+            int threadIdx = ThreadRegistry.getThreadIndex();
+            long slotBase = CACHE_ARENA_BASE + (threadIdx * 1024L);
+            long countOffset;
+            long dataOffset;
+            if (length <= BUCKET_8) {
+                countOffset = OFFSET_COUNT_ARRAY8;
+                dataOffset = OFFSET_DATA_ARRAY8;
+            } else if (length <= BUCKET_32) {
+                countOffset = OFFSET_COUNT_ARRAY32;
+                dataOffset = OFFSET_DATA_ARRAY32;
+            } else if (length <= BUCKET_128) {
+                countOffset = OFFSET_COUNT_ARRAY128;
+                dataOffset = OFFSET_DATA_ARRAY128;
+            } else {
+                countOffset = OFFSET_COUNT_ARRAY512;
+                dataOffset = OFFSET_DATA_ARRAY512;
+            }
+            int count = ForeignMemory.unsafeGetInt(slotBase + countOffset);
+            if (count > 0) {
+                int newCount = count - 1;
+                long ptr = ForeignMemory.unsafeGetLong(slotBase + dataOffset + (newCount * 8L));
+                ForeignMemory.unsafeSet(slotBase + countOffset, newCount);
+                long base = ptr - 8L;
+                ForeignMemory.unsafeSet(base, TYPE_ARRAY);
+                ForeignMemory.unsafeSet(base + 4L, length);
+                return ptr;
+            }
+        }
+
         VarHandle headVH;
         VarHandle expandingVH;
         int bucketSize;
@@ -265,8 +347,8 @@ public final class Float {
             long totalBytes = 8L + (length * 4L);
             long alignedBytes = (totalBytes + 7L) & ~7L;
             long base = ForeignMemory.allocateNative(alignedBytes);
-            ForeignMemory.putInt(base, TYPE_ARRAY);
-            ForeignMemory.putInt(base + 4L, length);
+            ForeignMemory.unsafeSet(base, TYPE_ARRAY);
+            ForeignMemory.unsafeSet(base + 4L, length);
             return base + 8L;
         }
 
@@ -283,14 +365,14 @@ public final class Float {
                 continue;
             }
 
-            long nextRawHead = ForeignMemory.getLong(rawHead);
+            long nextRawHead = ForeignMemory.unsafeGetLong(rawHead);
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
 
             if(headVH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.putInt(base, TYPE_ARRAY);
-                ForeignMemory.putInt(base + 4L, length);
+                ForeignMemory.unsafeSet(base, TYPE_ARRAY);
+                ForeignMemory.unsafeSet(base + 4L, length);
                 return rawHead;
             }
         }
@@ -299,6 +381,36 @@ public final class Float {
     public static long allocateMatrix(int length)
     {
         checkActive();
+        if (length <= BUCKET_512) {
+            int threadIdx = ThreadRegistry.getThreadIndex();
+            long slotBase = CACHE_ARENA_BASE + (threadIdx * 1024L);
+            long countOffset;
+            long dataOffset;
+            if (length <= BUCKET_8) {
+                countOffset = OFFSET_COUNT_MATRIX8;
+                dataOffset = OFFSET_DATA_MATRIX8;
+            } else if (length <= BUCKET_32) {
+                countOffset = OFFSET_COUNT_MATRIX32;
+                dataOffset = OFFSET_DATA_MATRIX32;
+            } else if (length <= BUCKET_128) {
+                countOffset = OFFSET_COUNT_MATRIX128;
+                dataOffset = OFFSET_DATA_MATRIX128;
+            } else {
+                countOffset = OFFSET_COUNT_MATRIX512;
+                dataOffset = OFFSET_DATA_MATRIX512;
+            }
+            int count = ForeignMemory.unsafeGetInt(slotBase + countOffset);
+            if (count > 0) {
+                int newCount = count - 1;
+                long ptr = ForeignMemory.unsafeGetLong(slotBase + dataOffset + (newCount * 8L));
+                ForeignMemory.unsafeSet(slotBase + countOffset, newCount);
+                long base = ptr - 8L;
+                ForeignMemory.unsafeSet(base, TYPE_MATRIX);
+                ForeignMemory.unsafeSet(base + 4L, length);
+                return ptr;
+            }
+        }
+
         VarHandle headVH;
         VarHandle expandingVH;
         int bucketSize;
@@ -326,8 +438,8 @@ public final class Float {
         else {
             long totalBytes = 8L + (length * 8L);
             long base = ForeignMemory.allocateNative(totalBytes);
-            ForeignMemory.putInt(base, TYPE_MATRIX);
-            ForeignMemory.putInt(base + 4L, length);
+            ForeignMemory.unsafeSet(base, TYPE_MATRIX);
+            ForeignMemory.unsafeSet(base + 4L, length);
             return base + 8L;
         }
 
@@ -344,14 +456,14 @@ public final class Float {
                 continue;
             }
 
-            long nextRawHead = ForeignMemory.getLong(rawHead);
+            long nextRawHead = ForeignMemory.unsafeGetLong(rawHead);
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
 
             if(headVH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.putInt(base, TYPE_MATRIX);
-                ForeignMemory.putInt(base + 4L, length);
+                ForeignMemory.unsafeSet(base, TYPE_MATRIX);
+                ForeignMemory.unsafeSet(base + 4L, length);
                 return rawHead;
             }
         }
@@ -394,15 +506,97 @@ public final class Float {
         int length = length(pointer);
         long base = pointer - 8L;
 
-        ForeignMemory.putInt(base, 0);
-        ForeignMemory.putInt(base + 4L, -1);
+        // Try caching in the Thread-Local Cache Arena
+        int threadIdx = ThreadRegistry.getThreadIndex();
+        long slotBase = CACHE_ARENA_BASE + (threadIdx * 1024L);
+
+        if (TypeRegister.isSingleton(type)) {
+            int count = ForeignMemory.unsafeGetInt(slotBase + OFFSET_COUNT_SINGLETON);
+            if (count < 8) {
+                ForeignMemory.unsafeSet(base, 0);
+                ForeignMemory.unsafeSet(base + 4L, -1);
+                ForeignMemory.set(slotBase + OFFSET_DATA_SINGLETON + (count * 8L), pointer);
+                ForeignMemory.unsafeSet(slotBase + OFFSET_COUNT_SINGLETON, count + 1);
+                return;
+            }
+        }
+        else if (TypeRegister.isArray(type)) {
+            long countOffset = 0L;
+            long dataOffset = 0L;
+            boolean cached = false;
+            if (length <= BUCKET_8) {
+                countOffset = OFFSET_COUNT_ARRAY8;
+                dataOffset = OFFSET_DATA_ARRAY8;
+                cached = true;
+            } else if (length <= BUCKET_32) {
+                countOffset = OFFSET_COUNT_ARRAY32;
+                dataOffset = OFFSET_DATA_ARRAY32;
+                cached = true;
+            } else if (length <= BUCKET_128) {
+                countOffset = OFFSET_COUNT_ARRAY128;
+                dataOffset = OFFSET_DATA_ARRAY128;
+                cached = true;
+            } else if (length <= BUCKET_512) {
+                countOffset = OFFSET_COUNT_ARRAY512;
+                dataOffset = OFFSET_DATA_ARRAY512;
+                cached = true;
+            }
+
+            if (cached) {
+                int count = ForeignMemory.unsafeGetInt(slotBase + countOffset);
+                if (count < 8) {
+                    ForeignMemory.unsafeSet(base, 0);
+                    ForeignMemory.unsafeSet(base + 4L, -1);
+                    ForeignMemory.set(slotBase + dataOffset + (count * 8L), pointer);
+                    ForeignMemory.unsafeSet(slotBase + countOffset, count + 1);
+                    return;
+                }
+            }
+        }
+        else if (TypeRegister.isPointer(type)) {
+            long countOffset = 0L;
+            long dataOffset = 0L;
+            boolean cached = false;
+            if (length <= BUCKET_8) {
+                countOffset = OFFSET_COUNT_MATRIX8;
+                dataOffset = OFFSET_DATA_MATRIX8;
+                cached = true;
+            } else if (length <= BUCKET_32) {
+                countOffset = OFFSET_COUNT_MATRIX32;
+                dataOffset = OFFSET_DATA_MATRIX32;
+                cached = true;
+            } else if (length <= BUCKET_128) {
+                countOffset = OFFSET_COUNT_MATRIX128;
+                dataOffset = OFFSET_DATA_MATRIX128;
+                cached = true;
+            } else if (length <= BUCKET_512) {
+                countOffset = OFFSET_COUNT_MATRIX512;
+                dataOffset = OFFSET_DATA_MATRIX512;
+                cached = true;
+            }
+
+            if (cached) {
+                int count = ForeignMemory.unsafeGetInt(slotBase + countOffset);
+                if (count < 8) {
+                    ForeignMemory.unsafeSet(base, 0);
+                    ForeignMemory.unsafeSet(base + 4L, -1);
+                    ForeignMemory.set(slotBase + dataOffset + (count * 8L), pointer);
+                    ForeignMemory.unsafeSet(slotBase + countOffset, count + 1);
+                    return;
+                }
+            }
+        }
+
+        // Fallback to global pool
+        ForeignMemory.unsafeSet(base, 0);
+        ForeignMemory.unsafeSet(base + 4L, -1);
 
         if(TypeRegister.isSingleton(type)) {
             while(true) {
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(pointer, oldRawHead);
+                ForeignMemory.set(pointer, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -424,7 +618,7 @@ public final class Float {
                 long oldTagged = (long) headVH.getVolatile();
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(pointer, oldRawHead);
+                ForeignMemory.set(pointer, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -446,7 +640,7 @@ public final class Float {
                 long oldTagged = (long) headVH.getVolatile();
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(pointer, oldRawHead);
+                ForeignMemory.set(pointer, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -455,61 +649,70 @@ public final class Float {
             }
         }
     }
-public static float get(long pointer) {
+    public static float get(long pointer) {
         if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return ForeignMemory.getFloat(pointer);
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Float (Class ID " + CLASS_ID + ")");
+        return ForeignMemory.unsafeGetFloat(pointer);
     }
 
     public static float get(long pointer, int index) { 
         checkBounds(pointer, index);
-        return ForeignMemory.getFloat(pointer + (index * 4L)); 
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Float (Class ID " + CLASS_ID + ")");
+        return ForeignMemory.unsafeGetFloat(pointer + (index * 4L)); 
     }
 
     public static long getPointer(long matrixPointer, int index) { 
         if (matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
         if(!isPointer(matrixPointer)) throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+        if(classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected Float (Class ID " + CLASS_ID + ")");
         checkBounds(matrixPointer, index);
-        return ForeignMemory.getLong(matrixPointer + (index * 8L)); 
+        return ForeignMemory.unsafeGetLong(matrixPointer + (index * 8L)); 
     }
 
     public static void set(long pointer, float value) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        ForeignMemory.putFloat(pointer, value);
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Float (Class ID " + CLASS_ID + ")");
+        ForeignMemory.set(pointer, value);
     }
 
     public static void set(long pointer, int index, float value) { 
         checkBounds(pointer, index);
-        ForeignMemory.putFloat(pointer + (index * 4L), value); 
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Float (Class ID " + CLASS_ID + ")");
+        ForeignMemory.set(pointer + (index * 4L), value); 
     }
 
     @Volatile
     public static float getVolatile(long pointer) {
         if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return ForeignMemory.getFloatVolatile(pointer);
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Float (Class ID " + CLASS_ID + ")");
+        return ForeignMemory.unsafeGetFloatVolatile(pointer);
     }
 
     @Volatile
     public static void setVolatile(long pointer, float value) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        ForeignMemory.putFloatVolatile(pointer, value);
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Float (Class ID " + CLASS_ID + ")");
+        ForeignMemory.setVolatile(pointer, value);
     }
 
     public static boolean compareAndSet(long pointer, float expected, float value) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Float (Class ID " + CLASS_ID + ")");
         return ForeignMemory.compareAndSetFloat(pointer, expected, value);
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
         if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
         if(!isPointer(matrixPointer)) throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+        if(classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected Float (Class ID " + CLASS_ID + ")");
         checkBounds(matrixPointer, index);
-        ForeignMemory.putLong(matrixPointer + (index * 8L), targetPointer); 
+        ForeignMemory.set(matrixPointer + (index * 8L), targetPointer); 
     }
 
     private static void checkBounds(long pointer, int index) {
         if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
         int len = length(pointer);
-        if(index < 0 || index >= len) throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap float length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+        if(index < 0 || index >= len) throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
     }
 
     public static int classId() {
@@ -517,11 +720,11 @@ public static float get(long pointer) {
     }
 
     public static int type(long pointer) {
-        return ForeignMemory.getInt(pointer - 8L);
+        return ForeignMemory.unsafeGetInt(pointer - 8L);
     }
 
     public static int length(long pointer) {
-        return ForeignMemory.getInt(pointer - 4L);
+        return ForeignMemory.unsafeGetInt(pointer - 4L);
     }
 
     public static int classId(long pointer) {
@@ -544,94 +747,100 @@ public static float get(long pointer) {
 
     @Unsafe
     public static float unsafeGet(long pointer) {
-        return ForeignMemory.getFloat(pointer);
+        return ForeignMemory.unsafeGetFloat(pointer);
     }
 
     @Unsafe
     public static float unsafeGet(long pointer, int index) {
-        return ForeignMemory.getFloat(pointer + (index * 4L));
+        return ForeignMemory.unsafeGetFloat(pointer + (index * 4L));
     }
 
     @Unsafe
     public static long unsafeGetPointer(long matrixPointer, int index) {
-        return ForeignMemory.getLong(matrixPointer + (index * 8L));
+        return ForeignMemory.unsafeGetLong(matrixPointer + (index * 8L));
     }
 
     @Unsafe
     public static void unsafeSet(long pointer, float value) {
-        ForeignMemory.putFloat(pointer, value);
+        ForeignMemory.unsafeSet(pointer, value);
     }
 
     @Unsafe
     public static void unsafeSet(long pointer, int index, float value) {
-        ForeignMemory.putFloat(pointer + (index * 4L), value);
+        ForeignMemory.unsafeSet(pointer + (index * 4L), value);
     }
 
     @Unsafe
     public static void unsafeSetPointer(long matrixPointer, int index, long targetPointer) {
-        ForeignMemory.putLong(matrixPointer + (index * 8L), targetPointer);
+        ForeignMemory.unsafeSet(matrixPointer + (index * 8L), targetPointer);
     }
 
     @Volatile
     public static float getVolatile(long pointer, int index) {
         checkBounds(pointer, index);
-        return ForeignMemory.getFloatVolatile(pointer + (index * 4L));
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Float (Class ID " + CLASS_ID + ")");
+        return ForeignMemory.unsafeGetFloatVolatile(pointer + (index * 4L));
     }
 
     @Volatile
     public static long getPointerVolatile(long matrixPointer, int index) {
         if(matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if(!isPointer(matrixPointer)) throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+        if(classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected Float (Class ID " + CLASS_ID + ")");
         checkBounds(matrixPointer, index);
-        return ForeignMemory.getLongVolatile(matrixPointer + (index * 8L));
+        return ForeignMemory.unsafeGetLongVolatile(matrixPointer + (index * 8L));
     }
 
     @Volatile
     public static void setVolatile(long pointer, int index, float value) {
         checkBounds(pointer, index);
-        ForeignMemory.putFloatVolatile(pointer + (index * 4L), value);
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Float (Class ID " + CLASS_ID + ")");
+        ForeignMemory.setVolatile(pointer + (index * 4L), value);
     }
 
     @Volatile
     public static void setPointerVolatile(long matrixPointer, int index, long targetPointer) {
         if(matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if(!isPointer(matrixPointer)) throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+        if(classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected Float (Class ID " + CLASS_ID + ")");
         checkBounds(matrixPointer, index);
-        ForeignMemory.putLongVolatile(matrixPointer + (index * 8L), targetPointer);
+        ForeignMemory.setVolatile(matrixPointer + (index * 8L), targetPointer);
     }
 
     @Unsafe
     @Volatile
     public static float unsafeVolatileGet(long pointer) {
-        return ForeignMemory.getFloatVolatile(pointer);
+        return ForeignMemory.unsafeGetFloatVolatile(pointer);
     }
 
     @Unsafe
     @Volatile
     public static float unsafeVolatileGet(long pointer, int index) {
-        return ForeignMemory.getFloatVolatile(pointer + (index * 4L));
+        return ForeignMemory.unsafeGetFloatVolatile(pointer + (index * 4L));
     }
 
     @Unsafe
     @Volatile
     public static long unsafeVolatileGetPointer(long matrixPointer, int index) {
-        return ForeignMemory.getLongVolatile(matrixPointer + (index * 8L));
+        return ForeignMemory.unsafeGetLongVolatile(matrixPointer + (index * 8L));
     }
 
     @Unsafe
     @Volatile
     public static void unsafeVolatileSet(long pointer, float value) {
-        ForeignMemory.putFloatVolatile(pointer, value);
+        ForeignMemory.unsafeVolatileSet(pointer, value);
     }
 
     @Unsafe
     @Volatile
     public static void unsafeVolatileSet(long pointer, int index, float value) {
-        ForeignMemory.putFloatVolatile(pointer + (index * 4L), value);
+        ForeignMemory.unsafeVolatileSet(pointer + (index * 4L), value);
     }
 
     @Unsafe
     @Volatile
     public static void unsafeVolatileSetPointer(long matrixPointer, int index, long targetPointer) {
-        ForeignMemory.putLongVolatile(matrixPointer + (index * 8L), targetPointer);
+        ForeignMemory.unsafeVolatileSet(matrixPointer + (index * 8L), targetPointer);
     }
 
 }
