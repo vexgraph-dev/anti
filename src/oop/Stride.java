@@ -1,5 +1,6 @@
 package oop;
 
+import annotation.Intention;
 import annotation.Required;
 import annotation.HotCode;
 
@@ -20,31 +21,39 @@ public final class Stride {
 
     // get byte stride for class ID
     @HotCode
+    @SuppressWarnings("all") // idc if its redundant. the compiler shall treeshake regardless
     public static int get(int generic) {
-        int customStride = Struct.stride(generic);
+        int classId = generic & TypeRegister.MASK_CLASS;
+        int customStride = Struct.stride(classId);
         if (customStride != 0) {
             return customStride;
         }
-        return switch (generic) {
-            case TypeRegister.ID_BYTE       -> 1;
-            case TypeRegister.ID_SHORT      -> 2;
-            case TypeRegister.ID_INT,
-                 TypeRegister.ID_FLOAT    -> 4;
-            case TypeRegister.ID_LONG,
-                 TypeRegister.ID_DOUBLE,
-                 TypeRegister.ID_STRING,
-                 TypeRegister.ID_INT_FLOAT -> 8;
+        return switch (classId) {
+
+            // primtives
+            case TypeRegister.ID_BYTE          -> 1;
+            case TypeRegister.ID_SHORT         -> 2;
+            case TypeRegister.ID_INT,       
+                 TypeRegister.ID_FLOAT         -> 4;
+            case TypeRegister.ID_LONG,      
+                 TypeRegister.ID_DOUBLE,    
+                 TypeRegister.ID_STRING,     
+                 TypeRegister.ID_INT_FLOAT     -> 8;
             case TypeRegister.ID_INT_DOUBLE,
                  TypeRegister.ID_LONG_FLOAT,
-                 TypeRegister.ID_LONG_DOUBLE -> 16;
-            case TypeRegister.ID_VARIABLE   -> 40;
-            case TypeRegister.ID_CLOCK      -> 48;
-            case TypeRegister.ID_DATETIME,
-                 TypeRegister.ID_NANOTIME   -> 40;
-            case TypeRegister.ID_RANDOM     -> 16;
-            case TypeRegister.ID_LIST,
-                 TypeRegister.ID_MAP,
-                 TypeRegister.ID_SET,
+                 TypeRegister.ID_LONG_DOUBLE   -> 16;
+
+            // variable class, and other outliers
+            case TypeRegister.ID_VARIABLE      -> 40;
+            case TypeRegister.ID_CLOCK         -> 48;
+            case TypeRegister.ID_DATETIME,  
+                 TypeRegister.ID_NANOTIME      -> 40;
+            case TypeRegister.ID_RANDOM        -> 16;
+
+            // these are just basially wrappers of ones obejct/struct
+            case TypeRegister.ID_LIST,      
+                 TypeRegister.ID_MAP,       
+                 TypeRegister.ID_SET,       
                  TypeRegister.ID_STACK,
                  TypeRegister.ID_DEQUE,
                  TypeRegister.ID_SLAB_ALLOCATOR,
@@ -61,7 +70,7 @@ public final class Stride {
                  TypeRegister.ID_CUBE_ARRAY,
                  TypeRegister.ID_SPHERE_ARRAY,
                  TypeRegister.ID_CIRCULAR_ARRAY -> 8; // pointer sizes
-            default                         -> 8;
+            default -> 8;
         };
     }
 }
