@@ -15,6 +15,20 @@ import nio.ForeignMemory;
 @Intention("Zero-GC off-heap generic dynamic struct layout manager supporting runtime definition, singleton (Level 1), and array (Level 2) allocations.")
 public final class Struct {
 
+    // [structure]
+    // the struct allocation goes like this...
+    // for singletons, its just
+    // [metadata][object][metadate][object]
+    // why? because singletons are just single values anyway, the point of it
+    // is just one value, the value itself is just a way to store smth, (e.g. custom
+    // objects, or wrappers of wrappers, see @objects directory)
+    //
+    // for arrays of struct (struct[])
+    // [metadata][object][object][object]
+    //
+    //  abnd the metadata is the actual consisting of
+    //  [class][field amounts][field1][field2][feild3][and so on]
+    @Intention("[structure], line 18")
     @Required
     public static final int CLASS_ID = TypeRegister.CUSTOM_STRUCT;
 
@@ -139,17 +153,41 @@ public final class Struct {
         return ForeignMemory.getInt(slot);
     }
 
+    private static int getFieldsCount(int generic) {
+        int index = generic - TypeRegister.CUSTOM_STRUCT;
+        if (index < 0 || index >= MAX_STRUCTS) {
+            return 0;
+        }
+        long slot = REGISTRY_BASE + (index * SLOT_SIZE);
+        return ForeignMemory.getInt(slot + 4L);
+    }
+
     // Level 1: Allocate a single struct (Singleton)
     public static long allocateSingleton(int generic) {
         int stride = getStride(generic);
         if (stride == 0) throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
+        int fieldsCount = getFieldsCount(generic);
 
-        long block = ForeignMemory.allocateNative(8L + stride);
-        long userPtr = block + 8L;
+        long metadataSize = 16L + fieldsCount * 4L;
+        long block = ForeignMemory.allocateNative(metadataSize + stride);
+        long userPtr = block + metadataSize;
 
-        // Write header: type (FORM_SINGLETON | generic), length (1)
-        ForeignMemory.putInt(block, TypeRegister.FORM_SINGLETON | generic);
-        ForeignMemory.putInt(block + 4L, 1);
+        // Write header metadata [class][field amounts][field1][field2]...
+        int typeId = TypeRegister.FORM_SINGLETON | generic;
+        ForeignMemory.putInt(block, typeId);
+        ForeignMemory.putInt(block + 4L, fieldsCount);
+
+        int index = generic - TypeRegister.CUSTOM_STRUCT;
+        long slot = REGISTRY_BASE + (index * SLOT_SIZE);
+        long fieldTypesPtr = ForeignMemory.getLong(slot + 8L);
+        for (int i = 0; i < fieldsCount; i++) {
+            int fieldClassId = ForeignMemory.getInt(fieldTypesPtr + i * 4L);
+            ForeignMemory.putInt(block + 8L + i * 4L, fieldClassId);
+        }
+
+        // Write compatible Class getType/getLength headers right before elements
+        ForeignMemory.putInt(userPtr - 8L, typeId);
+        ForeignMemory.putInt(userPtr - 4L, 1);
 
         // Zero-initialize fields
         ForeignMemory.setMemory(userPtr, stride, (byte) 0);
@@ -162,14 +200,29 @@ public final class Struct {
         int stride = getStride(generic);
         if (stride == 0) throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
         if (length <= 0) throw new IllegalArgumentException("Array length must be positive!");
+        int fieldsCount = getFieldsCount(generic);
 
+        long metadataSize = 16L + fieldsCount * 4L;
         long bufferBytes = (long) length * stride;
-        long block = ForeignMemory.allocateNative(8L + bufferBytes);
-        long userPtr = block + 8L;
+        long block = ForeignMemory.allocateNative(metadataSize + bufferBytes);
+        long userPtr = block + metadataSize;
 
-        // Write header: type (FORM_ARRAY | generic), length (length)
-        ForeignMemory.putInt(block, TypeRegister.FORM_ARRAY | generic);
-        ForeignMemory.putInt(block + 4L, length);
+        // Write header metadata [class][field amounts][field1][field2]...
+        int typeId = TypeRegister.FORM_ARRAY | generic;
+        ForeignMemory.putInt(block, typeId);
+        ForeignMemory.putInt(block + 4L, fieldsCount);
+
+        int index = generic - TypeRegister.CUSTOM_STRUCT;
+        long slot = REGISTRY_BASE + (index * SLOT_SIZE);
+        long fieldTypesPtr = ForeignMemory.getLong(slot + 8L);
+        for (int i = 0; i < fieldsCount; i++) {
+            int fieldClassId = ForeignMemory.getInt(fieldTypesPtr + i * 4L);
+            ForeignMemory.putInt(block + 8L + i * 4L, fieldClassId);
+        }
+
+        // Write compatible Class getType/getLength headers right before elements
+        ForeignMemory.putInt(userPtr - 8L, typeId);
+        ForeignMemory.putInt(userPtr - 4L, length);
 
         // Zero-initialize elements
         ForeignMemory.setMemory(userPtr, bufferBytes, (byte) 0);
@@ -228,13 +281,21 @@ public final class Struct {
     // free a struct singleton, array, or pointer array (matrix)
     public static void free(long userPtr) {
         if (userPtr == 0L) return;
-        long block = userPtr - 8L;
-        int type = ForeignMemory.getInt(block);
+        int type = ForeignMemory.getInt(userPtr - 8L);
         if (type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) {
             throw new IllegalStateException("Double free or corrupt struct pointer: 0x" + Long.toHexString(userPtr).toUpperCase());
         }
-        ForeignMemory.putInt(block, 0);
-        ForeignMemory.putInt(block + 4L, -1);
+        int generic = TypeRegister.getClassId(type);
+        long block;
+        if (TypeRegister.isPointer(type)) {
+            block = userPtr - 8L;
+        } else {
+            int fieldsCount = getFieldsCount(generic);
+            long metadataSize = 16L + fieldsCount * 4L;
+            block = userPtr - metadataSize;
+        }
+        ForeignMemory.putInt(userPtr - 8L, 0);
+        ForeignMemory.putInt(userPtr - 4L, -1);
         ForeignMemory.freeNative(block);
     }
 
