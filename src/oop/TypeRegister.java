@@ -31,6 +31,8 @@ public class TypeRegister
     public static final int FORM_STRUCT_SINGLETON   = 0x40000000; // struct singleton
     public static final int FORM_STRUCT_ARRAY       = 0x50000000; // struct array
     public static final int FORM_STRUCT_POINTER     = 0x60000000; // struct pointer
+    public static final int FORM_ARRAY_SOA          = 0x70000000; // Array (SoA layout)
+    public static final int FORM_ARRAY_AOS          = 0x80000000; // Array (AoS layout)
 
     // --- MODIFIERS (Digit 2) ---
     public static final int MOD_GLOBAL              = 0x01000000;
@@ -381,7 +383,8 @@ public class TypeRegister
 
     public static boolean isArray(int typeId)
     {
-        return (typeId & MASK_FORM) == FORM_ARRAY;
+        int form = typeId & MASK_FORM;
+        return form == FORM_ARRAY || form == FORM_ARRAY_SOA || form == FORM_ARRAY_AOS;
     }
 
     public static boolean isPointer(int typeId)
@@ -396,7 +399,18 @@ public class TypeRegister
 
     public static boolean isStructArray(int typeId)
     {
-        return (typeId & MASK_FORM) == FORM_STRUCT_ARRAY;
+        int form = typeId & MASK_FORM;
+        return form == FORM_STRUCT_ARRAY || form == FORM_ARRAY_SOA || form == FORM_ARRAY_AOS;
+    }
+
+    public static boolean isStructSOA(int typeId)
+    {
+        return (typeId & MASK_FORM) == FORM_ARRAY_SOA;
+    }
+
+    public static boolean isStructAOS(int typeId)
+    {
+        return (typeId & MASK_FORM) == FORM_ARRAY_AOS;
     }
 
     public static boolean isStructPointer(int typeId)
@@ -407,7 +421,7 @@ public class TypeRegister
     public static boolean isStruct(int typeId)
     {
         int form = typeId & MASK_FORM;
-        return form == FORM_STRUCT_SINGLETON || form == FORM_STRUCT_ARRAY || form == FORM_STRUCT_POINTER;
+        return form == FORM_STRUCT_SINGLETON || form == FORM_STRUCT_ARRAY || form == FORM_STRUCT_POINTER || form == FORM_ARRAY_SOA || form == FORM_ARRAY_AOS;
     }
 
     public static boolean isPrimitive(int typeId)
