@@ -2,6 +2,7 @@ package oop;
 
 import annotation.Intention;
 import annotation.HotCode;
+import annotation.Volatile;
 
 @HotCode
 @Intention("Central type registry using bit-packed type IDs: 32-bit hex code (Form, Modifiers, Wrappers, Class ID)")
@@ -464,10 +465,15 @@ public class TypeRegister
         return typeId & MASK_CLASS;
     }
 
+
+    @HotCode
+    @Intention("the parent class manual checking")
     public static int getParentClass(int classId)
     {
         if (classId >= 0x000050 && classId <= 0x000063)
             return ID_BUFFER;
+
+        // add classes goes here...
         return classId;
     }
 
