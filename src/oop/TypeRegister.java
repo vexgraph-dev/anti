@@ -164,6 +164,7 @@ public class TypeRegister
     public static final int ID_AUDIO_BUFFER = 0x000069; // AudioBuffer class
     public static final int ID_AUDIO_BUFFER_LAYER = 0x00006A; // AudioBufferLayer class
     public static final int ID_SAMPLER = 0x00006B; // Sampler class
+    public static final int ID_AUDIO_COMPUTE_BUFFER = 0x00006C; // AudioComputeBuffer class (audio/vulkan)
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
@@ -601,5 +602,10 @@ public class TypeRegister
     public static final int SAMPLER_SINGLETON = FORM_SINGLETON | ID_SAMPLER;
     public static final int SAMPLER_ARRAY = FORM_ARRAY | ID_SAMPLER;
     public static final int SAMPLER_POINTER = FORM_POINTER | ID_SAMPLER;
+
+    // AudioComputeBuffer class (audio/vulkan)
+    public static final int AUDIO_COMPUTE_BUFFER_SINGLETON = FORM_SINGLETON | ID_AUDIO_COMPUTE_BUFFER;
+    public static final int AUDIO_COMPUTE_BUFFER_ARRAY = FORM_ARRAY | ID_AUDIO_COMPUTE_BUFFER;
+    public static final int AUDIO_COMPUTE_BUFFER_POINTER = FORM_POINTER | ID_AUDIO_COMPUTE_BUFFER;
 
 }
