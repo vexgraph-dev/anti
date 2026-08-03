@@ -7,6 +7,7 @@ import annotation.Intention;
 import annotation.Required;
 import annotation.Volatile;
 import nio.ForeignMemory;
+
 /**
  * Off-heap generic dynamic struct layout manager.
  */
@@ -162,13 +163,26 @@ public final class Struct {
         return ForeignMemory.getInt(slot + 4L);
     }
 
+    private static long getFieldAddress(int generic, long userPtr, int elementIndex, int fieldIndex, int fieldClassId) {
+        int type = ForeignMemory.getInt(userPtr - 8L);
+        int offset = getOffset(generic, fieldIndex);
+        if (TypeRegister.isStructSOA(type)) {
+            int length = ForeignMemory.getInt(userPtr - 4L);
+            int fieldStride = Stride.get(fieldClassId);
+            return userPtr + (long) length * offset + (long) elementIndex * fieldStride;
+        } else {
+            int stride = getStride(generic);
+            return userPtr + (long) elementIndex * stride + offset;
+        }
+    }
+
     // Level 1: Allocate a single struct (Singleton)
     public static long allocateSingleton(int generic) {
         int stride = getStride(generic);
         if (stride == 0) throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
         int fieldsCount = getFieldsCount(generic);
 
-        long metadataSize = 16L + fieldsCount * 4L;
+        long metadataSize = (16L + fieldsCount * 4L + 7L) & ~7L;
         long block = ForeignMemory.allocateNative(metadataSize + stride);
         long userPtr = block + metadataSize;
 
@@ -197,18 +211,58 @@ public final class Struct {
 
     // Level 2: Allocate an array of structs
     public static long allocateArray(int generic, int length) {
+        return allocateAOS(generic, length);
+    }
+
+    // Allocate an array of structs in AoS (Array of Structs) layout
+    public static long allocateAOS(int generic, int length) {
         int stride = getStride(generic);
         if (stride == 0) throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
         if (length <= 0) throw new IllegalArgumentException("Array length must be positive!");
         int fieldsCount = getFieldsCount(generic);
 
-        long metadataSize = 16L + fieldsCount * 4L;
+        long metadataSize = (16L + fieldsCount * 4L + 7L) & ~7L;
         long bufferBytes = (long) length * stride;
         long block = ForeignMemory.allocateNative(metadataSize + bufferBytes);
         long userPtr = block + metadataSize;
 
         // Write header metadata [class][field amounts][field1][field2]...
-        int typeId = TypeRegister.FORM_ARRAY | generic;
+        int typeId = TypeRegister.FORM_ARRAY_AOS | generic;
+        ForeignMemory.putInt(block, typeId);
+        ForeignMemory.putInt(block + 4L, fieldsCount);
+
+        int index = generic - TypeRegister.CUSTOM_STRUCT;
+        long slot = REGISTRY_BASE + (index * SLOT_SIZE);
+        long fieldTypesPtr = ForeignMemory.getLong(slot + 8L);
+        for (int i = 0; i < fieldsCount; i++) {
+            int fieldClassId = ForeignMemory.getInt(fieldTypesPtr + i * 4L);
+            ForeignMemory.putInt(block + 8L + i * 4L, fieldClassId);
+        }
+
+        // Write compatible Class getType/getLength headers right before elements
+        ForeignMemory.putInt(userPtr - 8L, typeId);
+        ForeignMemory.putInt(userPtr - 4L, length);
+
+        // Zero-initialize elements
+        ForeignMemory.setMemory(userPtr, bufferBytes, (byte) 0);
+
+        return userPtr;
+    }
+
+    // Allocate an array of structs in SoA (Struct of Arrays) layout
+    public static long allocateSOA(int generic, int length) {
+        int stride = getStride(generic);
+        if (stride == 0) throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
+        if (length <= 0) throw new IllegalArgumentException("Array length must be positive!");
+        int fieldsCount = getFieldsCount(generic);
+
+        long metadataSize = (16L + fieldsCount * 4L + 7L) & ~7L;
+        long bufferBytes = (long) length * stride;
+        long block = ForeignMemory.allocateNative(metadataSize + bufferBytes);
+        long userPtr = block + metadataSize;
+
+        // Write header metadata [class][field amounts][field1][field2]...
+        int typeId = TypeRegister.FORM_ARRAY_SOA | generic;
         ForeignMemory.putInt(block, typeId);
         ForeignMemory.putInt(block + 4L, fieldsCount);
 
@@ -291,7 +345,7 @@ public final class Struct {
             block = userPtr - 8L;
         } else {
             int fieldsCount = getFieldsCount(generic);
-            long metadataSize = 16L + fieldsCount * 4L;
+            long metadataSize = (16L + fieldsCount * 4L + 7L) & ~7L;
             block = userPtr - metadataSize;
         }
         ForeignMemory.putInt(userPtr - 8L, 0);
@@ -299,14 +353,7 @@ public final class Struct {
         ForeignMemory.freeNative(block);
     }
 
-    // =========================================================================
     // FIELD MUTATORS & ACCESSORS (SINGLETON / LEVEL 1)
-    // =========================================================================
-
-    // =========================================================================
-    // FIELD MUTATORS & ACCESSORS (SINGLETON / LEVEL 1)
-    // =========================================================================
-
     public static void setInt(long userPtr, int fieldIndex, int value) {
         int generic = getStructIdFromPointer(userPtr);
         setInt(generic, userPtr, fieldIndex, value);
@@ -450,9 +497,8 @@ public final class Struct {
 
     public static void setInt(int generic, long userPtr, int elementIndex, int fieldIndex, int value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putInt(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_INT);
+        ForeignMemory.putInt(addr, value);
     }
 
     public static int getInt(long userPtr, int elementIndex, int fieldIndex) {
@@ -462,9 +508,8 @@ public final class Struct {
 
     public static int getInt(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getInt(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_INT);
+        return ForeignMemory.getInt(addr);
     }
 
     public static void setLong(long userPtr, int elementIndex, int fieldIndex, long value) {
@@ -474,9 +519,8 @@ public final class Struct {
 
     public static void setLong(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putLong(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_LONG);
+        ForeignMemory.putLong(addr, value);
     }
 
     public static long getLong(long userPtr, int elementIndex, int fieldIndex) {
@@ -486,9 +530,8 @@ public final class Struct {
 
     public static long getLong(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getLong(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_LONG);
+        return ForeignMemory.getLong(addr);
     }
 
     public static void setFloat(long userPtr, int elementIndex, int fieldIndex, float value) {
@@ -498,9 +541,8 @@ public final class Struct {
 
     public static void setFloat(int generic, long userPtr, int elementIndex, int fieldIndex, float value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putFloat(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_FLOAT);
+        ForeignMemory.putFloat(addr, value);
     }
 
     public static float getFloat(long userPtr, int elementIndex, int fieldIndex) {
@@ -510,9 +552,8 @@ public final class Struct {
 
     public static float getFloat(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getFloat(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_FLOAT);
+        return ForeignMemory.getFloat(addr);
     }
 
     public static void setDouble(long userPtr, int elementIndex, int fieldIndex, double value) {
@@ -522,9 +563,8 @@ public final class Struct {
 
     public static void setDouble(int generic, long userPtr, int elementIndex, int fieldIndex, double value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putDouble(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_DOUBLE);
+        ForeignMemory.putDouble(addr, value);
     }
 
     public static double getDouble(long userPtr, int elementIndex, int fieldIndex) {
@@ -534,9 +574,8 @@ public final class Struct {
 
     public static double getDouble(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getDouble(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_DOUBLE);
+        return ForeignMemory.getDouble(addr);
     }
 
     public static void setByte(long userPtr, int elementIndex, int fieldIndex, byte value) {
@@ -546,9 +585,8 @@ public final class Struct {
 
     public static void setByte(int generic, long userPtr, int elementIndex, int fieldIndex, byte value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_BYTE);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putByte(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_BYTE);
+        ForeignMemory.putByte(addr, value);
     }
 
     public static byte getByte(long userPtr, int elementIndex, int fieldIndex) {
@@ -558,9 +596,8 @@ public final class Struct {
 
     public static byte getByte(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_BYTE);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getByte(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_BYTE);
+        return ForeignMemory.getByte(addr);
     }
 
     public static void setShort(long userPtr, int elementIndex, int fieldIndex, short value) {
@@ -570,9 +607,8 @@ public final class Struct {
 
     public static void setShort(int generic, long userPtr, int elementIndex, int fieldIndex, short value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_SHORT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putShort(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_SHORT);
+        ForeignMemory.putShort(addr, value);
     }
 
     public static short getShort(long userPtr, int elementIndex, int fieldIndex) {
@@ -582,9 +618,8 @@ public final class Struct {
 
     public static short getShort(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_SHORT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getShort(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_SHORT);
+        return ForeignMemory.getShort(addr);
     }
 
     // =========================================================================
@@ -826,9 +861,8 @@ public final class Struct {
     @Volatile
     public static void setIntVolatile(int generic, long userPtr, int elementIndex, int fieldIndex, int value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putIntVolatile(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_INT);
+        ForeignMemory.putIntVolatile(addr, value);
     }
 
     @Volatile
@@ -840,9 +874,8 @@ public final class Struct {
     @Volatile
     public static int getIntVolatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getIntVolatile(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_INT);
+        return ForeignMemory.getIntVolatile(addr);
     }
 
     public static boolean compareAndSetInt(long userPtr, int elementIndex, int fieldIndex, int expected, int value) {
@@ -852,9 +885,8 @@ public final class Struct {
 
     public static boolean compareAndSetInt(int generic, long userPtr, int elementIndex, int fieldIndex, int expected, int value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_INT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.compareAndSetInt(userPtr + (long) elementIndex * stride + offset, expected, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_INT);
+        return ForeignMemory.compareAndSetInt(addr, expected, value);
     }
 
     @Volatile
@@ -866,9 +898,8 @@ public final class Struct {
     @Volatile
     public static void setLongVolatile(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putLongVolatile(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_LONG);
+        ForeignMemory.putLongVolatile(addr, value);
     }
 
     @Volatile
@@ -880,9 +911,8 @@ public final class Struct {
     @Volatile
     public static long getLongVolatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getLongVolatile(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_LONG);
+        return ForeignMemory.getLongVolatile(addr);
     }
 
     public static boolean compareAndSetLong(long userPtr, int elementIndex, int fieldIndex, long expected, long value) {
@@ -892,9 +922,8 @@ public final class Struct {
 
     public static boolean compareAndSetLong(int generic, long userPtr, int elementIndex, int fieldIndex, long expected, long value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_LONG);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.compareAndSetLong(userPtr + (long) elementIndex * stride + offset, expected, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_LONG);
+        return ForeignMemory.compareAndSetLong(addr, expected, value);
     }
 
     @Volatile
@@ -906,9 +935,8 @@ public final class Struct {
     @Volatile
     public static void setFloatVolatile(int generic, long userPtr, int elementIndex, int fieldIndex, float value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putFloatVolatile(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_FLOAT);
+        ForeignMemory.putFloatVolatile(addr, value);
     }
 
     @Volatile
@@ -920,9 +948,8 @@ public final class Struct {
     @Volatile
     public static float getFloatVolatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getFloatVolatile(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_FLOAT);
+        return ForeignMemory.getFloatVolatile(addr);
     }
 
     public static boolean compareAndSetFloat(long userPtr, int elementIndex, int fieldIndex, float expected, float value) {
@@ -932,9 +959,8 @@ public final class Struct {
 
     public static boolean compareAndSetFloat(int generic, long userPtr, int elementIndex, int fieldIndex, float expected, float value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_FLOAT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.compareAndSetFloat(userPtr + (long) elementIndex * stride + offset, expected, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_FLOAT);
+        return ForeignMemory.compareAndSetFloat(addr, expected, value);
     }
 
     @Volatile
@@ -946,9 +972,8 @@ public final class Struct {
     @Volatile
     public static void setDoubleVolatile(int generic, long userPtr, int elementIndex, int fieldIndex, double value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putDoubleVolatile(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_DOUBLE);
+        ForeignMemory.putDoubleVolatile(addr, value);
     }
 
     @Volatile
@@ -960,9 +985,8 @@ public final class Struct {
     @Volatile
     public static double getDoubleVolatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getDoubleVolatile(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_DOUBLE);
+        return ForeignMemory.getDoubleVolatile(addr);
     }
 
     public static boolean compareAndSetDouble(long userPtr, int elementIndex, int fieldIndex, double expected, double value) {
@@ -972,9 +996,8 @@ public final class Struct {
 
     public static boolean compareAndSetDouble(int generic, long userPtr, int elementIndex, int fieldIndex, double expected, double value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_DOUBLE);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.compareAndSetDouble(userPtr + (long) elementIndex * stride + offset, expected, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_DOUBLE);
+        return ForeignMemory.compareAndSetDouble(addr, expected, value);
     }
 
     @Volatile
@@ -986,9 +1009,8 @@ public final class Struct {
     @Volatile
     public static void setByteVolatile(int generic, long userPtr, int elementIndex, int fieldIndex, byte value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_BYTE);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putByteVolatile(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_BYTE);
+        ForeignMemory.putByteVolatile(addr, value);
     }
 
     @Volatile
@@ -1000,9 +1022,8 @@ public final class Struct {
     @Volatile
     public static byte getByteVolatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_BYTE);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getByteVolatile(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_BYTE);
+        return ForeignMemory.getByteVolatile(addr);
     }
 
     public static boolean compareAndSetByte(long userPtr, int elementIndex, int fieldIndex, byte expected, byte value) {
@@ -1012,9 +1033,8 @@ public final class Struct {
 
     public static boolean compareAndSetByte(int generic, long userPtr, int elementIndex, int fieldIndex, byte expected, byte value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_BYTE);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.compareAndSetByte(userPtr + (long) elementIndex * stride + offset, expected, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_BYTE);
+        return ForeignMemory.compareAndSetByte(addr, expected, value);
     }
 
     @Volatile
@@ -1026,9 +1046,8 @@ public final class Struct {
     @Volatile
     public static void setShortVolatile(int generic, long userPtr, int elementIndex, int fieldIndex, short value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_SHORT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putShortVolatile(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_SHORT);
+        ForeignMemory.putShortVolatile(addr, value);
     }
 
     @Volatile
@@ -1040,9 +1059,8 @@ public final class Struct {
     @Volatile
     public static short getShortVolatile(int generic, long userPtr, int elementIndex, int fieldIndex) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_SHORT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getShortVolatile(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_SHORT);
+        return ForeignMemory.getShortVolatile(addr);
     }
 
     public static boolean compareAndSetShort(long userPtr, int elementIndex, int fieldIndex, short expected, short value) {
@@ -1052,9 +1070,8 @@ public final class Struct {
 
     public static boolean compareAndSetShort(int generic, long userPtr, int elementIndex, int fieldIndex, short expected, short value) {
         checkFieldType(generic, fieldIndex, TypeRegister.ID_SHORT);
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.compareAndSetShort(userPtr + (long) elementIndex * stride + offset, expected, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_SHORT);
+        return ForeignMemory.compareAndSetShort(addr, expected, value);
     }
 
     public static int stride(int generic) {
@@ -1227,9 +1244,8 @@ public final class Struct {
 
     @Unsafe
     public static void unsafeSetInt(int generic, long userPtr, int elementIndex, int fieldIndex, int value) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putInt(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_INT);
+        ForeignMemory.putInt(addr, value);
     }
 
     @Unsafe
@@ -1240,9 +1256,8 @@ public final class Struct {
 
     @Unsafe
     public static int unsafeGetInt(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getInt(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_INT);
+        return ForeignMemory.getInt(addr);
     }
 
     @Unsafe
@@ -1253,9 +1268,8 @@ public final class Struct {
 
     @Unsafe
     public static void unsafeSetLong(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putLong(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_LONG);
+        ForeignMemory.putLong(addr, value);
     }
 
     @Unsafe
@@ -1266,9 +1280,8 @@ public final class Struct {
 
     @Unsafe
     public static long unsafeGetLong(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getLong(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_LONG);
+        return ForeignMemory.getLong(addr);
     }
 
     @Unsafe
@@ -1279,9 +1292,8 @@ public final class Struct {
 
     @Unsafe
     public static void unsafeSetFloat(int generic, long userPtr, int elementIndex, int fieldIndex, float value) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putFloat(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_FLOAT);
+        ForeignMemory.putFloat(addr, value);
     }
 
     @Unsafe
@@ -1292,9 +1304,8 @@ public final class Struct {
 
     @Unsafe
     public static float unsafeGetFloat(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getFloat(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_FLOAT);
+        return ForeignMemory.getFloat(addr);
     }
 
     @Unsafe
@@ -1305,9 +1316,8 @@ public final class Struct {
 
     @Unsafe
     public static void unsafeSetDouble(int generic, long userPtr, int elementIndex, int fieldIndex, double value) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putDouble(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_DOUBLE);
+        ForeignMemory.putDouble(addr, value);
     }
 
     @Unsafe
@@ -1318,9 +1328,8 @@ public final class Struct {
 
     @Unsafe
     public static double unsafeGetDouble(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getDouble(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_DOUBLE);
+        return ForeignMemory.getDouble(addr);
     }
 
     @Unsafe
@@ -1331,9 +1340,8 @@ public final class Struct {
 
     @Unsafe
     public static void unsafeSetByte(int generic, long userPtr, int elementIndex, int fieldIndex, byte value) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putByte(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_BYTE);
+        ForeignMemory.putByte(addr, value);
     }
 
     @Unsafe
@@ -1344,9 +1352,8 @@ public final class Struct {
 
     @Unsafe
     public static byte unsafeGetByte(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getByte(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_BYTE);
+        return ForeignMemory.getByte(addr);
     }
 
     @Unsafe
@@ -1357,9 +1364,8 @@ public final class Struct {
 
     @Unsafe
     public static void unsafeSetShort(int generic, long userPtr, int elementIndex, int fieldIndex, short value) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        ForeignMemory.putShort(userPtr + (long) elementIndex * stride + offset, value);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_SHORT);
+        ForeignMemory.putShort(addr, value);
     }
 
     @Unsafe
@@ -1370,9 +1376,8 @@ public final class Struct {
 
     @Unsafe
     public static short unsafeGetShort(int generic, long userPtr, int elementIndex, int fieldIndex) {
-        int stride = getStride(generic);
-        int offset = getOffset(generic, fieldIndex);
-        return ForeignMemory.getShort(userPtr + (long) elementIndex * stride + offset);
+        long addr = getFieldAddress(generic, userPtr, elementIndex, fieldIndex, TypeRegister.ID_SHORT);
+        return ForeignMemory.getShort(addr);
     }
 
     // =========================================================================
