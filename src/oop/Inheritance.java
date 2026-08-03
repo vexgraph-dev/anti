@@ -1,5 +1,6 @@
 package oop;
 
+import annotation.HotCode;
 import annotation.Volatile;
 
 import annotation.Draft;
@@ -12,6 +13,8 @@ public class Inheritance {
 
     private Inheritance() {}
 
+    @HotCode
+    @Intention("subclass of two things, kinda instanceof type thing...")
     public static boolean isSubclassOf(int subClassId, int parentClassId) {
         if (subClassId == parentClassId)
             return true;
