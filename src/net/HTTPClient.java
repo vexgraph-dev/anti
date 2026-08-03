@@ -192,18 +192,21 @@ public final class HTTPClient {
         return executeNative("POST", urlPtr, 0L, bodyPtr);
     }
 
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     public static long request(long methodPtr, long urlPtr, long bodyPtr) {
         if (urlPtr == 0L) return 0L;
         String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
         return executeNative(method, urlPtr, 0L, bodyPtr, 0L);
     }
 
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     public static long request(long methodPtr, long urlPtr, long headersPtr, long bodyPtr) {
         if (urlPtr == 0L) return 0L;
         String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
         return executeNative(method, urlPtr, headersPtr, bodyPtr, 0L);
     }
 
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     public static long request(long methodPtr, long urlPtr, long headersPtr, long bodyPtr, long bodyLen) {
         if (urlPtr == 0L) return 0L;
         String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
@@ -211,6 +214,7 @@ public final class HTTPClient {
     }
 
     // Direct string overloads allocating off-heap pointers
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     public static long get(String urlStr) {
         if (urlStr == null || urlStr.isEmpty()) return 0L;
         long urlPtr = string.allocate(urlStr);
@@ -219,6 +223,7 @@ public final class HTTPClient {
         return res;
     }
 
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     public static long post(String urlStr, String bodyStr) {
         if (urlStr == null || urlStr.isEmpty()) return 0L;
         long urlPtr = string.allocate(urlStr);
@@ -229,6 +234,7 @@ public final class HTTPClient {
         return res;
     }
 
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     public static long request(String method, String urlStr, String headersStr, String bodyStr) {
         if (urlStr == null || urlStr.isEmpty()) return 0L;
         long urlPtr = string.allocate(urlStr);
@@ -243,10 +249,12 @@ public final class HTTPClient {
 
     // --- CORE NATIVE LIBCURL EXECUTION ENGINE ---
 
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     private static long executeNative(String method, long urlPtr, long headersPtr, long bodyPtr) {
         return executeNative(method, urlPtr, headersPtr, bodyPtr, 0L);
     }
 
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     private static long executeNative(String method, long urlPtr, long headersPtr, long bodyPtr, long bodyLen) {
         if (!libcurlAvailable || urlPtr == 0L) {
             return fallbackExecute(method, urlPtr, headersPtr, bodyPtr, bodyLen);
@@ -355,10 +363,12 @@ public final class HTTPClient {
         return fallbackExecute(method, urlPtr, headersPtr, bodyPtr, bodyLen);
     }
 
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     private static long fallbackExecute(String method, long urlPtr, long headersPtr, long bodyPtr) {
         return fallbackExecute(method, urlPtr, headersPtr, bodyPtr, 0L);
     }
 
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     private static long fallbackExecute(String method, long urlPtr, long headersPtr, long bodyPtr, long bodyLen) {
         String urlStr = string.get(urlPtr);
         if (urlStr == null || urlStr.isEmpty()) return 0L;
@@ -402,6 +412,7 @@ public final class HTTPClient {
         }
     }
 
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     public static int getStatus(long urlPtr) {
         if (urlPtr == 0L) return 500;
         if (!libcurlAvailable) {
@@ -433,6 +444,7 @@ public final class HTTPClient {
         }
     }
 
+    @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     private static int fallbackStatus(String urlStr) {
         if (urlStr == null || urlStr.isEmpty())
             return 500;
