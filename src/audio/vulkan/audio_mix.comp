@@ -1,0 +1,52 @@
+#version 450
+
+// Workgroup: 64 floats at a time = 32 stereo samples per invocation group.
+// Dispatch with ceil(numSamples / 64) workgroups.
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+// --- Input layer SSBOs (up to MAX_LAYERS = 8) ---
+// Each buffer holds stereo interleaved float32: [L0, R0, L1, R1, ...]
+// Total floats = capacityInSamples * 2.
+layout(set = 0, binding = 0) readonly buffer Layer0 { float s[]; } layer0;
+layout(set = 0, binding = 1) readonly buffer Layer1 { float s[]; } layer1;
+layout(set = 0, binding = 2) readonly buffer Layer2 { float s[]; } layer2;
+layout(set = 0, binding = 3) readonly buffer Layer3 { float s[]; } layer3;
+layout(set = 0, binding = 4) readonly buffer Layer4 { float s[]; } layer4;
+layout(set = 0, binding = 5) readonly buffer Layer5 { float s[]; } layer5;
+layout(set = 0, binding = 6) readonly buffer Layer6 { float s[]; } layer6;
+layout(set = 0, binding = 7) readonly buffer Layer7 { float s[]; } layer7;
+
+// --- Master mix output SSBO ---
+layout(set = 0, binding = 8) writeonly buffer MasterMix { float s[]; } master;
+
+// --- Per-dispatch push constants ---
+// numSamples = capacityInSamples * 2 (total float count, stereo interleaved)
+// numLayers  = active layer count (1..8)
+// gains[8]   = per-layer linear gain (0.0 = silent, 1.0 = unity, >1.0 = boost)
+layout(push_constant) uniform Params {
+    int   numSamples;
+    int   numLayers;
+    float gains[8];
+} params;
+
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+    if (i >= uint(params.numSamples)) return;
+
+    // Accumulate layers with per-layer gain.
+    // Only active layers (index < numLayers) contribute.
+    // GPU-side branching on numLayers is predictable and will be unrolled by the compiler.
+    float mixed = 0.0;
+
+    if (params.numLayers > 0) mixed += layer0.s[i] * params.gains[0];
+    if (params.numLayers > 1) mixed += layer1.s[i] * params.gains[1];
+    if (params.numLayers > 2) mixed += layer2.s[i] * params.gains[2];
+    if (params.numLayers > 3) mixed += layer3.s[i] * params.gains[3];
+    if (params.numLayers > 4) mixed += layer4.s[i] * params.gains[4];
+    if (params.numLayers > 5) mixed += layer5.s[i] * params.gains[5];
+    if (params.numLayers > 6) mixed += layer6.s[i] * params.gains[6];
+    if (params.numLayers > 7) mixed += layer7.s[i] * params.gains[7];
+
+    // Hard clip to prevent digital clipping artifacts on overflow.
+    master.s[i] = clamp(mixed, -1.0, 1.0);
+}
