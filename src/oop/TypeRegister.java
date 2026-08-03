@@ -130,6 +130,11 @@ public class TypeRegister
 
 
     // --- BUFFER CLASSES ---
+    public static final int ID_BUFFER               = 0x00004A; // Buffer class // 74
+    public static final int BUFFER_SINGLETON        = FORM_SINGLETON | ID_BUFFER;
+    public static final int BUFFER_ARRAY            = FORM_ARRAY | ID_BUFFER;
+    public static final int BUFFER_POINTER          = FORM_POINTER | ID_BUFFER;
+
     public static final int ID_ACCUMULUATION_BUFFER = 0x000050; // AccumuluationBuffer class
     public static final int ID_AMBIENT_BUFFER = 0x000051; // AmbientBuffer class
     public static final int ID_COLOR_BUFFER = 0x000052; // ColorBuffer class
@@ -457,6 +462,13 @@ public class TypeRegister
     public static int getClassId(int typeId)
     {
         return typeId & MASK_CLASS;
+    }
+
+    public static int getParentClass(int classId)
+    {
+        if (classId >= 0x000050 && classId <= 0x000063)
+            return ID_BUFFER;
+        return classId;
     }
 
     // AccumuluationBuffer class
