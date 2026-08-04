@@ -16,29 +16,29 @@ final class macOSWindow {
     private static final Linker LINKER = Linker.nativeLinker();
     
     // --- Objective-C Runtime Handles (Mac) ---
-    private static final SymbolLookup OBJC_LIB;
-    private static final MethodHandle OBJC_GET_CLASS;
-    private static final MethodHandle SEL_REGISTER_NAME;
-    private static final MethodHandle MSG_SEND_PTR;
-    private static final MethodHandle MSG_SEND_PTR_PTR;
-    private static final MethodHandle MSG_SEND_PTR_LONG;
-    private static final MethodHandle MSG_SEND_PTR_LONG_PTR;
-    private static final MethodHandle MSG_SEND_PTR_SIZE;
-    private static final MethodHandle MSG_SEND_VOID;
-    private static final MethodHandle MSG_SEND_VOID_PTR;
-    private static final MethodHandle MSG_SEND_INT;
-    private static final MethodHandle MSG_SEND_BOOL;
-    private static final MethodHandle MSG_SEND_BOOL_RET;
-    private static final MethodHandle MSG_SEND_PTR_DOUBLE;
-    private static final MethodHandle MSG_SEND_INIT_WINDOW;
-    private static final MethodHandle MSG_SEND_NEXT_EVENT;
-    private static final MethodHandle MSG_SEND_LONG_RET;
-    private static final MethodHandle MSG_SEND_SHORT_RET;
-    private static final MethodHandle MSG_SEND_POINT_RET;
-    private static final MethodHandle MSG_SEND_RECT_RET;
-    private static final MethodHandle MSG_SEND_DOUBLE_RET;
-    private static final StructLayout CG_RECT;
-    private static final StructLayout CG_SIZE;
+    private static SymbolLookup OBJC_LIB;
+    private static MethodHandle OBJC_GET_CLASS;
+    private static MethodHandle SEL_REGISTER_NAME;
+    private static MethodHandle MSG_SEND_PTR;
+    private static MethodHandle MSG_SEND_PTR_PTR;
+    private static MethodHandle MSG_SEND_PTR_LONG;
+    private static MethodHandle MSG_SEND_PTR_LONG_PTR;
+    private static MethodHandle MSG_SEND_PTR_SIZE;
+    private static MethodHandle MSG_SEND_VOID;
+    private static MethodHandle MSG_SEND_VOID_PTR;
+    private static MethodHandle MSG_SEND_INT;
+    private static MethodHandle MSG_SEND_BOOL;
+    private static MethodHandle MSG_SEND_BOOL_RET;
+    private static MethodHandle MSG_SEND_PTR_DOUBLE;
+    private static MethodHandle MSG_SEND_INIT_WINDOW;
+    private static MethodHandle MSG_SEND_NEXT_EVENT;
+    private static MethodHandle MSG_SEND_LONG_RET;
+    private static MethodHandle MSG_SEND_SHORT_RET;
+    private static MethodHandle MSG_SEND_POINT_RET;
+    private static MethodHandle MSG_SEND_RECT_RET;
+    private static MethodHandle MSG_SEND_DOUBLE_RET;
+    private static StructLayout CG_RECT;
+    private static StructLayout CG_SIZE;
 
     // Translation map for macOS virtual key codes -> cross-platform Key constants
     private static final int[] MAC_KEY_MAP = new int[128];
@@ -52,6 +52,7 @@ final class macOSWindow {
             objcLib = SymbolLookup.libraryLookup("libobjc.A.dylib", Arena.global());
             
             try {
+                SymbolLookup.libraryLookup("/System/Library/Frameworks/AppKit.framework/AppKit", Arena.global());
                 SymbolLookup.libraryLookup("/System/Library/Frameworks/QuartzCore.framework/QuartzCore", Arena.global());
             } catch (Throwable t) {
                 throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
