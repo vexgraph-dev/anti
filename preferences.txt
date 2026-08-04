@@ -152,9 +152,7 @@
    - Run `scratch/AudioLayerTest.java` and `scratch/AudioTest.java` to verify compile + runtime.
    - Determine if `daw.*` (digital audio workstation) layer is in scope.
 
-7. **GraalVM Native Image Preparation**
-   - As noted in README: native compilation is a future goal.
-   - When approaching, register reflection/FFM configs, audit all `Arena.global()` usages, and ensure no JVM-only APIs remain in hot paths.
+7. **GraalVM Native Image** ✅ — `AntiEngine-Native.app` (22MB, no JVM) builds and runs clean via `scratch/build_native.sh`. Window spawns, Vulkan + MoltenVK boots, input events captured, exits code 0. See §11 for compatibility rules.
 
 ## 11. GraalVM Native Image Compatibility Rules
 
