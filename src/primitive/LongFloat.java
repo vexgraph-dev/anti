@@ -473,10 +473,9 @@ public final class LongFloat {
     }
 
     public static void set(long pointer, int index, long intPart, float fracPart) {
-        checkBounds(pointer, index);
+        checkBounds(pointer, index); // safe checking of bounds
         if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected LongFloat (Class ID " + CLASS_ID + ")");
-        ForeignMemory.unsafeSet(pointer + (index * 12L), intPart);
-        ForeignMemory.unsafeSet(pointer + (index * 12L) + 8L, fracPart);
+        unsafeSet(pointer, index, intPart, fracPart);
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
@@ -563,9 +562,8 @@ public final class LongFloat {
 
     @Volatile
     public static void setVolatile(long pointer, int index, long val1, float val2) {
-        checkBounds(pointer, index);
-        ForeignMemory.unsafeVolatileSet(pointer + (index * 12L), val1);
-        ForeignMemory.unsafeVolatileSet(pointer + (index * 12L) + 8L, val2);
+        checkBounds(pointer, index); // this is where the checking bounds are
+        unsafeVolatileSet(pointer, index, val1, val2);
     }
 
     @Unsafe
