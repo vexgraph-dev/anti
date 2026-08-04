@@ -24,14 +24,33 @@ public final class ConsoleThread {
 
     private static final long WORKER_MAP_PTR = Map.instant(TypeRegister.ID_LONG, TypeRegister.ID_VARIABLE, 16);
 
+    private static final long CORE_WORKER_PTR;
+
+    static {
+        CORE_WORKER_PTR = invoke(true);
+    }
+
     private ConsoleThread() {}
 
     public static int classId() {
         return CLASS_ID;
     }
 
+    public static long getCoreWorker() {
+        return CORE_WORKER_PTR;
+    }
+
+    public static boolean isCore(long workerPtr) {
+        if (workerPtr == 0L) return false;
+        return ForeignMemory.getInt(workerPtr + 16L) == 1;
+    }
+
     @Draft
     public static long invoke() {
+        return invoke(false);
+    }
+
+    private static long invoke(boolean isCore) {
         long block = ForeignMemory.allocateNative(56);
         long workerPtr = block + 8L;
 
@@ -45,9 +64,11 @@ public final class ConsoleThread {
         // workerPtr + 0: state (0 = STOPPED, 1 = RUNNING)
         // workerPtr + 4: poolSize (1 thread)
         // workerPtr + 8: workQueuePtr (RingBuffer handle)
+        // workerPtr + 16: isCore (1 = CORE, 0 = USER)
         ForeignMemory.putInt(workerPtr, 0);                 // STOPPED
         ForeignMemory.putInt(workerPtr + 4L, 1);             // 1 thread
         ForeignMemory.putLong(workerPtr + 8L, workQueuePtr);
+        ForeignMemory.putInt(workerPtr + 16L, isCore ? 1 : 0);
 
         // Connect Console logging to the worker queue
         Console.setLogQueueHead(workQueuePtr);
@@ -92,6 +113,11 @@ public final class ConsoleThread {
     @Draft
     public static synchronized void stop(long workerPtr) {
         if (workerPtr == 0L) return;
+        if (isCore(workerPtr)) return; // Protected core thread
+        stopInternal(workerPtr);
+    }
+
+    private static void stopInternal(long workerPtr) {
         ForeignMemory.putInt(workerPtr, 0); // Set state to STOPPED
 
         Thread worker = (Thread) Map.getObject(WORKER_MAP_PTR, workerPtr);
@@ -112,7 +138,12 @@ public final class ConsoleThread {
     @Draft
     public static synchronized void free(long workerPtr) {
         if (workerPtr == 0L) return;
-        stop(workerPtr);
+        if (isCore(workerPtr)) return; // Protected core thread
+        freeInternal(workerPtr);
+    }
+
+    private static void freeInternal(long workerPtr) {
+        stopInternal(workerPtr);
 
         long queuePtr = getQueue(workerPtr);
         if (queuePtr != 0L) {
@@ -123,6 +154,21 @@ public final class ConsoleThread {
 
         long block = workerPtr - 8L;
         ForeignMemory.freeNative(block);
+    }
+
+    /**
+     * Completely shuts down and frees all resources, including the core worker.
+     * Call this only during full system shutdown.
+     */
+    public static synchronized void freeAllSystem() {
+        long keysPtr = Map.getKeys(WORKER_MAP_PTR);
+        if (keysPtr == 0L) return;
+        int count = struct.Array.length(keysPtr);
+        for (int i = 0; i < count; i++) {
+            long workerPtr = struct.Array.get(keysPtr, i);
+            freeInternal(workerPtr);
+        }
+        struct.Array.free(keysPtr);
     }
 
     @Draft
