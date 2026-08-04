@@ -1,6 +1,5 @@
 package oop;
 
-import annotation.Intention;
 import annotation.Required;
 import annotation.HotCode;
 
@@ -25,9 +24,10 @@ public final class Stride {
     public static int get(int generic) {
         int classId = generic & TypeRegister.MASK_CLASS;
         int customStride = Struct.stride(classId);
-        if (customStride != 0) {
+
+        if (customStride != 0)
             return customStride;
-        }
+
         return switch (classId) {
 
             // primtives
