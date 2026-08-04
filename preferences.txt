@@ -155,3 +155,51 @@
 7. **GraalVM Native Image Preparation**
    - As noted in README: native compilation is a future goal.
    - When approaching, register reflection/FFM configs, audit all `Arena.global()` usages, and ensure no JVM-only APIs remain in hot paths.
+
+## 11. GraalVM Native Image Compatibility Rules
+
+These rules are MANDATORY for all code that must compile and run under GraalVM Native Image (`native-image`). Violating these will cause silent runtime failures or crashes that are extremely hard to debug.
+
+### 11.1 FFM Downcall Registration
+- EVERY `Linker.downcallHandle(...)` call used at runtime MUST have its exact `FunctionDescriptor` registered in `config.FFMRegistrationFeature` via `RuntimeForeignAccess.registerForDowncall(...)`.
+- The `FunctionDescriptor` layout must be an EXACT structural match — same `ValueLayout` carriers in the same order. GraalVM matches by layout structure, not by name.
+- This includes stdlib calls like `malloc` (`of(ADDRESS, JAVA_LONG)`) and `free` (`ofVoid(ADDRESS)`). Do not assume any downcall is auto-registered.
+- When adding a new FFM downcall anywhere in the codebase, IMMEDIATELY add its `FunctionDescriptor` to `FFMRegistrationFeature.duringSetup(...)`.
+
+### 11.2 Static Field Initialization (The `final` Trap)
+- NEVER declare FFM handles (`MethodHandle`, `SymbolLookup`, `MemorySegment`, `VarHandle`) as `private static final` if the class is initialized at runtime.
+- GraalVM constant-folds `static final` fields to their build-time value (`null`) in the compiled binary, even when `--initialize-at-run-time=...` is set. The runtime initializer runs, but all reads of the field are already hardcoded to `null` in machine code.
+- Declare all FFM runtime handles as `private static` (non-final) only.
+- Pure constants (`int`, `long`, `String` literals, enum values) are safe to keep `final`.
+
+### 11.3 Class Initialization Timing
+- All classes that call `Linker.nativeLinker()`, `SymbolLookup.libraryLookup(...)`, or any FFM downcall during their static initializer MUST be deferred to runtime.
+- Add `--initialize-at-run-time=<fully.qualified.ClassName>` in `build_native.sh` for every such class.
+- If a class `A` is initialized at build-time and it references class `B` (which has FFM handles), class `B` will also be pulled into build-time initialization. Always check the full dependency chain.
+
+### 11.4 Native Framework Loading
+- In a GraalVM native binary, macOS system frameworks (AppKit, QuartzCore, etc.) are NOT automatically loaded. The JVM normally loads them as a side effect of AWT/Cocoa bootstrap — that does not happen in a native image.
+- Any class that uses Objective-C runtime classes (NSWindow, NSApplication, CAMetalLayer, etc.) MUST explicitly load the required frameworks in its static initializer:
+  ```java
+  SymbolLookup.libraryLookup("/System/Library/Frameworks/AppKit.framework/AppKit", Arena.global());
+  SymbolLookup.libraryLookup("/System/Library/Frameworks/QuartzCore.framework/QuartzCore", Arena.global());
+  ```
+- Do this BEFORE any `objc_getClass(...)` calls, otherwise all class lookups silently return `nil` and every Objective-C message send is a silent no-op returning `0`.
+
+### 11.5 Native Library Path
+- LWJGL `.dylib` natives MUST be placed physically next to the native binary (in `Contents/MacOS/` for `.app` bundles).
+- Set `org.lwjgl.librarypath` to the directory containing the dylibs at startup. In a GraalVM native binary, use `ProcessHandle.current().info().command()` to locate the executable path dynamically — `user.dir` is unreliable (resolves to `/` when launched via Finder).
+- `build_native.sh` handles this automatically for the native build. Do not remove this logic.
+
+### 11.6 What Is Safe to Use
+- ✅ `java.lang.foreign.*` — fully supported
+- ✅ `java.lang.invoke.MethodHandle` — fully supported
+- ✅ `Arena.global()`, `Arena.ofConfined()`, `Arena.ofShared()` — fully supported
+- ✅ Off-heap raw `long` pointers and `MemorySegment` — fully supported
+- ✅ `ProcessHandle` — fully supported
+- ✅ Static initializers deferred via `--initialize-at-run-time` — fully supported
+- ❌ `java.awt.*`, `javax.swing.*` — NOT supported in native image
+- ❌ Dynamic class loading (`Class.forName(...)` on unknown classes) — NOT supported without reflection config
+- ❌ `static final MethodHandle` fields in runtime-initialized classes — constant-folded to `null`
+- ❌ Assuming any system framework is pre-loaded — always load explicitly
+
