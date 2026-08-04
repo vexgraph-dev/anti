@@ -27,10 +27,25 @@ public final class NetworkingThread {
     // Central off-heap manager registry mapping workerPtr -> Thread instance
     private static final long WORKER_MAP_PTR = Map.instant(TypeRegister.ID_LONG, TypeRegister.ID_VARIABLE, 128);
 
+    private static final long CORE_WORKER_PTR;
+
+    static {
+        CORE_WORKER_PTR = invoke(true);
+    }
+
     private NetworkingThread() {}
 
     public static int classId() {
         return CLASS_ID;
+    }
+
+    public static long getCoreWorker() {
+        return CORE_WORKER_PTR;
+    }
+
+    public static boolean isCore(long workerPtr) {
+        if (workerPtr == 0L) return false;
+        return ForeignMemory.getInt(workerPtr + 16L) == 1;
     }
 
     /**
@@ -41,6 +56,10 @@ public final class NetworkingThread {
      *   long apirequests = NetworkingThread.invoke();
      */
     public static long invoke() {
+        return invoke(false);
+    }
+
+    private static long invoke(boolean isCore) {
         long block = ForeignMemory.allocateNative(56);
         long workerPtr = block + 8L;
 
@@ -54,9 +73,11 @@ public final class NetworkingThread {
         // workerPtr + 0: state (0 = STOPPED, 1 = RUNNING)
         // workerPtr + 4: poolSize (1 thread per worker handle)
         // workerPtr + 8: workQueuePtr (RingBuffer handle)
+        // workerPtr + 16: isCore (1 = CORE, 0 = USER)
         ForeignMemory.putInt(workerPtr, 0);                 // STOPPED
         ForeignMemory.putInt(workerPtr + 4L, 1);             // 1 thread
         ForeignMemory.putLong(workerPtr + 8L, workQueuePtr);
+        ForeignMemory.putInt(workerPtr + 16L, isCore ? 1 : 0);
 
         // Register worker handle in central pool manager registry
         Map.put(WORKER_MAP_PTR, workerPtr, 1L);
@@ -115,6 +136,11 @@ public final class NetworkingThread {
      */
     public static synchronized void stop(long workerPtr) {
         if (workerPtr == 0L) return;
+        if (isCore(workerPtr)) return; // Protected core thread
+        stopInternal(workerPtr);
+    }
+
+    private static void stopInternal(long workerPtr) {
         ForeignMemory.putInt(workerPtr, 0); // Set state to STOPPED
 
         Thread worker = (Thread) Map.getObject(WORKER_MAP_PTR, workerPtr);
@@ -134,7 +160,12 @@ public final class NetworkingThread {
      */
     public static synchronized void free(long workerPtr) {
         if (workerPtr == 0L) return;
-        stop(workerPtr);
+        if (isCore(workerPtr)) return; // Protected core thread
+        freeInternal(workerPtr);
+    }
+
+    private static void freeInternal(long workerPtr) {
+        stopInternal(workerPtr);
 
         long queuePtr = getQueue(workerPtr);
         if (queuePtr != 0L) {
@@ -177,7 +208,9 @@ public final class NetworkingThread {
         int count = Array.length(keysPtr);
         for (int i = 0; i < count; i++) {
             long workerPtr = Array.get(keysPtr, i);
-            stop(workerPtr);
+            if (!isCore(workerPtr)) {
+                stopInternal(workerPtr);
+            }
         }
         Array.free(keysPtr);
     }
@@ -191,7 +224,24 @@ public final class NetworkingThread {
         int count = Array.length(keysPtr);
         for (int i = 0; i < count; i++) {
             long workerPtr = Array.get(keysPtr, i);
-            free(workerPtr);
+            if (!isCore(workerPtr)) {
+                freeInternal(workerPtr);
+            }
+        }
+        Array.free(keysPtr);
+    }
+
+    /**
+     * Completely shuts down and frees all resources, including the core worker.
+     * Call this only during full system shutdown.
+     */
+    public static synchronized void freeAllSystem() {
+        long keysPtr = Map.getKeys(WORKER_MAP_PTR);
+        if (keysPtr == 0L) return;
+        int count = Array.length(keysPtr);
+        for (int i = 0; i < count; i++) {
+            long workerPtr = Array.get(keysPtr, i);
+            freeInternal(workerPtr);
         }
         Array.free(keysPtr);
     }
