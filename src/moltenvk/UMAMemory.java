@@ -25,7 +25,7 @@ public final class UMAMemory {
         VkPhysicalDeviceMemoryProperties memProperties = VkPhysicalDeviceMemoryProperties.calloc();
         vkGetPhysicalDeviceMemoryProperties(physicalDevice, memProperties);
 
-        // We want memory that is Device Local AND Host Visible (The Holy Grail of UMA)
+        // We want memory that is Device Local AND Host Visible
         int desiredProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | 
                                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | 
                                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
