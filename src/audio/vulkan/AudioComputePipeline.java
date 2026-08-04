@@ -46,6 +46,7 @@ import static org.lwjgl.vulkan.VK10.*;
 @Draft
 @Intention("Vulkan compute pipeline for zero-copy GPU audio mixing with explicit host→shader memory barriers")
 @Volatile
+@SuppressWarnings("all") // this is so that the whole thing dosnt warn about Autocloseables :roll:
 public final class AudioComputePipeline {
 
     /** Maximum number of simultaneous input layers supported by the GLSL shader. */
@@ -84,7 +85,7 @@ public final class AudioComputePipeline {
         // Off-heap push constant scratch block — lives for the lifetime of the pipeline
         this.pushConstantPtr = ForeignMemory.allocateNative(PUSH_CONSTANT_SIZE);
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            this.shaderModule       = createShaderModule(device, spvPath, stack);
+            this.shaderModule        = createShaderModule(device, spvPath, stack);
             this.descriptorSetLayout = createDescriptorSetLayout(device, stack);
             this.pipelineLayout      = createPipelineLayout(device, stack);
             this.descriptorPool      = createDescriptorPool(device, stack);
