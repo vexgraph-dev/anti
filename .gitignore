@@ -1,54 +1,30 @@
 ### IntelliJ IDEA ###
+.idea/
+*.iml
 out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-.kotlin
-
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
-.vscode/
 
 ### Mac OS ###
 .DS_Store
 
-### Others ###
-.idea/
-*.iml
-preferences.txt
-lib/
-
-### testing grounds / scratch ###
-scratch/
+### Build & Native Artifacts ###
+natives/
 crash-dump.txt
 crash-dump_*.txt
 hs_err_pid*.log
 *.log
 
-### Private / Regurgitation / Config Files ###
+### Dependencies ###
+lib/
+
+### Scratch / Testing ###
+scratch/
+
+### Private / Config ###
+preferences.txt
 regurgitation/
 code.txt
 *.regurgitation
 
-### not ready for presenting
+### Not ready for presenting ###
 src/api/com/api/
-api/
 **/api/
-
