@@ -1,8 +1,8 @@
-package mtl;
+package msl;
 
-public class MTLCompiler
+public class MSLCompiler
 {
-    public MTLCompiler()
+    public MSLCompiler()
     {
 
     }
