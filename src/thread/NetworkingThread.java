@@ -120,6 +120,11 @@ public final class NetworkingThread {
         Thread worker = (Thread) Map.getObject(WORKER_MAP_PTR, workerPtr);
         if (worker != null) {
             worker.interrupt();
+            try {
+                worker.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
         Map.put(WORKER_MAP_PTR, workerPtr, 1L);
     }
