@@ -1,8 +1,8 @@
-package mtl;
+package msl;
 
-public class MTLShader
+public class MSLShader
 {
-    public MTLShader()
+    public MSLShader()
     {
 
     }
