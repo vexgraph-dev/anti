@@ -114,7 +114,11 @@ public final class HTTPClient {
                 stub = linker.upcallStub(writeCbMethod, writeCbDesc, Arena.global());
                 available = true;
             }
-        } catch (Throwable ignored) {}
+        }
+        catch (Throwable NOT_ignored)
+        {
+            throw new RuntimeException("WHAT THE HECK IS THIS SILENT EXCEPTION ????? anyways, its at " + NOT_ignored);
+        }
 
         curl_easy_init = init;
         curl_easy_setopt_ptr = setoptPtr;
