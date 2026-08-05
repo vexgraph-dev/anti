@@ -41,8 +41,8 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
 
-public class ForeignMemory
-{
+public class ForeignMemory {
+
     // god, the lens of all things. might be dangerous to hold, low-key
     // literally c flavored hell java version
     // good luck myself
@@ -64,21 +64,20 @@ public class ForeignMemory
 
         try {
             MALLOC_HANDLE = linker.downcallHandle(
-                stdlib.find("malloc").orElseThrow(),
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)
+                    stdlib.find("malloc").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)
             );
 
             FREE_HANDLE = linker.downcallHandle(
-                stdlib.find("free").orElseThrow(),
-                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS)
+                    stdlib.find("free").orElseThrow(),
+                    FunctionDescriptor.ofVoid(ValueLayout.ADDRESS)
             );
         } catch (Throwable t) {
             throw new ExceptionInInitializerError(t);
         }
     }
 
-    public static long allocateNative(long bytes)
-    {
+    public static long allocateNative(long bytes) {
         if (bytes <= 0) return 0L;
         try {
             MemorySegment seg = (MemorySegment) MALLOC_HANDLE.invokeExact(bytes);
@@ -88,9 +87,9 @@ public class ForeignMemory
         }
     }
 
-    public static void freeNative(long address)
-    {
-        if (address == 0L) return;
+    public static void freeNative(long address) {
+        if (address == 0L)
+            throw new RuntimeException("cant free a null pointer silly!");
         try {
             FREE_HANDLE.invokeExact(MemorySegment.ofAddress(address));
         } catch (Throwable t) {
@@ -98,138 +97,26 @@ public class ForeignMemory
         }
     }
 
-    public static byte getByte(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_BYTE, address);
+    // =========================================================================
+    // STANDARD SAFE METHODS (No Annotations)
+    // =========================================================================
+
+    public static MemorySegment wrap(long address, long byteSize) {
+        return MemorySegment.ofAddress(address).reinterpret(byteSize);
     }
 
-    @Unsafe
-    public static byte unsafeGetByte(long address) {
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_BYTE, address);
+    public static MemorySegment wrap(long address, long byteSize, Arena arena) {
+        return MemorySegment.ofAddress(address).reinterpret(byteSize, arena, null);
     }
 
-    public static void putByte(long address, byte value) {
-        GLOBAL_MEMORY.set(ValueLayout.JAVA_BYTE, address, value);
+    public static void setMemory(long address, long byteSize, byte value) {
+        if (address == 0L || byteSize <= 0) return;
+        wrap(address, byteSize).fill(value);
     }
 
-    public static short getShort(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_SHORT, address);
-    }
-
-    @Unsafe
-    public static short unsafeGetShort(long address) {
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_SHORT, address);
-    }
-
-    public static void putShort(long address, short value) {
-        GLOBAL_MEMORY.set(ValueLayout.JAVA_SHORT, address, value);
-    }
-
-    public static int getInt(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_INT, address);
-    }
-
-    @Unsafe
-    public static int unsafeGetInt(long address) {
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_INT, address);
-    }
-
-    public static void putInt(long address, int value) {
-        GLOBAL_MEMORY.set(ValueLayout.JAVA_INT, address, value);
-    }
-
-    public static long getLong(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_LONG, address);
-    }
-
-    @Unsafe
-    public static long unsafeGetLong(long address) {
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_LONG, address);
-    }
-
-    public static void putLong(long address, long value) {
-        GLOBAL_MEMORY.set(ValueLayout.JAVA_LONG, address, value);
-    }
-
-    public static float getFloat(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_FLOAT, address);
-    }
-
-    @Unsafe
-    public static float unsafeGetFloat(long address) {
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_FLOAT, address);
-    }
-
-    public static void putFloat(long address, float value) {
-        GLOBAL_MEMORY.set(ValueLayout.JAVA_FLOAT, address, value);
-    }
-
-    public static double getDouble(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_DOUBLE, address);
-    }
-
-    @Unsafe
-    public static double unsafeGetDouble(long address) {
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_DOUBLE, address);
-    }
-
-    public static void putDouble(long address, double value) {
-        GLOBAL_MEMORY.set(ValueLayout.JAVA_DOUBLE, address, value);
-    }
-
-    public static short getShortUnaligned(long address) {
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_SHORT_UNALIGNED, address);
-    }
-
-    public static void putShortUnaligned(long address, short value) {
-        GLOBAL_MEMORY.set(ValueLayout.JAVA_SHORT_UNALIGNED, address, value);
-    }
-
-    public static int getIntUnaligned(long address) {
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_INT_UNALIGNED, address);
-    }
-
-    public static void putIntUnaligned(long address, int value) {
-        GLOBAL_MEMORY.set(ValueLayout.JAVA_INT_UNALIGNED, address, value);
-    }
-
-    public static long getLongUnaligned(long address) {
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_LONG_UNALIGNED, address);
-    }
-
-    public static void putLongUnaligned(long address, long value) {
-        GLOBAL_MEMORY.set(ValueLayout.JAVA_LONG_UNALIGNED, address, value);
-    }
-
-    public static float getFloatUnaligned(long address) {
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_FLOAT_UNALIGNED, address);
-    }
-
-    public static void putFloatUnaligned(long address, float value) {
-        GLOBAL_MEMORY.set(ValueLayout.JAVA_FLOAT_UNALIGNED, address, value);
-    }
-
-    public static double getDoubleUnaligned(long address) {
-        return GLOBAL_MEMORY.get(ValueLayout.JAVA_DOUBLE_UNALIGNED, address);
-    }
-
-    public static void putDoubleUnaligned(long address, double value) {
-        GLOBAL_MEMORY.set(ValueLayout.JAVA_DOUBLE_UNALIGNED, address, value);
-    }
-
-    public static long getAddress(long address) {
-        if (address == 0L) throw new NullPointerException("Reading address from NULL off-heap pointer!");
-        return GLOBAL_MEMORY.get(ValueLayout.ADDRESS, address).address();
-    }
-
-    public static void putAddress(long address, long targetAddress) {
-        if (address == 0L) throw new NullPointerException("Writing address to NULL off-heap pointer!");
-        GLOBAL_MEMORY.set(ValueLayout.ADDRESS, address, MemorySegment.ofAddress(targetAddress));
+    public static void setMemory(long address, int byteSize, byte value) {
+        if (address == 0L || byteSize <= 0) return;
+        wrap(address, byteSize).fill(value);
     }
 
     public static void copy(long srcAddress, long destAddress, long bytes) {
@@ -248,179 +135,153 @@ public class ForeignMemory
         MemorySegment.copy(srcArray, srcOffset, GLOBAL_MEMORY, ValueLayout.JAVA_BYTE, destAddress, length);
     }
 
+    public static byte getByte(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_BYTE, address);
+    }
+
+    public static void setByte(long address, byte value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_BYTE, address, value);
+    }
+
+    public static void set(long address, byte value) {
+        setByte(address, value);
+    }
+
+    public static short getShort(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_SHORT, address);
+    }
+
+    public static void setShort(long address, short value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_SHORT, address, value);
+    }
+
+    public static void set(long address, short value) {
+        setShort(address, value);
+    }
+
+    public static int getInt(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_INT, address);
+    }
+
+    public static void setInt(long address, int value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_INT, address, value);
+    }
+
+    public static void set(long address, int value) {
+        setInt(address, value);
+    }
+
+    public static long getLong(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_LONG, address);
+    }
+
+    public static void setLong(long address, long value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_LONG, address, value);
+    }
+
+    public static void set(long address, long value) {
+        setLong(address, value);
+    }
+
+    public static float getFloat(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_FLOAT, address);
+    }
+
+    public static void setFloat(long address, float value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_FLOAT, address, value);
+    }
+
+    public static void set(long address, float value) {
+        setFloat(address, value);
+    }
+
+    public static double getDouble(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_DOUBLE, address);
+    }
+
+    public static void setDouble(long address, double value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_DOUBLE, address, value);
+    }
+
+    public static void set(long address, double value) {
+        setDouble(address, value);
+    }
+
+    public static long getAddress(long address) {
+        if (address == 0L) throw new NullPointerException("Reading address from NULL off-heap pointer!");
+        return GLOBAL_MEMORY.get(ValueLayout.ADDRESS, address).address();
+    }
+
+    public static void setAddress(long address, long targetAddress) {
+        if (address == 0L) throw new NullPointerException("Writing address to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.ADDRESS, address, MemorySegment.ofAddress(targetAddress));
+    }
+
     public static String getString(long address) {
         if (address == 0) return null;
         return GLOBAL_MEMORY.getString(address);
     }
 
-    public static MemorySegment wrap(long address, long byteSize) {
-        return MemorySegment.ofAddress(address).reinterpret(byteSize);
-    }
-
-    public static void setMemory(long address, long byteSize, byte value) {
-        if (address == 0L || byteSize <= 0) return;
-        wrap(address, byteSize).fill(value);
-    }
-
-    public static void setMemory(long address, int byteSize, byte value) {
-        if (address == 0L || byteSize <= 0) return;
-        wrap(address, byteSize).fill(value);
-    }
-
-    public static MemorySegment wrap(long address, long byteSize, Arena arena) {
-        return MemorySegment.ofAddress(address).reinterpret(byteSize, arena, null);
-    }
-
-    // =========================================================================
-    // OVERLOADED SAFE & UNSAFE SETTERS
-    // =========================================================================
-
-
-    public static void set(long address, byte value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putByte(address, value);
-    }
-
-    public static void set(long address, short value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putShort(address, value);
-    }
-
-    public static void set(long address, int value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putInt(address, value);
-    }
-
-    public static void set(long address, long value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putLong(address, value);
-    }
-
-    public static void set(long address, float value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putFloat(address, value);
-    }
-
-    public static void set(long address, double value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putDouble(address, value);
-    }
-
-    @Unsafe
-    public static void unsafeSet(long address, byte value) {
-        putByte(address, value);
-    }
-
-    @Unsafe
-    public static void unsafeSet(long address, short value) {
-        putShort(address, value);
-    }
-
-    @Unsafe
-    public static void unsafeSet(long address, int value) {
-        putInt(address, value);
-    }
-
-    @Unsafe
-    public static void unsafeSet(long address, long value) {
-        putLong(address, value);
-    }
-
-    @Unsafe
-    public static void unsafeSet(long address, float value) {
-        putFloat(address, value);
-    }
-
-    @Unsafe
-    public static void unsafeSet(long address, double value) {
-        putDouble(address, value);
-    }
-
-    public static void setVolatile(long address, byte value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putByteVolatile(address, value);
-    }
-
-    public static void setVolatile(long address, short value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putShortVolatile(address, value);
-    }
-
-    public static void setVolatile(long address, int value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putIntVolatile(address, value);
-    }
-
-    public static void setVolatile(long address, long value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putLongVolatile(address, value);
-    }
-
-    public static void setVolatile(long address, float value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putFloatVolatile(address, value);
-    }
-
-    public static void setVolatile(long address, double value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        putDoubleVolatile(address, value);
-    }
-
-    @Unsafe
-    @Volatile
-    public static void unsafeVolatileSet(long address, byte value) {
-        putByteVolatile(address, value);
-    }
-
-    @Unsafe
-    @Volatile
-    public static void unsafeVolatileSet(long address, short value) {
-        putShortVolatile(address, value);
-    }
-
-    @Unsafe
-    @Volatile
-    public static void unsafeVolatileSet(long address, int value) {
-        putIntVolatile(address, value);
-    }
-
-    @Unsafe
-    @Volatile
-    public static void unsafeVolatileSet(long address, long value) {
-        putLongVolatile(address, value);
-    }
-
-    @Unsafe
-    @Volatile
-    public static void unsafeVolatileSet(long address, float value) {
-        putFloatVolatile(address, value);
-    }
-
-    @Unsafe
-    @Volatile
-    public static void unsafeVolatileSet(long address, double value) {
-        putDoubleVolatile(address, value);
-    }
-
-    // =========================================================================
-    // ATOMIC & VOLATILE DEREFERENCING METHODS (VarHandles)
-    // =========================================================================
-
-    @Volatile
-    public static byte getByteVolatile(long address) {
+    public static short getShortUnaligned(long address) {
         if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return (byte) BYTE_VH.getVolatile(GLOBAL_MEMORY, address);
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_SHORT_UNALIGNED, address);
     }
 
-    @Unsafe
-    @Volatile
-    public static byte unsafeGetByteVolatile(long address) {
-        return (byte) BYTE_VH.getVolatile(GLOBAL_MEMORY, address);
+    public static void setShortUnaligned(long address, short value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_SHORT_UNALIGNED, address, value);
     }
 
-    @Volatile
-    public static void putByteVolatile(long address, byte value) {
-        BYTE_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    public static int getIntUnaligned(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_INT_UNALIGNED, address);
+    }
+
+    public static void setIntUnaligned(long address, int value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_INT_UNALIGNED, address, value);
+    }
+
+    public static long getLongUnaligned(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_LONG_UNALIGNED, address);
+    }
+
+    public static void setLongUnaligned(long address, long value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_LONG_UNALIGNED, address, value);
+    }
+
+    public static float getFloatUnaligned(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_FLOAT_UNALIGNED, address);
+    }
+
+    public static void setFloatUnaligned(long address, float value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_FLOAT_UNALIGNED, address, value);
+    }
+
+    public static double getDoubleUnaligned(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_DOUBLE_UNALIGNED, address);
+    }
+
+    public static void setDoubleUnaligned(long address, double value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_DOUBLE_UNALIGNED, address, value);
     }
 
     public static boolean compareAndSetByte(long address, byte expected, byte value) {
@@ -431,7 +292,7 @@ public class ForeignMemory
         int expectedBits = (expected & 0xFF) << shift;
         int valueBits = (value & 0xFF) << shift;
         while (true) {
-            int oldVal = getIntVolatile(alignedAddr);
+            int oldVal = getVolatileInt(alignedAddr);
             if (((oldVal >>> shift) & 0xFF) != (expected & 0xFF)) {
                 return false;
             }
@@ -442,23 +303,6 @@ public class ForeignMemory
         }
     }
 
-    @Volatile
-    public static short getShortVolatile(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return (short) SHORT_VH.getVolatile(GLOBAL_MEMORY, address);
-    }
-
-    @Unsafe
-    @Volatile
-    public static short unsafeGetShortVolatile(long address) {
-        return (short) SHORT_VH.getVolatile(GLOBAL_MEMORY, address);
-    }
-
-    @Volatile
-    public static void putShortVolatile(long address, short value) {
-        SHORT_VH.setVolatile(GLOBAL_MEMORY, address, value);
-    }
-
     public static boolean compareAndSetShort(long address, short expected, short value) {
         if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         long alignedAddr = address & ~3L;
@@ -467,7 +311,7 @@ public class ForeignMemory
         int expectedBits = (expected & 0xFFFF) << shift;
         int valueBits = (value & 0xFFFF) << shift;
         while (true) {
-            int oldVal = getIntVolatile(alignedAddr);
+            int oldVal = getVolatileInt(alignedAddr);
             if (((oldVal >>> shift) & 0xFFFF) != (expected & 0xFFFF)) {
                 return false;
             }
@@ -478,21 +322,17 @@ public class ForeignMemory
         }
     }
 
-    @Volatile
-    public static int getIntVolatile(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return (int) INT_VH.getVolatile(GLOBAL_MEMORY, address);
+
+    public static short getAndSetShort(long address, short value)
+    {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        return (short) SHORT_VH.getAndSet(GLOBAL_MEMORY, address, value);
     }
 
-    @Unsafe
-    @Volatile
-    public static int unsafeGetIntVolatile(long address) {
-        return (int) INT_VH.getVolatile(GLOBAL_MEMORY, address);
-    }
-
-    @Volatile
-    public static void putIntVolatile(long address, int value) {
-        INT_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    public static byte getAndSetByte(long address, byte value)
+    {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        return (byte) BYTE_VH.getAndSet(GLOBAL_MEMORY, address, value);
     }
 
     public static boolean compareAndSetInt(long address, int expected, int value) {
@@ -503,23 +343,6 @@ public class ForeignMemory
     public static int getAndSetInt(long address, int value) {
         if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         return (int) INT_VH.getAndSet(GLOBAL_MEMORY, address, value);
-    }
-
-    @Volatile
-    public static long getLongVolatile(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, address);
-    }
-
-    @Unsafe
-    @Volatile
-    public static long unsafeGetLongVolatile(long address) {
-        return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, address);
-    }
-
-    @Volatile
-    public static void putLongVolatile(long address, long value) {
-        LONG_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
 
     public static boolean compareAndSetLong(long address, long expected, long value) {
@@ -542,43 +365,14 @@ public class ForeignMemory
         return (long) LONG_VH.getAndBitwiseAnd(GLOBAL_MEMORY, address, mask);
     }
 
-    @Volatile
-    public static float getFloatVolatile(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return (float) FLOAT_VH.getVolatile(GLOBAL_MEMORY, address);
-    }
-
-    @Unsafe
-    @Volatile
-    public static float unsafeGetFloatVolatile(long address) {
-        return (float) FLOAT_VH.getVolatile(GLOBAL_MEMORY, address);
-    }
-
-    @Volatile
-    public static void putFloatVolatile(long address, float value) {
-        FLOAT_VH.setVolatile(GLOBAL_MEMORY, address, value);
-    }
-
     public static boolean compareAndSetFloat(long address, float expected, float value) {
         if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         return (boolean) FLOAT_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
     }
 
-    @Volatile
-    public static double getDoubleVolatile(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return (double) DOUBLE_VH.getVolatile(GLOBAL_MEMORY, address);
-    }
-
-    @Unsafe
-    @Volatile
-    public static double unsafeGetDoubleVolatile(long address) {
-        return (double) DOUBLE_VH.getVolatile(GLOBAL_MEMORY, address);
-    }
-
-    @Volatile
-    public static void putDoubleVolatile(long address, double value) {
-        DOUBLE_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    public static float getAndSetFloat(long address, float value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        return (float) FLOAT_VH.getAndSet(GLOBAL_MEMORY, address, value);
     }
 
     public static boolean compareAndSetDouble(long address, double expected, double value) {
@@ -586,12 +380,331 @@ public class ForeignMemory
         return (boolean) DOUBLE_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
     }
 
+    public static double getAndSetDouble(long address, double value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        return (double) DOUBLE_VH.getAndSet(GLOBAL_MEMORY, address, value);
+    }
+
+    // =========================================================================
+    // UNSAFE METHODS (@Unsafe only)
+    // =========================================================================
+
+    @Unsafe
+    public static byte getUnsafeByte(long address) {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_BYTE, address);
+    }
+
+    @Unsafe
+    public static void setUnsafeByte(long address, byte value) {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_BYTE, address, value);
+    }
+
+    @Unsafe
+    public static void setUnsafe(long address, byte value) {
+        setUnsafeByte(address, value);
+    }
+
+    @Unsafe
+    public static short getUnsafeShort(long address) {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_SHORT, address);
+    }
+
+    @Unsafe
+    public static void setUnsafeShort(long address, short value) {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_SHORT, address, value);
+    }
+
+    @Unsafe
+    public static void setUnsafe(long address, short value) {
+        setUnsafeShort(address, value);
+    }
+
+    @Unsafe
+    public static int getUnsafeInt(long address) {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_INT, address);
+    }
+
+    @Unsafe
+    public static void setUnsafeInt(long address, int value) {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_INT, address, value);
+    }
+
+    @Unsafe
+    public static void setUnsafe(long address, int value) {
+        setUnsafeInt(address, value);
+    }
+
+    @Unsafe
+    public static long getUnsafeLong(long address) {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_LONG, address);
+    }
+
+    @Unsafe
+    public static void setUnsafeLong(long address, long value) {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_LONG, address, value);
+    }
+
+    @Unsafe
+    public static void setUnsafe(long address, long value) {
+        setUnsafeLong(address, value);
+    }
+
+    @Unsafe
+    public static float getUnsafeFloat(long address) {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_FLOAT, address);
+    }
+
+    @Unsafe
+    public static void setUnsafeFloat(long address, float value) {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_FLOAT, address, value);
+    }
+
+    @Unsafe
+    public static void setUnsafe(long address, float value) {
+        setUnsafeFloat(address, value);
+    }
+
+    @Unsafe
+    public static double getUnsafeDouble(long address) {
+        return GLOBAL_MEMORY.get(ValueLayout.JAVA_DOUBLE, address);
+    }
+
+    @Unsafe
+    public static void setUnsafeDouble(long address, double value) {
+        GLOBAL_MEMORY.set(ValueLayout.JAVA_DOUBLE, address, value);
+    }
+
+    @Unsafe
+    public static void setUnsafe(long address, double value) {
+        setUnsafeDouble(address, value);
+    }
+
+    // =========================================================================
+    // VOLATILE METHODS (@Volatile only)
+    // =========================================================================
+
+    @Volatile
+    public static byte getVolatileByte(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return (byte) BYTE_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Volatile
+    public static void setVolatileByte(long address, byte value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        BYTE_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Volatile
+    public static void setVolatile(long address, byte value) {
+        setVolatileByte(address, value);
+    }
+
+    @Volatile
+    public static short getVolatileShort(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return (short) SHORT_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Volatile
+    public static void setVolatileShort(long address, short value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        SHORT_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Volatile
+    public static void setVolatile(long address, short value) {
+        setVolatileShort(address, value);
+    }
+
+    @Volatile
+    public static int getVolatileInt(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return (int) INT_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Volatile
+    public static void setVolatileInt(long address, int value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        INT_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Volatile
+    public static void setVolatile(long address, int value) {
+        setVolatileInt(address, value);
+    }
+
+    @Volatile
+    public static long getVolatileLong(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Volatile
+    public static void setVolatileLong(long address, long value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        LONG_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Volatile
+    public static void setVolatile(long address, long value) {
+        setVolatileLong(address, value);
+    }
+
+    @Volatile
+    public static float getVolatileFloat(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return (float) FLOAT_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Volatile
+    public static void setVolatileFloat(long address, float value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        FLOAT_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Volatile
+    public static void setVolatile(long address, float value) {
+        setVolatileFloat(address, value);
+    }
+
+    @Volatile
+    public static double getVolatileDouble(long address) {
+        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        return (double) DOUBLE_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Volatile
+    public static void setVolatileDouble(long address, double value) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        DOUBLE_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Volatile
+    public static void setVolatile(long address, double value) {
+        setVolatileDouble(address, value);
+    }
+
+    // =========================================================================
+    // UNSAFE & VOLATILE METHODS (@Unsafe and @Volatile)
+    // =========================================================================
+
+    @Unsafe
+    @Volatile
+    public static byte getUnsafeVolatileByte(long address) {
+        return (byte) BYTE_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatileByte(long address, byte value) {
+        BYTE_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatile(long address, byte value) {
+        setUnsafeVolatileByte(address, value);
+    }
+
+    @Unsafe
+    @Volatile
+    public static short getUnsafeVolatileShort(long address) {
+        return (short) SHORT_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatileShort(long address, short value) {
+        SHORT_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatile(long address, short value) {
+        setUnsafeVolatileShort(address, value);
+    }
+
+    @Unsafe
+    @Volatile
+    public static int getUnsafeVolatileInt(long address) {
+        return (int) INT_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatileInt(long address, int value) {
+        INT_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatile(long address, int value) {
+        setUnsafeVolatileInt(address, value);
+    }
+
+    @Unsafe
+    @Volatile
+    public static long getUnsafeVolatileLong(long address) {
+        return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatileLong(long address, long value) {
+        LONG_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatile(long address, long value) {
+        setUnsafeVolatileLong(address, value);
+    }
+
+    @Unsafe
+    @Volatile
+    public static float getUnsafeVolatileFloat(long address) {
+        return (float) FLOAT_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatileFloat(long address, float value) {
+        FLOAT_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatile(long address, float value) {
+        setUnsafeVolatileFloat(address, value);
+    }
+
+    @Unsafe
+    @Volatile
+    public static double getUnsafeVolatileDouble(long address) {
+        return (double) DOUBLE_VH.getVolatile(GLOBAL_MEMORY, address);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatileDouble(long address, double value) {
+        DOUBLE_VH.setVolatile(GLOBAL_MEMORY, address, value);
+    }
+
+    @Unsafe
+    @Volatile
+    public static void setUnsafeVolatile(long address, double value) {
+        setUnsafeVolatileDouble(address, value);
+    }
+
+    // =========================================================================
+    // GARBAGE COLLECTION TRIGGERS
+    // =========================================================================
+
     // nuclear, dangerous
     @HotCode
     @Intention("the garbage collection to end the actual application")
-    public static void freeAllClasses()
-    {
-
+    public static void freeAllClasses() {
         Byte.freeAll();
         Short.freeAll();
         Int.freeAll();
