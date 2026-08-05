@@ -3,6 +3,8 @@ package window;
 import engine.EngineLoop;
 import annotation.Draft;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import static java.util.concurrent.locks.LockSupport.*;
 
 /**
@@ -14,8 +16,8 @@ public final class Window {
     private Window() {}
 
     /** Serializes AppKit events with Metal-backed Vulkan swapchain operations on macOS. */
-    public static final java.util.concurrent.atomic.AtomicBoolean OS_NATIVE_MUTEX =
-            new java.util.concurrent.atomic.AtomicBoolean(false);
+    public static final AtomicBoolean OS_NATIVE_MUTEX =
+            new AtomicBoolean(false);
 
     private static final String OS = System.getProperty("os.name").toLowerCase();
     private static final boolean IS_MAC = OS.contains("mac");
@@ -114,7 +116,7 @@ public final class Window {
 
     public static void run(long pointer, EngineLoop loop) {
         // Shared flag so we only evaluate the heavy FFI shouldClose() on the Main Thread
-        final java.util.concurrent.atomic.AtomicBoolean isClosed = new java.util.concurrent.atomic.AtomicBoolean(false);
+        final AtomicBoolean isClosed = new AtomicBoolean(false);
 
         Thread gameThread = Thread.ofPlatform().name("Anti-Engine-Loop").daemon(false).start(() -> {
             System.out.println("[Game Thread] Booting up loop...");
