@@ -380,7 +380,6 @@ public final class Semaphore {
     }
 
     public static void set(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         ForeignMemory.setLong(pointer, value);
     }
 
@@ -391,23 +390,19 @@ public final class Semaphore {
 
     @Volatile
     public static long getVolatile(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
         return ForeignMemory.getVolatileLong(pointer);
     }
 
     @Volatile
     public static void setVolatile(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         ForeignMemory.setVolatileLong(pointer, value);
     }
 
     public static boolean compareAndSet(long pointer, long expected, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         return ForeignMemory.compareAndSetLong(pointer, expected, value);
     }
 
     public static long getAndSet(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         return ForeignMemory.getAndSetLong(pointer, value);
     }
 

@@ -47,15 +47,26 @@ public class Reactive
     // just so you know:
     // a reactive object CANNOT be passive at the same time and vice versa. thats gonna make a recursive action.
 
+    /**
+     * Allocates off-heap memory for a Reactive object.
+     * 
+     * Layout (40 bytes):
+     * - [block + 0L] (4 bytes): TYPE_HEADER (TYPE_SINGLETON)
+     * - [block + 4L] (4 bytes): Active Flag (1)
+     * - [userPtr + 0L] (8 bytes): value (underlying long value of the reactive object)
+     * - [userPtr + 8L] (8 bytes): setValueEvent (callback function address executed on write)
+     * - [userPtr + 16L] (8 bytes): getValueEvent (callback function address executed on read)
+     * - [userPtr + 24L] (8 bytes): changedValueEvent (callback function address executed when value is changed)
+     */
     public static long allocate(long initialValue)
     {
         long block = ForeignMemory.allocateNative(40);
         long userPtr = block + 8L;
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON);
-        ForeignMemory.setInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
+        ForeignMemory.setInt(block + 4L, 1); // active flag
 
-        ForeignMemory.setLong(userPtr, initialValue);
+        ForeignMemory.setLong(userPtr, initialValue); // value
         ForeignMemory.setLong(userPtr + 8L, 0L); // setValueEvent
         ForeignMemory.setLong(userPtr + 16L, 0L); // getValueEvent
         ForeignMemory.setLong(userPtr + 24L, 0L); // changedValueEvent

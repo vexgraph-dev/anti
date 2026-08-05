@@ -1,6 +1,8 @@
 package objects;
 
 import annotation.Intention;
+import annotation.Required;
+import lang.Class;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
@@ -13,18 +15,16 @@ import java.util.Objects;
 public class Object
 {
     // it should have a uh, way that everything will be an object, so i guess this is the part where it checks if its an object and not a primitive
-
+    @Required
     public static final int CATCH_ALL_ID = 0xAA000000;
 
     public static void free(long ptr)
     {
-        if (ptr == 0L) return;
         ForeignMemory.freeNative(ptr - 8L);
     }
 
     public static int type(long ptr) {
-        if (ptr == 0L) return 0;
-        return ForeignMemory.getUnsafeInt(ptr - 8L);
+        return Class.getType(ptr);
     }
 
     public static int length(long ptr) {

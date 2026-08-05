@@ -21,17 +21,27 @@ public class Probable
     //
     // multiple objects with specific chance (being in one pool) at probableobjects class.
 
+    /**
+     * Allocates off-heap memory for a Probable choice object.
+     * 
+     * Layout (24 bytes):
+     * - [block + 0L] (4 bytes): TYPE_HEADER (TYPE_SINGLETON)
+     * - [block + 4L] (4 bytes): Active Flag (1)
+     * - [userPtr + 0L] (8 bytes): objectPtr (pointer to target object choice)
+     * - [userPtr + 8L] (4 bytes): weight (relative weight/chance of this choice)
+     * - [userPtr + 12L] (4 bytes): total (total weight cumulative value)
+     */
     public static long allocate(long objectPtr, int weight, int total)
     {
         long block = ForeignMemory.allocateNative(24);
         long userPtr = block + 8L;
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON);
-        ForeignMemory.setInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
+        ForeignMemory.setInt(block + 4L, 1); // active flag
 
-        ForeignMemory.setLong(userPtr, objectPtr);
-        ForeignMemory.setInt(userPtr + 8L, weight);
-        ForeignMemory.setInt(userPtr + 12L, total);
+        ForeignMemory.setLong(userPtr, objectPtr); // objectPtr
+        ForeignMemory.setInt(userPtr + 8L, weight); // weight
+        ForeignMemory.setInt(userPtr + 12L, total); // total
 
         return userPtr;
     }

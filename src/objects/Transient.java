@@ -25,15 +25,23 @@ public class Transient
     // serialized work, or a variable to be put in a persistence file.
     // thats about it.
 
+    /**
+     * Allocates off-heap memory for a Transient pointer object.
+     * 
+     * Layout (16 bytes):
+     * - [block + 0L] (4 bytes): TYPE_HEADER (TYPE_SINGLETON)
+     * - [block + 4L] (4 bytes): Active Flag (1)
+     * - [userPtr + 0L] (8 bytes): value (underlying transient long value/pointer)
+     */
     public static long allocate(long val)
     {
         long block = ForeignMemory.allocateNative(16);
         long userPtr = block + 8L;
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON);
-        ForeignMemory.setInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
+        ForeignMemory.setInt(block + 4L, 1); // active flag
 
-        ForeignMemory.setLong(userPtr, val);
+        ForeignMemory.setLong(userPtr, val); // value
 
         return userPtr;
     }

@@ -30,17 +30,25 @@ public class Local
     // managed accordingly based on their own. global on the other hand will create their own
     // race conditions over a SINGLE variable. if that makes even sense...
 
+    /**
+     * Allocates off-heap memory for a Local object.
+     * 
+     * Layout (8 + 2048 bytes):
+     * - [block + 0L] (4 bytes): TYPE_HEADER (TYPE_SINGLETON)
+     * - [block + 4L] (4 bytes): Thread capacity (256)
+     * - [userPtr + (tid * 8L)] (8 bytes): Value slot for thread index 'tid'
+     */
     public static long allocate()
     {
         // 256 threads * 8 bytes = 2048 bytes payload
         long block = ForeignMemory.allocateNative(8L + 2048L);
         long userPtr = block + 8L;
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON);
-        ForeignMemory.setInt(block + 4L, 256);
+        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
+        ForeignMemory.setInt(block + 4L, 256); // capacity (number of threads)
 
         // Zero out the thread local slots
-        ForeignMemory.setMemory(userPtr, 2048L, (byte) 0);
+        ForeignMemory.setMemory(userPtr, 2048L, (byte) 0); // thread-local variable value slots
 
         return userPtr;
     }
