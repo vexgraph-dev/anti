@@ -21,7 +21,7 @@ public class Probable
     //
     // multiple objects with specific chance (being in one pool) at probableobjects class.
 
-    public static long allocate(long objectPtr, double weight)
+    public static long allocate(long objectPtr, int weight, int total)
     {
         long block = ForeignMemory.allocateNative(24);
         long userPtr = block + 8L;
@@ -30,7 +30,8 @@ public class Probable
         ForeignMemory.putInt(block + 4L, 1);
 
         ForeignMemory.putLong(userPtr, objectPtr);
-        ForeignMemory.putDouble(userPtr + 8L, weight);
+        ForeignMemory.putInt(userPtr + 8L, weight);
+        ForeignMemory.putInt(userPtr + 12L, total);
 
         return userPtr;
     }
@@ -47,10 +48,16 @@ public class Probable
         return ForeignMemory.getLong(ptr);
     }
 
-    public static double getWeight(long ptr)
+    public static int getWeight(long ptr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return ForeignMemory.getDouble(ptr + 8L);
+        return ForeignMemory.getInt(ptr + 8L);
+    }
+
+    public static int getTotal(long ptr)
+    {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        return ForeignMemory.getInt(ptr + 12L);
     }
 
     public static void setObject(long ptr, long objectPtr)
@@ -59,10 +66,16 @@ public class Probable
         ForeignMemory.putLong(ptr, objectPtr);
     }
 
-    public static void setWeight(long ptr, double weight)
+    public static void setWeight(long ptr, int weight)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.putDouble(ptr + 8L, weight);
+        ForeignMemory.putInt(ptr + 8L, weight);
+    }
+
+    public static void setTotal(long ptr, int total)
+    {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        ForeignMemory.putInt(ptr + 12L, total);
     }
 
     public Probable()
@@ -70,3 +83,4 @@ public class Probable
 
     }
 }
+
