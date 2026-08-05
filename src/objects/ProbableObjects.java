@@ -113,7 +113,7 @@ public class ProbableObjects
 
     public static long get(long ptr)
     {
-        return util.Random.samplePool(ptr);
+        return util.Random.probablePool(ptr);
     }
 
     private ProbableObjects() {}

@@ -365,7 +365,7 @@ public final class Swapchain {
 
     // --- DATA ACCESSORS & BOUNDS CHECKS ---
     public static long get(long pointer) {
-        return Long.get(pointer);
+        return ForeignMemory.getLong(pointer);
     }
 
     public static long get(long pointer, int index) { 
@@ -383,7 +383,7 @@ public final class Swapchain {
     }
 
     public static void set(long pointer, long value) {
-        Long.set(pointer, value);
+        ForeignMemory.setLong(pointer, value);
     }
 
     public static void set(long pointer, int index, long value) { 

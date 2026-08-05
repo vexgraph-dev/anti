@@ -34,6 +34,17 @@ public enum RenderMode {
      */
     TILE_BASED_DEFERRED(2, "Tile-Based Deferred (TBDR)"),
 
+    // prebuilt
+    @Draft
+    VISIBILITY(4, "Visibility"),
+
+    @Draft
+    TEMPORAL(5, "temporal"),
+
+    @Draft
+    POINT_BASED(6, "point-based"),
+
+
     /**
      * Clustered Forward (+) Rendering.
      * Compute Pass: Subdivides view frustum into 3D grid clusters (16x9x24) and culls lights.

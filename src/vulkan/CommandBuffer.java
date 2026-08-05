@@ -366,7 +366,7 @@ public final class CommandBuffer {
 
     // --- DATA ACCESSORS & BOUNDS CHECKS ---
     public static long get(long pointer) {
-        return Long.get(pointer);
+        return ForeignMemory.getLong(pointer);
     }
 
     public static long get(long pointer, int index) { 
@@ -384,7 +384,7 @@ public final class CommandBuffer {
     }
 
     public static void set(long pointer, long value) {
-        Long.set(pointer, value);
+        ForeignMemory.setLong(pointer, value);
     }
 
     public static void set(long pointer, int index, long value) { 

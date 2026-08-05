@@ -70,8 +70,6 @@ public final class Random {
      */
     @Draft
     public static void free(long ptr) {
-        if (ptr == 0L)
-            return;
         ForeignMemory.freeNative(ptr - 8L);
     }
 
@@ -145,7 +143,7 @@ public final class Random {
     }
 
     @Draft
-    public static long samplePool(long ptr, long probableObjectsPtr) {
+    public static long probablePool(long ptr, long probableObjectsPtr) {
         if (probableObjectsPtr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         int count = ProbableObjects.size(probableObjectsPtr);
         if (count == 0) return 0L;
@@ -215,7 +213,7 @@ public final class Random {
         return sample(SYSTEM_RNG, probablePtr);
     }
 
-    public static long samplePool(long probableObjectsPtr) {
-        return samplePool(SYSTEM_RNG, probableObjectsPtr);
+    public static long probablePool(long probableObjectsPtr) {
+        return probablePool(SYSTEM_RNG, probableObjectsPtr);
     }
 }
