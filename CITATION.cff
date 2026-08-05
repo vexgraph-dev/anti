@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - name: "The Anti Authors"
+title: "anti"
+version: 1.0.0
+date-released: 2026-08-05
+url: "https://github.com/vexgraph-dev/anti"
+references:
+  - type: article
+    authors:
+      - family-names: "Steele"
+        given-names: "Guy L."
+      - family-names: "Lea"
+        given-names: "Doug"
+      - family-names: "Flood"
+        given-names: "Christine H."
+    title: "Fast splittable pseudorandom number generators"
+    year: 2014
+    doi: "10.1145/2660193.2660195"
+  - type: generic
+    authors:
+      - family-names: "Appleby"
+        given-names: "Austin"
+    title: "MurmurHash3"
+    url: "https://github.com/aappleby/smhasher/wiki/MurmurHash3"
+    year: 2011
