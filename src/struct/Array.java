@@ -147,7 +147,7 @@ public final class Array {
 
     // get value or pointer at index (unsafe, no bounds check)
     @Unsafe
-    public static long unsafeGet(long arrayPtr, int index) {
+    public static long getUnsafe(long arrayPtr, int index) {
         int stride = stride(arrayPtr);
         long dataBuffer = dataBuffer(arrayPtr);
         long targetSlot = dataBuffer + ((long) index * stride);

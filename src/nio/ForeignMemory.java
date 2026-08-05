@@ -25,6 +25,7 @@ import struct.List;
 import struct.Array;
 import struct.Deque;
 import struct.Stack;
+import struct.Queue;
 import struct.Map;
 import struct.Set;
 import search.Trie;
@@ -727,6 +728,7 @@ public class ForeignMemory {
         Array.freeAll();
         Deque.freeAll();
         Stack.freeAll();
+        Queue.freeAll();
         Map.freeAll();
         Set.freeAll();
         Trie.freeAll();
