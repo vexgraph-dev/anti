@@ -38,19 +38,20 @@ public class Probable
 
     public static void free(long ptr)
     {
-        if (ptr == 0L) return;
-        ForeignMemory.freeNative(ptr - 8L);
+        Object.free(ptr);
     }
 
     public static long getObject(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L)
+            throw new NullPointerException("Accessing NULL off-heap pointer!");
         return ForeignMemory.getLong(ptr);
     }
 
     public static int getWeight(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L)
+            throw new NullPointerException("Accessing NULL off-heap pointer!");
         return ForeignMemory.getInt(ptr + 8L);
     }
 
