@@ -13,6 +13,11 @@ import input.Touch;
 /**
  * Pure macOS FFM backend for the Window system.
  */
+// [constraints]
+// macOS native window backend. macOS WindowServer composites windowed
+// CAMetalLayer presentation and forces vsync to the display refresh rate
+// (120Hz on ProMotion), capping windowed FPS, whereas fullscreen presentation
+// bypasses the compositor and unlocks the frame rate.
 
 @PlatformExclusive("Mac")
 @Intention("macOS native window backend. macOS WindowServer composites windowed CAMetalLayer presentation and forces vsync to the display refresh rate (120Hz on ProMotion), capping windowed FPS, whereas fullscreen presentation bypasses the compositor and unlocks the frame rate.")
