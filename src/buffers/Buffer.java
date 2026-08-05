@@ -391,13 +391,13 @@ public final class Buffer {
 
     @Unsafe
     @Volatile
-    public static long unsafeVolatileGet(long pointer) {
+    public static long getUnsafeVolatile(long pointer) {
         return ForeignMemory.getVolatileLong(pointer);
     }
 
     @Unsafe
     @Volatile
-    public static long unsafeVolatileGet(long pointer, int index) {
+    public static long getUnsafeVolatile(long pointer, int index) {
         return ForeignMemory.getVolatileLong(pointer + (index * 8L));
     }
 

@@ -212,7 +212,7 @@ public final class List {
     // get value or pointer at index (unsafe volatile, no bounds check)
     @Unsafe
     @Volatile
-    public static long unsafeVolatileGet(long listPtr, int index) {
+    public static long getUnsafeVolatile(long listPtr, int index) {
         int stride = stride(listPtr);
         long dataBuffer = dataBuffer(listPtr);
         long targetSlot = dataBuffer + ((long) index * stride);

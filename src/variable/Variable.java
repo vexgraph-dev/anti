@@ -370,14 +370,14 @@ public final class Variable {
 
     @Unsafe
     @Volatile
-    public static void unsafeVolatileSetPointer(int varId, long targetPointer) {
+    public static void setUnsafeVolatilePointer(int varId, long targetPointer) {
         long slot = baseAddress + (varId * SLOT_SIZE);
         ForeignMemory.setVolatileLong(slot + 40L, targetPointer);
     }
 
     @Unsafe
     @Volatile
-    public static long unsafeVolatileGetPointer(int varId) {
+    public static long getUnsafeVolatilePointer(int varId) {
         return ForeignMemory.getVolatileLong(baseAddress + (varId * SLOT_SIZE) + 40L);
     }
 
