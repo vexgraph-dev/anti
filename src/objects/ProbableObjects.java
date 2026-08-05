@@ -98,10 +98,7 @@ public class ProbableObjects
         add(ptr, Probable.getObject(probablePtr), Probable.getWeight(probablePtr));
     }
 
-    public ProbableObjects()
-    {
-
-    }
+    private ProbableObjects() {}
 }
 
 
