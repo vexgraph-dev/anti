@@ -126,14 +126,14 @@ public final class SpecularBuffer {
 
     @Unsafe
     @Volatile
-    public static long unsafeVolatileGet(long pointer) {
-        return Buffer.unsafeVolatileGet(pointer);
+    public static long getUnsafeVolatile(long pointer) {
+        return Buffer.getUnsafeVolatile(pointer);
     }
 
     @Unsafe
     @Volatile
-    public static long unsafeVolatileGet(long pointer, int index) {
-        return Buffer.unsafeVolatileGet(pointer, index);
+    public static long getUnsafeVolatile(long pointer, int index) {
+        return Buffer.getUnsafeVolatile(pointer, index);
     }
 
     @Unsafe

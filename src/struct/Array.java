@@ -166,7 +166,7 @@ public final class Array {
     // get value or pointer at index (unsafe volatile, no bounds check)
     @Unsafe
     @Volatile
-    public static long unsafeVolatileGet(long arrayPtr, int index) {
+    public static long getUnsafeVolatile(long arrayPtr, int index) {
         int stride = stride(arrayPtr);
         long dataBuffer = dataBuffer(arrayPtr);
         long targetSlot = dataBuffer + ((long) index * stride);

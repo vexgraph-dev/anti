@@ -519,19 +519,19 @@ public final class VKImageView {
 
     @Unsafe
     @Volatile
-    public static long unsafeVolatileGet(long pointer) {
+    public static long getUnsafeVolatile(long pointer) {
         return ForeignMemory.getVolatileLong(pointer);
     }
 
     @Unsafe
     @Volatile
-    public static long unsafeVolatileGet(long pointer, int index) {
+    public static long getUnsafeVolatile(long pointer, int index) {
         return ForeignMemory.getVolatileLong(pointer + (index * 8L));
     }
 
     @Unsafe
     @Volatile
-    public static long unsafeVolatileGetPointer(long matrixPointer, int index) {
+    public static long getUnsafeVolatilePointer(long matrixPointer, int index) {
         return ForeignMemory.getVolatileLong(matrixPointer + (index * 8L));
     }
 
@@ -549,7 +549,7 @@ public final class VKImageView {
 
     @Unsafe
     @Volatile
-    public static void unsafeVolatileSetPointer(long matrixPointer, int index, long targetPointer) {
+    public static void setUnsafeVolatilePointer(long matrixPointer, int index, long targetPointer) {
         ForeignMemory.setVolatileLong(matrixPointer + (index * 8L), targetPointer);
     }
 
