@@ -67,8 +67,5 @@ public class Future
         return false;
     }
 
-    public Future()
-    {
-
-    }
+    private Future() {}
 }
