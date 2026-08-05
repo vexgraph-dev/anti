@@ -73,9 +73,6 @@ public class Local
     }
 
     @Intention("[purpose] line [n]")
-    public Local()
-    {
-
-    }
+    private Local() {}
 }
 
