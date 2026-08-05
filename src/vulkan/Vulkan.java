@@ -6,6 +6,8 @@ import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.system.Configuration;
 import org.lwjgl.vulkan.*;
 import org.lwjgl.PointerBuffer;
+import annotation.Intention;
+import annotation.Citatiom;
 import java.nio.LongBuffer;
 import primitive.Long;
 
@@ -313,6 +315,8 @@ public final class Vulkan {
         presentQueue = graphicsQueue;
     }
 
+    @Intention("Best low-latency present mode selection. On macOS this is only honored in fullscreen; a windowed CAMetalLayer is vsync-throttled to the display refresh rate regardless of the chosen mode.")
+    @Citatiom(cite = 3)
     private static void initSwapchain(MemoryStack stack, int width, int height) {
         swapchainWidth = width;
         swapchainHeight = height;
