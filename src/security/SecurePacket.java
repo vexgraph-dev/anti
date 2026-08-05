@@ -74,12 +74,12 @@ public final class SecurePacket {
             long block = ForeignMemory.allocateNative(40);
             long userPtr = block + 8L;
 
-            ForeignMemory.putInt(block, TYPE_SECURE_PACKET);
-            ForeignMemory.putInt(block + 4L, 1);
+            ForeignMemory.setInt(block, TYPE_SECURE_PACKET);
+            ForeignMemory.setInt(block + 4L, 1);
 
-            ForeignMemory.putLong(userPtr, sequenceId);
-            ForeignMemory.putLong(userPtr + 8L, System.currentTimeMillis());
-            ForeignMemory.putLong(userPtr + 16L, cipherTextPtr);
+            ForeignMemory.setLong(userPtr, sequenceId);
+            ForeignMemory.setLong(userPtr + 8L, System.currentTimeMillis());
+            ForeignMemory.setLong(userPtr + 16L, cipherTextPtr);
 
             return userPtr;
         } catch (Exception e) {

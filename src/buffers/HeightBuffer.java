@@ -105,13 +105,13 @@ public final class HeightBuffer {
     }
 
     @Unsafe
-    public static void unsafeSet(long pointer, long value) {
-        Buffer.unsafeSet(pointer, value);
+    public static void setUnsafe(long pointer, long value) {
+        Buffer.setUnsafe(pointer, value);
     }
 
     @Unsafe
-    public static void unsafeSet(long pointer, int index, long value) {
-        Buffer.unsafeSet(pointer, index, value);
+    public static void setUnsafe(long pointer, int index, long value) {
+        Buffer.setUnsafe(pointer, index, value);
     }
 
     @Volatile
@@ -138,13 +138,13 @@ public final class HeightBuffer {
 
     @Unsafe
     @Volatile
-    public static void unsafeVolatileSet(long pointer, long value) {
-        Buffer.unsafeVolatileSet(pointer, value);
+    public static void setUnsafeVolatile(long pointer, long value) {
+        Buffer.setUnsafeVolatile(pointer, value);
     }
 
     @Unsafe
     @Volatile
-    public static void unsafeVolatileSet(long pointer, int index, long value) {
-        Buffer.unsafeVolatileSet(pointer, index, value);
+    public static void setUnsafeVolatile(long pointer, int index, long value) {
+        Buffer.setUnsafeVolatile(pointer, index, value);
     }
 }

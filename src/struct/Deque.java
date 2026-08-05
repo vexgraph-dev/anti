@@ -75,18 +75,18 @@ public final class Deque {
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_DEQUE);
-        ForeignMemory.putInt(headerBlock + 4L, 0); // activeCount/size
+        ForeignMemory.setInt(headerBlock, TYPE_DEQUE);
+        ForeignMemory.setInt(headerBlock + 4L, 0); // activeCount/size
 
-        ForeignMemory.putInt(userPtr, generic);
-        ForeignMemory.putInt(userPtr + 4L, stride);
-        ForeignMemory.putInt(userPtr + 8L, cap);
-        ForeignMemory.putInt(userPtr + 12L, 0); // head index
+        ForeignMemory.setInt(userPtr, generic);
+        ForeignMemory.setInt(userPtr + 4L, stride);
+        ForeignMemory.setInt(userPtr + 8L, cap);
+        ForeignMemory.setInt(userPtr + 12L, 0); // head index
 
         long bufferBytes = (long) cap * stride;
         long alignedBytes = (bufferBytes + 7L) & ~7L;
         long dataBuffer = ForeignMemory.allocateNative(alignedBytes);
-        ForeignMemory.putLong(userPtr + 16L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 16L, dataBuffer);
 
         return userPtr;
     }
@@ -101,19 +101,19 @@ public final class Deque {
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_DEQUE);
-        ForeignMemory.putInt(headerBlock + 4L, count); // activeCount/size is set to count
+        ForeignMemory.setInt(headerBlock, TYPE_DEQUE);
+        ForeignMemory.setInt(headerBlock + 4L, count); // activeCount/size is set to count
 
-        ForeignMemory.putInt(userPtr, generic);
-        ForeignMemory.putInt(userPtr + 4L, stride);
-        ForeignMemory.putInt(userPtr + 8L, cap);
-        ForeignMemory.putInt(userPtr + 12L, 0); // head index
+        ForeignMemory.setInt(userPtr, generic);
+        ForeignMemory.setInt(userPtr + 4L, stride);
+        ForeignMemory.setInt(userPtr + 8L, cap);
+        ForeignMemory.setInt(userPtr + 12L, 0); // head index
 
         long bufferBytes = (long) cap * stride;
         long alignedBytes = (bufferBytes + 7L) & ~7L;
         long dataBuffer = ForeignMemory.allocateNative(alignedBytes);
         ForeignMemory.setMemory(dataBuffer, alignedBytes, (byte) 0);
-        ForeignMemory.putLong(userPtr + 16L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 16L, dataBuffer);
 
         return userPtr;
     }
@@ -145,9 +145,9 @@ public final class Deque {
                 ForeignMemory.freeNative(oldBuffer);
             }
 
-            ForeignMemory.putLong(dequePtr + 16L, newBuffer);
-            ForeignMemory.putInt(dequePtr + 8L, newCap);
-            ForeignMemory.putInt(dequePtr + 12L, 0); // head index reset to 0
+            ForeignMemory.setLong(dequePtr + 16L, newBuffer);
+            ForeignMemory.setInt(dequePtr + 8L, newCap);
+            ForeignMemory.setInt(dequePtr + 12L, 0); // head index reset to 0
         }
     }
 
@@ -159,26 +159,26 @@ public final class Deque {
     }
 
     private static void writeSlot(long slot, int stride, long val) {
-        if (stride == 1) ForeignMemory.putByte(slot, (byte) val);
-        else if (stride == 2) ForeignMemory.putShort(slot, (short) val);
-        else if (stride == 4) ForeignMemory.putInt(slot, (int) val);
-        else ForeignMemory.putLong(slot, val);
+        if (stride == 1) ForeignMemory.setByte(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.setShort(slot, (short) val);
+        else if (stride == 4) ForeignMemory.setInt(slot, (int) val);
+        else ForeignMemory.setLong(slot, val);
     }
 
     @Volatile
     private static long readSlotVolatile(long slot, int stride) {
-        if (stride == 1) return ForeignMemory.getByteVolatile(slot) & 0xFF;
-        if (stride == 2) return ForeignMemory.getShortVolatile(slot) & 0xFFFF;
-        if (stride == 4) return ForeignMemory.getIntVolatile(slot) & 0xFFFFFFFFL;
-        return ForeignMemory.getLongVolatile(slot);
+        if (stride == 1) return ForeignMemory.getVolatileByte(slot) & 0xFF;
+        if (stride == 2) return ForeignMemory.getVolatileShort(slot) & 0xFFFF;
+        if (stride == 4) return ForeignMemory.getVolatileInt(slot) & 0xFFFFFFFFL;
+        return ForeignMemory.getVolatileLong(slot);
     }
 
     @Volatile
     private static void writeSlotVolatile(long slot, int stride, long val) {
-        if (stride == 1) ForeignMemory.putByteVolatile(slot, (byte) val);
-        else if (stride == 2) ForeignMemory.putShortVolatile(slot, (short) val);
-        else if (stride == 4) ForeignMemory.putIntVolatile(slot, (int) val);
-        else ForeignMemory.putLongVolatile(slot, val);
+        if (stride == 1) ForeignMemory.setVolatileByte(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.setVolatileShort(slot, (short) val);
+        else if (stride == 4) ForeignMemory.setVolatileInt(slot, (int) val);
+        else ForeignMemory.setVolatileLong(slot, val);
     }
 
     // append value or pointer to back of deque
@@ -198,7 +198,7 @@ public final class Deque {
         long targetSlot = dataBuffer + ((long) targetIndex * stride);
         writeSlot(targetSlot, stride, valueOrPointer);
 
-        ForeignMemory.putInt(dequePtr - 4L, count + 1);
+        ForeignMemory.setInt(dequePtr - 4L, count + 1);
     }
 
     // prepend value or pointer to front of deque
@@ -218,8 +218,8 @@ public final class Deque {
         long targetSlot = dataBuffer + ((long) newHead * stride);
         writeSlot(targetSlot, stride, valueOrPointer);
 
-        ForeignMemory.putInt(dequePtr + 12L, newHead);
-        ForeignMemory.putInt(dequePtr - 4L, count + 1);
+        ForeignMemory.setInt(dequePtr + 12L, newHead);
+        ForeignMemory.setInt(dequePtr - 4L, count + 1);
     }
 
     // remove and return the first element
@@ -237,8 +237,8 @@ public final class Deque {
         long value = readSlot(targetSlot, stride);
 
         int newHead = (head + 1) % cap;
-        ForeignMemory.putInt(dequePtr + 12L, newHead);
-        ForeignMemory.putInt(dequePtr - 4L, count - 1);
+        ForeignMemory.setInt(dequePtr + 12L, newHead);
+        ForeignMemory.setInt(dequePtr - 4L, count - 1);
 
         return value;
     }
@@ -258,7 +258,7 @@ public final class Deque {
         long targetSlot = dataBuffer + ((long) targetIndex * stride);
         long value = readSlot(targetSlot, stride);
 
-        ForeignMemory.putInt(dequePtr - 4L, count - 1);
+        ForeignMemory.setInt(dequePtr - 4L, count - 1);
 
         return value;
     }
@@ -382,8 +382,8 @@ public final class Deque {
             ForeignMemory.freeNative(dataBuffer);
         }
 
-        ForeignMemory.putInt(headerBlock, 0);
-        ForeignMemory.putInt(headerBlock + 4L, -1);
+        ForeignMemory.setInt(headerBlock, 0);
+        ForeignMemory.setInt(headerBlock + 4L, -1);
         ForeignMemory.freeNative(headerBlock);
     }
 

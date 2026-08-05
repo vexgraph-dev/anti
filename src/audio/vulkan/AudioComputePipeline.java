@@ -159,15 +159,15 @@ public final class AudioComputePipeline {
      * Call before each dispatch to update the per-frame parameters.
      */
     public void writePushConstants(int numSamples, int numLayers, float[] gains) {
-        ForeignMemory.putInt(pushConstantPtr,      numSamples);
-        ForeignMemory.putInt(pushConstantPtr + 4L, numLayers);
+        ForeignMemory.setInt(pushConstantPtr,      numSamples);
+        ForeignMemory.setInt(pushConstantPtr + 4L, numLayers);
         int n = Math.min(gains.length, MAX_LAYERS);
         for (int i = 0; i < n; i++) {
-            ForeignMemory.putFloat(pushConstantPtr + 8L + (i * 4L), gains[i]);
+            ForeignMemory.setFloat(pushConstantPtr + 8L + (i * 4L), gains[i]);
         }
         // Zero-fill unused gain slots
         for (int i = n; i < MAX_LAYERS; i++) {
-            ForeignMemory.putFloat(pushConstantPtr + 8L + (i * 4L), 0.0f);
+            ForeignMemory.setFloat(pushConstantPtr + 8L + (i * 4L), 0.0f);
         }
     }
 

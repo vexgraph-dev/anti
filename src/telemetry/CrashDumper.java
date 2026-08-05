@@ -40,7 +40,7 @@ public final class CrashDumper
         // Zero out block
         for (long i = 0; i < 1024L; i++)
         {
-            ForeignMemory.putByte(TELEMETRY_BLOCK + i, (byte)0);
+            ForeignMemory.setByte(TELEMETRY_BLOCK + i, (byte)0);
         }
     }
 
@@ -67,37 +67,37 @@ public final class CrashDumper
      */
     public static void updateFrame(long frame)
     {
-        ForeignMemory.putLong(TELEMETRY_BLOCK + OFFSET_FRAME, frame);
+        ForeignMemory.setLong(TELEMETRY_BLOCK + OFFSET_FRAME, frame);
     }
 
     public static void updateLastPointer(long ptr)
     {
-        ForeignMemory.putLong(TELEMETRY_BLOCK + OFFSET_LAST_PTR, ptr);
+        ForeignMemory.setLong(TELEMETRY_BLOCK + OFFSET_LAST_PTR, ptr);
     }
 
     public static void updateState(int state)
     {
-        ForeignMemory.putInt(TELEMETRY_BLOCK + OFFSET_STATE, state);
+        ForeignMemory.setInt(TELEMETRY_BLOCK + OFFSET_STATE, state);
     }
 
     public static void updateDisplayCount(int count)
     {
-        ForeignMemory.putInt(TELEMETRY_BLOCK + OFFSET_DISPLAY_COUNT, count);
+        ForeignMemory.setInt(TELEMETRY_BLOCK + OFFSET_DISPLAY_COUNT, count);
     }
 
     public static void updateActivePipelines(int count)
     {
-        ForeignMemory.putInt(TELEMETRY_BLOCK + OFFSET_ACTIVE_PIPELINES, count);
+        ForeignMemory.setInt(TELEMETRY_BLOCK + OFFSET_ACTIVE_PIPELINES, count);
     }
 
     public static void updateActiveThreads(int count)
     {
-        ForeignMemory.putInt(TELEMETRY_BLOCK + OFFSET_ACTIVE_THREADS, count);
+        ForeignMemory.setInt(TELEMETRY_BLOCK + OFFSET_ACTIVE_THREADS, count);
     }
 
     public static void updateAllocationsCount(long count)
     {
-        ForeignMemory.putLong(TELEMETRY_BLOCK + OFFSET_ALLOC_COUNT, count);
+        ForeignMemory.setLong(TELEMETRY_BLOCK + OFFSET_ALLOC_COUNT, count);
     }
 
     /**

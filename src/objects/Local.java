@@ -36,8 +36,8 @@ public class Local
         long block = ForeignMemory.allocateNative(8L + 2048L);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_SINGLETON);
-        ForeignMemory.putInt(block + 4L, 256);
+        ForeignMemory.setInt(block, TYPE_SINGLETON);
+        ForeignMemory.setInt(block + 4L, 256);
 
         // Zero out the thread local slots
         ForeignMemory.setMemory(userPtr, 2048L, (byte) 0);

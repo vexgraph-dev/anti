@@ -46,7 +46,7 @@ public final class Mat4
 
     public static void set(long ptr, int row, int col, float val)
     {
-        ForeignMemory.putFloat(ptr + (col * 4L + row) * 4L, val);
+        ForeignMemory.setFloat(ptr + (col * 4L + row) * 4L, val);
     }
 
     public static float getRaw(long ptr, int index)
@@ -56,7 +56,7 @@ public final class Mat4
 
     public static void setRaw(long ptr, int index, float val)
     {
-        ForeignMemory.putFloat(ptr + index * 4L, val);
+        ForeignMemory.setFloat(ptr + index * 4L, val);
     }
 
     public static void zero(long ptr)

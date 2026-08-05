@@ -77,7 +77,7 @@ public final class AudioSource
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -111,15 +111,15 @@ public final class AudioSource
 
             if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.putInt(base, TYPE_SINGLETON);
-                ForeignMemory.putInt(base + 4L, 1);
+                ForeignMemory.setInt(base, TYPE_SINGLETON);
+                ForeignMemory.setInt(base + 4L, 1);
                 
                 // Initialize default audio fields
-                ForeignMemory.putInt(rawHead, 0);       // AL Source ID
-                ForeignMemory.putInt(rawHead + 4L, 0);  // AL Buffer ID
-                ForeignMemory.putFloat(rawHead + 8L, 1.0f); // Pitch
-                ForeignMemory.putFloat(rawHead + 12L, 1.0f); // Gain
-                ForeignMemory.putInt(rawHead + 16L, 0); // Looping (0 = false)
+                ForeignMemory.setInt(rawHead, 0);       // AL Source ID
+                ForeignMemory.setInt(rawHead + 4L, 0);  // AL Buffer ID
+                ForeignMemory.setFloat(rawHead + 8L, 1.0f); // Pitch
+                ForeignMemory.setFloat(rawHead + 12L, 1.0f); // Gain
+                ForeignMemory.setInt(rawHead + 16L, 0); // Looping (0 = false)
                 
                 return rawHead;
             }
@@ -138,14 +138,14 @@ public final class AudioSource
         }
 
         // Reset header
-        ForeignMemory.putInt(base, 0);
-        ForeignMemory.putInt(base + 4L, -1);
+        ForeignMemory.setInt(base, 0);
+        ForeignMemory.setInt(base + 4L, -1);
 
         while(true) {
             long oldTagged = singletonFreeHead;
             long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-            ForeignMemory.putLong(pointer, oldRawHead);
+            ForeignMemory.setLong(pointer, oldRawHead);
 
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);

@@ -64,8 +64,8 @@ public final class NetworkingThread {
         long workerPtr = block + 8L;
 
         // Write bit-packed header ID & length header
-        ForeignMemory.putInt(block, TYPE_NETWORKING_THREAD);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_NETWORKING_THREAD);
+        ForeignMemory.setInt(block + 4L, 1);
 
         long workQueuePtr = RingBuffer.instant(TypeRegister.ID_POLL_REQUEST, 2048);
 
@@ -74,10 +74,10 @@ public final class NetworkingThread {
         // workerPtr + 4: poolSize (1 thread per worker handle)
         // workerPtr + 8: workQueuePtr (RingBuffer handle)
         // workerPtr + 16: isCore (1 = CORE, 0 = USER)
-        ForeignMemory.putInt(workerPtr, 0);                 // STOPPED
-        ForeignMemory.putInt(workerPtr + 4L, 1);             // 1 thread
-        ForeignMemory.putLong(workerPtr + 8L, workQueuePtr);
-        ForeignMemory.putInt(workerPtr + 16L, isCore ? 1 : 0);
+        ForeignMemory.setInt(workerPtr, 0);                 // STOPPED
+        ForeignMemory.setInt(workerPtr + 4L, 1);             // 1 thread
+        ForeignMemory.setLong(workerPtr + 8L, workQueuePtr);
+        ForeignMemory.setInt(workerPtr + 16L, isCore ? 1 : 0);
 
         // Register worker handle in central pool manager registry
         Map.put(WORKER_MAP_PTR, workerPtr, 1L);
@@ -114,7 +114,7 @@ public final class NetworkingThread {
                 .start(() -> processQueue(workerPtr, queuePtr));
 
         Map.putObject(WORKER_MAP_PTR, workerPtr, worker);
-        ForeignMemory.putInt(workerPtr, 1); // Set state to RUNNING
+        ForeignMemory.setInt(workerPtr, 1); // Set state to RUNNING
         return true;
     }
 
@@ -141,7 +141,7 @@ public final class NetworkingThread {
     }
 
     private static void stopInternal(long workerPtr) {
-        ForeignMemory.putInt(workerPtr, 0); // Set state to STOPPED
+        ForeignMemory.setInt(workerPtr, 0); // Set state to STOPPED
 
         Thread worker = (Thread) Map.getObject(WORKER_MAP_PTR, workerPtr);
         if (worker != null) {

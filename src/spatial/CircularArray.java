@@ -63,18 +63,18 @@ public final class CircularArray {
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_CIRCULAR_ARRAY);
-        ForeignMemory.putInt(headerBlock + 4L, 0); // total size of entities
+        ForeignMemory.setInt(headerBlock, TYPE_CIRCULAR_ARRAY);
+        ForeignMemory.setInt(headerBlock + 4L, 0); // total size of entities
 
-        ForeignMemory.putInt(userPtr, numRings);
-        ForeignMemory.putInt(userPtr + 4L, numSlices);
+        ForeignMemory.setInt(userPtr, numRings);
+        ForeignMemory.setInt(userPtr + 4L, numSlices);
 
         long cellCount = (long) numRings * numSlices;
         long bufferBytes = cellCount * 8L; // array of 64-bit List pointers
         long dataBuffer = ForeignMemory.allocateNative(bufferBytes);
         ForeignMemory.setMemory(dataBuffer, bufferBytes, (byte) 0); // clear cell pointers to 0L
 
-        ForeignMemory.putLong(userPtr + 8L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 8L, dataBuffer);
 
         return userPtr;
     }
@@ -117,11 +117,11 @@ public final class CircularArray {
 
         if (listPtr == 0L) {
             listPtr = List.instant(TypeRegister.ID_LONG, 4);
-            ForeignMemory.putLong(dataBuffer + cellOffset, listPtr);
+            ForeignMemory.setLong(dataBuffer + cellOffset, listPtr);
         }
 
         List.add(listPtr, entityId);
-        ForeignMemory.putInt(circularPtr - 4L, size(circularPtr) + 1);
+        ForeignMemory.setInt(circularPtr - 4L, size(circularPtr) + 1);
     }
 
     // remove an entity based on its index coordinates
@@ -146,7 +146,7 @@ public final class CircularArray {
         for (int i = 0; i < listSize; i++) {
             if (List.get(listPtr, i) == entityId) {
                 List.remove(listPtr, i);
-                ForeignMemory.putInt(circularPtr - 4L, size(circularPtr) - 1);
+                ForeignMemory.setInt(circularPtr - 4L, size(circularPtr) - 1);
                 return true;
             }
         }
@@ -236,10 +236,10 @@ public final class CircularArray {
         for (int i = 0; i < cellCount; i++) {
             long listPtr = ForeignMemory.getLong(dataBuffer + i * 8L);
             if (listPtr != 0L) {
-                ForeignMemory.putInt(listPtr - 4L, 0); // clear the cell list
+                ForeignMemory.setInt(listPtr - 4L, 0); // clear the cell list
             }
         }
-        ForeignMemory.putInt(circularPtr - 4L, 0); // reset total size
+        ForeignMemory.setInt(circularPtr - 4L, 0); // reset total size
     }
 
     // query all entities inside a concentric ring index band and/or angular slice index band
@@ -329,8 +329,8 @@ public final class CircularArray {
             ForeignMemory.freeNative(dataBuffer);
         }
 
-        ForeignMemory.putInt(headerBlock, 0);
-        ForeignMemory.putInt(headerBlock + 4L, -1);
+        ForeignMemory.setInt(headerBlock, 0);
+        ForeignMemory.setInt(headerBlock + 4L, -1);
         ForeignMemory.freeNative(headerBlock);
     }
 

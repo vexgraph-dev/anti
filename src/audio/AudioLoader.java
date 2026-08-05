@@ -124,9 +124,9 @@ public final class AudioLoader
             alBufferData(alBufferId, format, sampleBuf, sampleRate);
 
             // Populate AudioBuffer off-heap fields
-            ForeignMemory.putInt(bufferPtr + 4L, sampleRate);
-            ForeignMemory.putInt(bufferPtr + 8L, format);
-            ForeignMemory.putInt(bufferPtr + 12L, dataSize);
+            ForeignMemory.setInt(bufferPtr + 4L, sampleRate);
+            ForeignMemory.setInt(bufferPtr + 8L, format);
+            ForeignMemory.setInt(bufferPtr + 12L, dataSize);
 
             System.out.println("[AudioLoader] Loaded WAV: " + filePath + " (Size: " + dataSize + " bytes, Rate: " + sampleRate + "Hz)");
             return bufferPtr;

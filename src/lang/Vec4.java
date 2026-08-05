@@ -38,7 +38,7 @@ public final class Vec4
 
     public static void setX(long ptr, float x)
     {
-        ForeignMemory.putFloat(ptr, x);
+        ForeignMemory.setFloat(ptr, x);
     }
 
     public static float getY(long ptr)
@@ -48,7 +48,7 @@ public final class Vec4
 
     public static void setY(long ptr, float y)
     {
-        ForeignMemory.putFloat(ptr + 4L, y);
+        ForeignMemory.setFloat(ptr + 4L, y);
     }
 
     public static float getZ(long ptr)
@@ -58,7 +58,7 @@ public final class Vec4
 
     public static void setZ(long ptr, float z)
     {
-        ForeignMemory.putFloat(ptr + 8L, z);
+        ForeignMemory.setFloat(ptr + 8L, z);
     }
 
     public static float getW(long ptr)
@@ -68,23 +68,23 @@ public final class Vec4
 
     public static void setW(long ptr, float w)
     {
-        ForeignMemory.putFloat(ptr + 12L, w);
+        ForeignMemory.setFloat(ptr + 12L, w);
     }
 
     public static void set(long ptr, float x, float y, float z, float w)
     {
-        ForeignMemory.putFloat(ptr, x);
-        ForeignMemory.putFloat(ptr + 4L, y);
-        ForeignMemory.putFloat(ptr + 8L, z);
-        ForeignMemory.putFloat(ptr + 12L, w);
+        ForeignMemory.setFloat(ptr, x);
+        ForeignMemory.setFloat(ptr + 4L, y);
+        ForeignMemory.setFloat(ptr + 8L, z);
+        ForeignMemory.setFloat(ptr + 12L, w);
     }
 
     public static void copy(long dest, long src)
     {
-        ForeignMemory.putFloat(dest, ForeignMemory.getFloat(src));
-        ForeignMemory.putFloat(dest + 4L, ForeignMemory.getFloat(src + 4L));
-        ForeignMemory.putFloat(dest + 8L, ForeignMemory.getFloat(src + 8L));
-        ForeignMemory.putFloat(dest + 12L, ForeignMemory.getFloat(src + 12L));
+        ForeignMemory.setFloat(dest, ForeignMemory.getFloat(src));
+        ForeignMemory.setFloat(dest + 4L, ForeignMemory.getFloat(src + 4L));
+        ForeignMemory.setFloat(dest + 8L, ForeignMemory.getFloat(src + 8L));
+        ForeignMemory.setFloat(dest + 12L, ForeignMemory.getFloat(src + 12L));
     }
 
     public static void add(long dest, long a, long b)

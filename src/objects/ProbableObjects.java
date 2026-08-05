@@ -38,11 +38,11 @@ public class ProbableObjects
         long block = ForeignMemory.allocateNative(16L + capacity * 16L);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_SINGLETON);
-        ForeignMemory.putInt(block + 4L, capacity);
+        ForeignMemory.setInt(block, TYPE_SINGLETON);
+        ForeignMemory.setInt(block + 4L, capacity);
 
-        ForeignMemory.putInt(userPtr, 0); // count = 0
-        ForeignMemory.putInt(userPtr + 4L, 0); // totalWeight = 0
+        ForeignMemory.setInt(userPtr, 0); // count = 0
+        ForeignMemory.setInt(userPtr + 4L, 0); // totalWeight = 0
 
         return userPtr;
     }
@@ -81,16 +81,16 @@ public class ProbableObjects
         }
 
         long slotBase = ptr + 8L + (count * 16L);
-        ForeignMemory.putLong(slotBase, objectPtr);
+        ForeignMemory.setLong(slotBase, objectPtr);
         
         int totalWeight = ForeignMemory.getInt(ptr + 4L);
         totalWeight += weight;
-        ForeignMemory.putInt(ptr + 4L, totalWeight);
+        ForeignMemory.setInt(ptr + 4L, totalWeight);
 
-        ForeignMemory.putInt(slotBase + 8L, totalWeight); // cumulative weight
-        ForeignMemory.putInt(slotBase + 12L, weight);
+        ForeignMemory.setInt(slotBase + 8L, totalWeight); // cumulative weight
+        ForeignMemory.setInt(slotBase + 12L, weight);
 
-        ForeignMemory.putInt(ptr, count + 1);
+        ForeignMemory.setInt(ptr, count + 1);
     }
 
     public static void addProbable(long ptr, long probablePtr)

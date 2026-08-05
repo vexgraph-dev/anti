@@ -24,12 +24,12 @@ public class Object
 
     public static int type(long ptr) {
         if (ptr == 0L) return 0;
-        return ForeignMemory.unsafeGetInt(ptr - 8L);
+        return ForeignMemory.getUnsafeInt(ptr - 8L);
     }
 
     public static int length(long ptr) {
         if (ptr == 0L) return 0;
-        return ForeignMemory.unsafeGetInt(ptr - 4L);
+        return ForeignMemory.getUnsafeInt(ptr - 4L);
     }
 
     public static int classId(long ptr) {

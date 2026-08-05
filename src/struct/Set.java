@@ -74,18 +74,18 @@ public final class Set {
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_SET);
-        ForeignMemory.putInt(headerBlock + 4L, 0); // activeCount
+        ForeignMemory.setInt(headerBlock, TYPE_SET);
+        ForeignMemory.setInt(headerBlock + 4L, 0); // activeCount
 
-        ForeignMemory.putInt(userPtr, elementClassId);
-        ForeignMemory.putInt(userPtr + 4L, 0); // padding
-        ForeignMemory.putInt(userPtr + 8L, cap);
-        ForeignMemory.putInt(userPtr + 12L, 0); // padding
+        ForeignMemory.setInt(userPtr, elementClassId);
+        ForeignMemory.setInt(userPtr + 4L, 0); // padding
+        ForeignMemory.setInt(userPtr + 8L, cap);
+        ForeignMemory.setInt(userPtr + 12L, 0); // padding
 
         long bufferBytes = (long) cap * SLOT_SIZE;
         long dataBuffer = ForeignMemory.allocateNative(bufferBytes);
         ForeignMemory.setMemory(dataBuffer, bufferBytes, (byte) 0);
-        ForeignMemory.putLong(userPtr + 16L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 16L, dataBuffer);
 
         return userPtr;
     }
@@ -157,10 +157,10 @@ public final class Set {
             if (st == STATE_EMPTY) {
                 int targetIdx = (firstDeleted != -1) ? firstDeleted : idx;
                 long targetSlot = buffer + ((long) targetIdx * SLOT_SIZE);
-                ForeignMemory.putLong(targetSlot, element);
-                ForeignMemory.putLong(targetSlot + 8L, hash);
-                ForeignMemory.putLong(targetSlot + 16L, STATE_OCCUPIED);
-                ForeignMemory.putInt(setPtr - 4L, count + 1);
+                ForeignMemory.setLong(targetSlot, element);
+                ForeignMemory.setLong(targetSlot + 8L, hash);
+                ForeignMemory.setLong(targetSlot + 16L, STATE_OCCUPIED);
+                ForeignMemory.setInt(setPtr - 4L, count + 1);
                 return true;
             } else if (st == STATE_DELETED) {
                 if (firstDeleted == -1) firstDeleted = idx;
@@ -225,9 +225,9 @@ public final class Set {
                 long slotHash = ForeignMemory.getLong(slot + 8L);
                 long slotElem = ForeignMemory.getLong(slot);
                 if (slotHash == hash && elementsEqual(elemClassId, slotElem, element)) {
-                    ForeignMemory.putLong(slot + 16L, STATE_DELETED);
+                    ForeignMemory.setLong(slot + 16L, STATE_DELETED);
                     int count = size(setPtr);
-                    ForeignMemory.putInt(setPtr - 4L, count - 1);
+                    ForeignMemory.setInt(setPtr - 4L, count - 1);
                     return true;
                 }
             }
@@ -255,15 +255,15 @@ public final class Set {
                     idx = (idx + 1) & mask;
                 }
                 long targetSlot = newBuffer + ((long) idx * SLOT_SIZE);
-                ForeignMemory.putLong(targetSlot, elem);
-                ForeignMemory.putLong(targetSlot + 8L, hash);
-                ForeignMemory.putLong(targetSlot + 16L, STATE_OCCUPIED);
+                ForeignMemory.setLong(targetSlot, elem);
+                ForeignMemory.setLong(targetSlot + 8L, hash);
+                ForeignMemory.setLong(targetSlot + 16L, STATE_OCCUPIED);
             }
         }
 
         ForeignMemory.freeNative(oldBuffer);
-        ForeignMemory.putLong(setPtr + 16L, newBuffer);
-        ForeignMemory.putInt(setPtr + 8L, newCap);
+        ForeignMemory.setLong(setPtr + 16L, newBuffer);
+        ForeignMemory.setInt(setPtr + 8L, newCap);
     }
 
     private static int highestOneBit(int i) {
@@ -333,8 +333,8 @@ public final class Set {
             ForeignMemory.freeNative(buffer);
         }
 
-        ForeignMemory.putInt(headerBlock, 0);
-        ForeignMemory.putInt(headerBlock + 4L, -1);
+        ForeignMemory.setInt(headerBlock, 0);
+        ForeignMemory.setInt(headerBlock + 4L, -1);
         ForeignMemory.freeNative(headerBlock);
     }
 

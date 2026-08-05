@@ -102,7 +102,7 @@ public final class Sampler
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -136,19 +136,19 @@ public final class Sampler
 
             if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.putInt(base, TYPE_SINGLETON);
-                ForeignMemory.putInt(base + 4L, 1);
+                ForeignMemory.setInt(base, TYPE_SINGLETON);
+                ForeignMemory.setInt(base + 4L, 1);
                 
                 // Initialize default audio fields
-                ForeignMemory.putInt(rawHead + OFFSET_ID, id);
-                ForeignMemory.putInt(rawHead + OFFSET_TYPE, samplerType);
-                ForeignMemory.putInt(rawHead + OFFSET_FLAGS, FLAG_ACTIVE);
-                ForeignMemory.putFloat(rawHead + OFFSET_VOLUME, 1.0f);
-                ForeignMemory.putFloat(rawHead + OFFSET_PITCH, 1.0f);
-                ForeignMemory.putInt(rawHead + OFFSET_PADDING, 0);
-                ForeignMemory.putDouble(rawHead + OFFSET_PLAYHEAD, 0.0);
-                ForeignMemory.putLong(rawHead + OFFSET_BUFFER_LAYER, 0L);
-                ForeignMemory.putLong(rawHead + OFFSET_FILTER_STATE, 0L);
+                ForeignMemory.setInt(rawHead + OFFSET_ID, id);
+                ForeignMemory.setInt(rawHead + OFFSET_TYPE, samplerType);
+                ForeignMemory.setInt(rawHead + OFFSET_FLAGS, FLAG_ACTIVE);
+                ForeignMemory.setFloat(rawHead + OFFSET_VOLUME, 1.0f);
+                ForeignMemory.setFloat(rawHead + OFFSET_PITCH, 1.0f);
+                ForeignMemory.setInt(rawHead + OFFSET_PADDING, 0);
+                ForeignMemory.setDouble(rawHead + OFFSET_PLAYHEAD, 0.0);
+                ForeignMemory.setLong(rawHead + OFFSET_BUFFER_LAYER, 0L);
+                ForeignMemory.setLong(rawHead + OFFSET_FILTER_STATE, 0L);
                 
                 return rawHead;
             }
@@ -167,14 +167,14 @@ public final class Sampler
         }
 
         // Reset header
-        ForeignMemory.putInt(base, 0);
-        ForeignMemory.putInt(base + 4L, -1);
+        ForeignMemory.setInt(base, 0);
+        ForeignMemory.setInt(base + 4L, -1);
 
         while(true) {
             long oldTagged = singletonFreeHead;
             long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-            ForeignMemory.putLong(pointer, oldRawHead);
+            ForeignMemory.setLong(pointer, oldRawHead);
 
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -188,73 +188,73 @@ public final class Sampler
     @Volatile
     public static int getVolatileFlags(long samplerPtr)
     {
-        return ForeignMemory.getIntVolatile(samplerPtr + OFFSET_FLAGS);
+        return ForeignMemory.getVolatileInt(samplerPtr + OFFSET_FLAGS);
     }
 
     @Volatile
     public static void setVolatileFlags(long samplerPtr, int flags)
     {
-        ForeignMemory.putIntVolatile(samplerPtr + OFFSET_FLAGS, flags);
+        ForeignMemory.setVolatileInt(samplerPtr + OFFSET_FLAGS, flags);
     }
 
     @Volatile
     public static float getVolatileVolume(long samplerPtr)
     {
-        return ForeignMemory.getFloatVolatile(samplerPtr + OFFSET_VOLUME);
+        return ForeignMemory.getVolatileFloat(samplerPtr + OFFSET_VOLUME);
     }
 
     @Volatile
     public static void setVolatileVolume(long samplerPtr, float volume)
     {
-        ForeignMemory.putFloatVolatile(samplerPtr + OFFSET_VOLUME, volume);
+        ForeignMemory.setVolatileFloat(samplerPtr + OFFSET_VOLUME, volume);
     }
 
     @Volatile
     public static float getVolatilePitch(long samplerPtr)
     {
-        return ForeignMemory.getFloatVolatile(samplerPtr + OFFSET_PITCH);
+        return ForeignMemory.getVolatileFloat(samplerPtr + OFFSET_PITCH);
     }
 
     @Volatile
     public static void setVolatilePitch(long samplerPtr, float pitch)
     {
-        ForeignMemory.putFloatVolatile(samplerPtr + OFFSET_PITCH, pitch);
+        ForeignMemory.setVolatileFloat(samplerPtr + OFFSET_PITCH, pitch);
     }
 
     @Volatile
     public static double getVolatilePlayhead(long samplerPtr)
     {
-        return ForeignMemory.getDoubleVolatile(samplerPtr + OFFSET_PLAYHEAD);
+        return ForeignMemory.getVolatileDouble(samplerPtr + OFFSET_PLAYHEAD);
     }
 
     @Volatile
     public static void setVolatilePlayhead(long samplerPtr, double playhead)
     {
-        ForeignMemory.putDoubleVolatile(samplerPtr + OFFSET_PLAYHEAD, playhead);
+        ForeignMemory.setVolatileDouble(samplerPtr + OFFSET_PLAYHEAD, playhead);
     }
 
     @Volatile
     public static long getVolatileBufferLayer(long samplerPtr)
     {
-        return ForeignMemory.getLongVolatile(samplerPtr + OFFSET_BUFFER_LAYER);
+        return ForeignMemory.getVolatileLong(samplerPtr + OFFSET_BUFFER_LAYER);
     }
 
     @Volatile
     public static void setVolatileBufferLayer(long samplerPtr, long layerPtr)
     {
-        ForeignMemory.putLongVolatile(samplerPtr + OFFSET_BUFFER_LAYER, layerPtr);
+        ForeignMemory.setVolatileLong(samplerPtr + OFFSET_BUFFER_LAYER, layerPtr);
     }
 
     @Volatile
     public static long getVolatileFilterState(long samplerPtr)
     {
-        return ForeignMemory.getLongVolatile(samplerPtr + OFFSET_FILTER_STATE);
+        return ForeignMemory.getVolatileLong(samplerPtr + OFFSET_FILTER_STATE);
     }
 
     @Volatile
     public static void setVolatileFilterState(long samplerPtr, long filterPtr)
     {
-        ForeignMemory.putLongVolatile(samplerPtr + OFFSET_FILTER_STATE, filterPtr);
+        ForeignMemory.setVolatileLong(samplerPtr + OFFSET_FILTER_STATE, filterPtr);
     }
 
     // --- UNSAFE RAW ACCESSORS (Bypasses checks for extreme speed) ---
@@ -268,7 +268,7 @@ public final class Sampler
     @Unsafe
     public static void setUnsafeVolume(long samplerPtr, float volume)
     {
-        ForeignMemory.putFloat(samplerPtr + OFFSET_VOLUME, volume);
+        ForeignMemory.setFloat(samplerPtr + OFFSET_VOLUME, volume);
     }
 
     @Unsafe
@@ -280,7 +280,7 @@ public final class Sampler
     @Unsafe
     public static void setUnsafePitch(long samplerPtr, float pitch)
     {
-        ForeignMemory.putFloat(samplerPtr + OFFSET_PITCH, pitch);
+        ForeignMemory.setFloat(samplerPtr + OFFSET_PITCH, pitch);
     }
 
     @Unsafe
@@ -292,6 +292,6 @@ public final class Sampler
     @Unsafe
     public static void setUnsafePlayhead(long samplerPtr, double playhead)
     {
-        ForeignMemory.putDouble(samplerPtr + OFFSET_PLAYHEAD, playhead);
+        ForeignMemory.setDouble(samplerPtr + OFFSET_PLAYHEAD, playhead);
     }
 }

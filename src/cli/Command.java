@@ -23,19 +23,19 @@ public class Command {
 
         // Write header: type (FORM_SINGLETON | ID_COMMAND), length (1)
         int type = TypeRegister.FORM_SINGLETON | CLASS_ID;
-        ForeignMemory.putInt(block, type);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, type);
+        ForeignMemory.setInt(block + 4L, 1);
 
         // Fields:
         // userPtr + 0: nameStringPointer
         // userPtr + 8: argumentsCount
         // userPtr + 12: padding
         // userPtr + 16: arguments array of pointers
-        ForeignMemory.putLong(userPtr, nameStringPointer);
-        ForeignMemory.putInt(userPtr + 8L, argsLen);
-        ForeignMemory.putInt(userPtr + 12L, 0); // padding
+        ForeignMemory.setLong(userPtr, nameStringPointer);
+        ForeignMemory.setInt(userPtr + 8L, argsLen);
+        ForeignMemory.setInt(userPtr + 12L, 0); // padding
         for (int i = 0; i < argsLen; i++) {
-            ForeignMemory.putLong(userPtr + 16L + (i * 8L), argumentStringPointers[i]);
+            ForeignMemory.setLong(userPtr + 16L + (i * 8L), argumentStringPointers[i]);
         }
         return userPtr;
     }
@@ -96,8 +96,8 @@ public class Command {
 
         long block = commandPointer - 8L;
         // Zero header for safety
-        ForeignMemory.putInt(block, 0);
-        ForeignMemory.putInt(block + 4L, -1);
+        ForeignMemory.setInt(block, 0);
+        ForeignMemory.setInt(block + 4L, -1);
         ForeignMemory.freeNative(block);
     }
 }

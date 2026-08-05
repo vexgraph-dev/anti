@@ -53,8 +53,8 @@ public final class Arrays {
         long p1 = pointer + (i * 4L);
         long p2 = pointer + (j * 4L);
         int temp = ForeignMemory.getInt(p1);
-        ForeignMemory.putInt(p1, ForeignMemory.getInt(p2));
-        ForeignMemory.putInt(p2, temp);
+        ForeignMemory.setInt(p1, ForeignMemory.getInt(p2));
+        ForeignMemory.setInt(p2, temp);
     }
 
     // off-heap long array quicksort
@@ -90,8 +90,8 @@ public final class Arrays {
         long p1 = pointer + (i * 8L);
         long p2 = pointer + (j * 8L);
         long temp = ForeignMemory.getLong(p1);
-        ForeignMemory.putLong(p1, ForeignMemory.getLong(p2));
-        ForeignMemory.putLong(p2, temp);
+        ForeignMemory.setLong(p1, ForeignMemory.getLong(p2));
+        ForeignMemory.setLong(p2, temp);
     }
 
     // off-heap int array binary search
@@ -131,7 +131,7 @@ public final class Arrays {
     public static void fill(long pointer, int length, byte value) {
         if (pointer == 0L || length <= 0) return;
         for (int i = 0; i < length; i++) {
-            ForeignMemory.putByte(pointer + i, value);
+            ForeignMemory.setByte(pointer + i, value);
         }
     }
 

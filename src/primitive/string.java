@@ -345,8 +345,7 @@ public final class string {
         int len = length(pointer);
         if (len <= 56) return 56;
         if (len <= 248) return 248;
-        if (len <= 1016) return 1016;
-        return len;
+        return Math.max(len, 1016);
     }
 
     // --- COPY & APPEND LAYER ---

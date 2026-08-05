@@ -108,7 +108,7 @@ public final class CommandPool {
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -130,7 +130,7 @@ public final class CommandPool {
                 long oldTagged = arrayFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -152,7 +152,7 @@ public final class CommandPool {
                 long oldTagged = matrixFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -185,9 +185,9 @@ public final class CommandPool {
 
             if (SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.putInt(base, TYPE_SINGLETON);
-                ForeignMemory.putInt(base + 4L, 1);
-                ForeignMemory.putLong(rawHead, 0L);
+                ForeignMemory.setInt(base, TYPE_SINGLETON);
+                ForeignMemory.setInt(base + 4L, 1);
+                ForeignMemory.setLong(rawHead, 0L);
                 return rawHead;
             }
         }
@@ -216,8 +216,8 @@ public final class CommandPool {
 
                 if (ARRAY_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                     long base = rawHead - 8L;
-                    ForeignMemory.putInt(base, TYPE_ARRAY);
-                    ForeignMemory.putInt(base + 4L, length);
+                    ForeignMemory.setInt(base, TYPE_ARRAY);
+                    ForeignMemory.setInt(base + 4L, length);
                     return rawHead;
                 }
             }
@@ -226,8 +226,8 @@ public final class CommandPool {
             long totalBytes = 8L + (length * 8L);
             long alignedBytes = (totalBytes + 7L) & ~7L;
             long base = ForeignMemory.allocateNative(alignedBytes);
-            ForeignMemory.putInt(base, TYPE_ARRAY);
-            ForeignMemory.putInt(base + 4L, length);
+            ForeignMemory.setInt(base, TYPE_ARRAY);
+            ForeignMemory.setInt(base + 4L, length);
             return base + 8L;
         }
     }
@@ -255,8 +255,8 @@ public final class CommandPool {
 
                 if (MATRIX_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                     long base = rawHead - 8L;
-                    ForeignMemory.putInt(base, TYPE_MATRIX);
-                    ForeignMemory.putInt(base + 4L, length);
+                    ForeignMemory.setInt(base, TYPE_MATRIX);
+                    ForeignMemory.setInt(base + 4L, length);
                     return rawHead;
                 }
             }
@@ -264,8 +264,8 @@ public final class CommandPool {
             // Oversized: Pure FFM C malloc downcall (0% GC)
             long totalBytes = 8L + (length * 8L);
             long base = ForeignMemory.allocateNative(totalBytes);
-            ForeignMemory.putInt(base, TYPE_MATRIX);
-            ForeignMemory.putInt(base + 4L, length);
+            ForeignMemory.setInt(base, TYPE_MATRIX);
+            ForeignMemory.setInt(base + 4L, length);
             return base + 8L;
         }
     }
@@ -308,15 +308,15 @@ public final class CommandPool {
         int length = length(pointer);
         long base = pointer - 8L;
 
-        ForeignMemory.putInt(base, 0);
-        ForeignMemory.putInt(base + 4L, -1);
+        ForeignMemory.setInt(base, 0);
+        ForeignMemory.setInt(base + 4L, -1);
 
         if (TypeRegister.isSingleton(type)) {
             while (true) {
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(pointer, oldRawHead);
+                ForeignMemory.setLong(pointer, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -333,7 +333,7 @@ public final class CommandPool {
                 long oldTagged = arrayFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(pointer, oldRawHead);
+                ForeignMemory.setLong(pointer, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -350,7 +350,7 @@ public final class CommandPool {
                 long oldTagged = matrixFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(pointer, oldRawHead);
+                ForeignMemory.setLong(pointer, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -381,24 +381,24 @@ public final class CommandPool {
 
     public static void set(long pointer, long value) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        ForeignMemory.putLong(pointer, value);
+        ForeignMemory.setLong(pointer, value);
     }
 
     public static void set(long pointer, int index, long value) { 
         checkBounds(pointer, index);
-        ForeignMemory.putLong(pointer + (index * 8L), value); 
+        ForeignMemory.setLong(pointer + (index * 8L), value); 
     }
 
     @Volatile
     public static long getVolatile(long pointer) {
         if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return ForeignMemory.getLongVolatile(pointer);
+        return ForeignMemory.getVolatileLong(pointer);
     }
 
     @Volatile
     public static void setVolatile(long pointer, long value) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        ForeignMemory.putLongVolatile(pointer, value);
+        ForeignMemory.setVolatileLong(pointer, value);
     }
 
     public static boolean compareAndSet(long pointer, long expected, long value) {
@@ -417,7 +417,7 @@ public final class CommandPool {
             throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
         checkBounds(matrixPointer, index);
-        ForeignMemory.putLong(matrixPointer + (index * 8L), targetPointer); 
+        ForeignMemory.setLong(matrixPointer + (index * 8L), targetPointer); 
     }
 
     private static void checkBounds(long pointer, int index) {
@@ -474,80 +474,80 @@ public final class CommandPool {
     }
 
     @Unsafe
-    public static void unsafeSet(long pointer, long value) {
-        ForeignMemory.putLong(pointer, value);
+    public static void setUnsafe(long pointer, long value) {
+        ForeignMemory.setLong(pointer, value);
     }
 
     @Unsafe
-    public static void unsafeSet(long pointer, int index, long value) {
-        ForeignMemory.putLong(pointer + (index * 8L), value);
+    public static void setUnsafe(long pointer, int index, long value) {
+        ForeignMemory.setLong(pointer + (index * 8L), value);
     }
 
     @Unsafe
     public static void unsafeSetPointer(long matrixPointer, int index, long targetPointer) {
-        ForeignMemory.putLong(matrixPointer + (index * 8L), targetPointer);
+        ForeignMemory.setLong(matrixPointer + (index * 8L), targetPointer);
     }
 
     @Volatile
     public static long getVolatile(long pointer, int index) {
         checkBounds(pointer, index);
-        return ForeignMemory.getLongVolatile(pointer + (index * 8L));
+        return ForeignMemory.getVolatileLong(pointer + (index * 8L));
     }
 
     @Volatile
     public static long getPointerVolatile(long matrixPointer, int index) {
         if(matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
         checkBounds(matrixPointer, index);
-        return ForeignMemory.getLongVolatile(matrixPointer + (index * 8L));
+        return ForeignMemory.getVolatileLong(matrixPointer + (index * 8L));
     }
 
     @Volatile
     public static void setVolatile(long pointer, int index, long value) {
         checkBounds(pointer, index);
-        ForeignMemory.putLongVolatile(pointer + (index * 8L), value);
+        ForeignMemory.setVolatileLong(pointer + (index * 8L), value);
     }
 
     @Volatile
     public static void setPointerVolatile(long matrixPointer, int index, long targetPointer) {
         if(matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
         checkBounds(matrixPointer, index);
-        ForeignMemory.putLongVolatile(matrixPointer + (index * 8L), targetPointer);
+        ForeignMemory.setVolatileLong(matrixPointer + (index * 8L), targetPointer);
     }
 
     @Unsafe
     @Volatile
     public static long unsafeVolatileGet(long pointer) {
-        return ForeignMemory.getLongVolatile(pointer);
+        return ForeignMemory.getVolatileLong(pointer);
     }
 
     @Unsafe
     @Volatile
     public static long unsafeVolatileGet(long pointer, int index) {
-        return ForeignMemory.getLongVolatile(pointer + (index * 8L));
+        return ForeignMemory.getVolatileLong(pointer + (index * 8L));
     }
 
     @Unsafe
     @Volatile
     public static long unsafeVolatileGetPointer(long matrixPointer, int index) {
-        return ForeignMemory.getLongVolatile(matrixPointer + (index * 8L));
+        return ForeignMemory.getVolatileLong(matrixPointer + (index * 8L));
     }
 
     @Unsafe
     @Volatile
-    public static void unsafeVolatileSet(long pointer, long value) {
-        ForeignMemory.putLongVolatile(pointer, value);
+    public static void setUnsafeVolatile(long pointer, long value) {
+        ForeignMemory.setVolatileLong(pointer, value);
     }
 
     @Unsafe
     @Volatile
-    public static void unsafeVolatileSet(long pointer, int index, long value) {
-        ForeignMemory.putLongVolatile(pointer + (index * 8L), value);
+    public static void setUnsafeVolatile(long pointer, int index, long value) {
+        ForeignMemory.setVolatileLong(pointer + (index * 8L), value);
     }
 
     @Unsafe
     @Volatile
     public static void unsafeVolatileSetPointer(long matrixPointer, int index, long targetPointer) {
-        ForeignMemory.putLongVolatile(matrixPointer + (index * 8L), targetPointer);
+        ForeignMemory.setVolatileLong(matrixPointer + (index * 8L), targetPointer);
     }
 
 

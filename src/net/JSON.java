@@ -65,19 +65,19 @@ public final class JSON {
         return resPtr;
     }
 
-    public static long putInt(long objPtr, String key, int value) {
+    public static long setInt(long objPtr, String key, int value) {
         return putRaw(objPtr, key, String.valueOf(value));
     }
 
-    public static long putLong(long objPtr, String key, long value) {
+    public static long setLong(long objPtr, String key, long value) {
         return putRaw(objPtr, key, String.valueOf(value));
     }
 
-    public static long putFloat(long objPtr, String key, float value) {
+    public static long setFloat(long objPtr, String key, float value) {
         return putRaw(objPtr, key, String.valueOf(value));
     }
 
-    public static long putDouble(long objPtr, String key, double value) {
+    public static long setDouble(long objPtr, String key, double value) {
         return putRaw(objPtr, key, String.valueOf(value));
     }
 
@@ -525,12 +525,12 @@ public final class JSON {
                             if (resultPtr == 0L) {
                                 resultPtr = string.allocateUninitialized(keyLen);
                                 ForeignMemory.copy(jsonObjPtr + keyStart, resultPtr, keyLen);
-                                ForeignMemory.putByte(resultPtr + keyLen, (byte) 0);
+                                ForeignMemory.setByte(resultPtr + keyLen, (byte) 0);
                             } else {
                                 resultPtr = string.append(resultPtr, ",");
                                 long tempKey = string.allocateUninitialized(keyLen);
                                 ForeignMemory.copy(jsonObjPtr + keyStart, tempKey, keyLen);
-                                ForeignMemory.putByte(tempKey + keyLen, (byte) 0);
+                                ForeignMemory.setByte(tempKey + keyLen, (byte) 0);
                                 resultPtr = string.appendPop(resultPtr, tempKey);
                             }
                         }
@@ -707,7 +707,7 @@ public final class JSON {
             int valLen = end - (start + 1);
             long valPtr = string.allocateUninitialized(valLen);
             ForeignMemory.copy(basePtr + start + 1, valPtr, valLen);
-            ForeignMemory.putByte(valPtr + valLen, (byte) 0);
+            ForeignMemory.setByte(valPtr + valLen, (byte) 0);
             return valPtr;
         } else if (first == '{' || first == '[') {
             // Object or Array value
@@ -731,7 +731,7 @@ public final class JSON {
             int valLen = end - start;
             long valPtr = string.allocateUninitialized(valLen);
             ForeignMemory.copy(basePtr + start, valPtr, valLen);
-            ForeignMemory.putByte(valPtr + valLen, (byte) 0);
+            ForeignMemory.setByte(valPtr + valLen, (byte) 0);
             return valPtr;
         } else {
             // Primitive number, boolean, or null
@@ -746,7 +746,7 @@ public final class JSON {
             int valLen = end - start;
             long valPtr = string.allocateUninitialized(valLen);
             ForeignMemory.copy(basePtr + start, valPtr, valLen);
-            ForeignMemory.putByte(valPtr + valLen, (byte) 0);
+            ForeignMemory.setByte(valPtr + valLen, (byte) 0);
             return valPtr;
         }
     }

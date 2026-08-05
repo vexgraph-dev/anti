@@ -44,11 +44,11 @@ public final class HTTPServer {
         long block = ForeignMemory.allocateNative(56);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_HTTP_SERVER);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_HTTP_SERVER);
+        ForeignMemory.setInt(block + 4L, 1);
 
-        ForeignMemory.putInt(userPtr, 0);       // state: 0 = STOPPED, 1 = RUNNING
-        ForeignMemory.putInt(userPtr + 4L, port); // port
+        ForeignMemory.setInt(userPtr, 0);       // state: 0 = STOPPED, 1 = RUNNING
+        ForeignMemory.setInt(userPtr + 4L, port); // port
 
         return userPtr;
     }
@@ -76,7 +76,7 @@ public final class HTTPServer {
             ssc.configureBlocking(false);
             ssc.bind(new InetSocketAddress(port));
             Map.putObject(CHANNEL_MAP_PTR, serverPtr, ssc);
-            ForeignMemory.putInt(serverPtr, 1); // Set state to RUNNING
+            ForeignMemory.setInt(serverPtr, 1); // Set state to RUNNING
             return true;
         } catch (IOException e) {
             return false;
@@ -126,12 +126,12 @@ public final class HTTPServer {
             long methodPtr = string.allocate(method);
             long uriPtr = string.allocate(uri);
 
-            ForeignMemory.putInt(reqBlock, TypeRegister.FORM_SINGLETON | TypeRegister.ID_HTTP_SERVER);
-            ForeignMemory.putInt(reqBlock + 4L, 1);
+            ForeignMemory.setInt(reqBlock, TypeRegister.FORM_SINGLETON | TypeRegister.ID_HTTP_SERVER);
+            ForeignMemory.setInt(reqBlock + 4L, 1);
 
-            ForeignMemory.putLong(reqPtr, methodPtr);
-            ForeignMemory.putLong(reqPtr + 8L, uriPtr);
-            ForeignMemory.putLong(reqPtr + 16L, serverPtr);
+            ForeignMemory.setLong(reqPtr, methodPtr);
+            ForeignMemory.setLong(reqPtr + 8L, uriPtr);
+            ForeignMemory.setLong(reqPtr + 16L, serverPtr);
 
             Map.putObject(REQUEST_CHANNEL_MAP_PTR, reqPtr, sc);
             return reqPtr;
@@ -203,7 +203,7 @@ public final class HTTPServer {
      */
     public static synchronized void stop(long serverPtr) {
         if (serverPtr == 0L) return;
-        ForeignMemory.putInt(serverPtr, 0); // State = STOPPED
+        ForeignMemory.setInt(serverPtr, 0); // State = STOPPED
 
         ServerSocketChannel ssc = (ServerSocketChannel) Map.removeObject(CHANNEL_MAP_PTR, serverPtr);
         if (ssc != null) {

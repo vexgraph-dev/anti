@@ -32,10 +32,10 @@ public class Global
         long block = ForeignMemory.allocateNative(16);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_SINGLETON);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON);
+        ForeignMemory.setInt(block + 4L, 1);
 
-        ForeignMemory.putLong(userPtr, initialValue);
+        ForeignMemory.setLong(userPtr, initialValue);
 
         return userPtr;
     }

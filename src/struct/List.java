@@ -74,18 +74,18 @@ public final class List {
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_LIST);
-        ForeignMemory.putInt(headerBlock + 4L, 0); // activeCount
+        ForeignMemory.setInt(headerBlock, TYPE_LIST);
+        ForeignMemory.setInt(headerBlock + 4L, 0); // activeCount
 
-        ForeignMemory.putInt(userPtr, generic);
-        ForeignMemory.putInt(userPtr + 4L, stride);
-        ForeignMemory.putInt(userPtr + 8L, cap);
-        ForeignMemory.putInt(userPtr + 12L, 0); // padding
+        ForeignMemory.setInt(userPtr, generic);
+        ForeignMemory.setInt(userPtr + 4L, stride);
+        ForeignMemory.setInt(userPtr + 8L, cap);
+        ForeignMemory.setInt(userPtr + 12L, 0); // padding
 
         long bufferBytes = (long) cap * stride;
         long alignedBytes = (bufferBytes + 7L) & ~7L;
         long dataBuffer = ForeignMemory.allocateNative(alignedBytes);
-        ForeignMemory.putLong(userPtr + 16L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 16L, dataBuffer);
 
         return userPtr;
     }
@@ -110,17 +110,17 @@ public final class List {
             ForeignMemory.freeNative(dataBuffer);
 
             dataBuffer = newBuffer;
-            ForeignMemory.putLong(listPtr + 16L, dataBuffer);
-            ForeignMemory.putInt(listPtr + 8L, newCap);
+            ForeignMemory.setLong(listPtr + 16L, dataBuffer);
+            ForeignMemory.setInt(listPtr + 8L, newCap);
         }
 
         long targetSlot = dataBuffer + ((long) count * stride);
-        if (stride == 1) ForeignMemory.putByte(targetSlot, (byte) valueOrPointer);
-        else if (stride == 2) ForeignMemory.putShort(targetSlot, (short) valueOrPointer);
-        else if (stride == 4) ForeignMemory.putInt(targetSlot, (int) valueOrPointer);
-        else ForeignMemory.putLong(targetSlot, valueOrPointer);
+        if (stride == 1) ForeignMemory.setByte(targetSlot, (byte) valueOrPointer);
+        else if (stride == 2) ForeignMemory.setShort(targetSlot, (short) valueOrPointer);
+        else if (stride == 4) ForeignMemory.setInt(targetSlot, (int) valueOrPointer);
+        else ForeignMemory.setLong(targetSlot, valueOrPointer);
 
-        ForeignMemory.putInt(listPtr - 4L, count + 1);
+        ForeignMemory.setInt(listPtr - 4L, count + 1);
     }
 
     private static long readSlot(long slot, int stride) {
@@ -131,26 +131,26 @@ public final class List {
     }
 
     private static void writeSlot(long slot, int stride, long val) {
-        if (stride == 1) ForeignMemory.putByte(slot, (byte) val);
-        else if (stride == 2) ForeignMemory.putShort(slot, (short) val);
-        else if (stride == 4) ForeignMemory.putInt(slot, (int) val);
-        else ForeignMemory.putLong(slot, val);
+        if (stride == 1) ForeignMemory.setByte(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.setShort(slot, (short) val);
+        else if (stride == 4) ForeignMemory.setInt(slot, (int) val);
+        else ForeignMemory.setLong(slot, val);
     }
 
     @Volatile
     private static long readSlotVolatile(long slot, int stride) {
-        if (stride == 1) return ForeignMemory.getByteVolatile(slot) & 0xFF;
-        if (stride == 2) return ForeignMemory.getShortVolatile(slot) & 0xFFFF;
-        if (stride == 4) return ForeignMemory.getIntVolatile(slot) & 0xFFFFFFFFL;
-        return ForeignMemory.getLongVolatile(slot);
+        if (stride == 1) return ForeignMemory.getVolatileByte(slot) & 0xFF;
+        if (stride == 2) return ForeignMemory.getVolatileShort(slot) & 0xFFFF;
+        if (stride == 4) return ForeignMemory.getVolatileInt(slot) & 0xFFFFFFFFL;
+        return ForeignMemory.getVolatileLong(slot);
     }
 
     @Volatile
     private static void writeSlotVolatile(long slot, int stride, long val) {
-        if (stride == 1) ForeignMemory.putByteVolatile(slot, (byte) val);
-        else if (stride == 2) ForeignMemory.putShortVolatile(slot, (short) val);
-        else if (stride == 4) ForeignMemory.putIntVolatile(slot, (int) val);
-        else ForeignMemory.putLongVolatile(slot, val);
+        if (stride == 1) ForeignMemory.setVolatileByte(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.setVolatileShort(slot, (short) val);
+        else if (stride == 4) ForeignMemory.setVolatileInt(slot, (int) val);
+        else ForeignMemory.setVolatileLong(slot, val);
     }
 
     // get value or pointer at index (standard)
@@ -202,7 +202,7 @@ public final class List {
 
     // set value or pointer at index (unsafe, no bounds check)
     @Unsafe
-    public static void unsafeSet(long listPtr, int index, long valueOrPointer) {
+    public static void setUnsafe(long listPtr, int index, long valueOrPointer) {
         int stride = stride(listPtr);
         long dataBuffer = dataBuffer(listPtr);
         long targetSlot = dataBuffer + ((long) index * stride);
@@ -222,7 +222,7 @@ public final class List {
     // set value or pointer at index (unsafe volatile, no bounds check)
     @Unsafe
     @Volatile
-    public static void unsafeVolatileSet(long listPtr, int index, long valueOrPointer) {
+    public static void setUnsafeVolatile(long listPtr, int index, long valueOrPointer) {
         int stride = stride(listPtr);
         long dataBuffer = dataBuffer(listPtr);
         long targetSlot = dataBuffer + ((long) index * stride);
@@ -243,7 +243,7 @@ public final class List {
             ForeignMemory.copy(srcSlot, destSlot, (long) numToMove * stride);
         }
 
-        ForeignMemory.putInt(listPtr - 4L, count - 1);
+        ForeignMemory.setInt(listPtr - 4L, count - 1);
     }
 
 
@@ -303,8 +303,8 @@ public final class List {
             ForeignMemory.freeNative(dataBuffer);
         }
 
-        ForeignMemory.putInt(headerBlock, 0);
-        ForeignMemory.putInt(headerBlock + 4L, -1);
+        ForeignMemory.setInt(headerBlock, 0);
+        ForeignMemory.setInt(headerBlock + 4L, -1);
         ForeignMemory.freeNative(headerBlock);
     }
 
@@ -323,19 +323,19 @@ public final class List {
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_LIST);
-        ForeignMemory.putInt(headerBlock + 4L, count); // activeCount is set to count
+        ForeignMemory.setInt(headerBlock, TYPE_LIST);
+        ForeignMemory.setInt(headerBlock + 4L, count); // activeCount is set to count
 
-        ForeignMemory.putInt(userPtr, generic);
-        ForeignMemory.putInt(userPtr + 4L, stride);
-        ForeignMemory.putInt(userPtr + 8L, cap);
-        ForeignMemory.putInt(userPtr + 12L, 0); // padding
+        ForeignMemory.setInt(userPtr, generic);
+        ForeignMemory.setInt(userPtr + 4L, stride);
+        ForeignMemory.setInt(userPtr + 8L, cap);
+        ForeignMemory.setInt(userPtr + 12L, 0); // padding
 
         long bufferBytes = (long) cap * stride;
         long alignedBytes = (bufferBytes + 7L) & ~7L;
         long dataBuffer = ForeignMemory.allocateNative(alignedBytes);
         ForeignMemory.setMemory(dataBuffer, alignedBytes, (byte) 0);
-        ForeignMemory.putLong(userPtr + 16L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 16L, dataBuffer);
 
         return userPtr;
     }
@@ -360,13 +360,13 @@ public final class List {
             ForeignMemory.freeNative(dataBuffer);
 
             dataBuffer = newBuffer;
-            ForeignMemory.putLong(listPtr + 16L, dataBuffer);
-            ForeignMemory.putInt(listPtr + 8L, newCap);
+            ForeignMemory.setLong(listPtr + 16L, dataBuffer);
+            ForeignMemory.setInt(listPtr + 8L, newCap);
         }
 
         long targetSlot = dataBuffer + ((long) count * stride);
         ForeignMemory.setMemory(targetSlot, stride, (byte) 0);
-        ForeignMemory.putInt(listPtr - 4L, count + 1);
+        ForeignMemory.setInt(listPtr - 4L, count + 1);
         return targetSlot;
     }
 
