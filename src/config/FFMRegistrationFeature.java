@@ -153,5 +153,10 @@ public final class FFMRegistrationFeature implements Feature {
                 cgRect, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE
             )
         );
+
+        // 21. MTLCreateSystemDefaultDevice
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.ADDRESS)
+        );
     }
 }

@@ -365,7 +365,7 @@ public final class VKPipeline {
 
     // --- DATA ACCESSORS & BOUNDS CHECKS ---
     public static long get(long pointer) {
-        return primitive.Long.get(pointer);
+        return ForeignMemory.getLong(pointer);
     }
 
     public static long get(long pointer, int index) { 

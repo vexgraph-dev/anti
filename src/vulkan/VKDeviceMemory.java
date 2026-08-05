@@ -367,7 +367,7 @@ public final class VKDeviceMemory {
 
     // --- DATA ACCESSORS & BOUNDS CHECKS ---
     public static long get(long pointer) {
-        return primitive.Long.get(pointer);
+        return ForeignMemory.getLong(pointer);
     }
 
     public static long get(long pointer, int index) { 
@@ -385,7 +385,7 @@ public final class VKDeviceMemory {
     }
 
     public static void set(long pointer, long value) {
-        Long.set(pointer, value);
+        ForeignMemory.setLong(pointer, value);
     }
 
     public static void set(long pointer, int index, long value) { 

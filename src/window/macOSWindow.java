@@ -37,6 +37,7 @@ final class macOSWindow {
     private static MethodHandle MSG_SEND_POINT_RET;
     private static MethodHandle MSG_SEND_RECT_RET;
     private static MethodHandle MSG_SEND_DOUBLE_RET;
+    private static MethodHandle METAL_CREATE_SYSTEM_DEFAULT_DEVICE;
     private static StructLayout CG_RECT;
     private static StructLayout CG_SIZE;
 
@@ -45,7 +46,7 @@ final class macOSWindow {
 
     static {
         SymbolLookup objcLib;
-        MethodHandle getClass, selRegName, msgSendPtr, msgSendPtrPtr, msgSendPtrLong, msgSendPtrLongPtr, msgSendPtrSize, msgSendVoid, msgSendVoidPtr, msgSendInt, msgSendBool, msgSendBoolRet, msgSendInitWindow, msgSendNextEvent, msgSendLongRet, msgSendShortRet, msgSendPointRet, msgSendPtrDouble, msgSendRectRet, msgSendDoubleRet;
+        MethodHandle getClass, selRegName, msgSendPtr, msgSendPtrPtr, msgSendPtrLong, msgSendPtrLongPtr, msgSendPtrSize, msgSendVoid, msgSendVoidPtr, msgSendInt, msgSendBool, msgSendBoolRet, msgSendInitWindow, msgSendNextEvent, msgSendLongRet, msgSendShortRet, msgSendPointRet, msgSendPtrDouble, msgSendRectRet, msgSendDoubleRet, metalCreateSystemDefaultDevice;
         StructLayout cgRect, cgSize;
 
         try {
@@ -54,6 +55,11 @@ final class macOSWindow {
             try {
                 SymbolLookup.libraryLookup("/System/Library/Frameworks/AppKit.framework/AppKit", Arena.global());
                 SymbolLookup.libraryLookup("/System/Library/Frameworks/QuartzCore.framework/QuartzCore", Arena.global());
+                SymbolLookup metalLib = SymbolLookup.libraryLookup("/System/Library/Frameworks/Metal.framework/Metal", Arena.global());
+                metalCreateSystemDefaultDevice = LINKER.downcallHandle(
+                    metalLib.find("MTLCreateSystemDefaultDevice").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.ADDRESS)
+                );
             } catch (Throwable t) {
                 throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
             }
@@ -134,6 +140,7 @@ final class macOSWindow {
         MSG_SEND_POINT_RET = msgSendPointRet;
         MSG_SEND_RECT_RET = msgSendRectRet;
         MSG_SEND_DOUBLE_RET = msgSendDoubleRet;
+        METAL_CREATE_SYSTEM_DEFAULT_DEVICE = metalCreateSystemDefaultDevice;
         CG_RECT = cgRect;
         CG_SIZE = cgSize;
 
@@ -167,6 +174,16 @@ final class macOSWindow {
 
     private static MemorySegment getSel(Arena arena, String name) throws Throwable {
         return (MemorySegment) SEL_REGISTER_NAME.invoke(arena.allocateFrom(name));
+    }
+
+    static boolean isMetalDeviceAvailable() {
+        if (METAL_CREATE_SYSTEM_DEFAULT_DEVICE == null) return false;
+        try {
+            MemorySegment device = (MemorySegment) METAL_CREATE_SYSTEM_DEFAULT_DEVICE.invoke();
+            return device != null && device.address() != 0L;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     public static long allocate(boolean borderless) {

@@ -13,6 +13,10 @@ public final class Window {
 
     private Window() {}
 
+    /** Serializes AppKit events with Metal-backed Vulkan swapchain operations on macOS. */
+    public static final java.util.concurrent.atomic.AtomicBoolean OS_NATIVE_MUTEX =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
     private static final String OS = System.getProperty("os.name").toLowerCase();
     private static final boolean IS_MAC = OS.contains("mac");
     private static final boolean IS_WIN = OS.contains("win");
@@ -68,6 +72,10 @@ public final class Window {
         return 0L;
     }
 
+    public static boolean isMetalDeviceAvailable() {
+        return IS_MAC && macOSWindow.isMetalDeviceAvailable();
+    }
+
     public static boolean shouldClose(long pointer) {
         if (IS_MAC) return macOSWindow.shouldClose(pointer);
         if (IS_WIN) return windowsWindow.shouldClose(pointer);
@@ -108,7 +116,7 @@ public final class Window {
         // Shared flag so we only evaluate the heavy FFI shouldClose() on the Main Thread
         final java.util.concurrent.atomic.AtomicBoolean isClosed = new java.util.concurrent.atomic.AtomicBoolean(false);
 
-        Thread.ofPlatform().name("Anti-Engine-Loop").daemon(false).start(() -> {
+        Thread gameThread = Thread.ofPlatform().name("Anti-Engine-Loop").daemon(false).start(() -> {
             System.out.println("[Game Thread] Booting up loop...");
             while (!isClosed.get()) {
                 input.Key.dispatchEvents(); // Drain DOD queue & trigger OOP callbacks
@@ -123,11 +131,36 @@ public final class Window {
         });
 
         System.out.println("[Main Thread] Pumping window events...");
+        long fpsWindowStart = java.lang.System.nanoTime();
+        long fpsWindowFrames = 0L;
         while (!shouldClose(pointer)) {
-            waitEvents(); // Blocks up to 16ms (60Hz) or wakes instantly on input
+            while (!OS_NATIVE_MUTEX.compareAndSet(false, true)) {
+                Thread.onSpinWait();
+            }
+            try {
+                pollEvents();
+            } finally {
+                OS_NATIVE_MUTEX.set(false);
+            }
+
+            long now = java.lang.System.nanoTime();
+            long presented = vulkan.Renderer.getFramesPresented();
+            if (now - fpsWindowStart >= 1_000_000_000L) {
+                long elapsed = now - fpsWindowStart;
+                long deltaFrames = presented - fpsWindowFrames;
+                double fps = deltaFrames * 1_000_000_000.0 / elapsed;
+                setTitle(pointer, String.format("Anti Engine | %.1f FPS", fps));
+                fpsWindowStart = now;
+                fpsWindowFrames = presented;
+            }
         }
         
         // Window was closed; notify the Game Thread to stop
         isClosed.set(true);
+        try {
+            gameThread.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
