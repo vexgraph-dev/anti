@@ -167,6 +167,15 @@ public class TypeRegister
     public static final int ID_AUDIO_BUFFER_LAYER = 0x00006A; // AudioBufferLayer class
     public static final int ID_SAMPLER = 0x00006B; // Sampler class
     public static final int ID_AUDIO_COMPUTE_BUFFER = 0x00006C; // AudioComputeBuffer class (audio/vulkan)
+    public static final int ID_PROBABLE = 0x00006D; // Probable class
+    public static final int ID_PROBABLE_OBJECTS = 0x00006E; // ProbableObjects class
+    public static final int ID_CHOICE = 0x00006F; // Choice class
+    public static final int ID_FUTURE = 0x000070; // Future class
+    public static final int ID_PASSIVE = 0x000071; // Passive class
+    public static final int ID_REACTIVE = 0x000072; // Reactive class
+    public static final int ID_TRANSIENT = 0x000073; // Transient class
+    public static final int ID_LOCAL = 0x000074; // Local class
+    public static final int ID_GLOBAL = 0x000075; // Global class
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
