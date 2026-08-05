@@ -174,7 +174,7 @@ public final class Fixed32 {
         checkActive();
         int tid = thread.ThreadRegistry.getThreadIndex();
         long slotBase = CACHE_ARENA_BASE + (tid * 256L);
-        long countSingletonAddr = slotBase + 0L;
+        long countSingletonAddr = slotBase;
         int count = ForeignMemory.getUnsafeInt(countSingletonAddr);
         if (count > 0) {
             int newCount = count - 1;
@@ -348,7 +348,7 @@ public final class Fixed32 {
         long slotBase = CACHE_ARENA_BASE + (tid * 256L);
 
         if (type == TYPE_SINGLETON) {
-            long countSingletonAddr = slotBase + 0L;
+            long countSingletonAddr = slotBase;
             int count = ForeignMemory.getUnsafeInt(countSingletonAddr);
             if (count < 8) {
                 long dataAddr = slotBase + 32L + (count * 8L);
