@@ -222,7 +222,7 @@ public final class Double {
     {
         checkActive();
         long threadSlotBase = getThreadSlotBase();
-        long countAddr = threadSlotBase + 0L;
+        long countAddr = threadSlotBase;
         int count = ForeignMemory.getUnsafeInt(countAddr);
         if (count > 0) {
             int nextCount = count - 1;
@@ -476,7 +476,7 @@ public final class Double {
 
         if(TypeRegister.isSingleton(type)) {
             long threadSlotBase = getThreadSlotBase();
-            long countAddr = threadSlotBase + 0L;
+            long countAddr = threadSlotBase;
             int count = ForeignMemory.getUnsafeInt(countAddr);
             if (count < 8) {
                 long dataAddr = threadSlotBase + 64L + (count * 8L);
