@@ -87,8 +87,5 @@ public class Passive
         }
     }
 
-    public Passive()
-    {
-
-    }
+    private Passive() {}
 }
