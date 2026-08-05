@@ -173,11 +173,18 @@ public final class Vulkan {
 
         if (validationEnabled) {
             debugCallback = VkDebugUtilsMessengerCallbackEXT.create((severity, types, data, userData) -> {
-                String message = VkDebugUtilsMessengerCallbackDataEXT.create(data).pMessageString();
-                String level = (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0 ? "ERROR"
-                        : (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0 ? "WARNING"
-                        : (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0 ? "INFO" : "VERBOSE";
-                System.err.println("[Vulkan " + level + "] " + message);
+                try(VkDebugUtilsMessengerCallbackDataEXT debug = VkDebugUtilsMessengerCallbackDataEXT.create(data))
+                {
+                    String message = debug.pMessageString();
+                    String level = (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0 ? "ERROR"
+                            : (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0 ? "WARNING"
+                              : (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0 ? "INFO" : "VERBOSE";
+                    System.err.println("[Vulkan " + level + "] " + message);
+                }
+                catch(Exception e)
+                {
+                    throw new RuntimeException("Debugging error located with text: " + e);
+                }
                 return VK_FALSE;
             });
 
