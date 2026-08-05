@@ -20,7 +20,7 @@ import input.Touch;
 // bypasses the compositor and unlocks the frame rate.
 
 @PlatformExclusive("Mac")
-@Intention("macOS native window backend. macOS WindowServer composites windowed CAMetalLayer presentation and forces vsync to the display refresh rate (120Hz on ProMotion), capping windowed FPS, whereas fullscreen presentation bypasses the compositor and unlocks the frame rate.")
+@Intention("[constraints]")
 @Citatiom(cite = 4)
 final class macOSWindow {
 
@@ -394,6 +394,34 @@ final class macOSWindow {
             return false;
         } catch (Throwable t) {
             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    public static boolean isFullscreen(long pointer) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return false;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            // NSWindowStyleMaskFullScreen = 1 << 14
+            MemorySegment styleMaskSel = getSel(arena, "styleMask");
+            long mask = (long) MSG_SEND_LONG_RET.invoke(window, styleMaskSel);
+            return (mask & (1L << 14)) != 0;
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    public static int getDisplayRefreshRate() {
+        if (OBJC_GET_CLASS == null) return 60;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
+            MemorySegment mainScreenSel = getSel(arena, "mainScreen");
+            MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, mainScreenSel);
+            if (mainScreen == null || mainScreen.address() == 0L) return 60;
+            MemorySegment maxFpsSel = getSel(arena, "maximumFramesPerSecond");
+            long rate = (long) MSG_SEND_LONG_RET.invoke(mainScreen, maxFpsSel);
+            return rate > 0 ? (int) rate : 60;
+        } catch (Throwable t) {
+            return 60;
         }
     }
 
