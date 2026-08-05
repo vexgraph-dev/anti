@@ -5,6 +5,7 @@ import annotation.Intention;
 import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
+import time.DateTime;
 
 @Draft
 @Intention("[definition]")
@@ -21,9 +22,11 @@ public class Probable
     //
     // multiple objects with specific chance (being in one pool) at probableobjects class.
 
+    private Probable() {}
+
     /**
      * Allocates off-heap memory for a Probable choice object.
-     * 
+     * <p>
      * Layout (24 bytes):
      * - [block + 0L] (4 bytes): TYPE_HEADER (TYPE_SINGLETON)
      * - [block + 4L] (4 bytes): Active Flag (1)
@@ -60,8 +63,6 @@ public class Probable
 
     public static int getWeight(long ptr)
     {
-        if (ptr == 0L)
-            throw new NullPointerException("Accessing NULL off-heap pointer!");
         return ForeignMemory.getInt(ptr + 8L);
     }
 
@@ -89,9 +90,9 @@ public class Probable
         ForeignMemory.setInt(ptr + 12L, total);
     }
 
-    public Probable()
+    public static long get(long ptr)
     {
-
+        return util.Random.sample(ptr);
     }
 }
 
