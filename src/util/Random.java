@@ -5,6 +5,8 @@ import annotation.Required;
 import annotation.Intention;
 import nio.ForeignMemory;
 import oop.TypeRegister;
+import objects.Probable;
+import objects.ProbableObjects;
 
 /**
  * Off-Heap Pseudo-Random Number Generator (PRNG) Subsystem.
@@ -123,5 +125,51 @@ public final class Random {
         if (weight <= 0) return false;
         long val = nextLong(ptr) & 0x7FFFFFFFFFFFFFFFL;
         return (val % total) < weight;
+    }
+
+    @Draft
+    public static long sample(long ptr, long probablePtr) {
+        if (probablePtr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        int weight = Probable.getWeight(probablePtr);
+        int total = Probable.getTotal(probablePtr);
+        if (getWeight(ptr, weight, total)) {
+            return Probable.getObject(probablePtr);
+        }
+        return 0L;
+    }
+
+    @Draft
+    public static long samplePool(long ptr, long probableObjectsPtr) {
+        if (probableObjectsPtr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        int count = ProbableObjects.size(probableObjectsPtr);
+        if (count == 0) return 0L;
+
+        int totalWeight = ProbableObjects.getTotalWeight(probableObjectsPtr);
+        if (totalWeight <= 0) {
+            long val = nextLong(ptr) & 0x7FFFFFFFFFFFFFFFL;
+            int idx = (int) (val % count);
+            long slotBase = probableObjectsPtr + 8L + (idx * 16L);
+            return ForeignMemory.getLong(slotBase);
+        }
+
+        long val = nextLong(ptr) & 0x7FFFFFFFFFFFFFFFL;
+        int r = (int) (val % totalWeight);
+
+        // Binary search cumulative weights
+        int low = 0;
+        int high = count - 1;
+        while (low < high) {
+            int mid = (low + high) >>> 1;
+            long slotBase = probableObjectsPtr + 8L + (mid * 16L);
+            int cumWeight = ForeignMemory.getInt(slotBase + 8L);
+            if (cumWeight < r) {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
+        }
+
+        long slotBase = probableObjectsPtr + 8L + (low * 16L);
+        return ForeignMemory.getLong(slotBase);
     }
 }
