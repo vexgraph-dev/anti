@@ -24,6 +24,50 @@ public final class Window {
     private static final boolean IS_WIN = OS.contains("win");
     private static final boolean IS_LINUX = OS.contains("nix") || OS.contains("nux") || OS.contains("aix");
 
+    /** Explicit FPS cap (0 = auto / uncapped). Forces parking even in fullscreen IMMEDIATE mode. */
+    public static volatile int TARGET_FPS;
+
+    /** Effective FPS cap, recomputed every iteration on the Main Thread (AppKit must stay on the Main Thread). */
+    private static volatile int EFFECTIVE_FPS;
+
+    public static void setTargetFps(int fps) {
+        TARGET_FPS = Math.max(0, fps);
+    }
+
+    /**
+     * Pure park until the deadline. parkNanos is only a hint, so re-park if woken early.
+     * Never busy-spins; each iteration sleeps on the OS scheduler.
+     */
+    private static void parkUntil(long deadline) {
+        long now;
+        while ((now = java.lang.System.nanoTime()) < deadline) {
+            parkNanos(deadline - now);
+        }
+    }
+
+    /**
+     * Resolve the effective FPS cap on the Main Thread.
+     * 0 means no cap (busy wait). FIFO is vsync-locked, so it can never exceed the display refresh.
+     */
+    private static int resolveFps(long pointer) {
+        int cap = TARGET_FPS;
+
+        if (IS_MAC) {
+            boolean vsyncLocked = vulkan.Vulkan.isVsyncLocked();
+            int display = macOSWindow.getDisplayRefreshRate();
+
+            if (cap > 0) {
+                // Explicit cap: park regardless; FIFO is still bounded by the display refresh.
+                return vsyncLocked ? Math.min(cap, display) : cap;
+            }
+            if (vsyncLocked) return display; // FIFO: park at the display refresh, can't present faster anyway
+            if (!macOSWindow.isFullscreen(pointer)) return display; // windowed IMMEDIATE: WindowServer caps it anyway, park instead of spin
+            return 0; // fullscreen IMMEDIATE: busy wait
+        }
+
+        return cap; // non-macOS: only an explicit cap parks, otherwise busy wait
+    }
+
     public static long allocate(boolean borderless) {
         if (IS_MAC) return macOSWindow.allocate(borderless);
         if (IS_WIN) return windowsWindow.allocate(borderless);
@@ -118,16 +162,26 @@ public final class Window {
         // Shared flag so we only evaluate the heavy FFI shouldClose() on the Main Thread
         final AtomicBoolean isClosed = new AtomicBoolean(false);
 
+        // Resolve the initial cap before the loops spin up (Main Thread only)
+        EFFECTIVE_FPS = resolveFps(pointer);
+
         Thread gameThread = Thread.ofPlatform().name("Anti-Engine-Loop").daemon(false).start(() -> {
             System.out.println("[Game Thread] Booting up loop...");
+            long nextFrame = java.lang.System.nanoTime();
             while (!isClosed.get()) {
                 input.Key.dispatchEvents(); // Drain DOD queue & trigger OOP callbacks
                 input.Mouse.dispatchEvents(); // Same for Mouse
                 input.Touch.update(); // Dispatches Touch Events
                 loop.tick();
-                
-                // Throttle Game Thread to exactly 1000 FPS to prevent 100% CPU core burn
-                parkNanos(1_000_000L);
+
+                // Frame pacing: park until the next frame deadline instead of busy-waiting.
+                int fps = EFFECTIVE_FPS;
+                if (fps > 0) {
+                    long budget = 1_000_000_000L / fps;
+                    if (nextFrame < java.lang.System.nanoTime()) nextFrame = java.lang.System.nanoTime() + budget;
+                    parkUntil(nextFrame);
+                    nextFrame += budget;
+                }
             }
             System.out.println("[Game Thread] Shutting down...");
         });
@@ -135,12 +189,15 @@ public final class Window {
         System.out.println("[Main Thread] Pumping window events...");
         long fpsWindowStart = java.lang.System.nanoTime();
         long fpsWindowFrames = 0L;
+        long nextPoll = java.lang.System.nanoTime();
         while (!shouldClose(pointer)) {
             while (!OS_NATIVE_MUTEX.compareAndSet(false, true)) {
                 Thread.onSpinWait();
             }
             try {
                 pollEvents();
+                // Recompute the cap each iteration; fullscreen/refresh state must be read on the Main Thread.
+                EFFECTIVE_FPS = resolveFps(pointer);
             } finally {
                 OS_NATIVE_MUTEX.set(false);
             }
@@ -154,6 +211,14 @@ public final class Window {
                 setTitle(pointer, String.format("Anti Engine | %.1f FPS", fps));
                 fpsWindowStart = now;
                 fpsWindowFrames = presented;
+            }
+
+            int fps = EFFECTIVE_FPS;
+            if (fps > 0) {
+                long budget = 1_000_000_000L / fps;
+                if (nextPoll < now) nextPoll = now + budget;
+                parkUntil(nextPoll);
+                nextPoll += budget;
             }
         }
         
