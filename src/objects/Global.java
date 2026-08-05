@@ -1,10 +1,25 @@
 package objects;
 
+import annotation.Draft;
 import annotation.Intention;
+import annotation.Required;
+import nio.ForeignMemory;
+import oop.TypeRegister;
 
-// global variable, this is where the variable is being associated with a global context...
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.VarHandle;
+
+@Draft
+@Intention("[purpose]")
 public class Global
 {
+    @Required
+    public static final int CLASS_ID = TypeRegister.ID_GLOBAL;
+    public static final int TYPE_SINGLETON = TypeRegister.FORM_SINGLETON | TypeRegister.MOD_GLOBAL | CLASS_ID;
+
+    private static final VarHandle LONG_VH = ValueLayout.JAVA_LONG.varHandle();
+    private static final MemorySegment GLOBAL_MEMORY = MemorySegment.ofAddress(0).reinterpret(Long.MAX_VALUE);
 
     // [purpose]
     // the purpose of the global variable is that the gloabel variable will be used to make
@@ -12,7 +27,44 @@ public class Global
     // an array of objects, etc. it can act as just a pointer, it doesnt allocate a array for
     // each thread. shall be allocate as global when allocated for games.
 
+    public static long allocate(long initialValue)
+    {
+        long block = ForeignMemory.allocateNative(16);
+        long userPtr = block + 8L;
+
+        ForeignMemory.putInt(block, TYPE_SINGLETON);
+        ForeignMemory.putInt(block + 4L, 1);
+
+        ForeignMemory.putLong(userPtr, initialValue);
+
+        return userPtr;
+    }
+
+    public static void free(long ptr)
+    {
+        if (ptr == 0L) return;
+        ForeignMemory.freeNative(ptr - 8L);
+    }
+
+    public static long get(long ptr)
+    {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ptr);
+    }
+
+    public static void set(long ptr, long value)
+    {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        LONG_VH.setVolatile(GLOBAL_MEMORY, ptr, value);
+    }
+
+    public static boolean compareAndSet(long ptr, long expected, long value)
+    {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        return (boolean) LONG_VH.compareAndSet(GLOBAL_MEMORY, ptr, expected, value);
+    }
 
     @Intention("[purpose] line [n]")
     private Global() {}
 }
+
