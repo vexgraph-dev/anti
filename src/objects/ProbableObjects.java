@@ -35,15 +35,14 @@ public class ProbableObjects
 
     public static long allocate(int capacity)
     {
-        long block = ForeignMemory.allocateNative(24L + capacity * 24L);
+        long block = ForeignMemory.allocateNative(16L + capacity * 16L);
         long userPtr = block + 8L;
 
         ForeignMemory.putInt(block, TYPE_SINGLETON);
         ForeignMemory.putInt(block + 4L, capacity);
 
         ForeignMemory.putInt(userPtr, 0); // count = 0
-        ForeignMemory.putInt(userPtr + 4L, 0); // padding
-        ForeignMemory.putDouble(userPtr + 8L, 0.0); // totalWeight = 0.0
+        ForeignMemory.putInt(userPtr + 4L, 0); // totalWeight = 0
 
         return userPtr;
     }
@@ -66,13 +65,13 @@ public class ProbableObjects
         return ForeignMemory.getInt(ptr - 4L);
     }
 
-    public static double getTotalWeight(long ptr)
+    public static int getTotalWeight(long ptr)
     {
-        if (ptr == 0L) return 0.0;
-        return ForeignMemory.getDouble(ptr + 8L);
+        if (ptr == 0L) return 0;
+        return ForeignMemory.getInt(ptr + 4L);
     }
 
-    public static void add(long ptr, long objectPtr, double weight)
+    public static void add(long ptr, long objectPtr, int weight)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         int count = ForeignMemory.getInt(ptr);
@@ -81,16 +80,15 @@ public class ProbableObjects
             throw new IndexOutOfBoundsException("ProbableObjects pool full! Capacity: " + cap);
         }
 
-        long slotBase = ptr + 16L + (count * 24L);
+        long slotBase = ptr + 8L + (count * 16L);
         ForeignMemory.putLong(slotBase, objectPtr);
-        ForeignMemory.putDouble(slotBase + 8L, weight);
-
-        double totalWeight = ForeignMemory.getDouble(ptr + 8L);
+        
+        int totalWeight = ForeignMemory.getInt(ptr + 4L);
         totalWeight += weight;
-        ForeignMemory.putDouble(ptr + 8L, totalWeight);
+        ForeignMemory.putInt(ptr + 4L, totalWeight);
 
-        // Store cumulative weight
-        ForeignMemory.putDouble(slotBase + 16L, totalWeight);
+        ForeignMemory.putInt(slotBase + 8L, totalWeight); // cumulative weight
+        ForeignMemory.putInt(slotBase + 12L, weight);
 
         ForeignMemory.putInt(ptr, count + 1);
     }
@@ -100,75 +98,10 @@ public class ProbableObjects
         add(ptr, Probable.getObject(probablePtr), Probable.getWeight(probablePtr));
     }
 
-    public static long sample(long ptr, long randomPtr)
-    {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        int count = size(ptr);
-        if (count == 0) return 0L;
-
-        double totalWeight = getTotalWeight(ptr);
-        if (totalWeight <= 0.0) {
-            int idx = (int) (util.Random.nextDouble(randomPtr) * count);
-            if (idx >= count) idx = count - 1;
-            long slotBase = ptr + 16L + (idx * 24L);
-            return ForeignMemory.getLong(slotBase);
-        }
-
-        double r = util.Random.nextDouble(randomPtr) * totalWeight;
-
-        int low = 0;
-        int high = count - 1;
-        while (low < high) {
-            int mid = (low + high) >>> 1;
-            long slotBase = ptr + 16L + (mid * 24L);
-            double cumWeight = ForeignMemory.getDouble(slotBase + 16L);
-            if (cumWeight < r) {
-                low = mid + 1;
-            } else {
-                high = mid;
-            }
-        }
-
-        long slotBase = ptr + 16L + (low * 24L);
-        return ForeignMemory.getLong(slotBase);
-    }
-
-    public static long sample(long ptr)
-    {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        int count = size(ptr);
-        if (count == 0) return 0L;
-
-        double totalWeight = getTotalWeight(ptr);
-        if (totalWeight <= 0.0) {
-            int idx = (int) (Math.random() * count);
-            if (idx >= count) idx = count - 1;
-            long slotBase = ptr + 16L + (idx * 24L);
-            return ForeignMemory.getLong(slotBase);
-        }
-
-        double r = Math.random() * totalWeight;
-
-        int low = 0;
-        int high = count - 1;
-        while (low < high) {
-            int mid = (low + high) >>> 1;
-            long slotBase = ptr + 16L + (mid * 24L);
-            double cumWeight = ForeignMemory.getDouble(slotBase + 16L);
-            if (cumWeight < r) {
-                low = mid + 1;
-            } else {
-                high = mid;
-            }
-        }
-
-        long slotBase = ptr + 16L + (low * 24L);
-        return ForeignMemory.getLong(slotBase);
-    }
-
     public ProbableObjects()
     {
 
     }
 }
+
 
