@@ -36,6 +36,7 @@ public final class Vulkan {
     private static int swapchainWidth;
     private static int swapchainHeight;
     private static int swapchainFormat;
+    private static int presentMode;
     private static long debugMessenger;
     private static VkDebugUtilsMessengerCallbackEXT debugCallback;
     
@@ -116,6 +117,11 @@ public final class Vulkan {
 
     public static int getSwapchainFormat() {
         return swapchainFormat;
+    }
+
+    /** True when the swapchain is vsync-locked (FIFO). Used for frame pacing decisions. */
+    public static boolean isVsyncLocked() {
+        return presentMode == VK_PRESENT_MODE_FIFO_KHR;
     }
 
     private static void initInstance(MemoryStack stack) {
@@ -337,6 +343,7 @@ public final class Vulkan {
                 chosenMode = VK_PRESENT_MODE_MAILBOX_KHR; // mailbox is second choice
             }
         }
+        presentMode = chosenMode;
 
         VkSwapchainCreateInfoKHR createInfo = VkSwapchainCreateInfoKHR.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
