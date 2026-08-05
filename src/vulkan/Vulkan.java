@@ -46,13 +46,21 @@ public final class Vulkan {
     private Vulkan() {}
 
     public static void initVulkan(long caMetalLayer, int windowWidth, int windowHeight) {
+        initVulkan(caMetalLayer, windowWidth, windowHeight, -1);
+    }
+
+    /**
+     * @param presentModePreference -1 = auto-select (IMMEDIATE &gt; MAILBOX &gt; FIFO); otherwise the exact
+     *                              present mode to use, falling back to FIFO if unsupported.
+     */
+    public static void initVulkan(long caMetalLayer, int windowWidth, int windowHeight, int presentModePreference) {
         System.out.println("Booting Hardcore Vulkan Subsystem...");
         configureValidationLoader();
         try (MemoryStack stack = MemoryStack.stackPush()) {
             initInstance(stack);
             initSurface(stack, caMetalLayer);
             initDevice(stack);
-            initSwapchain(stack, windowWidth, windowHeight);
+            initSwapchain(stack, windowWidth, windowHeight, presentModePreference);
         }
         System.out.println("Vulkan Swapchain ready.");
     }
@@ -323,7 +331,7 @@ public final class Vulkan {
 
     @Intention("Best low-latency present mode selection. On macOS this is only honored in fullscreen; a windowed CAMetalLayer is vsync-throttled to the display refresh rate regardless of the chosen mode.")
     @Citatiom(cite = 3)
-    private static void initSwapchain(MemoryStack stack, int width, int height) {
+    private static void initSwapchain(MemoryStack stack, int width, int height, int preferredMode) {
         swapchainWidth = width;
         swapchainHeight = height;
         swapchainFormat = VK_FORMAT_B8G8R8A8_SRGB;
@@ -333,14 +341,26 @@ public final class Vulkan {
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, modeCount, null);
         java.nio.IntBuffer modes = stack.mallocInt(modeCount.get(0));
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, modeCount, modes);
-        int chosenMode = VK_PRESENT_MODE_FIFO_KHR; // default required fallback
-        for (int i = 0; i < modeCount.get(0); i++) {
-            int mode = modes.get(i);
-            if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
-                chosenMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-                break; // immediate is first choice
-            } else if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-                chosenMode = VK_PRESENT_MODE_MAILBOX_KHR; // mailbox is second choice
+
+        int chosenMode;
+        if (preferredMode >= 0) {
+            chosenMode = VK_PRESENT_MODE_FIFO_KHR; // default required fallback
+            for (int i = 0; i < modeCount.get(0); i++) {
+                if (modes.get(i) == preferredMode) {
+                    chosenMode = preferredMode;
+                    break;
+                }
+            }
+        } else {
+            chosenMode = VK_PRESENT_MODE_FIFO_KHR; // default required fallback
+            for (int i = 0; i < modeCount.get(0); i++) {
+                int mode = modes.get(i);
+                if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+                    chosenMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+                    break; // immediate is first choice
+                } else if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+                    chosenMode = VK_PRESENT_MODE_MAILBOX_KHR; // mailbox is second choice
+                }
             }
         }
         presentMode = chosenMode;
