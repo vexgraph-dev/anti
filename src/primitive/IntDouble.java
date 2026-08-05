@@ -110,7 +110,7 @@ public final class IntDouble {
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.unsafeSet(userPtr, oldRawHead);
+                ForeignMemory.setUnsafe(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -132,7 +132,7 @@ public final class IntDouble {
                 long oldTagged = arrayFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.unsafeSet(userPtr, oldRawHead);
+                ForeignMemory.setUnsafe(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -154,7 +154,7 @@ public final class IntDouble {
                 long oldTagged = matrixFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.unsafeSet(userPtr, oldRawHead);
+                ForeignMemory.setUnsafe(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -170,16 +170,16 @@ public final class IntDouble {
         int tid = thread.ThreadRegistry.getThreadIndex();
         long slotBase = CACHE_ARENA_BASE + (tid * 256L);
         long countSingletonAddr = slotBase + 0L;
-        int count = ForeignMemory.unsafeGetInt(countSingletonAddr);
+        int count = ForeignMemory.getUnsafeInt(countSingletonAddr);
         if (count > 0) {
             int newCount = count - 1;
-            ForeignMemory.unsafeSet(countSingletonAddr, newCount);
+            ForeignMemory.setUnsafe(countSingletonAddr, newCount);
             long dataAddr = slotBase + 32L + (newCount * 8L);
-            long ptr = ForeignMemory.unsafeGetLong(dataAddr);
+            long ptr = ForeignMemory.getUnsafeLong(dataAddr);
             long base = ptr - 8L;
-            ForeignMemory.unsafeSet(base, TYPE_SINGLETON);
-            ForeignMemory.unsafeSet(base + 4L, 1);
-            ForeignMemory.unsafeSet(ptr, 0L);
+            ForeignMemory.setUnsafe(base, TYPE_SINGLETON);
+            ForeignMemory.setUnsafe(base + 4L, 1);
+            ForeignMemory.setUnsafe(ptr, 0L);
             return ptr;
         }
         while (true) {
@@ -196,15 +196,15 @@ public final class IntDouble {
                 continue;
             }
 
-            long nextRawHead = ForeignMemory.unsafeGetLong(rawHead);
+            long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
 
             if (SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.unsafeSet(base, TYPE_SINGLETON);
-                ForeignMemory.unsafeSet(base + 4L, 1);
-                ForeignMemory.unsafeSet(rawHead, 0L);
+                ForeignMemory.setUnsafe(base, TYPE_SINGLETON);
+                ForeignMemory.setUnsafe(base + 4L, 1);
+                ForeignMemory.setUnsafe(rawHead, 0L);
                 return rawHead;
             }
         }
@@ -216,15 +216,15 @@ public final class IntDouble {
             int tid = thread.ThreadRegistry.getThreadIndex();
             long slotBase = CACHE_ARENA_BASE + (tid * 256L);
             long countArrayAddr = slotBase + 4L;
-            int count = ForeignMemory.unsafeGetInt(countArrayAddr);
+            int count = ForeignMemory.getUnsafeInt(countArrayAddr);
             if (count > 0) {
                 int newCount = count - 1;
-                ForeignMemory.unsafeSet(countArrayAddr, newCount);
+                ForeignMemory.setUnsafe(countArrayAddr, newCount);
                 long dataAddr = slotBase + 96L + (newCount * 8L);
-                long ptr = ForeignMemory.unsafeGetLong(dataAddr);
+                long ptr = ForeignMemory.getUnsafeLong(dataAddr);
                 long base = ptr - 8L;
-                ForeignMemory.unsafeSet(base, TYPE_ARRAY);
-                ForeignMemory.unsafeSet(base + 4L, length);
+                ForeignMemory.setUnsafe(base, TYPE_ARRAY);
+                ForeignMemory.setUnsafe(base + 4L, length);
                 return ptr;
             }
             while (true) {
@@ -241,14 +241,14 @@ public final class IntDouble {
                     continue;
                 }
 
-                long nextRawHead = ForeignMemory.unsafeGetLong(rawHead);
+                long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
 
                 if (ARRAY_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                     long base = rawHead - 8L;
-                    ForeignMemory.unsafeSet(base, TYPE_ARRAY);
-                    ForeignMemory.unsafeSet(base + 4L, length);
+                    ForeignMemory.setUnsafe(base, TYPE_ARRAY);
+                    ForeignMemory.setUnsafe(base + 4L, length);
                     return rawHead;
                 }
             }
@@ -257,8 +257,8 @@ public final class IntDouble {
             long totalBytes = 8L + (length * 16L);
             long alignedBytes = (totalBytes + 7L) & ~7L;
             long base = ForeignMemory.allocateNative(alignedBytes);
-            ForeignMemory.unsafeSet(base, TYPE_ARRAY);
-            ForeignMemory.unsafeSet(base + 4L, length);
+            ForeignMemory.setUnsafe(base, TYPE_ARRAY);
+            ForeignMemory.setUnsafe(base + 4L, length);
             return base + 8L;
         }
     }
@@ -269,15 +269,15 @@ public final class IntDouble {
             int tid = thread.ThreadRegistry.getThreadIndex();
             long slotBase = CACHE_ARENA_BASE + (tid * 256L);
             long countMatrixAddr = slotBase + 8L;
-            int count = ForeignMemory.unsafeGetInt(countMatrixAddr);
+            int count = ForeignMemory.getUnsafeInt(countMatrixAddr);
             if (count > 0) {
                 int newCount = count - 1;
-                ForeignMemory.unsafeSet(countMatrixAddr, newCount);
+                ForeignMemory.setUnsafe(countMatrixAddr, newCount);
                 long dataAddr = slotBase + 160L + (newCount * 8L);
-                long ptr = ForeignMemory.unsafeGetLong(dataAddr);
+                long ptr = ForeignMemory.getUnsafeLong(dataAddr);
                 long base = ptr - 8L;
-                ForeignMemory.unsafeSet(base, TYPE_MATRIX);
-                ForeignMemory.unsafeSet(base + 4L, length);
+                ForeignMemory.setUnsafe(base, TYPE_MATRIX);
+                ForeignMemory.setUnsafe(base + 4L, length);
                 return ptr;
             }
             while (true) {
@@ -294,14 +294,14 @@ public final class IntDouble {
                     continue;
                 }
 
-                long nextRawHead = ForeignMemory.unsafeGetLong(rawHead);
+                long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
 
                 if (MATRIX_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                     long base = rawHead - 8L;
-                    ForeignMemory.unsafeSet(base, TYPE_MATRIX);
-                    ForeignMemory.unsafeSet(base + 4L, length);
+                    ForeignMemory.setUnsafe(base, TYPE_MATRIX);
+                    ForeignMemory.setUnsafe(base + 4L, length);
                     return rawHead;
                 }
             }
@@ -309,8 +309,8 @@ public final class IntDouble {
             // Oversized: Pure FFM C malloc downcall (0% GC)
             long totalBytes = 8L + (length * 8L);
             long base = ForeignMemory.allocateNative(totalBytes);
-            ForeignMemory.unsafeSet(base, TYPE_MATRIX);
-            ForeignMemory.unsafeSet(base + 4L, length);
+            ForeignMemory.setUnsafe(base, TYPE_MATRIX);
+            ForeignMemory.setUnsafe(base + 4L, length);
             return base + 8L;
         }
     }
@@ -353,26 +353,26 @@ public final class IntDouble {
         int length = length(pointer);
         long base = pointer - 8L;
 
-        ForeignMemory.unsafeSet(base, 0);
-        ForeignMemory.unsafeSet(base + 4L, -1);
+        ForeignMemory.setUnsafe(base, 0);
+        ForeignMemory.setUnsafe(base + 4L, -1);
 
         int tid = thread.ThreadRegistry.getThreadIndex();
         long slotBase = CACHE_ARENA_BASE + (tid * 256L);
 
         if (TypeRegister.isSingleton(type)) {
             long countSingletonAddr = slotBase + 0L;
-            int count = ForeignMemory.unsafeGetInt(countSingletonAddr);
+            int count = ForeignMemory.getUnsafeInt(countSingletonAddr);
             if (count < 8) {
                 long dataAddr = slotBase + 32L + (count * 8L);
-                ForeignMemory.unsafeSet(dataAddr, pointer);
-                ForeignMemory.unsafeSet(countSingletonAddr, count + 1);
+                ForeignMemory.setUnsafe(dataAddr, pointer);
+                ForeignMemory.setUnsafe(countSingletonAddr, count + 1);
                 return;
             }
             while (true) {
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.unsafeSet(pointer, oldRawHead);
+                ForeignMemory.setUnsafe(pointer, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -385,18 +385,18 @@ public final class IntDouble {
                 return;
             }
             long countArrayAddr = slotBase + 4L;
-            int count = ForeignMemory.unsafeGetInt(countArrayAddr);
+            int count = ForeignMemory.getUnsafeInt(countArrayAddr);
             if (count < 8) {
                 long dataAddr = slotBase + 96L + (count * 8L);
-                ForeignMemory.unsafeSet(dataAddr, pointer);
-                ForeignMemory.unsafeSet(countArrayAddr, count + 1);
+                ForeignMemory.setUnsafe(dataAddr, pointer);
+                ForeignMemory.setUnsafe(countArrayAddr, count + 1);
                 return;
             }
             while (true) {
                 long oldTagged = arrayFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.unsafeSet(pointer, oldRawHead);
+                ForeignMemory.setUnsafe(pointer, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -409,18 +409,18 @@ public final class IntDouble {
                 return;
             }
             long countMatrixAddr = slotBase + 8L;
-            int count = ForeignMemory.unsafeGetInt(countMatrixAddr);
+            int count = ForeignMemory.getUnsafeInt(countMatrixAddr);
             if (count < 8) {
                 long dataAddr = slotBase + 160L + (count * 8L);
-                ForeignMemory.unsafeSet(dataAddr, pointer);
-                ForeignMemory.unsafeSet(countMatrixAddr, count + 1);
+                ForeignMemory.setUnsafe(dataAddr, pointer);
+                ForeignMemory.setUnsafe(countMatrixAddr, count + 1);
                 return;
             }
             while (true) {
                 long oldTagged = matrixFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.unsafeSet(pointer, oldRawHead);
+                ForeignMemory.setUnsafe(pointer, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -433,32 +433,32 @@ public final class IntDouble {
     // --- DATA ACCESSORS & BOUNDS CHECKS ---
     public static int getIntPart(long pointer) {
         if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return ForeignMemory.unsafeGetInt(pointer + 8L);
+        return ForeignMemory.getUnsafeInt(pointer + 8L);
     }
 
     public static double getFracPart(long pointer) {
         if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return ForeignMemory.unsafeGetDouble(pointer);
+        return ForeignMemory.getUnsafeDouble(pointer);
     }
 
     public static double getAsDouble(long pointer) {
         if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return ForeignMemory.unsafeGetInt(pointer + 8L) + ForeignMemory.unsafeGetDouble(pointer);
+        return ForeignMemory.getUnsafeInt(pointer + 8L) + ForeignMemory.getUnsafeDouble(pointer);
     }
 
     public static int getIntPart(long pointer, int index) {
         checkBounds(pointer, index);
-        return ForeignMemory.unsafeGetInt(pointer + (index * 16L) + 8L);
+        return ForeignMemory.getUnsafeInt(pointer + (index * 16L) + 8L);
     }
 
     public static double getFracPart(long pointer, int index) {
         checkBounds(pointer, index);
-        return ForeignMemory.unsafeGetDouble(pointer + (index * 16L));
+        return ForeignMemory.getUnsafeDouble(pointer + (index * 16L));
     }
 
     public static double getAsDouble(long pointer, int index) {
         checkBounds(pointer, index);
-        return ForeignMemory.unsafeGetInt(pointer + (index * 16L) + 8L) + ForeignMemory.unsafeGetDouble(pointer + (index * 16L));
+        return ForeignMemory.getUnsafeInt(pointer + (index * 16L) + 8L) + ForeignMemory.getUnsafeDouble(pointer + (index * 16L));
     }
 
     public static long getPointer(long matrixPointer, int index) { 
@@ -467,21 +467,21 @@ public final class IntDouble {
             throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
         checkBounds(matrixPointer, index);
-        return ForeignMemory.unsafeGetLong(matrixPointer + (index * 8L)); 
+        return ForeignMemory.getUnsafeLong(matrixPointer + (index * 8L)); 
     }
 
     public static void set(long pointer, int intPart, double fracPart) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected IntDouble (Class ID " + CLASS_ID + ")");
-        ForeignMemory.unsafeSet(pointer, fracPart);
-        ForeignMemory.unsafeSet(pointer + 8L, intPart);
+        ForeignMemory.setUnsafe(pointer, fracPart);
+        ForeignMemory.setUnsafe(pointer + 8L, intPart);
     }
 
     public static void set(long pointer, int index, int intPart, double fracPart) {
         checkBounds(pointer, index);
         if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected IntDouble (Class ID " + CLASS_ID + ")");
-        ForeignMemory.unsafeSet(pointer + (index * 16L), fracPart);
-        ForeignMemory.unsafeSet(pointer + (index * 16L) + 8L, intPart);
+        ForeignMemory.setUnsafe(pointer + (index * 16L), fracPart);
+        ForeignMemory.setUnsafe(pointer + (index * 16L) + 8L, intPart);
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
@@ -491,7 +491,7 @@ public final class IntDouble {
         }
         if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected IntDouble (Class ID " + CLASS_ID + ")");
         checkBounds(matrixPointer, index);
-        ForeignMemory.unsafeSet(matrixPointer + (index * 8L), targetPointer); 
+        ForeignMemory.setUnsafe(matrixPointer + (index * 8L), targetPointer); 
     }
 
     private static void checkBounds(long pointer, int index) {
@@ -507,11 +507,11 @@ public final class IntDouble {
     }
 
     public static int type(long pointer) {
-        return ForeignMemory.unsafeGetInt(pointer - 8L);
+        return ForeignMemory.getUnsafeInt(pointer - 8L);
     }
 
     public static int length(long pointer) {
-        return ForeignMemory.unsafeGetInt(pointer - 4L);
+        return ForeignMemory.getUnsafeInt(pointer - 4L);
     }
 
     public static int classId(long pointer) {
@@ -534,61 +534,61 @@ public final class IntDouble {
 
     @Unsafe
     public static int unsafeGetIntPart(long pointer, int index) {
-        return ForeignMemory.unsafeGetInt(pointer + (index * 16L) + 8L);
+        return ForeignMemory.getUnsafeInt(pointer + (index * 16L) + 8L);
     }
 
     @Unsafe
     public static double unsafeGetDoublePart(long pointer, int index) {
-        return ForeignMemory.unsafeGetDouble(pointer + (index * 16L));
+        return ForeignMemory.getUnsafeDouble(pointer + (index * 16L));
     }
 
     @Unsafe
-    public static void unsafeSet(long pointer, int val1, double val2) {
-        ForeignMemory.unsafeSet(pointer, val2);
-        ForeignMemory.unsafeSet(pointer + 8L, val1);
+    public static void setUnsafe(long pointer, int val1, double val2) {
+        ForeignMemory.setUnsafe(pointer, val2);
+        ForeignMemory.setUnsafe(pointer + 8L, val1);
     }
 
     @Unsafe
-    public static void unsafeSet(long pointer, int index, int val1, double val2) {
-        ForeignMemory.unsafeSet(pointer + (index * 16L), val2);
-        ForeignMemory.unsafeSet(pointer + (index * 16L) + 8L, val1);
+    public static void setUnsafe(long pointer, int index, int val1, double val2) {
+        ForeignMemory.setUnsafe(pointer + (index * 16L), val2);
+        ForeignMemory.setUnsafe(pointer + (index * 16L) + 8L, val1);
     }
 
     @Volatile
     public static int getIntPartVolatile(long pointer, int index) {
         checkBounds(pointer, index);
-        return ForeignMemory.unsafeGetIntVolatile(pointer + (index * 16L) + 8L);
+        return ForeignMemory.getUnsafeVolatileInt(pointer + (index * 16L) + 8L);
     }
 
     @Volatile
     public static double getDoublePartVolatile(long pointer, int index) {
         checkBounds(pointer, index);
-        return ForeignMemory.unsafeGetDoubleVolatile(pointer + (index * 16L));
+        return ForeignMemory.getUnsafeVolatileDouble(pointer + (index * 16L));
     }
 
     @Volatile
     public static void setVolatile(long pointer, int index, int val1, double val2) {
         checkBounds(pointer, index);
-        ForeignMemory.unsafeVolatileSet(pointer + (index * 16L), val2);
-        ForeignMemory.unsafeVolatileSet(pointer + (index * 16L) + 8L, val1);
+        ForeignMemory.setUnsafeVolatile(pointer + (index * 16L), val2);
+        ForeignMemory.setUnsafeVolatile(pointer + (index * 16L) + 8L, val1);
     }
 
     @Unsafe
     @Volatile
     public static int unsafeVolatileGetIntPart(long pointer, int index) {
-        return ForeignMemory.unsafeGetIntVolatile(pointer + (index * 16L) + 8L);
+        return ForeignMemory.getUnsafeVolatileInt(pointer + (index * 16L) + 8L);
     }
 
     @Unsafe
     @Volatile
     public static double unsafeVolatileGetDoublePart(long pointer, int index) {
-        return ForeignMemory.unsafeGetDoubleVolatile(pointer + (index * 16L));
+        return ForeignMemory.getUnsafeVolatileDouble(pointer + (index * 16L));
     }
 
     @Unsafe
     @Volatile
-    public static void unsafeVolatileSet(long pointer, int index, int val1, double val2) {
-        ForeignMemory.unsafeVolatileSet(pointer + (index * 16L), val2);
-        ForeignMemory.unsafeVolatileSet(pointer + (index * 16L) + 8L, val1);
+    public static void setUnsafeVolatile(long pointer, int index, int val1, double val2) {
+        ForeignMemory.setUnsafeVolatile(pointer + (index * 16L), val2);
+        ForeignMemory.setUnsafeVolatile(pointer + (index * 16L) + 8L, val1);
     }
 }
