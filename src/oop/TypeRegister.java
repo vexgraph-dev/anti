@@ -176,6 +176,7 @@ public class TypeRegister
     public static final int ID_TRANSIENT = 0x000073; // Transient class
     public static final int ID_LOCAL = 0x000074; // Local class
     public static final int ID_GLOBAL = 0x000075; // Global class
+    public static final int ID_QUEUE = 0x000076; // Queue class
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 

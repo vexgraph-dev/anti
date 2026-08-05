@@ -165,7 +165,7 @@ public final class WebSocketClient {
                 frame.putShort((short) len);
             } else {
                 frame.put((byte) (0x80 | 127));
-                frame.setLong(len);
+                frame.putLong(len);
             }
 
             frame.put(mask);
