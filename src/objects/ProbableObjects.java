@@ -111,6 +111,11 @@ public class ProbableObjects
         add(ptr, Probable.getObject(probablePtr), Probable.getWeight(probablePtr));
     }
 
+    public static long get(long ptr)
+    {
+        return util.Random.samplePool(ptr);
+    }
+
     private ProbableObjects() {}
 }
 

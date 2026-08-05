@@ -39,7 +39,7 @@ public class Passive
 
     /**
      * Allocates off-heap memory for a Passive object.
-     * 
+     * <p>
      * Layout (32 bytes):
      * - [block + 0L] (4 bytes): TYPE_HEADER (TYPE_SINGLETON)
      * - [block + 4L] (4 bytes): Active Flag (1)
@@ -64,7 +64,6 @@ public class Passive
 
     public static void free(long ptr)
     {
-        if (ptr == 0L) return;
         ForeignMemory.freeNative(ptr - 8L);
     }
 

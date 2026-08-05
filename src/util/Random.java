@@ -22,6 +22,12 @@ public final class Random {
     // 64-bit golden ratio fractional constant (Weyl sequence step) for balanced/even dispersion
     private static final long GOLDEN_RATIO_64 = 0x9e3779b97f4a7c15L;
 
+    private static final long SYSTEM_RNG = allocate(System.nanoTime());
+
+    public static long getSystemRng() {
+        return SYSTEM_RNG;
+    }
+
     private Random() {}
 
     public static int classId() {
@@ -171,5 +177,45 @@ public final class Random {
 
         long slotBase = probableObjectsPtr + 8L + (low * 16L);
         return ForeignMemory.getLong(slotBase);
+    }
+
+    // ==========================================
+    // PARAMETERLESS SYSTEM_RNG HELPER OVERLOADS
+    // ==========================================
+
+    public static long nextLong() {
+        return nextLong(SYSTEM_RNG);
+    }
+
+    public static int nextInt() {
+        return nextInt(SYSTEM_RNG);
+    }
+
+    public static float nextFloat() {
+        return nextFloat(SYSTEM_RNG);
+    }
+
+    public static double nextDouble() {
+        return nextDouble(SYSTEM_RNG);
+    }
+
+    public static float nextNDCFloat() {
+        return nextNDCFloat(SYSTEM_RNG);
+    }
+
+    public static char nextChar() {
+        return nextChar(SYSTEM_RNG);
+    }
+
+    public static boolean getWeight(int weight, int total) {
+        return getWeight(SYSTEM_RNG, weight, total);
+    }
+
+    public static long sample(long probablePtr) {
+        return sample(SYSTEM_RNG, probablePtr);
+    }
+
+    public static long samplePool(long probableObjectsPtr) {
+        return samplePool(SYSTEM_RNG, probableObjectsPtr);
     }
 }
