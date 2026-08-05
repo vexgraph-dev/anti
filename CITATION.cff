@@ -25,3 +25,15 @@ references:
     title: "MurmurHash3"
     url: "https://github.com/aappleby/smhasher/wiki/MurmurHash3"
     year: 2011
+  - type: generic
+    authors:
+      - family-names: "KhronosGroup"
+    title: "VK_PRESENT_MODE_IMMEDIATE_KHR locked to display refresh rate"
+    url: "https://github.com/KhronosGroup/MoltenVK/issues/1925"
+    year: 2023
+  - type: generic
+    authors:
+      - family-names: "KhronosGroup"
+    title: "Fullscreen Performance Degradation"
+    url: "https://github.com/KhronosGroup/MoltenVK/issues/2259"
+    year: 2024
