@@ -102,7 +102,7 @@ public final class string {
                 long oldTagged = smallFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -124,7 +124,7 @@ public final class string {
                 long oldTagged = mediumFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -146,7 +146,7 @@ public final class string {
                 long oldTagged = largeFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -176,7 +176,7 @@ public final class string {
 
         long pointer = allocateUninitialized(len);
         ForeignMemory.copyFromHeap(bytes, 0, pointer, len);
-        ForeignMemory.putByte(pointer + len, (byte) 0); // null-terminator
+        ForeignMemory.setByte(pointer + len, (byte) 0); // null-terminator
         return pointer;
     }
 
@@ -194,8 +194,8 @@ public final class string {
             long totalBytes = 8L + len + 1L;
             long alignedBytes = (totalBytes + 7L) & ~7L;
             long base = ForeignMemory.allocateNative(alignedBytes);
-            ForeignMemory.putInt(base, TYPE_HEADER_ID);
-            ForeignMemory.putInt(base + 4L, len);
+            ForeignMemory.setInt(base, TYPE_HEADER_ID);
+            ForeignMemory.setInt(base + 4L, len);
             pointer = base + 8L;
         }
         return pointer;
@@ -224,8 +224,8 @@ public final class string {
 
             if (headVh.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.putInt(base, TYPE_HEADER_ID);
-                ForeignMemory.putInt(base + 4L, len);
+                ForeignMemory.setInt(base, TYPE_HEADER_ID);
+                ForeignMemory.setInt(base + 4L, len);
                 return rawHead;
             }
         }
@@ -244,8 +244,8 @@ public final class string {
         int len = length(pointer);
         long base = pointer - 8L;
 
-        ForeignMemory.putInt(base, 0);
-        ForeignMemory.putInt(base + 4L, -1);
+        ForeignMemory.setInt(base, 0);
+        ForeignMemory.setInt(base + 4L, -1);
 
         int poolKind = (len <= 56) ? TYPE_SMALL : (len <= 248) ? TYPE_MEDIUM : (len <= 1016) ? TYPE_LARGE : TYPE_OVERSIZED;
 
@@ -262,7 +262,7 @@ public final class string {
             long oldTagged = (long) headVh.getVolatile();
             long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-            ForeignMemory.putLong(pointer, oldRawHead);
+            ForeignMemory.setLong(pointer, oldRawHead);
 
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -282,14 +282,14 @@ public final class string {
     public static long getVolatile(long pointerAddress) {
         checkActive();
         if (pointerAddress == 0L) return 0L;
-        return ForeignMemory.getLongVolatile(pointerAddress);
+        return ForeignMemory.getVolatileLong(pointerAddress);
     }
 
     @Volatile
     public static void setVolatile(long pointerAddress, long stringPointer) {
         checkActive();
         if (pointerAddress == 0L) throw new NullPointerException("Writing to NULL pointer address!");
-        ForeignMemory.putLongVolatile(pointerAddress, stringPointer);
+        ForeignMemory.setVolatileLong(pointerAddress, stringPointer);
     }
 
     public static boolean compareAndSet(long pointerAddress, long expectedStringPointer, long newStringPointer) {
@@ -356,7 +356,7 @@ public final class string {
         int len = length(srcPtr);
         long newPtr = allocateUninitialized(len);
         ForeignMemory.copy(srcPtr, newPtr, len);
-        ForeignMemory.putByte(newPtr + len, (byte) 0);
+        ForeignMemory.setByte(newPtr + len, (byte) 0);
         return newPtr;
     }
 
@@ -388,21 +388,21 @@ public final class string {
             long newPtr = allocateUninitialized(newLen);
             ForeignMemory.copy(destPtr, newPtr, oldLen);
             ForeignMemory.copyFromHeap(bytes, offset, newPtr + oldLen, length);
-            ForeignMemory.putByte(newPtr + newLen, (byte) 0);
+            ForeignMemory.setByte(newPtr + newLen, (byte) 0);
             free(destPtr);
             return newPtr;
         } else if (newLen <= maxCap) {
             // In-place append! 0 allocation & 0 pointer relocation
             ForeignMemory.copyFromHeap(bytes, offset, destPtr + oldLen, length);
-            ForeignMemory.putByte(destPtr + newLen, (byte) 0);
-            ForeignMemory.putInt(destPtr - 4L, newLen);
+            ForeignMemory.setByte(destPtr + newLen, (byte) 0);
+            ForeignMemory.setInt(destPtr - 4L, newLen);
             return destPtr;
         } else {
             // Reallocate to larger slot/pool and recycle old slot
             long newPtr = allocateUninitialized(newLen);
             ForeignMemory.copy(destPtr, newPtr, oldLen);
             ForeignMemory.copyFromHeap(bytes, offset, newPtr + oldLen, length);
-            ForeignMemory.putByte(newPtr + newLen, (byte) 0);
+            ForeignMemory.setByte(newPtr + newLen, (byte) 0);
             free(destPtr);
             return newPtr;
         }
@@ -422,21 +422,21 @@ public final class string {
             long newPtr = allocateUninitialized(newLen);
             ForeignMemory.copy(destPtr, newPtr, oldLen);
             ForeignMemory.copy(srcPtr, newPtr + oldLen, srcLen);
-            ForeignMemory.putByte(newPtr + newLen, (byte) 0);
+            ForeignMemory.setByte(newPtr + newLen, (byte) 0);
             free(destPtr);
             return newPtr;
         } else if (newLen <= maxCap) {
             // In-place append! 0 allocation & 0 pointer relocation
             ForeignMemory.copy(srcPtr, destPtr + oldLen, srcLen);
-            ForeignMemory.putByte(destPtr + newLen, (byte) 0);
-            ForeignMemory.putInt(destPtr - 4L, newLen);
+            ForeignMemory.setByte(destPtr + newLen, (byte) 0);
+            ForeignMemory.setInt(destPtr - 4L, newLen);
             return destPtr;
         } else {
             // Reallocate to larger slot/pool and recycle old slot
             long newPtr = allocateUninitialized(newLen);
             ForeignMemory.copy(destPtr, newPtr, oldLen);
             ForeignMemory.copy(srcPtr, newPtr + oldLen, srcLen);
-            ForeignMemory.putByte(newPtr + newLen, (byte) 0);
+            ForeignMemory.setByte(newPtr + newLen, (byte) 0);
             free(destPtr);
             return newPtr;
         }
@@ -495,7 +495,7 @@ public final class string {
         int subLen = end - start;
         long newPtr = allocateUninitialized(subLen);
         ForeignMemory.copy(srcPtr + start, newPtr, subLen);
-        ForeignMemory.putByte(newPtr + subLen, (byte) 0);
+        ForeignMemory.setByte(newPtr + subLen, (byte) 0);
         return newPtr;
     }
 
