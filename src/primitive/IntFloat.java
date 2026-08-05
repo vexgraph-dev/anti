@@ -165,7 +165,7 @@ public final class IntFloat {
         checkActive();
         int tid = thread.ThreadRegistry.getThreadIndex();
         long slotBase = CACHE_ARENA_BASE + (tid * 256L);
-        long countSingletonAddr = slotBase + 0L;
+        long countSingletonAddr = slotBase;
         int count = ForeignMemory.getUnsafeInt(countSingletonAddr);
         if (count > 0) {
             int newCount = count - 1;
@@ -356,7 +356,7 @@ public final class IntFloat {
         long slotBase = CACHE_ARENA_BASE + (tid * 256L);
 
         if (TypeRegister.isSingleton(type)) {
-            long countSingletonAddr = slotBase + 0L;
+            long countSingletonAddr = slotBase;
             int count = ForeignMemory.getUnsafeInt(countSingletonAddr);
             if (count < 8) {
                 long dataAddr = slotBase + 32L + (count * 8L);
@@ -469,15 +469,13 @@ public final class IntFloat {
     public static void set(long pointer, int intPart, float fracPart) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected IntFloat (Class ID " + CLASS_ID + ")");
-        ForeignMemory.setUnsafe(pointer, intPart);
-        ForeignMemory.setUnsafe(pointer + 4L, fracPart);
+        setUnsafe(pointer, intPart, fracPart);
     }
 
     public static void set(long pointer, int index, int intPart, float fracPart) {
         checkBounds(pointer, index);
         if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected IntFloat (Class ID " + CLASS_ID + ")");
-        ForeignMemory.setUnsafe(pointer + (index * 8L), intPart);
-        ForeignMemory.setUnsafe(pointer + (index * 8L) + 4L, fracPart);
+        setUnsafe(pointer, index, intPart, fracPart);
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
