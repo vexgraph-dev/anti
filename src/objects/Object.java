@@ -16,6 +16,12 @@ public class Object
 
     public static final int CATCH_ALL_ID = 0xAA000000;
 
+    public static void free(long ptr)
+    {
+        if (ptr == 0L) return;
+        ForeignMemory.freeNative(ptr - 8L);
+    }
+
     public static int type(long ptr) {
         if (ptr == 0L) return 0;
         return ForeignMemory.unsafeGetInt(ptr - 8L);
