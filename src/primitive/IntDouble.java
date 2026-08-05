@@ -169,7 +169,7 @@ public final class IntDouble {
         checkActive();
         int tid = thread.ThreadRegistry.getThreadIndex();
         long slotBase = CACHE_ARENA_BASE + (tid * 256L);
-        long countSingletonAddr = slotBase + 0L;
+        long countSingletonAddr = slotBase;
         int count = ForeignMemory.getUnsafeInt(countSingletonAddr);
         if (count > 0) {
             int newCount = count - 1;
@@ -360,7 +360,7 @@ public final class IntDouble {
         long slotBase = CACHE_ARENA_BASE + (tid * 256L);
 
         if (TypeRegister.isSingleton(type)) {
-            long countSingletonAddr = slotBase + 0L;
+            long countSingletonAddr = slotBase;
             int count = ForeignMemory.getUnsafeInt(countSingletonAddr);
             if (count < 8) {
                 long dataAddr = slotBase + 32L + (count * 8L);
@@ -470,18 +470,17 @@ public final class IntDouble {
         return ForeignMemory.getUnsafeLong(matrixPointer + (index * 8L)); 
     }
 
+    // check before unsafe of course
     public static void set(long pointer, int intPart, double fracPart) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected IntDouble (Class ID " + CLASS_ID + ")");
-        ForeignMemory.setUnsafe(pointer, fracPart);
-        ForeignMemory.setUnsafe(pointer + 8L, intPart);
+        setUnsafe(pointer, intPart, fracPart);
     }
 
     public static void set(long pointer, int index, int intPart, double fracPart) {
         checkBounds(pointer, index);
         if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected IntDouble (Class ID " + CLASS_ID + ")");
-        ForeignMemory.setUnsafe(pointer + (index * 16L), fracPart);
-        ForeignMemory.setUnsafe(pointer + (index * 16L) + 8L, intPart);
+        setUnsafe(pointer, index, intPart, fracPart);
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
