@@ -7,7 +7,7 @@ import nio.ForeignMemory;
 /**
  * Off-Heap 4x4 Matrix representation stored in column-major order (16 contiguous 32-bit floats, 64 bytes).
  * Designed for zero-GC allocation, Vulkan/OpenGL graphics pipeline compatibility, and pure Java FFM performance.
- *
+ * <p>
  * Memory Layout (Column-Major):
  * [ m00, m10, m20, m30,  m01, m11, m21, m31,  m02, m12, m22, m32,  m03, m13, m23, m33 ]
  * Indices:

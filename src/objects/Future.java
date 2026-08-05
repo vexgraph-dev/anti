@@ -25,23 +25,31 @@ public class Future
     // layout: boolean::given (which means that the value is already presented)
     // setDesiredValue()
 
+    /**
+     * Allocates off-heap memory for a Future object.
+     * 
+     * Layout (24 bytes):
+     * - [block + 0L] (4 bytes): TYPE_HEADER (TYPE_SINGLETON)
+     * - [block + 4L] (4 bytes): Active Flag (1)
+     * - [userPtr + 0L] (1 byte): given (boolean flag indicating if value is present)
+     * - [userPtr + 8L] (8 bytes): value (long pointer/value returned by the future)
+     */
     public static long allocate()
     {
         long block = ForeignMemory.allocateNative(24);
         long userPtr = block + 8L;
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON);
-        ForeignMemory.setInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
+        ForeignMemory.setInt(block + 4L, 1); // active flag
 
-        ForeignMemory.setByte(userPtr, (byte) 0); // given = false
-        ForeignMemory.setLong(userPtr + 8L, 0L); // value = null/0
+        ForeignMemory.setByte(userPtr, (byte) 0); // given
+        ForeignMemory.setLong(userPtr + 8L, 0L); // value
 
         return userPtr;
     }
 
     public static void free(long ptr)
     {
-        if (ptr == 0L) return;
         ForeignMemory.freeNative(ptr - 8L);
     }
 

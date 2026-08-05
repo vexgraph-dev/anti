@@ -28,20 +28,30 @@ public class Choice
     // method that fires another method.
     // * pairs well with passive object wrapper as well... you can get a method to return an item depending it.
 
+    /**
+     * Allocates off-heap memory for a Choice array object.
+     * 
+     * Layout (8 + length * 16 bytes):
+     * - [block + 0L] (4 bytes): TYPE_HEADER (TYPE_SINGLETON)
+     * - [block + 4L] (4 bytes): len (number of choices available)
+     * - [userPtr + (index * 16L)] (16 bytes per slot):
+     *     - slotBase + 0L (8 bytes): objectPtr (pointer to choice object)
+     *     - slotBase + 8L (8 bytes): callbackAddr (function address pointer fired on choice)
+     */
     public static long allocate(long[] objectPtrs, long[] callbackAddrs)
     {
         int len = objectPtrs.length;
         long block = ForeignMemory.allocateNative(8L + len * 16L);
         long userPtr = block + 8L;
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON);
-        ForeignMemory.setInt(block + 4L, len);
+        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
+        ForeignMemory.setInt(block + 4L, len); // len (number of choices)
 
         for (int i = 0; i < len; i++) {
             long slotBase = userPtr + (i * 16L);
-            ForeignMemory.setLong(slotBase, objectPtrs[i]);
+            ForeignMemory.setLong(slotBase, objectPtrs[i]); // objectPtr
             long cb = (callbackAddrs != null && i < callbackAddrs.length) ? callbackAddrs[i] : 0L;
-            ForeignMemory.setLong(slotBase + 8L, cb);
+            ForeignMemory.setLong(slotBase + 8L, cb); // callbackAddr
         }
 
         return userPtr;
@@ -49,13 +59,11 @@ public class Choice
 
     public static void free(long ptr)
     {
-        if (ptr == 0L) return;
         ForeignMemory.freeNative(ptr - 8L);
     }
 
     public static int length(long ptr)
     {
-        if (ptr == 0L) return 0;
         return ForeignMemory.getInt(ptr - 4L);
     }
 

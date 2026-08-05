@@ -37,17 +37,27 @@ public class Passive
     // though the scripting system shall work first before this because it is quite hard to implement
     // without a proper scripting purpose. but who knows. (check reactive object),
 
+    /**
+     * Allocates off-heap memory for a Passive object.
+     * 
+     * Layout (32 bytes):
+     * - [block + 0L] (4 bytes): TYPE_HEADER (TYPE_SINGLETON)
+     * - [block + 4L] (4 bytes): Active Flag (1)
+     * - [userPtr + 0L] (8 bytes): cached value (the cached long value of the object)
+     * - [userPtr + 8L] (8 bytes): getFuncAddress (callback getter function address)
+     * - [userPtr + 16L] (8 bytes): setFuncAddress (callback setter function address)
+     */
     public static long allocate(long getFuncAddress, long setFuncAddress)
     {
         long block = ForeignMemory.allocateNative(32);
         long userPtr = block + 8L;
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON);
-        ForeignMemory.setInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
+        ForeignMemory.setInt(block + 4L, 1); // active flag
 
         ForeignMemory.setLong(userPtr, 0L); // cached value
-        ForeignMemory.setLong(userPtr + 8L, getFuncAddress);
-        ForeignMemory.setLong(userPtr + 16L, setFuncAddress);
+        ForeignMemory.setLong(userPtr + 8L, getFuncAddress); // getFuncAddress
+        ForeignMemory.setLong(userPtr + 16L, setFuncAddress); // setFuncAddress
 
         return userPtr;
     }

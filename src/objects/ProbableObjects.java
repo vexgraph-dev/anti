@@ -33,16 +33,29 @@ public class ProbableObjects
     //
     // multiple objects with just one chance with equal share at probable class.
 
+    /**
+     * Allocates off-heap memory for a ProbableObjects array.
+     * 
+     * Layout (16 + capacity * 16 bytes):
+     * - [block + 0L] (4 bytes): TYPE_HEADER (TYPE_SINGLETON)
+     * - [block + 4L] (4 bytes): capacity (maximum choices)
+     * - [userPtr + 0L] (4 bytes): count (number of active choices)
+     * - [userPtr + 4L] (4 bytes): totalWeight (sum of all choice weights)
+     * - [userPtr + 8L + (index * 16L)] (16 bytes per slot):
+     *     - slotBase + 0L (8 bytes): objectPtr (pointer to target object)
+     *     - slotBase + 8L (4 bytes): cumulativeWeight (weight sum up to this element)
+     *     - slotBase + 12L (4 bytes): weight (weight of this specific element)
+     */
     public static long allocate(int capacity)
     {
         long block = ForeignMemory.allocateNative(16L + capacity * 16L);
         long userPtr = block + 8L;
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON);
-        ForeignMemory.setInt(block + 4L, capacity);
+        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
+        ForeignMemory.setInt(block + 4L, capacity); // capacity
 
-        ForeignMemory.setInt(userPtr, 0); // count = 0
-        ForeignMemory.setInt(userPtr + 4L, 0); // totalWeight = 0
+        ForeignMemory.setInt(userPtr, 0); // count
+        ForeignMemory.setInt(userPtr + 4L, 0); // totalWeight
 
         return userPtr;
     }

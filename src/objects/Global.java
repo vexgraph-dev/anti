@@ -27,22 +27,29 @@ public class Global
     // an array of objects, etc. it can act as just a pointer, it doesnt allocate a array for
     // each thread. shall be allocate as global when allocated for games.
 
+    /**
+     * Allocates off-heap memory for a Global pointer object.
+     * 
+     * Layout (16 bytes):
+     * - [block + 0L] (4 bytes): TYPE_HEADER (TYPE_SINGLETON)
+     * - [block + 4L] (4 bytes): Active Flag (1)
+     * - [userPtr + 0L] (8 bytes): value (underlying global long value/pointer)
+     */
     public static long allocate(long initialValue)
     {
         long block = ForeignMemory.allocateNative(16);
         long userPtr = block + 8L;
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON);
-        ForeignMemory.setInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
+        ForeignMemory.setInt(block + 4L, 1); // active flag
 
-        ForeignMemory.setLong(userPtr, initialValue);
+        ForeignMemory.setLong(userPtr, initialValue); // value
 
         return userPtr;
     }
 
     public static void free(long ptr)
     {
-        if (ptr == 0L) return;
         ForeignMemory.freeNative(ptr - 8L);
     }
 
