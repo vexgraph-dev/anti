@@ -42,6 +42,14 @@ public final class FFMRegistrationFeature implements Feature {
             FunctionDescriptor.ofVoid(ValueLayout.ADDRESS)
         );
 
+        // --- objects.* Event Callbacks Downcalls ---
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_LONG)
+        );
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG)
+        );
+
         // --- window.macOSWindow Downcalls ---
         // 1. getClass / selRegName
         RuntimeForeignAccess.registerForDowncall(
