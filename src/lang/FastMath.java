@@ -114,7 +114,7 @@ public final class FastMath {
     }
 
     public static float clamp(float val, float min, float max) {
-        return Math.max(min, Math.min(max, val));
+        return Math.clamp(val, min, max);
     }
 
     public static float cosFromSin(float sin, float angle) {

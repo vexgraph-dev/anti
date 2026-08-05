@@ -74,18 +74,18 @@ public final class Map {
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_MAP);
-        ForeignMemory.putInt(headerBlock + 4L, 0); // activeCount
+        ForeignMemory.setInt(headerBlock, TYPE_MAP);
+        ForeignMemory.setInt(headerBlock + 4L, 0); // activeCount
 
-        ForeignMemory.putInt(userPtr, keyClassId);
-        ForeignMemory.putInt(userPtr + 4L, valClassId);
-        ForeignMemory.putInt(userPtr + 8L, cap);
-        ForeignMemory.putInt(userPtr + 12L, 0); // padding
+        ForeignMemory.setInt(userPtr, keyClassId);
+        ForeignMemory.setInt(userPtr + 4L, valClassId);
+        ForeignMemory.setInt(userPtr + 8L, cap);
+        ForeignMemory.setInt(userPtr + 12L, 0); // padding
 
         long bufferBytes = (long) cap * SLOT_SIZE;
         long dataBuffer = ForeignMemory.allocateNative(bufferBytes);
         ForeignMemory.setMemory(dataBuffer, bufferBytes, (byte) 0);
-        ForeignMemory.putLong(userPtr + 16L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 16L, dataBuffer);
 
         return userPtr;
     }
@@ -156,11 +156,11 @@ public final class Map {
             if (st == STATE_EMPTY) {
                 int targetIdx = (firstDeleted != -1) ? firstDeleted : idx;
                 long targetSlot = buffer + ((long) targetIdx * SLOT_SIZE);
-                ForeignMemory.putLong(targetSlot, key);
-                ForeignMemory.putLong(targetSlot + 8L, value);
-                ForeignMemory.putLong(targetSlot + 16L, hash);
-                ForeignMemory.putLong(targetSlot + 24L, STATE_OCCUPIED);
-                ForeignMemory.putInt(mapPtr - 4L, count + 1);
+                ForeignMemory.setLong(targetSlot, key);
+                ForeignMemory.setLong(targetSlot + 8L, value);
+                ForeignMemory.setLong(targetSlot + 16L, hash);
+                ForeignMemory.setLong(targetSlot + 24L, STATE_OCCUPIED);
+                ForeignMemory.setInt(mapPtr - 4L, count + 1);
                 return;
             } else if (st == STATE_DELETED) {
                 if (firstDeleted == -1) firstDeleted = idx;
@@ -168,7 +168,7 @@ public final class Map {
                 long slotHash = ForeignMemory.getLong(slot + 16L);
                 long slotKey = ForeignMemory.getLong(slot);
                 if (slotHash == hash && keysEqual(keyClassId, slotKey, key)) {
-                    ForeignMemory.putLong(slot + 8L, value); // update value
+                    ForeignMemory.setLong(slot + 8L, value); // update value
                     return;
                 }
             }
@@ -256,9 +256,9 @@ public final class Map {
                 long slotKey = ForeignMemory.getLong(slot);
                 if (slotHash == hash && keysEqual(keyClassId, slotKey, key)) {
                     long oldVal = ForeignMemory.getLong(slot + 8L);
-                    ForeignMemory.putLong(slot + 24L, STATE_DELETED);
+                    ForeignMemory.setLong(slot + 24L, STATE_DELETED);
                     int count = size(mapPtr);
-                    ForeignMemory.putInt(mapPtr - 4L, count - 1);
+                    ForeignMemory.setInt(mapPtr - 4L, count - 1);
                     return oldVal;
                 }
             }
@@ -311,16 +311,16 @@ public final class Map {
                     idx = (idx + 1) & mask;
                 }
                 long targetSlot = newBuffer + ((long) idx * SLOT_SIZE);
-                ForeignMemory.putLong(targetSlot, key);
-                ForeignMemory.putLong(targetSlot + 8L, val);
-                ForeignMemory.putLong(targetSlot + 16L, hash);
-                ForeignMemory.putLong(targetSlot + 24L, STATE_OCCUPIED);
+                ForeignMemory.setLong(targetSlot, key);
+                ForeignMemory.setLong(targetSlot + 8L, val);
+                ForeignMemory.setLong(targetSlot + 16L, hash);
+                ForeignMemory.setLong(targetSlot + 24L, STATE_OCCUPIED);
             }
         }
 
         ForeignMemory.freeNative(oldBuffer);
-        ForeignMemory.putLong(mapPtr + 16L, newBuffer);
-        ForeignMemory.putInt(mapPtr + 8L, newCap);
+        ForeignMemory.setLong(mapPtr + 16L, newBuffer);
+        ForeignMemory.setInt(mapPtr + 8L, newCap);
     }
 
     private static int highestOneBit(int i) {
@@ -353,8 +353,8 @@ public final class Map {
             ForeignMemory.freeNative(buffer);
         }
 
-        ForeignMemory.putInt(headerBlock, 0);
-        ForeignMemory.putInt(headerBlock + 4L, -1);
+        ForeignMemory.setInt(headerBlock, 0);
+        ForeignMemory.setInt(headerBlock + 4L, -1);
         ForeignMemory.freeNative(headerBlock);
     }
 
@@ -397,14 +397,14 @@ public final class Map {
 
         for (int i = 0; i < cap; i++) {
             long slot = buffer + ((long) idx * SLOT_SIZE);
-            long st = ForeignMemory.getLongVolatile(slot + 24L);
+            long st = ForeignMemory.getVolatileLong(slot + 24L);
 
             if (st == STATE_EMPTY) return 0L;
             if (st == STATE_OCCUPIED) {
-                long slotHash = ForeignMemory.getLongVolatile(slot + 16L);
-                long slotKey = ForeignMemory.getLongVolatile(slot);
+                long slotHash = ForeignMemory.getVolatileLong(slot + 16L);
+                long slotKey = ForeignMemory.getVolatileLong(slot);
                 if (slotHash == hash && keysEqual(keyClassId, slotKey, key)) {
-                    return ForeignMemory.getLongVolatile(slot + 8L);
+                    return ForeignMemory.getVolatileLong(slot + 8L);
                 }
             }
             idx = (idx + 1) & mask;
@@ -433,24 +433,24 @@ public final class Map {
 
         while (true) {
             long slot = buffer + ((long) idx * SLOT_SIZE);
-            long st = ForeignMemory.getLongVolatile(slot + 24L);
+            long st = ForeignMemory.getVolatileLong(slot + 24L);
 
             if (st == STATE_EMPTY) {
                 int targetIdx = (firstDeleted != -1) ? firstDeleted : idx;
                 long targetSlot = buffer + ((long) targetIdx * SLOT_SIZE);
-                ForeignMemory.putLongVolatile(targetSlot, key);
-                ForeignMemory.putLongVolatile(targetSlot + 8L, value);
-                ForeignMemory.putLongVolatile(targetSlot + 16L, hash);
-                ForeignMemory.putLongVolatile(targetSlot + 24L, STATE_OCCUPIED);
-                ForeignMemory.putInt(mapPtr - 4L, count + 1);
+                ForeignMemory.setVolatileLong(targetSlot, key);
+                ForeignMemory.setVolatileLong(targetSlot + 8L, value);
+                ForeignMemory.setVolatileLong(targetSlot + 16L, hash);
+                ForeignMemory.setVolatileLong(targetSlot + 24L, STATE_OCCUPIED);
+                ForeignMemory.setInt(mapPtr - 4L, count + 1);
                 return;
             } else if (st == STATE_DELETED) {
                 if (firstDeleted == -1) firstDeleted = idx;
             } else if (st == STATE_OCCUPIED) {
-                long slotHash = ForeignMemory.getLongVolatile(slot + 16L);
-                long slotKey = ForeignMemory.getLongVolatile(slot);
+                long slotHash = ForeignMemory.getVolatileLong(slot + 16L);
+                long slotKey = ForeignMemory.getVolatileLong(slot);
                 if (slotHash == hash && keysEqual(keyClassId, slotKey, key)) {
-                    ForeignMemory.putLongVolatile(slot + 8L, value);
+                    ForeignMemory.setVolatileLong(slot + 8L, value);
                     return;
                 }
             }
@@ -472,17 +472,17 @@ public final class Map {
 
         for (int i = 0; i < cap; i++) {
             long slot = buffer + ((long) idx * SLOT_SIZE);
-            long st = ForeignMemory.getLongVolatile(slot + 24L);
+            long st = ForeignMemory.getVolatileLong(slot + 24L);
 
             if (st == STATE_EMPTY) return 0L;
             if (st == STATE_OCCUPIED) {
-                long slotHash = ForeignMemory.getLongVolatile(slot + 16L);
-                long slotKey = ForeignMemory.getLongVolatile(slot);
+                long slotHash = ForeignMemory.getVolatileLong(slot + 16L);
+                long slotKey = ForeignMemory.getVolatileLong(slot);
                 if (slotHash == hash && keysEqual(keyClassId, slotKey, key)) {
-                    long oldVal = ForeignMemory.getLongVolatile(slot + 8L);
-                    ForeignMemory.putLongVolatile(slot + 24L, STATE_DELETED);
+                    long oldVal = ForeignMemory.getVolatileLong(slot + 8L);
+                    ForeignMemory.setVolatileLong(slot + 24L, STATE_DELETED);
                     int count = size(mapPtr);
-                    ForeignMemory.putInt(mapPtr - 4L, count - 1);
+                    ForeignMemory.setInt(mapPtr - 4L, count - 1);
                     return oldVal;
                 }
             }

@@ -19,7 +19,7 @@ public final class MinHeap {
     public static long allocate(int capacity) {
         // allocate capacity + 1 (for 1-based indexing and storing size at index 0)
         long ptr = IntFloat.allocateArray(capacity + 1);
-        IntFloat.unsafeSet(ptr, 0, 0, 0f); // size = 0
+        IntFloat.setUnsafe(ptr, 0, 0, 0f); // size = 0
         return ptr;
     }
 
@@ -53,8 +53,8 @@ public final class MinHeap {
             throw new IllegalStateException("MinHeap is full! Capacity: " + cap);
         }
         
-        IntFloat.unsafeSet(ptr, 0, sz, 0f); // update size
-        IntFloat.unsafeSet(ptr, sz, item, priority); // place at end
+        IntFloat.setUnsafe(ptr, 0, sz, 0f); // update size
+        IntFloat.setUnsafe(ptr, sz, item, priority); // place at end
         siftUp(ptr, sz); // sift up to correct position
     }
 
@@ -69,10 +69,10 @@ public final class MinHeap {
         // Move last element to root
         int lastItem = IntFloat.unsafeGetIntPart(ptr, sz);
         float lastPrio = IntFloat.unsafeGetFloatPart(ptr, sz);
-        IntFloat.unsafeSet(ptr, 1, lastItem, lastPrio);
+        IntFloat.setUnsafe(ptr, 1, lastItem, lastPrio);
         
         sz--;
-        IntFloat.unsafeSet(ptr, 0, sz, 0f);
+        IntFloat.setUnsafe(ptr, 0, sz, 0f);
         
         if (sz > 0) {
             siftDown(ptr, 1);
@@ -96,10 +96,10 @@ public final class MinHeap {
             
             // move parent down
             int parentItem = IntFloat.unsafeGetIntPart(ptr, parent);
-            IntFloat.unsafeSet(ptr, index, parentItem, parentPrio);
+            IntFloat.setUnsafe(ptr, index, parentItem, parentPrio);
             index = parent;
         }
-        IntFloat.unsafeSet(ptr, index, item, prio);
+        IntFloat.setUnsafe(ptr, index, item, prio);
     }
 
     @HotCode
@@ -130,9 +130,9 @@ public final class MinHeap {
             
             // move child up
             int childItem = IntFloat.unsafeGetIntPart(ptr, bestChild);
-            IntFloat.unsafeSet(ptr, index, childItem, bestPrio);
+            IntFloat.setUnsafe(ptr, index, childItem, bestPrio);
             index = bestChild;
         }
-        IntFloat.unsafeSet(ptr, index, item, prio);
+        IntFloat.setUnsafe(ptr, index, item, prio);
     }
 }

@@ -60,19 +60,19 @@ public final class Array {
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_ARRAY);
-        ForeignMemory.putInt(headerBlock + 4L, count); // activeCount is set to count
+        ForeignMemory.setInt(headerBlock, TYPE_ARRAY);
+        ForeignMemory.setInt(headerBlock + 4L, count); // activeCount is set to count
 
-        ForeignMemory.putInt(userPtr, generic);
-        ForeignMemory.putInt(userPtr + 4L, stride);
-        ForeignMemory.putInt(userPtr + 8L, count); // capacity
-        ForeignMemory.putInt(userPtr + 12L, 0); // padding
+        ForeignMemory.setInt(userPtr, generic);
+        ForeignMemory.setInt(userPtr + 4L, stride);
+        ForeignMemory.setInt(userPtr + 8L, count); // capacity
+        ForeignMemory.setInt(userPtr + 12L, 0); // padding
 
         long bufferBytes = (long) count * stride;
         long alignedBytes = (bufferBytes + 7L) & ~7L;
         long dataBuffer = ForeignMemory.allocateNative(alignedBytes);
         ForeignMemory.setMemory(dataBuffer, alignedBytes, (byte) 0);
-        ForeignMemory.putLong(userPtr + 16L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 16L, dataBuffer);
 
         return userPtr;
     }
@@ -85,26 +85,26 @@ public final class Array {
     }
 
     private static void writeSlot(long slot, int stride, long val) {
-        if (stride == 1) ForeignMemory.putByte(slot, (byte) val);
-        else if (stride == 2) ForeignMemory.putShort(slot, (short) val);
-        else if (stride == 4) ForeignMemory.putInt(slot, (int) val);
-        else ForeignMemory.putLong(slot, val);
+        if (stride == 1) ForeignMemory.setByte(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.setShort(slot, (short) val);
+        else if (stride == 4) ForeignMemory.setInt(slot, (int) val);
+        else ForeignMemory.setLong(slot, val);
     }
 
     @Volatile
     private static long readSlotVolatile(long slot, int stride) {
-        if (stride == 1) return ForeignMemory.getByteVolatile(slot) & 0xFF;
-        if (stride == 2) return ForeignMemory.getShortVolatile(slot) & 0xFFFF;
-        if (stride == 4) return ForeignMemory.getIntVolatile(slot) & 0xFFFFFFFFL;
-        return ForeignMemory.getLongVolatile(slot);
+        if (stride == 1) return ForeignMemory.getVolatileByte(slot) & 0xFF;
+        if (stride == 2) return ForeignMemory.getVolatileShort(slot) & 0xFFFF;
+        if (stride == 4) return ForeignMemory.getVolatileInt(slot) & 0xFFFFFFFFL;
+        return ForeignMemory.getVolatileLong(slot);
     }
 
     @Volatile
     private static void writeSlotVolatile(long slot, int stride, long val) {
-        if (stride == 1) ForeignMemory.putByteVolatile(slot, (byte) val);
-        else if (stride == 2) ForeignMemory.putShortVolatile(slot, (short) val);
-        else if (stride == 4) ForeignMemory.putIntVolatile(slot, (int) val);
-        else ForeignMemory.putLongVolatile(slot, val);
+        if (stride == 1) ForeignMemory.setVolatileByte(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.setVolatileShort(slot, (short) val);
+        else if (stride == 4) ForeignMemory.setVolatileInt(slot, (int) val);
+        else ForeignMemory.setVolatileLong(slot, val);
     }
 
     // get value or pointer at index (standard)
@@ -156,7 +156,7 @@ public final class Array {
 
     // set value or pointer at index (unsafe, no bounds check)
     @Unsafe
-    public static void unsafeSet(long arrayPtr, int index, long valueOrPointer) {
+    public static void setUnsafe(long arrayPtr, int index, long valueOrPointer) {
         int stride = stride(arrayPtr);
         long dataBuffer = dataBuffer(arrayPtr);
         long targetSlot = dataBuffer + ((long) index * stride);
@@ -176,7 +176,7 @@ public final class Array {
     // set value or pointer at index (unsafe volatile, no bounds check)
     @Unsafe
     @Volatile
-    public static void unsafeVolatileSet(long arrayPtr, int index, long valueOrPointer) {
+    public static void setUnsafeVolatile(long arrayPtr, int index, long valueOrPointer) {
         int stride = stride(arrayPtr);
         long dataBuffer = dataBuffer(arrayPtr);
         long targetSlot = dataBuffer + ((long) index * stride);
@@ -207,8 +207,8 @@ public final class Array {
             ForeignMemory.freeNative(dataBuffer);
         }
 
-        ForeignMemory.putInt(headerBlock, 0);
-        ForeignMemory.putInt(headerBlock + 4L, -1);
+        ForeignMemory.setInt(headerBlock, 0);
+        ForeignMemory.setInt(headerBlock + 4L, -1);
         ForeignMemory.freeNative(headerBlock);
     }
 

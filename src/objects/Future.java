@@ -30,11 +30,11 @@ public class Future
         long block = ForeignMemory.allocateNative(24);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_SINGLETON);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON);
+        ForeignMemory.setInt(block + 4L, 1);
 
-        ForeignMemory.putByte(userPtr, (byte) 0); // given = false
-        ForeignMemory.putLong(userPtr + 8L, 0L); // value = null/0
+        ForeignMemory.setByte(userPtr, (byte) 0); // given = false
+        ForeignMemory.setLong(userPtr + 8L, 0L); // value = null/0
 
         return userPtr;
     }
@@ -61,7 +61,7 @@ public class Future
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         if ((boolean) BYTE_VH.compareAndSet(GLOBAL_MEMORY, ptr, (byte) 0, (byte) 1)) {
-            ForeignMemory.putLong(ptr + 8L, value);
+            ForeignMemory.setLong(ptr + 8L, value);
             return true;
         }
         return false;

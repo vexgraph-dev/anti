@@ -42,12 +42,12 @@ public class Passive
         long block = ForeignMemory.allocateNative(32);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_SINGLETON);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON);
+        ForeignMemory.setInt(block + 4L, 1);
 
-        ForeignMemory.putLong(userPtr, 0L); // cached value
-        ForeignMemory.putLong(userPtr + 8L, getFuncAddress);
-        ForeignMemory.putLong(userPtr + 16L, setFuncAddress);
+        ForeignMemory.setLong(userPtr, 0L); // cached value
+        ForeignMemory.setLong(userPtr + 8L, getFuncAddress);
+        ForeignMemory.setLong(userPtr + 16L, setFuncAddress);
 
         return userPtr;
     }
@@ -83,7 +83,7 @@ public class Passive
                 throw new RuntimeException("Failed to invoke setFunction: " + t.getMessage(), t);
             }
         } else {
-            ForeignMemory.putLong(ptr, value);
+            ForeignMemory.setLong(ptr, value);
         }
     }
 

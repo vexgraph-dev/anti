@@ -48,13 +48,13 @@ public final class WebSocketClient {
         long block = ForeignMemory.allocateNative(56);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_WEBSOCKET_CLIENT);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_WEBSOCKET_CLIENT);
+        ForeignMemory.setInt(block + 4L, 1);
 
         long uriPtr = string.allocate(uriStr);
 
-        ForeignMemory.putInt(userPtr, 0);          // state: 0 = DISCONNECTED, 1 = CONNECTED
-        ForeignMemory.putLong(userPtr + 8L, uriPtr); // uriPtr
+        ForeignMemory.setInt(userPtr, 0);          // state: 0 = DISCONNECTED, 1 = CONNECTED
+        ForeignMemory.setLong(userPtr + 8L, uriPtr); // uriPtr
 
         return userPtr;
     }
@@ -118,7 +118,7 @@ public final class WebSocketClient {
             if (handshakeResp.contains("101 Switching Protocols")) {
                 sc.configureBlocking(false);
                 Map.putObject(CHANNEL_MAP_PTR, wsPtr, sc);
-                ForeignMemory.putInt(wsPtr, 1); // State = CONNECTED
+                ForeignMemory.setInt(wsPtr, 1); // State = CONNECTED
                 return true;
             } else {
                 sc.close();
@@ -250,7 +250,7 @@ public final class WebSocketClient {
      */
     public static synchronized void close(long wsPtr) {
         if (wsPtr == 0L) return;
-        ForeignMemory.putInt(wsPtr, 0); // State = DISCONNECTED
+        ForeignMemory.setInt(wsPtr, 0); // State = DISCONNECTED
 
         SocketChannel sc = (SocketChannel) Map.removeObject(CHANNEL_MAP_PTR, wsPtr);
         if (sc != null) {

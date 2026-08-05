@@ -38,8 +38,8 @@ public final class PollRequest {
         if (count <= 0) return 0L;
         long totalBytes = 8L + ((long) count * STRIDE_BYTES);
         long base = ForeignMemory.allocateNative(totalBytes);
-        ForeignMemory.putInt(base, TypeRegister.POLL_REQUEST_ARRAY);
-        ForeignMemory.putInt(base + 4L, count);
+        ForeignMemory.setInt(base, TypeRegister.POLL_REQUEST_ARRAY);
+        ForeignMemory.setInt(base + 4L, count);
 
         long userPtr = base + 8L;
         ForeignMemory.setMemory(userPtr, (long) count * STRIDE_BYTES, (byte) 0);
@@ -87,11 +87,11 @@ public final class PollRequest {
         if (batchPtr == 0L || index < 0 || index >= getCount(batchPtr)) return;
         long slot = batchPtr + ((long) index * STRIDE_BYTES);
 
-        ForeignMemory.putLong(slot, uriPtr);
-        ForeignMemory.putLong(slot + 8L, userPtr);
-        ForeignMemory.putLong(slot + 16L, passPtr);
-        ForeignMemory.putInt(slot + 48L, port);
-        ForeignMemory.putInt(slot + 56L, STATUS_PENDING);
+        ForeignMemory.setLong(slot, uriPtr);
+        ForeignMemory.setLong(slot + 8L, userPtr);
+        ForeignMemory.setLong(slot + 16L, passPtr);
+        ForeignMemory.setInt(slot + 48L, port);
+        ForeignMemory.setInt(slot + 56L, STATUS_PENDING);
     }
 
     public static void setAuthToken(long batchPtr, int index, String token) {
@@ -103,7 +103,7 @@ public final class PollRequest {
     public static void setAuthToken(long batchPtr, int index, long tokenPtr) {
         if (batchPtr == 0L || index < 0 || index >= getCount(batchPtr)) return;
         long slot = batchPtr + ((long) index * STRIDE_BYTES);
-        ForeignMemory.putLong(slot + 24L, tokenPtr);
+        ForeignMemory.setLong(slot + 24L, tokenPtr);
     }
 
     public static void setPayload(long batchPtr, int index, String payload) {
@@ -115,8 +115,8 @@ public final class PollRequest {
     public static void setPayload(long batchPtr, int index, long payloadPtr) {
         if (batchPtr == 0L || index < 0 || index >= getCount(batchPtr)) return;
         long slot = batchPtr + ((long) index * STRIDE_BYTES);
-        ForeignMemory.putLong(slot + 32L, payloadPtr);
-        ForeignMemory.putInt(slot + 52L, METHOD_POST);
+        ForeignMemory.setLong(slot + 32L, payloadPtr);
+        ForeignMemory.setInt(slot + 52L, METHOD_POST);
     }
 
     // --- DOD BATCH EXECUTION ENGINE ---
@@ -134,11 +134,11 @@ public final class PollRequest {
         int method = ForeignMemory.getInt(slot + 52L);
 
         if (uriPtr == 0L) {
-            ForeignMemory.putInt(slot + 56L, STATUS_FAILED);
+            ForeignMemory.setInt(slot + 56L, STATUS_FAILED);
             return;
         }
 
-        ForeignMemory.putInt(slot + 56L, STATUS_IN_FLIGHT);
+        ForeignMemory.setInt(slot + 56L, STATUS_IN_FLIGHT);
 
         // Synthesize Auth Header if user/pass or token are set
         long authHeaderPtr = 0L;
@@ -162,13 +162,13 @@ public final class PollRequest {
         long oldResp = ForeignMemory.getLong(slot + 40L);
         if (oldResp != 0L) string.free(oldResp);
 
-        ForeignMemory.putLong(slot + 40L, respBodyPtr);
-        ForeignMemory.putInt(slot + 60L, statusCode);
+        ForeignMemory.setLong(slot + 40L, respBodyPtr);
+        ForeignMemory.setInt(slot + 60L, statusCode);
 
         if (respBodyPtr != 0L && statusCode < 400) {
-            ForeignMemory.putInt(slot + 56L, STATUS_SUCCESS);
+            ForeignMemory.setInt(slot + 56L, STATUS_SUCCESS);
         } else {
-            ForeignMemory.putInt(slot + 56L, STATUS_FAILED);
+            ForeignMemory.setInt(slot + 56L, STATUS_FAILED);
         }
     }
 

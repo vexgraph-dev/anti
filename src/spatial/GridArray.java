@@ -63,22 +63,22 @@ public final class GridArray {
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_GRID_ARRAY);
-        ForeignMemory.putInt(headerBlock + 4L, 0); // total size of entities
+        ForeignMemory.setInt(headerBlock, TYPE_GRID_ARRAY);
+        ForeignMemory.setInt(headerBlock + 4L, 0); // total size of entities
 
-        ForeignMemory.putInt(userPtr, resX);
-        ForeignMemory.putInt(userPtr + 4L, resY);
-        ForeignMemory.putFloat(userPtr + 8L, cellWidth);
-        ForeignMemory.putFloat(userPtr + 12L, minBoundsX);
-        ForeignMemory.putFloat(userPtr + 16L, minBoundsY);
-        ForeignMemory.putInt(userPtr + 20L, 0); // padding
+        ForeignMemory.setInt(userPtr, resX);
+        ForeignMemory.setInt(userPtr + 4L, resY);
+        ForeignMemory.setFloat(userPtr + 8L, cellWidth);
+        ForeignMemory.setFloat(userPtr + 12L, minBoundsX);
+        ForeignMemory.setFloat(userPtr + 16L, minBoundsY);
+        ForeignMemory.setInt(userPtr + 20L, 0); // padding
 
         long cellCount = (long) resX * resY;
         long bufferBytes = cellCount * 8L; // array of 64-bit List pointers
         long dataBuffer = ForeignMemory.allocateNative(bufferBytes);
         ForeignMemory.setMemory(dataBuffer, bufferBytes, (byte) 0); // clear all cell pointers to 0L
 
-        ForeignMemory.putLong(userPtr + 24L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 24L, dataBuffer);
 
         return userPtr;
     }
@@ -136,11 +136,11 @@ public final class GridArray {
         if (listPtr == 0L) {
             // Lazy initialization of the cell's off-heap List of Long pointers
             listPtr = List.instant(TypeRegister.ID_LONG, 4);
-            ForeignMemory.putLong(dataBuffer + cellOffset, listPtr);
+            ForeignMemory.setLong(dataBuffer + cellOffset, listPtr);
         }
 
         List.add(listPtr, entityId);
-        ForeignMemory.putInt(gridPtr - 4L, size(gridPtr) + 1);
+        ForeignMemory.setInt(gridPtr - 4L, size(gridPtr) + 1);
     }
 
     // remove an entity from a grid cell based on (x, y) coordinates
@@ -167,7 +167,7 @@ public final class GridArray {
         for (int i = 0; i < listSize; i++) {
             if (List.get(listPtr, i) == entityId) {
                 List.remove(listPtr, i);
-                ForeignMemory.putInt(gridPtr - 4L, size(gridPtr) - 1);
+                ForeignMemory.setInt(gridPtr - 4L, size(gridPtr) - 1);
                 return true;
             }
         }
@@ -258,10 +258,10 @@ public final class GridArray {
         for (int i = 0; i < cellCount; i++) {
             long listPtr = ForeignMemory.getLong(dataBuffer + i * 8L);
             if (listPtr != 0L) {
-                ForeignMemory.putInt(listPtr - 4L, 0); // clear the cell list
+                ForeignMemory.setInt(listPtr - 4L, 0); // clear the cell list
             }
         }
-        ForeignMemory.putInt(gridPtr - 4L, 0); // reset total size
+        ForeignMemory.setInt(gridPtr - 4L, 0); // reset total size
     }
 
     // query all entities overlapping the bounding box [minX, minY, maxX, maxY]
@@ -324,8 +324,8 @@ public final class GridArray {
             ForeignMemory.freeNative(dataBuffer);
         }
 
-        ForeignMemory.putInt(headerBlock, 0);
-        ForeignMemory.putInt(headerBlock + 4L, -1);
+        ForeignMemory.setInt(headerBlock, 0);
+        ForeignMemory.setInt(headerBlock + 4L, -1);
         ForeignMemory.freeNative(headerBlock);
     }
 

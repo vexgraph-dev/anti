@@ -46,13 +46,13 @@ public final class Random {
         long userPtr = block + 8L;
 
         // Write class metadata headers
-        ForeignMemory.putInt(block, TypeRegister.RANDOM_SINGLETON);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TypeRegister.RANDOM_SINGLETON);
+        ForeignMemory.setInt(block + 4L, 1);
 
         // Write initial state values
-        ForeignMemory.putLong(userPtr, seed);
-        ForeignMemory.putInt(userPtr + 8L, 0);
-        ForeignMemory.putInt(userPtr + 12L, 0);
+        ForeignMemory.setLong(userPtr, seed);
+        ForeignMemory.setInt(userPtr + 8L, 0);
+        ForeignMemory.setInt(userPtr + 12L, 0);
 
         return userPtr;
     }
@@ -85,8 +85,8 @@ public final class Random {
         long result = util.Hash.murmur3Mix64(mixed);
 
         // Commit updated state back to off-heap memory
-        ForeignMemory.putLong(ptr, result);
-        ForeignMemory.putInt(ptr + 8L, currentInteger + 1);
+        ForeignMemory.setLong(ptr, result);
+        ForeignMemory.setInt(ptr + 8L, currentInteger + 1);
 
         return result;
     }

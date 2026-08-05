@@ -21,8 +21,8 @@ public final class DisplayMonitor {
         long userPtr = block + 8L;
 
         int type = TypeRegister.FORM_SINGLETON | CLASS_ID;
-        ForeignMemory.putInt(block, type);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, type);
+        ForeignMemory.setInt(block + 4L, 1);
 
         // Zero memory
         ForeignMemory.setMemory(userPtr, 48L, (byte) 0);
@@ -45,7 +45,7 @@ public final class DisplayMonitor {
 
     public static void setId(long monitorPtr, long id) {
         checkType(monitorPtr);
-        ForeignMemory.putLong(monitorPtr, id);
+        ForeignMemory.setLong(monitorPtr, id);
     }
 
     public static long getName(long monitorPtr) {
@@ -55,7 +55,7 @@ public final class DisplayMonitor {
 
     public static void setName(long monitorPtr, long nameStrPtr) {
         checkType(monitorPtr);
-        ForeignMemory.putLong(monitorPtr + 8L, nameStrPtr);
+        ForeignMemory.setLong(monitorPtr + 8L, nameStrPtr);
     }
 
     public static int getCurrentWidth(long monitorPtr) {
@@ -65,7 +65,7 @@ public final class DisplayMonitor {
 
     public static void setCurrentWidth(long monitorPtr, int val) {
         checkType(monitorPtr);
-        ForeignMemory.putInt(monitorPtr + 16L, val);
+        ForeignMemory.setInt(monitorPtr + 16L, val);
     }
 
     public static int getCurrentHeight(long monitorPtr) {
@@ -75,7 +75,7 @@ public final class DisplayMonitor {
 
     public static void setCurrentHeight(long monitorPtr, int val) {
         checkType(monitorPtr);
-        ForeignMemory.putInt(monitorPtr + 20L, val);
+        ForeignMemory.setInt(monitorPtr + 20L, val);
     }
 
     public static int getNativeWidth(long monitorPtr) {
@@ -85,7 +85,7 @@ public final class DisplayMonitor {
 
     public static void setNativeWidth(long monitorPtr, int val) {
         checkType(monitorPtr);
-        ForeignMemory.putInt(monitorPtr + 24L, val);
+        ForeignMemory.setInt(monitorPtr + 24L, val);
     }
 
     public static int getNativeHeight(long monitorPtr) {
@@ -95,7 +95,7 @@ public final class DisplayMonitor {
 
     public static void setNativeHeight(long monitorPtr, int val) {
         checkType(monitorPtr);
-        ForeignMemory.putInt(monitorPtr + 28L, val);
+        ForeignMemory.setInt(monitorPtr + 28L, val);
     }
 
     public static int getRefreshRate(long monitorPtr) {
@@ -105,7 +105,7 @@ public final class DisplayMonitor {
 
     public static void setRefreshRate(long monitorPtr, int val) {
         checkType(monitorPtr);
-        ForeignMemory.putInt(monitorPtr + 32L, val);
+        ForeignMemory.setInt(monitorPtr + 32L, val);
     }
 
     public static boolean getHdrSupported(long monitorPtr) {
@@ -115,7 +115,7 @@ public final class DisplayMonitor {
 
     public static void setHdrSupported(long monitorPtr, boolean val) {
         checkType(monitorPtr);
-        ForeignMemory.putInt(monitorPtr + 36L, val ? 1 : 0);
+        ForeignMemory.setInt(monitorPtr + 36L, val ? 1 : 0);
     }
 
     public static float getDpi(long monitorPtr) {
@@ -125,7 +125,7 @@ public final class DisplayMonitor {
 
     public static void setDpi(long monitorPtr, float val) {
         checkType(monitorPtr);
-        ForeignMemory.putFloat(monitorPtr + 40L, val);
+        ForeignMemory.setFloat(monitorPtr + 40L, val);
     }
 
     public static void free(long monitorPtr) {
@@ -138,8 +138,8 @@ public final class DisplayMonitor {
         }
 
         long block = monitorPtr - 8L;
-        ForeignMemory.putInt(block, 0);
-        ForeignMemory.putInt(block + 4L, -1);
+        ForeignMemory.setInt(block, 0);
+        ForeignMemory.setInt(block + 4L, -1);
         ForeignMemory.freeNative(block);
     }
 }

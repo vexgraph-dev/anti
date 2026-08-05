@@ -39,7 +39,7 @@ public class Scanner {
 
             long pointer = string.allocateUninitialized(len);
             ForeignMemory.copyFromHeap(READ_BUFFER, 0, pointer, len);
-            ForeignMemory.putByte(pointer + len, (byte) 0); // null-terminator
+            ForeignMemory.setByte(pointer + len, (byte) 0); // null-terminator
             return pointer;
         } catch (IOException e) {
             return 0L;
@@ -85,7 +85,7 @@ public class Scanner {
 
             long pointer = string.allocateUninitialized(len);
             ForeignMemory.copyFromHeap(READ_BUFFER, 0, pointer, len);
-            ForeignMemory.putByte(pointer + len, (byte) 0); // null-terminator
+            ForeignMemory.setByte(pointer + len, (byte) 0); // null-terminator
             return pointer;
         } catch (IOException e) {
             return 0L;

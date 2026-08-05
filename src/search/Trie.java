@@ -50,7 +50,7 @@ public final class Trie {
     private static long allocateNode() {
         long node = ForeignMemory.allocateNative(NODE_SIZE);
         ForeignMemory.setMemory(node, NODE_SIZE, (byte) 0);
-        ForeignMemory.putInt(node + 256L, -1); // initial variable ID = -1 (not a terminal node)
+        ForeignMemory.setInt(node + 256L, -1); // initial variable ID = -1 (not a terminal node)
         return node;
     }
 
@@ -60,11 +60,11 @@ public final class Trie {
         long headerBlock = ForeignMemory.allocateNative(8L + NODE_SIZE);
         long rootPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_TRIE);
-        ForeignMemory.putInt(headerBlock + 4L, 0); // node count or size
+        ForeignMemory.setInt(headerBlock, TYPE_TRIE);
+        ForeignMemory.setInt(headerBlock + 4L, 0); // node count or size
 
         ForeignMemory.setMemory(rootPtr, NODE_SIZE, (byte) 0);
-        ForeignMemory.putInt(rootPtr + 256L, -1);
+        ForeignMemory.setInt(rootPtr + 256L, -1);
 
         return rootPtr;
     }
@@ -103,13 +103,13 @@ public final class Trie {
             long child = ForeignMemory.getLong(childOffset);
             if (child == 0L) {
                 child = allocateNode();
-                ForeignMemory.putLong(childOffset, child);
+                ForeignMemory.setLong(childOffset, child);
             }
             current = child;
         }
 
         // set terminal node payload
-        ForeignMemory.putInt(current + 256L, variableId);
+        ForeignMemory.setInt(current + 256L, variableId);
     }
 
     // search exact symbol match in trie

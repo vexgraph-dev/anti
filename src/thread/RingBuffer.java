@@ -82,21 +82,21 @@ public final class RingBuffer {
         long userPtr = headerBlock + 8L;
 
         // Write header type
-        ForeignMemory.putInt(headerBlock, TYPE_RING_BUFFER);
-        ForeignMemory.putInt(headerBlock + 4L, 0); // padding/size field unused, we use volatile w - r
+        ForeignMemory.setInt(headerBlock, TYPE_RING_BUFFER);
+        ForeignMemory.setInt(headerBlock + 4L, 0); // padding/size field unused, we use volatile w - r
 
         // Write user fields
-        ForeignMemory.putInt(userPtr, classId);
-        ForeignMemory.putInt(userPtr + 4L, cap);
+        ForeignMemory.setInt(userPtr, classId);
+        ForeignMemory.setInt(userPtr + 4L, cap);
         LONG_VH.setVolatile(GLOBAL_MEMORY, userPtr + 8L, 0L);  // writeIndex
         LONG_VH.setVolatile(GLOBAL_MEMORY, userPtr + 16L, 0L); // readIndex
-        ForeignMemory.putInt(userPtr + 24L, 0);                 // SpinLock field
-        ForeignMemory.putInt(userPtr + 28L, stride);
+        ForeignMemory.setInt(userPtr + 24L, 0);                 // SpinLock field
+        ForeignMemory.setInt(userPtr + 28L, stride);
         
         long bufferBytes = (long) cap * stride;
         long alignedBytes = (bufferBytes + 7L) & ~7L;
         long dataBuffer = ForeignMemory.allocateNative(alignedBytes);
-        ForeignMemory.putLong(userPtr + 32L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 32L, dataBuffer);
 
         return userPtr;
     }
@@ -109,10 +109,10 @@ public final class RingBuffer {
     }
 
     private static void writeSlot(long slot, int stride, long val) {
-        if (stride == 1) ForeignMemory.putByte(slot, (byte) val);
-        else if (stride == 2) ForeignMemory.putShort(slot, (short) val);
-        else if (stride == 4) ForeignMemory.putInt(slot, (int) val);
-        else ForeignMemory.putLong(slot, val);
+        if (stride == 1) ForeignMemory.setByte(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.setShort(slot, (short) val);
+        else if (stride == 4) ForeignMemory.setInt(slot, (int) val);
+        else ForeignMemory.setLong(slot, val);
     }
 
     // push a value or pointer to the ring buffer, returns true if successful
@@ -251,8 +251,8 @@ public final class RingBuffer {
             ForeignMemory.freeNative(dataBuffer);
         }
 
-        ForeignMemory.putInt(headerBlock, 0);
-        ForeignMemory.putInt(headerBlock + 4L, -1);
+        ForeignMemory.setInt(headerBlock, 0);
+        ForeignMemory.setInt(headerBlock + 4L, -1);
         ForeignMemory.freeNative(headerBlock);
     }
 

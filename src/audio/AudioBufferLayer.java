@@ -96,7 +96,7 @@ public final class AudioBufferLayer
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -155,19 +155,19 @@ public final class AudioBufferLayer
 
             if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.putInt(base, TYPE_SINGLETON);
-                ForeignMemory.putInt(base + 4L, 1);
+                ForeignMemory.setInt(base, TYPE_SINGLETON);
+                ForeignMemory.setInt(base + 4L, 1);
                 
                 // Populate descriptors
-                ForeignMemory.putInt(rawHead + OFFSET_CAPACITY, capacityInSamples);
-                ForeignMemory.putLong(rawHead + OFFSET_BELOW_READ, belowA);
-                ForeignMemory.putLong(rawHead + OFFSET_BELOW_WRITE, belowB);
+                ForeignMemory.setInt(rawHead + OFFSET_CAPACITY, capacityInSamples);
+                ForeignMemory.setLong(rawHead + OFFSET_BELOW_READ, belowA);
+                ForeignMemory.setLong(rawHead + OFFSET_BELOW_WRITE, belowB);
                 
-                ForeignMemory.putLong(rawHead + OFFSET_ACTIVE_READ, activeA);
-                ForeignMemory.putLong(rawHead + OFFSET_ACTIVE_WRITE, activeB);
+                ForeignMemory.setLong(rawHead + OFFSET_ACTIVE_READ, activeA);
+                ForeignMemory.setLong(rawHead + OFFSET_ACTIVE_WRITE, activeB);
                 
-                ForeignMemory.putLong(rawHead + OFFSET_ABOVE_READ, aboveA);
-                ForeignMemory.putLong(rawHead + OFFSET_ABOVE_WRITE, aboveB);
+                ForeignMemory.setLong(rawHead + OFFSET_ABOVE_READ, aboveA);
+                ForeignMemory.setLong(rawHead + OFFSET_ABOVE_WRITE, aboveB);
                 
                 return rawHead;
             }
@@ -186,14 +186,14 @@ public final class AudioBufferLayer
         }
 
         // Reset header
-        ForeignMemory.putInt(base, 0);
-        ForeignMemory.putInt(base + 4L, -1);
+        ForeignMemory.setInt(base, 0);
+        ForeignMemory.setInt(base + 4L, -1);
 
         while(true) {
             long oldTagged = singletonFreeHead;
             long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-            ForeignMemory.putLong(pointer, oldRawHead);
+            ForeignMemory.setLong(pointer, oldRawHead);
 
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -207,31 +207,31 @@ public final class AudioBufferLayer
     @Volatile
     public static void swapBelow(long layerPtr)
     {
-        long read = ForeignMemory.getLongVolatile(layerPtr + OFFSET_BELOW_READ);
-        long write = ForeignMemory.getLongVolatile(layerPtr + OFFSET_BELOW_WRITE);
+        long read = ForeignMemory.getVolatileLong(layerPtr + OFFSET_BELOW_READ);
+        long write = ForeignMemory.getVolatileLong(layerPtr + OFFSET_BELOW_WRITE);
         
-        ForeignMemory.putLongVolatile(layerPtr + OFFSET_BELOW_READ, write);
-        ForeignMemory.putLongVolatile(layerPtr + OFFSET_BELOW_WRITE, read);
+        ForeignMemory.setVolatileLong(layerPtr + OFFSET_BELOW_READ, write);
+        ForeignMemory.setVolatileLong(layerPtr + OFFSET_BELOW_WRITE, read);
     }
 
     @Volatile
     public static void swapActive(long layerPtr)
     {
-        long read = ForeignMemory.getLongVolatile(layerPtr + OFFSET_ACTIVE_READ);
-        long write = ForeignMemory.getLongVolatile(layerPtr + OFFSET_ACTIVE_WRITE);
+        long read = ForeignMemory.getVolatileLong(layerPtr + OFFSET_ACTIVE_READ);
+        long write = ForeignMemory.getVolatileLong(layerPtr + OFFSET_ACTIVE_WRITE);
         
-        ForeignMemory.putLongVolatile(layerPtr + OFFSET_ACTIVE_READ, write);
-        ForeignMemory.putLongVolatile(layerPtr + OFFSET_ACTIVE_WRITE, read);
+        ForeignMemory.setVolatileLong(layerPtr + OFFSET_ACTIVE_READ, write);
+        ForeignMemory.setVolatileLong(layerPtr + OFFSET_ACTIVE_WRITE, read);
     }
 
     @Volatile
     public static void swapAbove(long layerPtr)
     {
-        long read = ForeignMemory.getLongVolatile(layerPtr + OFFSET_ABOVE_READ);
-        long write = ForeignMemory.getLongVolatile(layerPtr + OFFSET_ABOVE_WRITE);
+        long read = ForeignMemory.getVolatileLong(layerPtr + OFFSET_ABOVE_READ);
+        long write = ForeignMemory.getVolatileLong(layerPtr + OFFSET_ABOVE_WRITE);
         
-        ForeignMemory.putLongVolatile(layerPtr + OFFSET_ABOVE_READ, write);
-        ForeignMemory.putLongVolatile(layerPtr + OFFSET_ABOVE_WRITE, read);
+        ForeignMemory.setVolatileLong(layerPtr + OFFSET_ABOVE_READ, write);
+        ForeignMemory.setVolatileLong(layerPtr + OFFSET_ABOVE_WRITE, read);
     }
 
     // --- ACCESSORS ---
@@ -244,36 +244,36 @@ public final class AudioBufferLayer
     @Volatile
     public static long getBelowReadPtr(long layerPtr)
     {
-        return ForeignMemory.getLongVolatile(layerPtr + OFFSET_BELOW_READ);
+        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_BELOW_READ);
     }
 
     @Volatile
     public static long getBelowWritePtr(long layerPtr)
     {
-        return ForeignMemory.getLongVolatile(layerPtr + OFFSET_BELOW_WRITE);
+        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_BELOW_WRITE);
     }
 
     @Volatile
     public static long getActiveReadPtr(long layerPtr)
     {
-        return ForeignMemory.getLongVolatile(layerPtr + OFFSET_ACTIVE_READ);
+        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_ACTIVE_READ);
     }
 
     @Volatile
     public static long getActiveWritePtr(long layerPtr)
     {
-        return ForeignMemory.getLongVolatile(layerPtr + OFFSET_ACTIVE_WRITE);
+        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_ACTIVE_WRITE);
     }
 
     @Volatile
     public static long getAboveReadPtr(long layerPtr)
     {
-        return ForeignMemory.getLongVolatile(layerPtr + OFFSET_ABOVE_READ);
+        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_ABOVE_READ);
     }
 
     @Volatile
     public static long getAboveWritePtr(long layerPtr)
     {
-        return ForeignMemory.getLongVolatile(layerPtr + OFFSET_ABOVE_WRITE);
+        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_ABOVE_WRITE);
     }
 }

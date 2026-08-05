@@ -111,7 +111,7 @@ public final class Brain {
                 long oldTagged = singletonFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -133,7 +133,7 @@ public final class Brain {
                 long oldTagged = arrayFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -155,7 +155,7 @@ public final class Brain {
                 long oldTagged = matrixFreeHead;
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
@@ -188,9 +188,9 @@ public final class Brain {
 
             if (SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                 long block = rawHead - 8L;
-                ForeignMemory.putInt(block, TYPE_SINGLETON);
-                ForeignMemory.putInt(block + 4L, 1);
-                ForeignMemory.putShort(rawHead, (short) 0);
+                ForeignMemory.setInt(block, TYPE_SINGLETON);
+                ForeignMemory.setInt(block + 4L, 1);
+                ForeignMemory.setShort(rawHead, (short) 0);
                 return rawHead;
             }
         }
@@ -221,8 +221,8 @@ public final class Brain {
 
                 if (ARRAY_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                     long block = rawHead - 8L;
-                    ForeignMemory.putInt(block, TYPE_ARRAY);
-                    ForeignMemory.putInt(block + 4L, length);
+                    ForeignMemory.setInt(block, TYPE_ARRAY);
+                    ForeignMemory.setInt(block + 4L, length);
                     ForeignMemory.setMemory(rawHead, length * 2L, (byte) 0);
                     return rawHead;
                 }
@@ -231,8 +231,8 @@ public final class Brain {
             long totalBytes = 8L + (length * 2L);
             long block = ForeignMemory.allocateNative(totalBytes);
             long userPtr = block + 8L;
-            ForeignMemory.putInt(block, TYPE_ARRAY);
-            ForeignMemory.putInt(block + 4L, length);
+            ForeignMemory.setInt(block, TYPE_ARRAY);
+            ForeignMemory.setInt(block + 4L, length);
             ForeignMemory.setMemory(userPtr, length * 2L, (byte) 0);
             return userPtr;
         }
@@ -263,8 +263,8 @@ public final class Brain {
 
                 if (MATRIX_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                     long block = rawHead - 8L;
-                    ForeignMemory.putInt(block, TYPE_MATRIX);
-                    ForeignMemory.putInt(block + 4L, length);
+                    ForeignMemory.setInt(block, TYPE_MATRIX);
+                    ForeignMemory.setInt(block + 4L, length);
                     ForeignMemory.setMemory(rawHead, length * 8L, (byte) 0);
                     return rawHead;
                 }
@@ -273,8 +273,8 @@ public final class Brain {
             long totalBytes = 8L + (length * 8L);
             long block = ForeignMemory.allocateNative(totalBytes);
             long userPtr = block + 8L;
-            ForeignMemory.putInt(block, TYPE_MATRIX);
-            ForeignMemory.putInt(block + 4L, length);
+            ForeignMemory.setInt(block, TYPE_MATRIX);
+            ForeignMemory.setInt(block + 4L, length);
             ForeignMemory.setMemory(userPtr, length * 8L, (byte) 0);
             return userPtr;
         }
@@ -292,7 +292,7 @@ public final class Brain {
                 long oldTagged = singletonFreeHead;
                 long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                ForeignMemory.putLong(pointer, rawHead);
+                ForeignMemory.setLong(pointer, rawHead);
 
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -305,7 +305,7 @@ public final class Brain {
                     long oldTagged = arrayFreeHead;
                     long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                    ForeignMemory.putLong(pointer, rawHead);
+                    ForeignMemory.setLong(pointer, rawHead);
 
                     long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                     long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -318,8 +318,8 @@ public final class Brain {
                 if (oldType == 0 || !TypeRegister.isArray(oldType)) {
                     throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
                 }
-                ForeignMemory.putInt(block, 0);
-                ForeignMemory.putInt(block + 4L, -1);
+                ForeignMemory.setInt(block, 0);
+                ForeignMemory.setInt(block + 4L, -1);
                 ForeignMemory.freeNative(block);
             }
         } else if (type == TYPE_MATRIX) {
@@ -328,7 +328,7 @@ public final class Brain {
                     long oldTagged = matrixFreeHead;
                     long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
 
-                    ForeignMemory.putLong(pointer, rawHead);
+                    ForeignMemory.setLong(pointer, rawHead);
 
                     long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                     long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
@@ -341,8 +341,8 @@ public final class Brain {
                 if (oldType == 0 || !TypeRegister.isPointer(oldType)) {
                     throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
                 }
-                ForeignMemory.putInt(block, 0);
-                ForeignMemory.putInt(block + 4L, -1);
+                ForeignMemory.setInt(block, 0);
+                ForeignMemory.setInt(block + 4L, -1);
                 ForeignMemory.freeNative(block);
             }
         } else {
@@ -366,19 +366,19 @@ public final class Brain {
     public static void set(long pointer, float value) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         short rawVal = floatToBFloat16(value);
-        ForeignMemory.putShort(pointer, rawVal);
+        ForeignMemory.setShort(pointer, rawVal);
     }
 
     public static void set(long pointer, int index, float value) {
         checkBounds(pointer, index);
         short rawVal = floatToBFloat16(value);
-        ForeignMemory.putShort(pointer + (index * 2L), rawVal);
+        ForeignMemory.setShort(pointer + (index * 2L), rawVal);
     }
 
     @Volatile
     public static float getVolatile(long pointer) {
         if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        short rawVal = ForeignMemory.getShortVolatile(pointer);
+        short rawVal = ForeignMemory.getVolatileShort(pointer);
         return bFloat16ToFloat(rawVal);
     }
 
@@ -386,7 +386,7 @@ public final class Brain {
     public static void setVolatile(long pointer, float value) {
         if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         short rawVal = floatToBFloat16(value);
-        ForeignMemory.putShortVolatile(pointer, rawVal);
+        ForeignMemory.setVolatileShort(pointer, rawVal);
     }
 
     public static boolean compareAndSet(long pointer, float expected, float value) {
@@ -411,7 +411,7 @@ public final class Brain {
             throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
         checkBounds(matrixPointer, index);
-        ForeignMemory.putLong(matrixPointer + (index * 8L), targetPointer);
+        ForeignMemory.setLong(matrixPointer + (index * 8L), targetPointer);
     }
 
     // --- ARCHITECTURAL CHECKS ---

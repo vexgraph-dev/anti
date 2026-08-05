@@ -213,13 +213,13 @@ public final class Bool {
         checkActive();
         int threadIdx = ThreadRegistry.getThreadIndex();
         long slotBase = CACHE_ARENA_BASE + (threadIdx * 1024L);
-        int count = ForeignMemory.unsafeGetInt(slotBase + 0L);
+        int count = ForeignMemory.getUnsafeInt(slotBase + 0L);
         if (count > 0) {
-            ForeignMemory.unsafeSet(slotBase + 0L, count - 1);
-            long pointer = ForeignMemory.unsafeGetLong(slotBase + 64L + (count - 1) * 8L);
+            ForeignMemory.setUnsafe(slotBase + 0L, count - 1);
+            long pointer = ForeignMemory.getUnsafeLong(slotBase + 64L + (count - 1) * 8L);
             long base = pointer - 8L;
-            ForeignMemory.unsafeSet(base, TYPE_SINGLETON);
-            ForeignMemory.unsafeSet(base + 4L, 1);
+            ForeignMemory.setUnsafe(base, TYPE_SINGLETON);
+            ForeignMemory.setUnsafe(base + 4L, 1);
             ForeignMemory.set(pointer, 0L);
             return pointer;
         }
@@ -237,14 +237,14 @@ public final class Bool {
                 continue;
             }
 
-            long nextRawHead = ForeignMemory.unsafeGetLong(rawHead);
+            long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
 
             if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.unsafeSet(base, TYPE_SINGLETON);
-                ForeignMemory.unsafeSet(base + 4L, 1);
+                ForeignMemory.setUnsafe(base, TYPE_SINGLETON);
+                ForeignMemory.setUnsafe(base + 4L, 1);
                 ForeignMemory.set(rawHead, 0L);
                 return rawHead;
             }
@@ -292,20 +292,20 @@ public final class Bool {
             long totalBytes = 8L + (((length + 63) / 64) * 8L);
             long alignedBytes = (totalBytes + 7L) & ~7L;
             long base = ForeignMemory.allocateNative(alignedBytes);
-            ForeignMemory.unsafeSet(base, TYPE_ARRAY);
-            ForeignMemory.unsafeSet(base + 4L, length);
+            ForeignMemory.setUnsafe(base, TYPE_ARRAY);
+            ForeignMemory.setUnsafe(base + 4L, length);
             return base + 8L;
         }
 
         int threadIdx = ThreadRegistry.getThreadIndex();
         long slotBase = CACHE_ARENA_BASE + (threadIdx * 1024L);
-        int count = ForeignMemory.unsafeGetInt(slotBase + countOffset);
+        int count = ForeignMemory.getUnsafeInt(slotBase + countOffset);
         if (count > 0) {
-            ForeignMemory.unsafeSet(slotBase + countOffset, count - 1);
-            long pointer = ForeignMemory.unsafeGetLong(slotBase + dataOffset + (count - 1) * 8L);
+            ForeignMemory.setUnsafe(slotBase + countOffset, count - 1);
+            long pointer = ForeignMemory.getUnsafeLong(slotBase + dataOffset + (count - 1) * 8L);
             long base = pointer - 8L;
-            ForeignMemory.unsafeSet(base, TYPE_ARRAY);
-            ForeignMemory.unsafeSet(base + 4L, length);
+            ForeignMemory.setUnsafe(base, TYPE_ARRAY);
+            ForeignMemory.setUnsafe(base + 4L, length);
             return pointer;
         }
 
@@ -322,14 +322,14 @@ public final class Bool {
                 continue;
             }
 
-            long nextRawHead = ForeignMemory.unsafeGetLong(rawHead);
+            long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
 
             if(headVH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.unsafeSet(base, TYPE_ARRAY);
-                ForeignMemory.unsafeSet(base + 4L, length);
+                ForeignMemory.setUnsafe(base, TYPE_ARRAY);
+                ForeignMemory.setUnsafe(base + 4L, length);
                 return rawHead;
             }
         }
@@ -375,20 +375,20 @@ public final class Bool {
         else {
             long totalBytes = 8L + (length * 8L);
             long base = ForeignMemory.allocateNative(totalBytes);
-            ForeignMemory.unsafeSet(base, TYPE_MATRIX);
-            ForeignMemory.unsafeSet(base + 4L, length);
+            ForeignMemory.setUnsafe(base, TYPE_MATRIX);
+            ForeignMemory.setUnsafe(base + 4L, length);
             return base + 8L;
         }
 
         int threadIdx = ThreadRegistry.getThreadIndex();
         long slotBase = CACHE_ARENA_BASE + (threadIdx * 1024L);
-        int count = ForeignMemory.unsafeGetInt(slotBase + countOffset);
+        int count = ForeignMemory.getUnsafeInt(slotBase + countOffset);
         if (count > 0) {
-            ForeignMemory.unsafeSet(slotBase + countOffset, count - 1);
-            long pointer = ForeignMemory.unsafeGetLong(slotBase + dataOffset + (count - 1) * 8L);
+            ForeignMemory.setUnsafe(slotBase + countOffset, count - 1);
+            long pointer = ForeignMemory.getUnsafeLong(slotBase + dataOffset + (count - 1) * 8L);
             long base = pointer - 8L;
-            ForeignMemory.unsafeSet(base, TYPE_MATRIX);
-            ForeignMemory.unsafeSet(base + 4L, length);
+            ForeignMemory.setUnsafe(base, TYPE_MATRIX);
+            ForeignMemory.setUnsafe(base + 4L, length);
             return pointer;
         }
 
@@ -405,14 +405,14 @@ public final class Bool {
                 continue;
             }
 
-            long nextRawHead = ForeignMemory.unsafeGetLong(rawHead);
+            long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
 
             if(headVH.compareAndSet(oldTagged, newTagged)) {
                 long base = rawHead - 8L;
-                ForeignMemory.unsafeSet(base, TYPE_MATRIX);
-                ForeignMemory.unsafeSet(base + 4L, length);
+                ForeignMemory.setUnsafe(base, TYPE_MATRIX);
+                ForeignMemory.setUnsafe(base + 4L, length);
                 return rawHead;
             }
         }
@@ -455,17 +455,17 @@ public final class Bool {
         int length = length(pointer);
         long base = pointer - 8L;
 
-        ForeignMemory.unsafeSet(base, 0);
-        ForeignMemory.unsafeSet(base + 4L, -1);
+        ForeignMemory.setUnsafe(base, 0);
+        ForeignMemory.setUnsafe(base + 4L, -1);
 
         int threadIdx = ThreadRegistry.getThreadIndex();
         long slotBase = CACHE_ARENA_BASE + (threadIdx * 1024L);
 
         if(TypeRegister.isSingleton(type)) {
-            int count = ForeignMemory.unsafeGetInt(slotBase + 0L);
+            int count = ForeignMemory.getUnsafeInt(slotBase + 0L);
             if (count < 8) {
                 ForeignMemory.set(slotBase + 64L + count * 8L, pointer);
-                ForeignMemory.unsafeSet(slotBase + 0L, count + 1);
+                ForeignMemory.setUnsafe(slotBase + 0L, count + 1);
                 return;
             }
 
@@ -510,10 +510,10 @@ public final class Bool {
                 return;
             }
 
-            int count = ForeignMemory.unsafeGetInt(slotBase + countOffset);
+            int count = ForeignMemory.getUnsafeInt(slotBase + countOffset);
             if (count < 8) {
                 ForeignMemory.set(slotBase + dataOffset + count * 8L, pointer);
-                ForeignMemory.unsafeSet(slotBase + countOffset, count + 1);
+                ForeignMemory.setUnsafe(slotBase + countOffset, count + 1);
                 return;
             }
 
@@ -558,10 +558,10 @@ public final class Bool {
                 return;
             }
 
-            int count = ForeignMemory.unsafeGetInt(slotBase + countOffset);
+            int count = ForeignMemory.getUnsafeInt(slotBase + countOffset);
             if (count < 8) {
                 ForeignMemory.set(slotBase + dataOffset + count * 8L, pointer);
-                ForeignMemory.unsafeSet(slotBase + countOffset, count + 1);
+                ForeignMemory.setUnsafe(slotBase + countOffset, count + 1);
                 return;
             }
 
@@ -581,13 +581,13 @@ public final class Bool {
 
     public static boolean get(long pointer) {
         if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return ForeignMemory.unsafeGetLong(pointer) != 0L;
+        return ForeignMemory.getUnsafeLong(pointer) != 0L;
     }
 
     public static boolean get(long pointer, int index) { 
         checkBounds(pointer, index);
         long wordOffset = index >> 6;
-        long word = ForeignMemory.unsafeGetLong(pointer + (wordOffset * 8L));
+        long word = ForeignMemory.getUnsafeLong(pointer + (wordOffset * 8L));
         return (word & (1L << (index & 63))) != 0;
     }
 
@@ -595,7 +595,7 @@ public final class Bool {
         if (matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
         if(!isPointer(matrixPointer)) throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
         checkBounds(matrixPointer, index);
-        return ForeignMemory.unsafeGetLong(matrixPointer + (index * 8L)); 
+        return ForeignMemory.getUnsafeLong(matrixPointer + (index * 8L)); 
     }
 
     public static void set(long pointer, boolean value) {
@@ -639,11 +639,11 @@ public final class Bool {
     }
 
     public static int type(long pointer) {
-        return ForeignMemory.unsafeGetInt(pointer - 8L);
+        return ForeignMemory.getUnsafeInt(pointer - 8L);
     }
 
     public static int length(long pointer) {
-        return ForeignMemory.unsafeGetInt(pointer - 4L);
+        return ForeignMemory.getUnsafeInt(pointer - 4L);
     }
 
     public static int classId(long pointer) {
@@ -666,24 +666,24 @@ public final class Bool {
 
     @Unsafe
     public static boolean unsafeGet(long pointer) {
-        return ForeignMemory.unsafeGetLong(pointer) != 0L;
+        return ForeignMemory.getUnsafeLong(pointer) != 0L;
     }
 
     @Unsafe
     public static boolean unsafeGet(long pointer, int index) {
         long wordOffset = index >> 6;
-        long word = ForeignMemory.unsafeGetLong(pointer + (wordOffset * 8L));
+        long word = ForeignMemory.getUnsafeLong(pointer + (wordOffset * 8L));
         return (word & (1L << (index & 63))) != 0;
     }
 
     @Unsafe
     public static long unsafeGetPointer(long matrixPointer, int index) {
-        return ForeignMemory.unsafeGetLong(matrixPointer + (index * 8L));
+        return ForeignMemory.getUnsafeLong(matrixPointer + (index * 8L));
     }
 
     @Unsafe
-    public static void unsafeSet(long pointer, boolean value) {
-        ForeignMemory.unsafeSet(pointer, value ? 1L : 0L);
+    public static void setUnsafe(long pointer, boolean value) {
+        ForeignMemory.setUnsafe(pointer, value ? 1L : 0L);
     }
 
     @Unsafe
@@ -702,7 +702,7 @@ public final class Bool {
 
     @Unsafe
     public static void unsafeSetPointer(long matrixPointer, int index, long targetPointer) {
-        ForeignMemory.unsafeSet(matrixPointer + (index * 8L), targetPointer);
+        ForeignMemory.setUnsafe(matrixPointer + (index * 8L), targetPointer);
     }
 
 }

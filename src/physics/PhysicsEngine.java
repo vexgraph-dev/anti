@@ -43,7 +43,7 @@ public final class PhysicsEngine
         long totalBytes = capacity * PhysicsBody.BYTES;
         for (long i = 0; i < totalBytes; i++)
         {
-            ForeignMemory.putByte(bodiesBlockPtr + i, (byte)0);
+            ForeignMemory.setByte(bodiesBlockPtr + i, (byte)0);
         }
         
         System.out.println("[Physics] Engine initialized with capacity: " + capacity);

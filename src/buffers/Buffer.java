@@ -100,7 +100,7 @@ public final class Buffer {
             while (true) {
                 long oldTagged = (long) freeHeadVH.getVolatile();
                 long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-                ForeignMemory.putLong(userPtr, oldRawHead);
+                ForeignMemory.setLong(userPtr, oldRawHead);
                 long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
                 if (freeHeadVH.compareAndSet(oldTagged, newTagged))
@@ -139,12 +139,12 @@ public final class Buffer {
             long totalBytes = 24L + (length * 8L);
             long base = ForeignMemory.allocateNative(totalBytes);
             long userPtr = base + 24L;
-            ForeignMemory.putInt(userPtr - 20L, width);
-            ForeignMemory.putInt(userPtr - 16L, height);
-            ForeignMemory.putInt(userPtr - 12L, channels);
+            ForeignMemory.setInt(userPtr - 20L, width);
+            ForeignMemory.setInt(userPtr - 16L, height);
+            ForeignMemory.setInt(userPtr - 12L, channels);
             int type = TypeRegister.FORM_ARRAY | classId;
-            ForeignMemory.putInt(userPtr - 8L, type);
-            ForeignMemory.putInt(userPtr - 4L, length);
+            ForeignMemory.setInt(userPtr - 8L, type);
+            ForeignMemory.setInt(userPtr - 4L, length);
             return userPtr;
         }
 
@@ -167,12 +167,12 @@ public final class Buffer {
             long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
 
             if (headVH.compareAndSet(oldTagged, newTagged)) {
-                ForeignMemory.putInt(rawHead - 20L, width);
-                ForeignMemory.putInt(rawHead - 16L, height);
-                ForeignMemory.putInt(rawHead - 12L, channels);
+                ForeignMemory.setInt(rawHead - 20L, width);
+                ForeignMemory.setInt(rawHead - 16L, height);
+                ForeignMemory.setInt(rawHead - 12L, channels);
                 int type = TypeRegister.FORM_ARRAY | classId;
-                ForeignMemory.putInt(rawHead - 8L, type);
-                ForeignMemory.putInt(rawHead - 4L, length);
+                ForeignMemory.setInt(rawHead - 8L, type);
+                ForeignMemory.setInt(rawHead - 4L, length);
                 return rawHead;
             }
         }
@@ -208,12 +208,12 @@ public final class Buffer {
         int length = length(pointer);
         long base = pointer - 24L;
 
-        ForeignMemory.putInt(base, 0);
-        ForeignMemory.putInt(base + 4L, 0);
-        ForeignMemory.putInt(base + 8L, 0);
-        ForeignMemory.putInt(base + 12L, 0);
-        ForeignMemory.putInt(base + 16L, 0);
-        ForeignMemory.putInt(base + 20L, -1);
+        ForeignMemory.setInt(base, 0);
+        ForeignMemory.setInt(base + 4L, 0);
+        ForeignMemory.setInt(base + 8L, 0);
+        ForeignMemory.setInt(base + 12L, 0);
+        ForeignMemory.setInt(base + 16L, 0);
+        ForeignMemory.setInt(base + 20L, -1);
 
         if (length > BUCKET_512) {
             ForeignMemory.freeNative(base);
@@ -233,7 +233,7 @@ public final class Buffer {
         while (true) {
             long oldTagged = (long) headVH.getVolatile();
             long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-            ForeignMemory.putLong(pointer, oldRawHead);
+            ForeignMemory.setLong(pointer, oldRawHead);
             long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
             if (headVH.compareAndSet(oldTagged, newTagged))
@@ -264,7 +264,7 @@ public final class Buffer {
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
             throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
-        ForeignMemory.putLong(pointer, value);
+        ForeignMemory.setLong(pointer, value);
     }
 
     public static void set(long pointer, int index, long value) {
@@ -272,7 +272,7 @@ public final class Buffer {
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
             throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
-        ForeignMemory.putLong(pointer + (index * 8L), value);
+        ForeignMemory.setLong(pointer + (index * 8L), value);
     }
 
     @Volatile
@@ -282,7 +282,7 @@ public final class Buffer {
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
             throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
-        return ForeignMemory.getLongVolatile(pointer);
+        return ForeignMemory.getVolatileLong(pointer);
     }
 
     @Volatile
@@ -292,7 +292,7 @@ public final class Buffer {
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
             throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
-        ForeignMemory.putLongVolatile(pointer, value);
+        ForeignMemory.setVolatileLong(pointer, value);
     }
 
     public static boolean compareAndSet(long pointer, long expected, long value) {
@@ -368,48 +368,48 @@ public final class Buffer {
     }
 
     @Unsafe
-    public static void unsafeSet(long pointer, long value) {
-        ForeignMemory.putLong(pointer, value);
+    public static void setUnsafe(long pointer, long value) {
+        ForeignMemory.setLong(pointer, value);
     }
 
     @Unsafe
-    public static void unsafeSet(long pointer, int index, long value) {
-        ForeignMemory.putLong(pointer + (index * 8L), value);
+    public static void setUnsafe(long pointer, int index, long value) {
+        ForeignMemory.setLong(pointer + (index * 8L), value);
     }
 
     @Volatile
     public static long getVolatile(long pointer, int index) {
         checkBounds(pointer, index);
-        return ForeignMemory.getLongVolatile(pointer + (index * 8L));
+        return ForeignMemory.getVolatileLong(pointer + (index * 8L));
     }
 
     @Volatile
     public static void setVolatile(long pointer, int index, long value) {
         checkBounds(pointer, index);
-        ForeignMemory.putLongVolatile(pointer + (index * 8L), value);
+        ForeignMemory.setVolatileLong(pointer + (index * 8L), value);
     }
 
     @Unsafe
     @Volatile
     public static long unsafeVolatileGet(long pointer) {
-        return ForeignMemory.getLongVolatile(pointer);
+        return ForeignMemory.getVolatileLong(pointer);
     }
 
     @Unsafe
     @Volatile
     public static long unsafeVolatileGet(long pointer, int index) {
-        return ForeignMemory.getLongVolatile(pointer + (index * 8L));
+        return ForeignMemory.getVolatileLong(pointer + (index * 8L));
     }
 
     @Unsafe
     @Volatile
-    public static void unsafeVolatileSet(long pointer, long value) {
-        ForeignMemory.putLongVolatile(pointer, value);
+    public static void setUnsafeVolatile(long pointer, long value) {
+        ForeignMemory.setVolatileLong(pointer, value);
     }
 
     @Unsafe
     @Volatile
-    public static void unsafeVolatileSet(long pointer, int index, long value) {
-        ForeignMemory.putLongVolatile(pointer + (index * 8L), value);
+    public static void setUnsafeVolatile(long pointer, int index, long value) {
+        ForeignMemory.setVolatileLong(pointer + (index * 8L), value);
     }
 }

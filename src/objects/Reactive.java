@@ -52,13 +52,13 @@ public class Reactive
         long block = ForeignMemory.allocateNative(40);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_SINGLETON);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON);
+        ForeignMemory.setInt(block + 4L, 1);
 
-        ForeignMemory.putLong(userPtr, initialValue);
-        ForeignMemory.putLong(userPtr + 8L, 0L); // setValueEvent
-        ForeignMemory.putLong(userPtr + 16L, 0L); // getValueEvent
-        ForeignMemory.putLong(userPtr + 24L, 0L); // changedValueEvent
+        ForeignMemory.setLong(userPtr, initialValue);
+        ForeignMemory.setLong(userPtr + 8L, 0L); // setValueEvent
+        ForeignMemory.setLong(userPtr + 16L, 0L); // getValueEvent
+        ForeignMemory.setLong(userPtr + 24L, 0L); // changedValueEvent
 
         return userPtr;
     }
@@ -72,19 +72,19 @@ public class Reactive
     public static void setValueEvent(long ptr, long eventCallbackAddr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.putLong(ptr + 8L, eventCallbackAddr);
+        ForeignMemory.setLong(ptr + 8L, eventCallbackAddr);
     }
 
     public static void getValueEvent(long ptr, long eventCallbackAddr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.putLong(ptr + 16L, eventCallbackAddr);
+        ForeignMemory.setLong(ptr + 16L, eventCallbackAddr);
     }
 
     public static void changedValueEvent(long ptr, long eventCallbackAddr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.putLong(ptr + 24L, eventCallbackAddr);
+        ForeignMemory.setLong(ptr + 24L, eventCallbackAddr);
     }
 
     public static long getValue(long ptr)
@@ -114,7 +114,7 @@ public class Reactive
         }
 
         long oldVal = ForeignMemory.getLong(ptr);
-        ForeignMemory.putLong(ptr, value);
+        ForeignMemory.setLong(ptr, value);
 
         if (oldVal != value) {
             long changedEv = ForeignMemory.getLong(ptr + 24L);

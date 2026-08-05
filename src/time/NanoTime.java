@@ -79,15 +79,15 @@ public final class NanoTime {
         long block = ForeignMemory.allocateNative(48);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TypeRegister.NANOTIME_SINGLETON);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TypeRegister.NANOTIME_SINGLETON);
+        ForeignMemory.setInt(block + 4L, 1);
 
         long now = getNativeNanos();
-        ForeignMemory.putLong(userPtr, now);       // startNanos
-        ForeignMemory.putLong(userPtr + 8L, now);  // lastNanos
-        ForeignMemory.putLong(userPtr + 16L, now); // currentNanos
-        ForeignMemory.putDouble(userPtr + 24L, 0.0); // deltaTime
-        ForeignMemory.putDouble(userPtr + 32L, 0.0); // totalTime
+        ForeignMemory.setLong(userPtr, now);       // startNanos
+        ForeignMemory.setLong(userPtr + 8L, now);  // lastNanos
+        ForeignMemory.setLong(userPtr + 16L, now); // currentNanos
+        ForeignMemory.setDouble(userPtr + 24L, 0.0); // deltaTime
+        ForeignMemory.setDouble(userPtr + 32L, 0.0); // totalTime
 
         return userPtr;
     }
@@ -102,11 +102,11 @@ public final class NanoTime {
     public static void reset(long ptr) {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         long now = getNativeNanos();
-        ForeignMemory.putLong(ptr, now);
-        ForeignMemory.putLong(ptr + 8L, now);
-        ForeignMemory.putLong(ptr + 16L, now);
-        ForeignMemory.putDouble(ptr + 24L, 0.0);
-        ForeignMemory.putDouble(ptr + 32L, 0.0);
+        ForeignMemory.setLong(ptr, now);
+        ForeignMemory.setLong(ptr + 8L, now);
+        ForeignMemory.setLong(ptr + 16L, now);
+        ForeignMemory.setDouble(ptr + 24L, 0.0);
+        ForeignMemory.setDouble(ptr + 32L, 0.0);
     }
 
     @Draft
@@ -115,14 +115,14 @@ public final class NanoTime {
         long now = getNativeNanos();
         long current = ForeignMemory.getLong(ptr + 16L);
         
-        ForeignMemory.putLong(ptr + 8L, current);
-        ForeignMemory.putLong(ptr + 16L, now);
+        ForeignMemory.setLong(ptr + 8L, current);
+        ForeignMemory.setLong(ptr + 16L, now);
 
         double deltaSec = (now - current) / 1_000_000_000.0;
-        ForeignMemory.putDouble(ptr + 24L, deltaSec);
+        ForeignMemory.setDouble(ptr + 24L, deltaSec);
         
         double total = ForeignMemory.getDouble(ptr + 32L);
-        ForeignMemory.putDouble(ptr + 32L, total + deltaSec);
+        ForeignMemory.setDouble(ptr + 32L, total + deltaSec);
     }
 
     /**
@@ -135,8 +135,8 @@ public final class NanoTime {
         long now = getNativeNanos();
         long current = ForeignMemory.getLong(ptr + 16L);
         
-        ForeignMemory.putLong(ptr + 8L, current);
-        ForeignMemory.putLong(ptr + 16L, now);
+        ForeignMemory.setLong(ptr + 8L, current);
+        ForeignMemory.setLong(ptr + 16L, now);
 
         double realDeltaSec = (now - current) / 1_000_000_000.0;
         double scale = 1.0;
@@ -149,10 +149,10 @@ public final class NanoTime {
         }
         
         double scaledDeltaSec = realDeltaSec * scale;
-        ForeignMemory.putDouble(ptr + 24L, scaledDeltaSec);
+        ForeignMemory.setDouble(ptr + 24L, scaledDeltaSec);
 
         double total = ForeignMemory.getDouble(ptr + 32L);
-        ForeignMemory.putDouble(ptr + 32L, total + scaledDeltaSec);
+        ForeignMemory.setDouble(ptr + 32L, total + scaledDeltaSec);
     }
 
     @Draft

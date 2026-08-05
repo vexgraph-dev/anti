@@ -26,12 +26,12 @@ public class Probable
         long block = ForeignMemory.allocateNative(24);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_SINGLETON);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON);
+        ForeignMemory.setInt(block + 4L, 1);
 
-        ForeignMemory.putLong(userPtr, objectPtr);
-        ForeignMemory.putInt(userPtr + 8L, weight);
-        ForeignMemory.putInt(userPtr + 12L, total);
+        ForeignMemory.setLong(userPtr, objectPtr);
+        ForeignMemory.setInt(userPtr + 8L, weight);
+        ForeignMemory.setInt(userPtr + 12L, total);
 
         return userPtr;
     }
@@ -64,19 +64,19 @@ public class Probable
     public static void setObject(long ptr, long objectPtr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.putLong(ptr, objectPtr);
+        ForeignMemory.setLong(ptr, objectPtr);
     }
 
     public static void setWeight(long ptr, int weight)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.putInt(ptr + 8L, weight);
+        ForeignMemory.setInt(ptr + 8L, weight);
     }
 
     public static void setTotal(long ptr, int total)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.putInt(ptr + 12L, total);
+        ForeignMemory.setInt(ptr + 12L, total);
     }
 
     public Probable()

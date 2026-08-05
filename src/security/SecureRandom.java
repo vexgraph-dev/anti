@@ -48,10 +48,10 @@ public final class SecureRandom {
         long block = ForeignMemory.allocateNative(32);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_SECURE_RANDOM);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SECURE_RANDOM);
+        ForeignMemory.setInt(block + 4L, 1);
 
-        ForeignMemory.putLong(userPtr, CS_RNG.nextLong()); // seed state
+        ForeignMemory.setLong(userPtr, CS_RNG.nextLong()); // seed state
 
         return userPtr;
     }

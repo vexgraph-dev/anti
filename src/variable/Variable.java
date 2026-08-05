@@ -52,7 +52,7 @@ public final class Variable {
         mapCapacity = DEFAULT_CAPACITY * 2;
         mapAddress = ForeignMemory.allocateNative(mapCapacity * MAP_SLOT_SIZE);
         for (int i = 0; i < mapCapacity; i++)
-            ForeignMemory.putIntVolatile(mapAddress + (i * MAP_SLOT_SIZE) + 32L, -1);
+            ForeignMemory.setVolatileInt(mapAddress + (i * MAP_SLOT_SIZE) + 32L, -1);
     }
 
     private Variable() {}
@@ -91,13 +91,13 @@ public final class Variable {
         int index = Math.abs(hash) % mapCap;
         while (true) {
             long slotAddr = mapAddr + (index * MAP_SLOT_SIZE);
-            int storedId = ForeignMemory.getIntVolatile(slotAddr + 32L);
+            int storedId = ForeignMemory.getVolatileInt(slotAddr + 32L);
             if (storedId == -1 || storedId == varId) {
-                ForeignMemory.putLong(slotAddr, l0);
-                ForeignMemory.putLong(slotAddr + 8L, l1);
-                ForeignMemory.putLong(slotAddr + 16L, l2);
-                ForeignMemory.putLong(slotAddr + 24L, l3);
-                ForeignMemory.putIntVolatile(slotAddr + 32L, varId);
+                ForeignMemory.setLong(slotAddr, l0);
+                ForeignMemory.setLong(slotAddr + 8L, l1);
+                ForeignMemory.setLong(slotAddr + 16L, l2);
+                ForeignMemory.setLong(slotAddr + 24L, l3);
+                ForeignMemory.setVolatileInt(slotAddr + 32L, varId);
                 break;
             }
             index = (index + 1) % mapCap;
@@ -108,7 +108,7 @@ public final class Variable {
         int newCapacity = mapCapacity * 2;
         long newAddress = ForeignMemory.allocateNative(newCapacity * MAP_SLOT_SIZE);
         for (int i = 0; i < newCapacity; i++)
-            ForeignMemory.putIntVolatile(newAddress + (i * MAP_SLOT_SIZE) + 32L, -1);
+            ForeignMemory.setVolatileInt(newAddress + (i * MAP_SLOT_SIZE) + 32L, -1);
 
         for (int i = 0; i < activeCount; i++) {
             long slotAddr = baseAddress + (i * SLOT_SIZE);
@@ -129,7 +129,7 @@ public final class Variable {
 
     private static void rebuildMap() {
         for (int i = 0; i < mapCapacity; i++)
-            ForeignMemory.putIntVolatile(mapAddress + (i * MAP_SLOT_SIZE) + 32L, -1);
+            ForeignMemory.setVolatileInt(mapAddress + (i * MAP_SLOT_SIZE) + 32L, -1);
 
         for (int i = 0; i < activeCount; i++) {
             long slotAddr = baseAddress + (i * SLOT_SIZE);
@@ -170,8 +170,8 @@ public final class Variable {
             int existingId = getId(nameBytes);
             if (existingId != -1) {
                 long slotAddr = baseAddress + (existingId * SLOT_SIZE);
-                ForeignMemory.putInt(slotAddr + 32L, classId);
-                ForeignMemory.putLong(slotAddr + 40L, targetPointer);
+                ForeignMemory.setInt(slotAddr + 32L, classId);
+                ForeignMemory.setLong(slotAddr + 40L, targetPointer);
                 return existingId;
             }
 
@@ -187,13 +187,13 @@ public final class Variable {
             }
 
             long targetSlot = baseAddress + (activeCount * SLOT_SIZE);
-            ForeignMemory.putLong(targetSlot, l0);
-            ForeignMemory.putLong(targetSlot + 8L, l1);
-            ForeignMemory.putLong(targetSlot + 16L, l2);
-            ForeignMemory.putLong(targetSlot + 24L, l3);
+            ForeignMemory.setLong(targetSlot, l0);
+            ForeignMemory.setLong(targetSlot + 8L, l1);
+            ForeignMemory.setLong(targetSlot + 16L, l2);
+            ForeignMemory.setLong(targetSlot + 24L, l3);
 
-            ForeignMemory.putInt(targetSlot + 32L, classId);
-            ForeignMemory.putLong(targetSlot + 40L, targetPointer);
+            ForeignMemory.setInt(targetSlot + 32L, classId);
+            ForeignMemory.setLong(targetSlot + 40L, targetPointer);
 
             int assignedId = activeCount;
             activeCount++;
@@ -243,7 +243,7 @@ public final class Variable {
         int limit = currentCapacity;
         for (int i = 0; i < limit; i++) {
             long slotAddr = currentMapAddr + (index * MAP_SLOT_SIZE);
-            int storedId = ForeignMemory.getIntVolatile(slotAddr + 32L);
+            int storedId = ForeignMemory.getVolatileInt(slotAddr + 32L);
             if (storedId == -1)
                 return -1;
 
@@ -315,10 +315,10 @@ public final class Variable {
                 return false;
 
             long targetSlot = baseAddress + (targetIdx * SLOT_SIZE);
-            ForeignMemory.putLong(targetSlot, newL0);
-            ForeignMemory.putLong(targetSlot + 8L, newL1);
-            ForeignMemory.putLong(targetSlot + 16L, newL2);
-            ForeignMemory.putLong(targetSlot + 24L, newL3);
+            ForeignMemory.setLong(targetSlot, newL0);
+            ForeignMemory.setLong(targetSlot + 8L, newL1);
+            ForeignMemory.setLong(targetSlot + 16L, newL2);
+            ForeignMemory.setLong(targetSlot + 24L, newL3);
 
             rebuildMap();
             return true;
@@ -329,7 +329,7 @@ public final class Variable {
     public static void setPointer(int varId, long targetPointer) {
         checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.putLong(slot + 40L, targetPointer);
+        ForeignMemory.setLong(slot + 40L, targetPointer);
     }
 
     public static long getPointer(int varId) {
@@ -347,7 +347,7 @@ public final class Variable {
     @Unsafe
     public static void unsafeSetPointer(int varId, long targetPointer) {
         long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.putLong(slot + 40L, targetPointer);
+        ForeignMemory.setLong(slot + 40L, targetPointer);
     }
 
     @Unsafe
@@ -359,26 +359,26 @@ public final class Variable {
     public static void setPointerVolatile(int varId, long targetPointer) {
         checkBounds(varId);
         long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.putLongVolatile(slot + 40L, targetPointer);
+        ForeignMemory.setVolatileLong(slot + 40L, targetPointer);
     }
 
     @Volatile
     public static long getPointerVolatile(int varId) {
         checkBounds(varId);
-        return ForeignMemory.getLongVolatile(baseAddress + (varId * SLOT_SIZE) + 40L);
+        return ForeignMemory.getVolatileLong(baseAddress + (varId * SLOT_SIZE) + 40L);
     }
 
     @Unsafe
     @Volatile
     public static void unsafeVolatileSetPointer(int varId, long targetPointer) {
         long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.putLongVolatile(slot + 40L, targetPointer);
+        ForeignMemory.setVolatileLong(slot + 40L, targetPointer);
     }
 
     @Unsafe
     @Volatile
     public static long unsafeVolatileGetPointer(int varId) {
-        return ForeignMemory.getLongVolatile(baseAddress + (varId * SLOT_SIZE) + 40L);
+        return ForeignMemory.getVolatileLong(baseAddress + (varId * SLOT_SIZE) + 40L);
     }
 
     public static boolean compareAndSetPointer(int varId, long expectedPointer, long newPointer) {

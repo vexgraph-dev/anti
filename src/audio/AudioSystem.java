@@ -100,7 +100,7 @@ public final class AudioSystem
         int alSourceId = alGenSources();
         
         // Store AL Source ID at offset +0
-        ForeignMemory.putInt(sourcePtr, alSourceId);
+        ForeignMemory.setInt(sourcePtr, alSourceId);
 
         return sourcePtr;
     }
@@ -132,7 +132,7 @@ public final class AudioSystem
         int alBufferId = alGenBuffers();
         
         // Store AL Buffer ID at offset +0
-        ForeignMemory.putInt(bufferPtr, alBufferId);
+        ForeignMemory.setInt(bufferPtr, alBufferId);
 
         return bufferPtr;
     }
@@ -166,7 +166,7 @@ public final class AudioSystem
         alSourcei(alSourceId, AL_BUFFER, alBufferId);
         
         // Update off-heap fields
-        ForeignMemory.putInt(sourcePtr + 4L, alBufferId);
+        ForeignMemory.setInt(sourcePtr + 4L, alBufferId);
     }
 
     /**
@@ -180,7 +180,7 @@ public final class AudioSystem
         alSourcef(alSourceId, AL_PITCH, pitch);
         
         // Update off-heap fields
-        ForeignMemory.putFloat(sourcePtr + 8L, pitch);
+        ForeignMemory.setFloat(sourcePtr + 8L, pitch);
     }
 
     /**
@@ -194,7 +194,7 @@ public final class AudioSystem
         alSourcef(alSourceId, AL_GAIN, gain);
         
         // Update off-heap fields
-        ForeignMemory.putFloat(sourcePtr + 12L, gain);
+        ForeignMemory.setFloat(sourcePtr + 12L, gain);
     }
 
     /**
@@ -208,7 +208,7 @@ public final class AudioSystem
         alSourcei(alSourceId, AL_LOOPING, looping ? AL_TRUE : AL_FALSE);
         
         // Update off-heap fields
-        ForeignMemory.putInt(sourcePtr + 16L, looping ? 1 : 0);
+        ForeignMemory.setInt(sourcePtr + 16L, looping ? 1 : 0);
     }
 
     /**

@@ -30,10 +30,10 @@ public class Transient
         long block = ForeignMemory.allocateNative(16);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_SINGLETON);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TYPE_SINGLETON);
+        ForeignMemory.setInt(block + 4L, 1);
 
-        ForeignMemory.putLong(userPtr, val);
+        ForeignMemory.setLong(userPtr, val);
 
         return userPtr;
     }

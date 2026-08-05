@@ -27,14 +27,14 @@ public final class SparseSet {
     public static long allocate(int capacity, int maxEntities, int byteStride) {
         long ptr = ForeignMemory.allocateNative(40L);
         
-        ForeignMemory.putInt(ptr + OFFSET_CAPACITY, capacity);
-        ForeignMemory.putInt(ptr + OFFSET_MAX_ENTITY, maxEntities);
-        ForeignMemory.putInt(ptr + OFFSET_COUNT, 0);
-        ForeignMemory.putInt(ptr + OFFSET_STRIDE, byteStride);
+        ForeignMemory.setInt(ptr + OFFSET_CAPACITY, capacity);
+        ForeignMemory.setInt(ptr + OFFSET_MAX_ENTITY, maxEntities);
+        ForeignMemory.setInt(ptr + OFFSET_COUNT, 0);
+        ForeignMemory.setInt(ptr + OFFSET_STRIDE, byteStride);
 
         // Dense array: stores the Entity ID at the dense index
         long densePtr = Int.allocateArray(capacity);
-        ForeignMemory.putLong(ptr + OFFSET_DENSE_PTR, densePtr);
+        ForeignMemory.setLong(ptr + OFFSET_DENSE_PTR, densePtr);
 
         // Sparse array: stores the dense index for a given Entity ID
         long sparsePtr = Int.allocateArray(maxEntities);
@@ -42,14 +42,14 @@ public final class SparseSet {
         for (int i = 0; i < maxEntities; i++) {
             Int.set(sparsePtr, i, -1);
         }
-        ForeignMemory.putLong(ptr + OFFSET_SPARSE_PTR, sparsePtr);
+        ForeignMemory.setLong(ptr + OFFSET_SPARSE_PTR, sparsePtr);
 
         // Data array: contiguous buffer for the actual struct data
         if (byteStride > 0) {
             long dataPtr = ForeignMemory.allocateNative((long) capacity * byteStride);
-            ForeignMemory.putLong(ptr + OFFSET_DATA_PTR, dataPtr);
+            ForeignMemory.setLong(ptr + OFFSET_DATA_PTR, dataPtr);
         } else {
-            ForeignMemory.putLong(ptr + OFFSET_DATA_PTR, 0L);
+            ForeignMemory.setLong(ptr + OFFSET_DATA_PTR, 0L);
         }
 
         return ptr;
@@ -117,7 +117,7 @@ public final class SparseSet {
         // sparse[entityId] = count
         Int.set(sparsePtr, entityId, count);
         
-        ForeignMemory.putInt(ptr + OFFSET_COUNT, count + 1);
+        ForeignMemory.setInt(ptr + OFFSET_COUNT, count + 1);
 
         return stride > 0 ? dataPtr + ((long) count * stride) : 0L;
     }
@@ -150,7 +150,7 @@ public final class SparseSet {
         }
 
         Int.set(sparsePtr, entityId, -1);
-        ForeignMemory.putInt(ptr + OFFSET_COUNT, count);
+        ForeignMemory.setInt(ptr + OFFSET_COUNT, count);
     }
 
     /**

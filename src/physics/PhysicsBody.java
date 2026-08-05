@@ -56,9 +56,9 @@ public final class PhysicsBody
     public static void setPosition(long bodyPtr, float x, float y, float z)
     {
         checkPointer(bodyPtr);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_POS, x);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_POS + 4L, y);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_POS + 8L, z);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_POS, x);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_POS + 4L, y);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_POS + 8L, z);
     }
 
     public static float getPositionY(long bodyPtr)
@@ -81,9 +81,9 @@ public final class PhysicsBody
     public static void setVelocity(long bodyPtr, float vx, float vy, float vz)
     {
         checkPointer(bodyPtr);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_VEL, vx);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_VEL + 4L, vy);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_VEL + 8L, vz);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_VEL, vx);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_VEL + 4L, vy);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_VEL + 8L, vz);
     }
 
     public static float getVelocityY(long bodyPtr)
@@ -106,9 +106,9 @@ public final class PhysicsBody
     public static void setForce(long bodyPtr, float fx, float fy, float fz)
     {
         checkPointer(bodyPtr);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_FORCE, fx);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_FORCE + 4L, fy);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_FORCE + 8L, fz);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_FORCE, fx);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_FORCE + 4L, fy);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_FORCE + 8L, fz);
     }
 
     public static void getAabbHalfExtents(long bodyPtr, long destVec3Ptr)
@@ -125,9 +125,9 @@ public final class PhysicsBody
     public static void setAabbHalfExtents(long bodyPtr, float dx, float dy, float dz)
     {
         checkPointer(bodyPtr);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_AABB_HALF, dx);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_AABB_HALF + 4L, dy);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_AABB_HALF + 8L, dz);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_AABB_HALF, dx);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_AABB_HALF + 4L, dy);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_AABB_HALF + 8L, dz);
     }
 
     public static float getInverseMass(long bodyPtr)
@@ -139,7 +139,7 @@ public final class PhysicsBody
     public static void setInverseMass(long bodyPtr, float invMass)
     {
         checkPointer(bodyPtr);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_INV_MASS, invMass);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_INV_MASS, invMass);
     }
 
     public static float getRestitution(long bodyPtr)
@@ -151,7 +151,7 @@ public final class PhysicsBody
     public static void setRestitution(long bodyPtr, float restitution)
     {
         checkPointer(bodyPtr);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_RESTITUTION, restitution);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_RESTITUTION, restitution);
     }
 
     public static float getRadius(long bodyPtr)
@@ -163,7 +163,7 @@ public final class PhysicsBody
     public static void setRadius(long bodyPtr, float radius)
     {
         checkPointer(bodyPtr);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_RADIUS, radius);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_RADIUS, radius);
     }
 
     public static int getEntityId(long bodyPtr)
@@ -175,7 +175,7 @@ public final class PhysicsBody
     public static void setEntityId(long bodyPtr, int entityId)
     {
         checkPointer(bodyPtr);
-        ForeignMemory.putInt(bodyPtr + OFFSET_ENTITY_ID, entityId);
+        ForeignMemory.setInt(bodyPtr + OFFSET_ENTITY_ID, entityId);
     }
 
 
@@ -189,9 +189,9 @@ public final class PhysicsBody
         checkPointer(bodyPtr);
         checkPointer(destVec3Ptr);
         Vec3.set(destVec3Ptr, 
-            ForeignMemory.getFloatVolatile(bodyPtr + OFFSET_POS), 
-            ForeignMemory.getFloatVolatile(bodyPtr + OFFSET_POS + 4L), 
-            ForeignMemory.getFloatVolatile(bodyPtr + OFFSET_POS + 8L)
+            ForeignMemory.getVolatileFloat(bodyPtr + OFFSET_POS), 
+            ForeignMemory.getVolatileFloat(bodyPtr + OFFSET_POS + 4L), 
+            ForeignMemory.getVolatileFloat(bodyPtr + OFFSET_POS + 8L)
         );
     }
 
@@ -199,23 +199,23 @@ public final class PhysicsBody
     public static void setVolatilePosition(long bodyPtr, float x, float y, float z)
     {
         checkPointer(bodyPtr);
-        ForeignMemory.putFloatVolatile(bodyPtr + OFFSET_POS, x);
-        ForeignMemory.putFloatVolatile(bodyPtr + OFFSET_POS + 4L, y);
-        ForeignMemory.putFloatVolatile(bodyPtr + OFFSET_POS + 8L, z);
+        ForeignMemory.setVolatileFloat(bodyPtr + OFFSET_POS, x);
+        ForeignMemory.setVolatileFloat(bodyPtr + OFFSET_POS + 4L, y);
+        ForeignMemory.setVolatileFloat(bodyPtr + OFFSET_POS + 8L, z);
     }
 
     @Volatile
     public static float getVolatileInverseMass(long bodyPtr)
     {
         checkPointer(bodyPtr);
-        return ForeignMemory.getFloatVolatile(bodyPtr + OFFSET_INV_MASS);
+        return ForeignMemory.getVolatileFloat(bodyPtr + OFFSET_INV_MASS);
     }
 
     @Volatile
     public static void setVolatileInverseMass(long bodyPtr, float invMass)
     {
         checkPointer(bodyPtr);
-        ForeignMemory.putFloatVolatile(bodyPtr + OFFSET_INV_MASS, invMass);
+        ForeignMemory.setVolatileFloat(bodyPtr + OFFSET_INV_MASS, invMass);
     }
 
 
@@ -236,9 +236,9 @@ public final class PhysicsBody
     @Unsafe
     public static void unsafeSetPosition(long bodyPtr, float x, float y, float z)
     {
-        ForeignMemory.putFloat(bodyPtr + OFFSET_POS, x);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_POS + 4L, y);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_POS + 8L, z);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_POS, x);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_POS + 4L, y);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_POS + 8L, z);
     }
 
     @Unsafe
@@ -272,9 +272,9 @@ public final class PhysicsBody
     @Unsafe
     public static void unsafeSetVelocity(long bodyPtr, float vx, float vy, float vz)
     {
-        ForeignMemory.putFloat(bodyPtr + OFFSET_VEL, vx);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_VEL + 4L, vy);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_VEL + 8L, vz);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_VEL, vx);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_VEL + 4L, vy);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_VEL + 8L, vz);
     }
 
     @Unsafe
@@ -308,9 +308,9 @@ public final class PhysicsBody
     @Unsafe
     public static void unsafeSetForce(long bodyPtr, float fx, float fy, float fz)
     {
-        ForeignMemory.putFloat(bodyPtr + OFFSET_FORCE, fx);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_FORCE + 4L, fy);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_FORCE + 8L, fz);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_FORCE, fx);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_FORCE + 4L, fy);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_FORCE + 8L, fz);
     }
 
     @Unsafe
@@ -322,7 +322,7 @@ public final class PhysicsBody
     @Unsafe
     public static void unsafeSetInverseMass(long bodyPtr, float invMass)
     {
-        ForeignMemory.putFloat(bodyPtr + OFFSET_INV_MASS, invMass);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_INV_MASS, invMass);
     }
 
     @Unsafe
@@ -334,7 +334,7 @@ public final class PhysicsBody
     @Unsafe
     public static void unsafeSetRestitution(long bodyPtr, float restitution)
     {
-        ForeignMemory.putFloat(bodyPtr + OFFSET_RESTITUTION, restitution);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_RESTITUTION, restitution);
     }
 
     @Unsafe
@@ -346,7 +346,7 @@ public final class PhysicsBody
     @Unsafe
     public static void unsafeSetRadius(long bodyPtr, float radius)
     {
-        ForeignMemory.putFloat(bodyPtr + OFFSET_RADIUS, radius);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_RADIUS, radius);
     }
 
     @Unsafe
@@ -362,9 +362,9 @@ public final class PhysicsBody
     @Unsafe
     public static void unsafeSetAabbHalfExtents(long bodyPtr, float dx, float dy, float dz)
     {
-        ForeignMemory.putFloat(bodyPtr + OFFSET_AABB_HALF, dx);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_AABB_HALF + 4L, dy);
-        ForeignMemory.putFloat(bodyPtr + OFFSET_AABB_HALF + 8L, dz);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_AABB_HALF, dx);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_AABB_HALF + 4L, dy);
+        ForeignMemory.setFloat(bodyPtr + OFFSET_AABB_HALF + 8L, dz);
     }
 
     @Unsafe
@@ -376,7 +376,7 @@ public final class PhysicsBody
     @Unsafe
     public static void unsafeSetEntityId(long bodyPtr, int entityId)
     {
-        ForeignMemory.putInt(bodyPtr + OFFSET_ENTITY_ID, entityId);
+        ForeignMemory.setInt(bodyPtr + OFFSET_ENTITY_ID, entityId);
     }
 
 
@@ -389,9 +389,9 @@ public final class PhysicsBody
     public static void unsafeVolatileGetPosition(long bodyPtr, long destVec3Ptr)
     {
         Vec3.set(destVec3Ptr, 
-            ForeignMemory.getFloatVolatile(bodyPtr + OFFSET_POS), 
-            ForeignMemory.getFloatVolatile(bodyPtr + OFFSET_POS + 4L), 
-            ForeignMemory.getFloatVolatile(bodyPtr + OFFSET_POS + 8L)
+            ForeignMemory.getVolatileFloat(bodyPtr + OFFSET_POS), 
+            ForeignMemory.getVolatileFloat(bodyPtr + OFFSET_POS + 4L), 
+            ForeignMemory.getVolatileFloat(bodyPtr + OFFSET_POS + 8L)
         );
     }
 
@@ -399,29 +399,29 @@ public final class PhysicsBody
     @Volatile
     public static void unsafeVolatileSetPosition(long bodyPtr, float x, float y, float z)
     {
-        ForeignMemory.putFloatVolatile(bodyPtr + OFFSET_POS, x);
-        ForeignMemory.putFloatVolatile(bodyPtr + OFFSET_POS + 4L, y);
-        ForeignMemory.putFloatVolatile(bodyPtr + OFFSET_POS + 8L, z);
+        ForeignMemory.setVolatileFloat(bodyPtr + OFFSET_POS, x);
+        ForeignMemory.setVolatileFloat(bodyPtr + OFFSET_POS + 4L, y);
+        ForeignMemory.setVolatileFloat(bodyPtr + OFFSET_POS + 8L, z);
     }
 
     @Unsafe
     @Volatile
     public static float unsafeVolatileGetInverseMass(long bodyPtr)
     {
-        return ForeignMemory.getFloatVolatile(bodyPtr + OFFSET_INV_MASS);
+        return ForeignMemory.getVolatileFloat(bodyPtr + OFFSET_INV_MASS);
     }
 
     @Unsafe
     @Volatile
     public static void unsafeVolatileSetInverseMass(long bodyPtr, float invMass)
     {
-        ForeignMemory.putFloatVolatile(bodyPtr + OFFSET_INV_MASS, invMass);
+        ForeignMemory.setVolatileFloat(bodyPtr + OFFSET_INV_MASS, invMass);
     }
 
     @Unsafe
     @Volatile
     public static float unsafeVolatileGetVelocityY(long bodyPtr)
     {
-        return ForeignMemory.getFloatVolatile(bodyPtr + OFFSET_VEL + 4L);
+        return ForeignMemory.getVolatileFloat(bodyPtr + OFFSET_VEL + 4L);
     }
 }

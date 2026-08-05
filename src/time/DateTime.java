@@ -48,8 +48,8 @@ public final class DateTime {
         long block = ForeignMemory.allocateNative(48);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TypeRegister.DATETIME_SINGLETON);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TypeRegister.DATETIME_SINGLETON);
+        ForeignMemory.setInt(block + 4L, 1);
 
         setEpochMillis(userPtr, epochMillis);
         return userPtr;
@@ -65,7 +65,7 @@ public final class DateTime {
     public static void setEpochMillis(long ptr, long epochMillis) {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         
-        ForeignMemory.putLong(ptr, epochMillis);
+        ForeignMemory.setLong(ptr, epochMillis);
 
         long totalSeconds = epochMillis / 1000;
         int millisecond = (int) (epochMillis % 1000);
@@ -115,14 +115,14 @@ public final class DateTime {
         int year = y + (month <= 2 ? 1 : 0);
 
         // Commit fields to off-heap memory
-        ForeignMemory.putInt(ptr + 8L, year);
-        ForeignMemory.putInt(ptr + 12L, month);
-        ForeignMemory.putInt(ptr + 16L, day);
-        ForeignMemory.putInt(ptr + 20L, hour);
-        ForeignMemory.putInt(ptr + 24L, minute);
-        ForeignMemory.putInt(ptr + 28L, second);
-        ForeignMemory.putInt(ptr + 32L, millisecond);
-        ForeignMemory.putInt(ptr + 36L, dayOfWeek);
+        ForeignMemory.setInt(ptr + 8L, year);
+        ForeignMemory.setInt(ptr + 12L, month);
+        ForeignMemory.setInt(ptr + 16L, day);
+        ForeignMemory.setInt(ptr + 20L, hour);
+        ForeignMemory.setInt(ptr + 24L, minute);
+        ForeignMemory.setInt(ptr + 28L, second);
+        ForeignMemory.setInt(ptr + 32L, millisecond);
+        ForeignMemory.setInt(ptr + 36L, dayOfWeek);
     }
 
     @Draft

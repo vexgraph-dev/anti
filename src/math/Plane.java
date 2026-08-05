@@ -46,14 +46,14 @@ public final class Plane
 
     public static void setDistance(long ptr, float distance)
     {
-        ForeignMemory.putFloat(ptr + 12L, distance);
+        ForeignMemory.setFloat(ptr + 12L, distance);
     }
 
     public static void set(long ptr, float nx, float ny, float nz, float distance)
     {
         Vec3.set(ptr, nx, ny, nz);
         Vec3.normalize(ptr, ptr);
-        ForeignMemory.putFloat(ptr + 12L, distance);
+        ForeignMemory.setFloat(ptr + 12L, distance);
     }
 
     public static float distanceToPoint(long planePtr, float x, float y, float z)

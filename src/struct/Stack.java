@@ -72,18 +72,18 @@ public final class Stack {
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_STACK);
-        ForeignMemory.putInt(headerBlock + 4L, 0); // activeCount/size
+        ForeignMemory.setInt(headerBlock, TYPE_STACK);
+        ForeignMemory.setInt(headerBlock + 4L, 0); // activeCount/size
 
-        ForeignMemory.putInt(userPtr, generic);
-        ForeignMemory.putInt(userPtr + 4L, stride);
-        ForeignMemory.putInt(userPtr + 8L, cap);
-        ForeignMemory.putInt(userPtr + 12L, 0); // padding
+        ForeignMemory.setInt(userPtr, generic);
+        ForeignMemory.setInt(userPtr + 4L, stride);
+        ForeignMemory.setInt(userPtr + 8L, cap);
+        ForeignMemory.setInt(userPtr + 12L, 0); // padding
 
         long bufferBytes = (long) cap * stride;
         long alignedBytes = (bufferBytes + 7L) & ~7L;
         long dataBuffer = ForeignMemory.allocateNative(alignedBytes);
-        ForeignMemory.putLong(userPtr + 16L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 16L, dataBuffer);
 
         return userPtr;
     }
@@ -98,19 +98,19 @@ public final class Stack {
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
 
-        ForeignMemory.putInt(headerBlock, TYPE_STACK);
-        ForeignMemory.putInt(headerBlock + 4L, count); // activeCount/size is set to count
+        ForeignMemory.setInt(headerBlock, TYPE_STACK);
+        ForeignMemory.setInt(headerBlock + 4L, count); // activeCount/size is set to count
 
-        ForeignMemory.putInt(userPtr, generic);
-        ForeignMemory.putInt(userPtr + 4L, stride);
-        ForeignMemory.putInt(userPtr + 8L, cap);
-        ForeignMemory.putInt(userPtr + 12L, 0); // padding
+        ForeignMemory.setInt(userPtr, generic);
+        ForeignMemory.setInt(userPtr + 4L, stride);
+        ForeignMemory.setInt(userPtr + 8L, cap);
+        ForeignMemory.setInt(userPtr + 12L, 0); // padding
 
         long bufferBytes = (long) cap * stride;
         long alignedBytes = (bufferBytes + 7L) & ~7L;
         long dataBuffer = ForeignMemory.allocateNative(alignedBytes);
         ForeignMemory.setMemory(dataBuffer, alignedBytes, (byte) 0);
-        ForeignMemory.putLong(userPtr + 16L, dataBuffer);
+        ForeignMemory.setLong(userPtr + 16L, dataBuffer);
 
         return userPtr;
     }
@@ -123,10 +123,10 @@ public final class Stack {
     }
 
     private static void writeSlot(long slot, int stride, long val) {
-        if (stride == 1) ForeignMemory.putByte(slot, (byte) val);
-        else if (stride == 2) ForeignMemory.putShort(slot, (short) val);
-        else if (stride == 4) ForeignMemory.putInt(slot, (int) val);
-        else ForeignMemory.putLong(slot, val);
+        if (stride == 1) ForeignMemory.setByte(slot, (byte) val);
+        else if (stride == 2) ForeignMemory.setShort(slot, (short) val);
+        else if (stride == 4) ForeignMemory.setInt(slot, (int) val);
+        else ForeignMemory.setLong(slot, val);
     }
 
     // push a value or pointer onto the stack
@@ -149,14 +149,14 @@ public final class Stack {
             ForeignMemory.freeNative(dataBuffer);
 
             dataBuffer = newBuffer;
-            ForeignMemory.putLong(stackPtr + 16L, dataBuffer);
-            ForeignMemory.putInt(stackPtr + 8L, newCap);
+            ForeignMemory.setLong(stackPtr + 16L, dataBuffer);
+            ForeignMemory.setInt(stackPtr + 8L, newCap);
         }
 
         long targetSlot = dataBuffer + ((long) count * stride);
         writeSlot(targetSlot, stride, valueOrPointer);
 
-        ForeignMemory.putInt(stackPtr - 4L, count + 1);
+        ForeignMemory.setInt(stackPtr - 4L, count + 1);
     }
 
     // pop and return the top element from the stack
@@ -172,7 +172,7 @@ public final class Stack {
         long targetSlot = dataBuffer + ((long) targetIndex * stride);
         long value = readSlot(targetSlot, stride);
 
-        ForeignMemory.putInt(stackPtr - 4L, targetIndex);
+        ForeignMemory.setInt(stackPtr - 4L, targetIndex);
 
         return value;
     }
@@ -247,8 +247,8 @@ public final class Stack {
             ForeignMemory.freeNative(dataBuffer);
         }
 
-        ForeignMemory.putInt(headerBlock, 0);
-        ForeignMemory.putInt(headerBlock + 4L, -1);
+        ForeignMemory.setInt(headerBlock, 0);
+        ForeignMemory.setInt(headerBlock + 4L, -1);
         ForeignMemory.freeNative(headerBlock);
     }
 

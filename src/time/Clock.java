@@ -42,17 +42,17 @@ public final class Clock {
         long userPtr = block + 8L;
 
         // Write headers
-        ForeignMemory.putInt(block, TypeRegister.CLOCK_SINGLETON);
-        ForeignMemory.putInt(block + 4L, 1);
+        ForeignMemory.setInt(block, TypeRegister.CLOCK_SINGLETON);
+        ForeignMemory.setInt(block + 4L, 1);
 
         // Initialize state
         long now = System.currentTimeMillis();
-        ForeignMemory.putDouble(userPtr, 1.0); // timeScale
-        ForeignMemory.putLong(userPtr + 8L, now); // baseRealTimeMillis
-        ForeignMemory.putLong(userPtr + 16L, now); // lastTickRealTimeMillis
-        ForeignMemory.putLong(userPtr + 24L, 0L); // virtualTimeMillis
-        ForeignMemory.putLong(userPtr + 32L, 0L); // paused
-        ForeignMemory.putLong(userPtr + 40L, 0L); // padding
+        ForeignMemory.setDouble(userPtr, 1.0); // timeScale
+        ForeignMemory.setLong(userPtr + 8L, now); // baseRealTimeMillis
+        ForeignMemory.setLong(userPtr + 16L, now); // lastTickRealTimeMillis
+        ForeignMemory.setLong(userPtr + 24L, 0L); // virtualTimeMillis
+        ForeignMemory.setLong(userPtr + 32L, 0L); // paused
+        ForeignMemory.setLong(userPtr + 40L, 0L); // padding
 
         return userPtr;
     }
@@ -72,21 +72,21 @@ public final class Clock {
         long elapsedReal = now - lastReal;
         
         // Update last real time
-        ForeignMemory.putLong(ptr + 16L, now);
+        ForeignMemory.setLong(ptr + 16L, now);
 
         long isPaused = ForeignMemory.getLong(ptr + 32L);
         if (isPaused == 0L) {
             double scale = ForeignMemory.getDouble(ptr);
             long virtualElapsed = (long) (elapsedReal * scale);
             long currentVirtual = ForeignMemory.getLong(ptr + 24L);
-            ForeignMemory.putLong(ptr + 24L, currentVirtual + virtualElapsed);
+            ForeignMemory.setLong(ptr + 24L, currentVirtual + virtualElapsed);
         }
     }
 
     @Draft
     public static void setTimeScale(long ptr, double scale) {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.putDouble(ptr, scale);
+        ForeignMemory.setDouble(ptr, scale);
     }
 
     @Draft
@@ -98,7 +98,7 @@ public final class Clock {
     @Draft
     public static void setPaused(long ptr, boolean paused) {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.putLong(ptr + 32L, paused ? 1L : 0L);
+        ForeignMemory.setLong(ptr + 32L, paused ? 1L : 0L);
     }
 
     @Draft
@@ -117,8 +117,8 @@ public final class Clock {
     public static void reset(long ptr) {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         long now = System.currentTimeMillis();
-        ForeignMemory.putLong(ptr + 8L, now);
-        ForeignMemory.putLong(ptr + 16L, now);
-        ForeignMemory.putLong(ptr + 24L, 0L);
+        ForeignMemory.setLong(ptr + 8L, now);
+        ForeignMemory.setLong(ptr + 16L, now);
+        ForeignMemory.setLong(ptr + 24L, 0L);
     }
 }

@@ -34,14 +34,14 @@ public class Choice
         long block = ForeignMemory.allocateNative(8L + len * 16L);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_SINGLETON);
-        ForeignMemory.putInt(block + 4L, len);
+        ForeignMemory.setInt(block, TYPE_SINGLETON);
+        ForeignMemory.setInt(block + 4L, len);
 
         for (int i = 0; i < len; i++) {
             long slotBase = userPtr + (i * 16L);
-            ForeignMemory.putLong(slotBase, objectPtrs[i]);
+            ForeignMemory.setLong(slotBase, objectPtrs[i]);
             long cb = (callbackAddrs != null && i < callbackAddrs.length) ? callbackAddrs[i] : 0L;
-            ForeignMemory.putLong(slotBase + 8L, cb);
+            ForeignMemory.setLong(slotBase + 8L, cb);
         }
 
         return userPtr;

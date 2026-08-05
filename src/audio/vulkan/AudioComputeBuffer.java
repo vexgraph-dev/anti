@@ -102,7 +102,7 @@ public final class AudioComputeBuffer {
             while (true) {
                 long old    = freeHead;
                 long oldRaw = old & 0x0000FFFFFFFFFFFFL;
-                ForeignMemory.putLong(userPtr, oldRaw);
+                ForeignMemory.setLong(userPtr, oldRaw);
                 long gen       = ((old >>> 48) + 1L) & 0xFFFFL;
                 long newTagged = (gen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
                 if (FREE_HEAD_VH.compareAndSet(old, newTagged)) break;
@@ -126,8 +126,8 @@ public final class AudioComputeBuffer {
             long newTagged = (gen << 48) | (next & 0x0000FFFFFFFFFFFFL);
             if (FREE_HEAD_VH.compareAndSet(old, newTagged)) {
                 long block = rawPtr - 8L;
-                ForeignMemory.putInt(block,      TYPE_SINGLETON);
-                ForeignMemory.putInt(block + 4L, 1);
+                ForeignMemory.setInt(block,      TYPE_SINGLETON);
+                ForeignMemory.setInt(block + 4L, 1);
                 return rawPtr;
             }
         }
@@ -199,10 +199,10 @@ public final class AudioComputeBuffer {
             long mappedAddr = pMapped.get(0);
 
             // 7. Store into slot payload
-            ForeignMemory.putLong(slot + OFFSET_VK_BUFFER,  vkBuf);
-            ForeignMemory.putLong(slot + OFFSET_VK_MEMORY,  vkMem);
-            ForeignMemory.putLong(slot + OFFSET_MAPPED_PTR, mappedAddr);
-            ForeignMemory.putLong(slot + OFFSET_SIZE_BYTES, sizeBytes);
+            ForeignMemory.setLong(slot + OFFSET_VK_BUFFER,  vkBuf);
+            ForeignMemory.setLong(slot + OFFSET_VK_MEMORY,  vkMem);
+            ForeignMemory.setLong(slot + OFFSET_MAPPED_PTR, mappedAddr);
+            ForeignMemory.setLong(slot + OFFSET_SIZE_BYTES, sizeBytes);
         }
         return slot;
     }
@@ -221,12 +221,12 @@ public final class AudioComputeBuffer {
         if (vkMem != 0L) vkFreeMemory(device, vkMem, null);
         // Reset header and push back onto free list
         long block = slot - 8L;
-        ForeignMemory.putInt(block,      0);
-        ForeignMemory.putInt(block + 4L, -1);
+        ForeignMemory.setInt(block,      0);
+        ForeignMemory.setInt(block + 4L, -1);
         while (true) {
             long old    = freeHead;
             long oldRaw = old & 0x0000FFFFFFFFFFFFL;
-            ForeignMemory.putLong(slot, oldRaw);
+            ForeignMemory.setLong(slot, oldRaw);
             long gen       = ((old >>> 48) + 1L) & 0xFFFFL;
             long newTagged = (gen << 48) | (slot & 0x0000FFFFFFFFFFFFL);
             if (FREE_HEAD_VH.compareAndSet(old, newTagged)) return;

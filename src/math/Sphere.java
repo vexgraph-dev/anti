@@ -45,13 +45,13 @@ public final class Sphere
 
     public static void setRadius(long ptr, float radius)
     {
-        ForeignMemory.putFloat(ptr + 12L, radius);
+        ForeignMemory.setFloat(ptr + 12L, radius);
     }
 
     public static void set(long ptr, float cx, float cy, float cz, float radius)
     {
         Vec3.set(ptr, cx, cy, cz);
-        ForeignMemory.putFloat(ptr + 12L, radius);
+        ForeignMemory.setFloat(ptr + 12L, radius);
     }
 
     public static boolean containsPoint(long spherePtr, float x, float y, float z)

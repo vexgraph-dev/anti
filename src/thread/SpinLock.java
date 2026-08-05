@@ -35,9 +35,9 @@ public final class SpinLock {
         long block = ForeignMemory.allocateNative(16);
         long userPtr = block + 8L;
 
-        ForeignMemory.putInt(block, TYPE_SPIN_LOCK);
-        ForeignMemory.putInt(block + 4L, 1);
-        ForeignMemory.putInt(userPtr, 0); // 0 = unlocked
+        ForeignMemory.setInt(block, TYPE_SPIN_LOCK);
+        ForeignMemory.setInt(block + 4L, 1);
+        ForeignMemory.setInt(userPtr, 0); // 0 = unlocked
 
         return userPtr;
     }

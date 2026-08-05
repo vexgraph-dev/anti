@@ -166,14 +166,14 @@ public final class HTTPClient {
             }
             destPtr = newPtr;
             currentCap = newCap;
-            ForeignMemory.putLong(userStateAddr, destPtr);
-            ForeignMemory.putLong(userStateAddr + 16L, currentCap);
+            ForeignMemory.setLong(userStateAddr, destPtr);
+            ForeignMemory.setLong(userStateAddr + 16L, currentCap);
         }
 
         ForeignMemory.copy(ptr.address(), destPtr + currentLen, totalBytes);
         currentLen += totalBytes;
-        ForeignMemory.putLong(userStateAddr + 8L, currentLen);
-        ForeignMemory.putByte(destPtr + currentLen, (byte) 0); // null-terminator
+        ForeignMemory.setLong(userStateAddr + 8L, currentLen);
+        ForeignMemory.setByte(destPtr + currentLen, (byte) 0); // null-terminator
 
         return totalBytes;
     }
@@ -326,9 +326,9 @@ public final class HTTPClient {
             long initialCap = 4096L;
             long initialBuf = ForeignMemory.allocateNative(initialCap);
 
-            ForeignMemory.putLong(userStateAddr, initialBuf);
-            ForeignMemory.putLong(userStateAddr + 8L, 0L);
-            ForeignMemory.putLong(userStateAddr + 16L, initialCap);
+            ForeignMemory.setLong(userStateAddr, initialBuf);
+            ForeignMemory.setLong(userStateAddr + 8L, 0L);
+            ForeignMemory.setLong(userStateAddr + 16L, initialCap);
 
             // 6. Set Write Callback and User Data State Address
             curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_WRITEFUNCTION, writeCallbackStub);
@@ -350,7 +350,7 @@ public final class HTTPClient {
                 if (rawBuf != 0L && bytesLen > 0L) {
                     long stringPtr = string.allocateUninitialized((int) bytesLen);
                     ForeignMemory.copy(rawBuf, stringPtr, (int) bytesLen);
-                    ForeignMemory.putByte(stringPtr + bytesLen, (byte) 0);
+                    ForeignMemory.setByte(stringPtr + bytesLen, (byte) 0);
                     ForeignMemory.freeNative(rawBuf);
                     return stringPtr;
                 } else if (rawBuf != 0L) {
