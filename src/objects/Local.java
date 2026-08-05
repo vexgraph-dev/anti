@@ -47,8 +47,7 @@ public class Local
 
     public static void free(long ptr)
     {
-        if (ptr == 0L) return;
-        ForeignMemory.freeNative(ptr - 8L);
+        Object.free(ptr);
     }
 
     public static long get(long ptr)
