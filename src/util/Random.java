@@ -114,4 +114,14 @@ public final class Random {
         long val = nextLong(ptr);
         return (char) (32 + (Math.abs(val) % 95)); // Printable ASCII: space (32) to tilde (126)
     }
+
+    @Draft
+    public static boolean getWeight(long ptr, int weight, int total) {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (total <= 0) return false;
+        if (weight >= total) return true;
+        if (weight <= 0) return false;
+        long val = nextLong(ptr) & 0x7FFFFFFFFFFFFFFFL;
+        return (val % total) < weight;
+    }
 }
