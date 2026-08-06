@@ -176,6 +176,19 @@ presentInfo.sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR);
         return framesPresented;
     }
 
+    /**
+     * Clears the per-swapchain-image fence bookkeeping and resets the frame counter.
+     * Called after a swapchain recreation so stale image->fence mappings from the
+     * previous swapchain don't collide with the newly rebuilt attachments.
+     */
+    public static void resetInFlight() {
+        if (imagesInFlight == 0L) return;
+        for (int i = 0; i < commandBufferCount; i++) {
+            Long.set(imagesInFlight, i, VK_NULL_HANDLE);
+        }
+        currentFrame = 0;
+    }
+
     public static long getCommandBuffer(int index) {
         long commandBufferPtr = CommandBuffer.get(commandBuffersArray, index);
         return CommandBuffer.get(commandBufferPtr);
