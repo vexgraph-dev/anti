@@ -397,6 +397,18 @@ final class macOSWindow {
         }
     }
 
+    public static boolean isMinimized(long pointer) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return false;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            MemorySegment isMiniaturizedSel = getSel(arena, "isMiniaturized");
+            byte minimized = (byte) MSG_SEND_BOOL_RET.invoke(window, isMiniaturizedSel);
+            return minimized != 0;
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
     public static boolean isFullscreen(long pointer) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return false;
         try (Arena arena = Arena.ofConfined()) {
