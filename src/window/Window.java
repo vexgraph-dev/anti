@@ -48,6 +48,26 @@ public final class Window {
     }
 
     /**
+     * Change the Vulkan present mode at runtime (e.g. VK_PRESENT_MODE_IMMEDIATE_KHR or
+     * VK_PRESENT_MODE_FIFO_KHR). This recreates the swapchain and rebuilds render targets.
+     * IMMEDIATE honors TARGET_FPS exactly (0 = uncapped); FIFO vsyncs to the display.
+     */
+    public static void setFpsMode(long pointer, int presentMode) {
+        while (!OS_NATIVE_MUTEX.compareAndSet(false, true)) {
+            Thread.onSpinWait();
+        }
+        try {
+            vulkan.TriangleRenderer.setPresentMode(presentMode);
+        } finally {
+            OS_NATIVE_MUTEX.set(false);
+        }
+    }
+
+    public static int getFpsMode() {
+        return vulkan.Vulkan.getPresentMode();
+    }
+
+    /**
      * Pure park until the deadline. parkNanos is only a hint, so re-park if woken early.
      * Never busy-spins; each iteration sleeps on the OS scheduler.
      */
@@ -83,15 +103,13 @@ public final class Window {
             }
             MINIMIZED_VIOLATION_FLAGGED = false; // un-minimized restores normal caping
 
-            boolean vsyncLocked = vulkan.Vulkan.isVsyncLocked();
-            int display = macOSWindow.getDisplayRefreshRate();
-
-            if (cap > 0) {
-                return vsyncLocked ? Math.min(cap, display) : cap;
+            if (vulkan.Vulkan.isVsyncLocked()) {
+                // FIFO: vsync-locked, so the effective cap is bounded by the display refresh.
+                int display = macOSWindow.getDisplayRefreshRate();
+                return cap > 0 ? Math.min(cap, display) : display;
             }
-            if (vsyncLocked) return display;
-            if (!macOSWindow.isFullscreen(pointer)) return display;
-            return 0;
+            // IMMEDIATE: honor the requested cap exactly; 0 means uncapped (busy wait).
+            return cap;
         }
 
         return cap;
