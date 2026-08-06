@@ -13,6 +13,11 @@ crash-dump_*.txt
 hs_err_pid*.log
 *.log
 
+### Build Tool Outputs ###
+target/
+build/
+.gradle/
+
 ### Dependencies ###
 lib/
 

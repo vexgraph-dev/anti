@@ -1,0 +1,68 @@
+// elephant — Gradle build for the anti engine.
+//
+// Non-standard layout, so we bend a few conventions:
+//   * engine code lives in src/ (flat, no src/main/java)
+//   * the windowed demo lives in scratch/EngineTest.java
+//   * LWJGL 3.4.2 (all-in-one custom distribution) + OSHI are local jars in lib/
+//
+// Requires Gradle 9+ (Java 25 support) and a JDK 25. The windowed demo still
+// runs best through scratch/run.sh, which wires the Vulkan SDK validation layers.
+
+plugins {
+    id 'java'
+}
+
+group = 'anti'
+version = '0.1.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation fileTree(dir: 'lib/lwjgl-release-3.4.2-custom', include: ['*.jar'])
+    implementation fileTree(dir: 'lib/oshi', include: ['*.jar'])
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src'
+            exclude '**/api/**'
+            exclude '**/FFMRegistrationFeature.java'
+        }
+    }
+    // Standalone demo sources: only EngineTest (the rest of scratch/ is scratch).
+    demo {
+        java {
+            srcDir 'scratch'
+            include 'EngineTest.java'
+        }
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+// Custom source sets don't inherit the main classpath automatically.
+configurations {
+    demoCompileClasspath.extendsFrom(configurations.compileClasspath)
+    demoRuntimeClasspath.extendsFrom(configurations.runtimeClasspath)
+}
+
+// The engine compiles against Java 25 preview features.
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+    options.compilerArgs += ['--enable-preview']
+}
+
+// Build + launch the windowed EngineTest demo. For the Vulkan validation
+// layers, source the SDK's setup-env.sh in the shell that starts Gradle
+// (or just use scratch/run.sh, which wires the SDK up automatically).
+tasks.register('runEngine', JavaExec) {
+    group = 'application'
+    description = 'Build and run the windowed EngineTest demo.'
+    dependsOn 'demoClasses'
+    classpath = sourceSets.demo.runtimeClasspath
+    mainClass = 'EngineTest'
+    jvmArgs '--enable-preview', '--enable-native-access=ALL-UNNAMED', '-Xmx64m'
+}
