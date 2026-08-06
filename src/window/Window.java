@@ -27,11 +27,24 @@ public final class Window {
     /** Explicit FPS cap (0 = auto / uncapped). Forces parking even in fullscreen IMMEDIATE mode. */
     public static volatile int TARGET_FPS;
 
+    /** FPS limiter applied while the window is minimized (0 = inherit the normal cap). */
+    public static volatile int MINIMIZED_FPS = 10;
+
+    /** Set once per minimized violation so the "can't do that" error is raised only a single time. */
+    private static volatile boolean MINIMIZED_VIOLATION_FLAGGED;
+
     /** Effective FPS cap, recomputed every iteration on the Main Thread (AppKit must stay on the Main Thread). */
     private static volatile int EFFECTIVE_FPS;
 
     public static void setTargetFps(int fps) {
         TARGET_FPS = Math.max(0, fps);
+        MINIMIZED_VIOLATION_FLAGGED = false;
+    }
+
+    /** Configure the hard FPS limiter enforced while the window is minimized. */
+    public static void setMinimizedFps(int fps) {
+        MINIMIZED_FPS = Math.max(0, fps);
+        MINIMIZED_VIOLATION_FLAGGED = false;
     }
 
     /**
@@ -48,24 +61,40 @@ public final class Window {
     /**
      * Resolve the effective FPS cap on the Main Thread.
      * 0 means no cap (busy wait). FIFO is vsync-locked, so it can never exceed the display refresh.
+     * While minimized the frame rate is clamped to MINIMIZED_FPS; asking for a higher target cap than
+     * that limiter allows is a hard violation, so we raise an error instead of silently lying.
      */
     private static int resolveFps(long pointer) {
         int cap = TARGET_FPS;
 
         if (IS_MAC) {
+            if (macOSWindow.isMinimized(pointer)) {
+                // Minimized: the window is hidden, never waste cycles presenting faster than the limiter.
+                if (cap > MINIMIZED_FPS) {
+                    if (!MINIMIZED_VIOLATION_FLAGGED) {
+                        MINIMIZED_VIOLATION_FLAGGED = true;
+                        throw new IllegalStateException(
+                            "Can't run at " + cap + " FPS while minimized: the minimized limiter "
+                            + "caps at " + MINIMIZED_FPS + " FPS. Lower TARGET_FPS or raise MINIMIZED_FPS."
+                        );
+                    }
+                }
+                return MINIMIZED_FPS;
+            }
+            MINIMIZED_VIOLATION_FLAGGED = false; // un-minimized restores normal caping
+
             boolean vsyncLocked = vulkan.Vulkan.isVsyncLocked();
             int display = macOSWindow.getDisplayRefreshRate();
 
             if (cap > 0) {
-                // Explicit cap: park regardless; FIFO is still bounded by the display refresh.
                 return vsyncLocked ? Math.min(cap, display) : cap;
             }
-            if (vsyncLocked) return display; // FIFO: park at the display refresh, can't present faster anyway
-            if (!macOSWindow.isFullscreen(pointer)) return display; // windowed IMMEDIATE: WindowServer caps it anyway, park instead of spin
-            return 0; // fullscreen IMMEDIATE: busy wait
+            if (vsyncLocked) return display;
+            if (!macOSWindow.isFullscreen(pointer)) return display;
+            return 0;
         }
 
-        return cap; // non-macOS: only an explicit cap parks, otherwise busy wait
+        return cap;
     }
 
     public static long allocate(boolean borderless) {
@@ -127,6 +156,12 @@ public final class Window {
         if (IS_WIN) return windowsWindow.shouldClose(pointer);
         if (IS_LINUX) return linuxWindow.shouldClose(pointer);
         return true;
+    }
+
+    public static boolean isMinimized(long pointer) {
+        if (IS_MAC) return macOSWindow.isMinimized(pointer);
+        // Win/Linux backends are still stubs; no minimized detection yet.
+        return false;
     }
 
     public static void pollEvents() {
