@@ -178,6 +178,12 @@ final class macOSWindow {
         MAC_KEY_MAP[49] = Key.SPACE; MAC_KEY_MAP[50] = Key.GRAVE_ACCENT; MAC_KEY_MAP[51] = Key.BACKSPACE;
         MAC_KEY_MAP[53] = Key.ESCAPE; MAC_KEY_MAP[123] = Key.LEFT; MAC_KEY_MAP[124] = Key.RIGHT;
         MAC_KEY_MAP[125] = Key.DOWN; MAC_KEY_MAP[126] = Key.UP;
+
+        // macOS F-key virtual key codes (physical F1-F12, not the Fn-doubled media keys).
+        MAC_KEY_MAP[122] = Key.F1; MAC_KEY_MAP[120] = Key.F2; MAC_KEY_MAP[99] = Key.F3;
+        MAC_KEY_MAP[118] = Key.F4; MAC_KEY_MAP[96] = Key.F5; MAC_KEY_MAP[97] = Key.F6;
+        MAC_KEY_MAP[98] = Key.F7; MAC_KEY_MAP[100] = Key.F8; MAC_KEY_MAP[101] = Key.F9;
+        MAC_KEY_MAP[109] = Key.F10; MAC_KEY_MAP[103] = Key.F11; MAC_KEY_MAP[111] = Key.F12;
     }
 
     private static MemorySegment getObjcClass(Arena arena, String name) throws Throwable {
