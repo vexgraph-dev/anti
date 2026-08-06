@@ -3,6 +3,11 @@ package window;
 import engine.EngineLoop;
 import annotation.Draft;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.VarHandle;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.concurrent.locks.LockSupport.*;
@@ -14,6 +19,13 @@ import static java.util.concurrent.locks.LockSupport.*;
 public final class Window {
 
     private Window() {}
+
+    // Title mailbox bridging the Core Draw Worker -> Thread 0.
+    // AppKit requires window geometry/title changes on the main thread, so the worker
+    // only *publishes* the FPS label here; Window.run's pump *applies* it every pass.
+    private static final MemorySegment TITLE_MAILBOX = Arena.global().allocate(136);
+    private static final VarHandle TITLE_SEQ_VH = ValueLayout.JAVA_LONG.varHandle();
+    private static long titleLastSeq;
 
     /** Serializes AppKit events with Metal-backed Vulkan swapchain operations on macOS. */
     public static final AtomicBoolean OS_NATIVE_MUTEX =
@@ -139,6 +151,36 @@ public final class Window {
         else if (IS_LINUX) linuxWindow.setTitle(pointer, title);
     }
 
+    /**
+     * CORE worker side: publish an FPS label without touching AppKit. Thread 0's
+     * pump picks it up in applyPendingTitle and applies it on the main thread.
+     */
+    public static void publishTitle(String title) {
+        byte[] b = title.getBytes(StandardCharsets.UTF_8);
+        int len = Math.min(b.length, 127);
+        for (int i = 0; i < len; i++) {
+            TITLE_MAILBOX.set(ValueLayout.JAVA_BYTE, i, b[i]);
+        }
+        TITLE_MAILBOX.set(ValueLayout.JAVA_BYTE, len, (byte) 0);
+        long seq = (long) TITLE_SEQ_VH.getVolatile(TITLE_MAILBOX, 128L) + 1L;
+        TITLE_SEQ_VH.setVolatile(TITLE_MAILBOX, 128L, seq); // release fence after the bytes
+    }
+
+    /** Thread 0 side: apply the latest published label (called from the event pump). */
+    private static void applyPendingTitle(long pointer) {
+        long seq = (long) TITLE_SEQ_VH.getVolatile(TITLE_MAILBOX, 128L);
+        if (seq == titleLastSeq) return;
+        titleLastSeq = seq;
+
+        int len = 0;
+        while (TITLE_MAILBOX.get(ValueLayout.JAVA_BYTE, len) != 0) len++;
+        byte[] buf = new byte[len];
+        for (int i = 0; i < len; i++) {
+            buf[i] = TITLE_MAILBOX.get(ValueLayout.JAVA_BYTE, i);
+        }
+        setTitle(pointer, new String(buf, StandardCharsets.UTF_8));
+    }
+
     public static void setSize(long pointer, int width, int height) {
         if (IS_MAC) macOSWindow.setSize(pointer, width, height);
         else if (IS_WIN) windowsWindow.setSize(pointer, width, height);
@@ -187,6 +229,26 @@ public final class Window {
         return false;
     }
 
+    public static boolean isFullscreen(long pointer) {
+        if (IS_MAC) return macOSWindow.isFullscreen(pointer);
+        return false;
+    }
+
+    public static void toggleFullscreen(long pointer) {
+        if (IS_MAC) macOSWindow.toggleFullscreen(pointer);
+    }
+
+    /** CAMetalLayer vsync: YES = synced to display, NO = uncapped presentation. */
+    public static void setDisplaySyncEnabled(long layerPointer, boolean enabled) {
+        if (IS_MAC) macOSWindow.setDisplaySyncEnabled(layerPointer, enabled);
+    }
+
+    /** Content view size in backing pixels, packed (width &lt;&lt; 32) | height. 0 if unavailable. */
+    public static long getContentSize(long pointer) {
+        if (IS_MAC) return macOSWindow.getContentSize(pointer);
+        return 0L;
+    }
+
     public static void pollEvents() {
         if (IS_MAC) macOSWindow.pollEvents();
         else if (IS_WIN) windowsWindow.pollEvents();
@@ -217,75 +279,16 @@ public final class Window {
     }
 
     public static void run(long pointer, EngineLoop loop) {
-        // Shared flag so we only evaluate the heavy FFI shouldClose() on the Main Thread
-        final AtomicBoolean isClosed = new AtomicBoolean(false);
-
-        // Resolve the initial cap before the loops spin up (Main Thread only)
-        EFFECTIVE_FPS = resolveFps(pointer);
-
-        Thread gameThread = Thread.ofPlatform().name("Anti-Engine-Loop").daemon(false).start(() -> {
-            System.out.println("[Game Thread] Booting up loop...");
-            long nextFrame = java.lang.System.nanoTime();
-            while (!isClosed.get()) {
-                input.Key.dispatchEvents(); // Drain DOD queue & trigger OOP callbacks
-                input.Mouse.dispatchEvents(); // Same for Mouse
-                input.Touch.update(); // Dispatches Touch Events
-                loop.tick();
-
-                // Frame pacing: park until the next frame deadline instead of busy-waiting.
-                int fps = EFFECTIVE_FPS;
-                if (fps > 0) {
-                    long budget = 1_000_000_000L / fps;
-                    if (nextFrame < java.lang.System.nanoTime()) nextFrame = java.lang.System.nanoTime() + budget;
-                    parkUntil(nextFrame);
-                    nextFrame += budget;
-                }
-            }
-            System.out.println("[Game Thread] Shutting down...");
-        });
-
-        System.out.println("[Main Thread] Pumping window events...");
-        long fpsWindowStart = java.lang.System.nanoTime();
-        long fpsWindowFrames = 0L;
-        long nextPoll = java.lang.System.nanoTime();
+        // Thread 0 = pure AppKit event pump. The Core Draw Worker owns the render
+        // loop: it drains the input RingBuffers and drives Renderer.produceOnce()/
+        // presentOnce(), so the FIFO vblank sleep happens on the worker, never here.
+        // This thread spins as fast as the CPU allows, shoving high-precision
+        // keyboard/mouse timestamps into the lock-free input RingBuffers.
+        System.out.println("[Main Thread] Event pump engaged: Thread 0 spinning free.");
         while (!shouldClose(pointer)) {
-            while (!OS_NATIVE_MUTEX.compareAndSet(false, true)) {
-                Thread.onSpinWait();
-            }
-            try {
-                pollEvents();
-                // Recompute the cap each iteration; fullscreen/refresh state must be read on the Main Thread.
-                EFFECTIVE_FPS = resolveFps(pointer);
-            } finally {
-                OS_NATIVE_MUTEX.set(false);
-            }
-
-            long now = java.lang.System.nanoTime();
-            long presented = vulkan.Renderer.getFramesPresented();
-            if (now - fpsWindowStart >= 1_000_000_000L) {
-                long elapsed = now - fpsWindowStart;
-                long deltaFrames = presented - fpsWindowFrames;
-                double fps = deltaFrames * 1_000_000_000.0 / elapsed;
-                setTitle(pointer, String.format("Anti Engine | %.1f FPS", fps));
-                fpsWindowStart = now;
-                fpsWindowFrames = presented;
-            }
-
-            int fps = EFFECTIVE_FPS;
-            if (fps > 0) {
-                long budget = 1_000_000_000L / fps;
-                if (nextPoll < now) nextPoll = now + budget;
-                parkUntil(nextPoll);
-                nextPoll += budget;
-            }
+            applyPendingTitle(pointer); // CORE worker's FPS label -> AppKit (main thread only)
+            pollEvents();
         }
-        
-        // Window was closed; notify the Game Thread to stop
-        isClosed.set(true);
-        try {
-            gameThread.join();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        System.out.println("[Main Thread] Window closed. Releasing Thread 0.");
     }
 }
