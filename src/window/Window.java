@@ -67,6 +67,11 @@ public final class Window {
         return vulkan.Vulkan.getPresentMode();
     }
 
+    /** True when the swapchain is currently vsync-locked (FIFO); false otherwise. */
+    public static boolean isVsync() {
+        return vulkan.Vulkan.isVsyncLocked();
+    }
+
     /**
      * Pure park until the deadline. parkNanos is only a hint, so re-park if woken early.
      * Never busy-spins; each iteration sleeps on the OS scheduler.
