@@ -760,9 +760,38 @@ final class macOSWindow {
                         MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
                         double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
                         double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
-                        
-                        // Convert bottom-left origin to top-left origin if desired, or just pass raw
-                        Mouse.pushMoveEvent(x, y);
+
+                        // Standardize top-left origin inversion, mirroring waitEvents()
+                        MemorySegment windowSel = getSel(arena, "window");
+                        MemorySegment eventWindow = (MemorySegment) MSG_SEND_PTR.invoke(event, windowSel);
+                        if (eventWindow.address() != 0L) {
+                            MemorySegment contentViewSel = getSel(arena, "contentView");
+                            MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(eventWindow, contentViewSel);
+                            if (contentView.address() != 0L) {
+                                MemorySegment frameSel = getSel(arena, "frame");
+                                MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, contentView, frameSel);
+                                double height = rect.get(ValueLayout.JAVA_DOUBLE, 24);
+                                y = height - y;
+                            }
+                        }
+
+                        // Differentiate between Move and Drag
+                        if (eventType == 5) {
+                            Mouse.pushMoveEvent(x, y);
+                        } else {
+                            int dragButton;
+                            if (eventType == 6)
+                                dragButton = Mouse.LEFT;
+                            else if (eventType == 7)
+                                dragButton = Mouse.RIGHT;
+                            else // defaults to 27, unless more buttons are added
+                            {
+                                MemorySegment buttonNumberSel = getSel(arena, "buttonNumber");
+                                long btn = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
+                                dragButton = (int) btn;
+                            }
+                            Mouse.pushDragEvent(dragButton, x, y);
+                        }
                     } catch (Throwable t) {
                         throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
                     }
