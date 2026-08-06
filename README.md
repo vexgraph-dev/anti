@@ -29,11 +29,52 @@ I leverage Google **[Antigravity](https://antigravity.google)** as my primary co
 
 If you are exploring this codebase, be aware that it relies on a very specific set of native libraries to interface with the operating system and hardware directly. 
 
-
 ### Core Dependencies
 
 *   **[OSHI](https://github.com/oshi/oshi)**: Used for low-level operating system and hardware information retrieval without relying on standard Java wrappers.
 *   **[LWJGL 3](https://www.lwjgl.org/)**: The Lightweight Java Game Library. Used for raw native bindings to Vulkan, OpenGL, GLFW, OpenAL, and other C-libraries.
+
+Both are vendored locally in `lib/` (an all-in-one LWJGL 3.4.2 custom distribution plus the OSHI FFM fork), so no network fetch is needed for the JVM path.
+
+### Prerequisites
+
+*   **JDK 25** — GraalVM 25 recommended (see §11 of `preferences.txt` for the native-image compatibility rules); any JDK 25 works for the JVM path. `scratch/run.sh` auto-detects it (`JAVA_HOME` overrides).
+*   **Vulkan SDK** (macOS, optional) — enables validation layers. Auto-detected from the newest install under `~/VulkanSDK`; `VULKAN_SDK` overrides.
+
+### How to Run
+
+The canonical path builds everything and launches the windowed demo:
+
+```bash
+bash scratch/run.sh
+```
+
+`run.sh` is portable (no hardcoded user paths). It compiles all of `src/` plus `scratch/EngineTest.java` with `--release 25 --enable-preview`, then runs `EngineTest` under the same flags.
+
+### Alternative Builds
+
+Gradle ("elephant"):
+
+```bash
+./gradlew compileJava      # build the engine
+./gradlew runEngine        # build + launch the windowed EngineTest demo
+```
+
+Requires a JDK 25 — point `JAVA_HOME` at one if `gradlew` picks up a different JDK. For validation layers, `runEngine` expects the Vulkan SDK env (source the SDK's `setup-env.sh` first, as `run.sh` does automatically); otherwise it runs with validation unavailable.
+
+Maven:
+
+```bash
+mvn compile                # build the engine library (LWJGL from Central, OSHI from lib/)
+```
+
+Note: `mvn compile` builds the engine only — the `scratch/` demos are not part of the Maven build. Launch the demo via `scratch/run.sh` or `./gradlew runEngine` instead.
+
+### Engine Runtime Notes
+
+*   The demo boots the engine's **Core Draw Worker** (`thread.DrawThread`) to own the whole render loop — input dispatch, debounced swapchain rebuilds, and `produceOnce()`/`presentOnce()`. With a FIFO swapchain the worker sleeps on the display refresh (60/120Hz) right there; **Thread 0 is a pure AppKit event pump** that spins free and never sleeps.
+*   On macOS the first launch auto-relaunches with `-XstartOnFirstThread` (the trampoline inside `EngineTest`).
+*   Live hotkeys: `1`/`F1` and `5`/`F5` = FIFO (vsync), `2`-`4`/`F2`-`F4` = IMMEDIATE (uncapped or capped), toggling the swapchain present mode at runtime.
 
 ### How to Compile and Test
 
