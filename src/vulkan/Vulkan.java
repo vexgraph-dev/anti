@@ -397,6 +397,8 @@ public final class Vulkan {
             }
         }
         presentMode = chosenMode;
+        System.out.println("Vulkan present mode chosen: " + chosenMode
+                + (chosenMode == VK_PRESENT_MODE_FIFO_KHR ? " (FIFO/vsync)" : " (IMMEDIATE)"));
 
         VkSwapchainCreateInfoKHR createInfo = VkSwapchainCreateInfoKHR.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
