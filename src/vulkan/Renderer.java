@@ -131,6 +131,10 @@ public final class Renderer {
             VkSubmitInfo.Buffer submitInfos = VkSubmitInfo.calloc(1, stack);
             VkSubmitInfo submitInfo = submitInfos.get(0);
             submitInfo.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO);
+            // LWJGL won't auto-size these counts because each one dictates the length of multiple
+            // arrays (waitSemaphoreCount drives pWaitSemaphores AND pWaitDstStageMask). After calloc
+            // they are 0, which makes Vulkan silently ignore the acquire wait below.
+            submitInfo.waitSemaphoreCount(1); // not auto-sized: dictates pWaitSemaphores AND pWaitDstStageMask
             submitInfo.pWaitSemaphores(stack.longs(imageAvailable));
             submitInfo.pWaitDstStageMask(stack.ints(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT));
             submitInfo.pCommandBuffers(stack.pointers(commandBuffer));
@@ -147,8 +151,9 @@ public final class Renderer {
 
                 // Step 6: Present
                 VkPresentInfoKHR presentInfo = VkPresentInfoKHR.calloc(stack);
-                presentInfo.sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR);
+presentInfo.sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR);
                 presentInfo.pWaitSemaphores(stack.longs(renderFinished));
+                presentInfo.swapchainCount(1); // not auto-dimensional: dictates pSwapchains + pImageIndices + pResults
                 presentInfo.pSwapchains(stack.longs(swapchain));
                 presentInfo.pImageIndices(imageIndex);
 
