@@ -5,6 +5,7 @@ import annotation.Intention;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VkAttachmentDescription;
+import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkAttachmentReference;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
@@ -55,14 +56,7 @@ public final class TriangleRenderer {
         if (initialized) return;
 
         var device = Vulkan.getDevice();
-        int imageCount = Vulkan.getSwapchainImageCount();
         int format = Vulkan.getSwapchainFormat();
-
-        imageViews = Long.allocateArray(imageCount);
-        for (int i = 0; i < imageCount; i++) {
-            long image = Long.get(Vulkan.getSwapchainImages(), i);
-            Long.set(imageViews, i, VKImageView.create(device, image, format, VK_IMAGE_ASPECT_COLOR_BIT));
-        }
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkAttachmentDescription.Buffer attachments = VkAttachmentDescription.calloc(1, stack)
@@ -98,8 +92,33 @@ public final class TriangleRenderer {
                     .pDependencies(dependency);
 
             renderPass = RenderPass.create(device, createInfo);
+        }
 
-            framebuffers = Long.allocateArray(imageCount);
+        vertexShader = createShaderModule("hello_triangle.vert.spv");
+        fragmentShader = createShaderModule("hello_triangle.frag.spv");
+        createGraphicsPipeline();
+
+        commandPool = CommandPool.create(device, Vulkan.getGraphicsQueueFamilyIndex());
+        Renderer.init(device, commandPool);
+        createSwapchainAttachments(device);
+        recordCommandBuffers();
+        initialized = true;
+        System.out.println("Hello Triangle graphics pipeline ready.");
+    }
+
+    /** Builds swapchain-dependent image views and framebuffers against the current swapchain images. */
+    private static void createSwapchainAttachments(VkDevice device) {
+        int imageCount = Vulkan.getSwapchainImageCount();
+        int format = Vulkan.getSwapchainFormat();
+
+        imageViews = Long.allocateArray(imageCount);
+        for (int i = 0; i < imageCount; i++) {
+            long image = Long.get(Vulkan.getSwapchainImages(), i);
+            Long.set(imageViews, i, VKImageView.create(device, image, format, VK_IMAGE_ASPECT_COLOR_BIT));
+        }
+
+        framebuffers = Long.allocateArray(imageCount);
+        try (MemoryStack stack = MemoryStack.stackPush()) {
             for (int i = 0; i < imageCount; i++) {
                 LongBuffer attachment = stack.mallocLong(1);
                 attachment.put(0, VKImageView.get(Long.get(imageViews, i)));
@@ -112,16 +131,35 @@ public final class TriangleRenderer {
                 ));
             }
         }
+    }
 
-        vertexShader = createShaderModule("hello_triangle.vert.spv");
-        fragmentShader = createShaderModule("hello_triangle.frag.spv");
-        createGraphicsPipeline();
+    /** Frees swapchain-dependent image views and framebuffers (must happen before the swapchain is destroyed). */
+    private static void destroySwapchainAttachments(VkDevice device) {
+        for (int i = 0; i < Vulkan.getSwapchainImageCount(); i++) {
+            VKFramebuffer.destroy(Long.get(framebuffers, i), device);
+            VKImageView.destroy(Long.get(imageViews, i), device);
+        }
+        Long.free(framebuffers);
+        Long.free(imageViews);
+        framebuffers = 0L;
+        imageViews = 0L;
+    }
 
-        commandPool = CommandPool.create(device, Vulkan.getGraphicsQueueFamilyIndex());
-        Renderer.init(device, commandPool);
+    /**
+     * Recreates the swapchain with a different present mode and rebuilds every
+     * swapchain-dependent resource. Must be invoked under the engine's native mutex
+     * so it cannot race the render loop.
+     */
+    public static void setPresentMode(int mode) {
+        if (!initialized) return;
+        var device = Vulkan.getDevice();
+        vkDeviceWaitIdle(device);
+        destroySwapchainAttachments(device);
+        Vulkan.setPresentMode(mode);
+        createSwapchainAttachments(device);
         recordCommandBuffers();
-        initialized = true;
-        System.out.println("Hello Triangle graphics pipeline ready.");
+        Renderer.resetInFlight();
+        System.out.println("TriangleRenderer rebuilt for present mode: " + mode);
     }
 
     private static long createShaderModule(String name) {
@@ -279,16 +317,9 @@ public final class TriangleRenderer {
         VKShaderModule.destroy(fragmentShader, device);
         VKShaderModule.destroy(vertexShader, device);
 
-        for (int i = 0; i < Vulkan.getSwapchainImageCount(); i++) {
-            VKFramebuffer.destroy(Long.get(framebuffers, i), device);
-            VKImageView.destroy(Long.get(imageViews, i), device);
-        }
+        destroySwapchainAttachments(device);
 
         RenderPass.destroy(renderPass, device);
-        Long.free(framebuffers);
-        Long.free(imageViews);
-        framebuffers = 0L;
-        imageViews = 0L;
         renderPass = 0L;
         commandPool = 0L;
         pipeline = 0L;
