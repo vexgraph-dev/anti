@@ -132,6 +132,32 @@ public final class Vulkan {
         return presentMode == VK_PRESENT_MODE_FIFO_KHR;
     }
 
+    public static int getPresentMode() {
+        return presentMode;
+    }
+
+    /**
+     * Recreates the swapchain with a different present mode at runtime.
+     * Must be called with the device idle and after the presentation attachments
+     * (image views / framebuffers) that reference the old swapchain images are freed.
+     */
+    public static void setPresentMode(int mode) {
+        if (device == null) return;
+        vkDeviceWaitIdle(device);
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            if (swapchain != VK_NULL_HANDLE) {
+                vkDestroySwapchainKHR(device, swapchain, null);
+                swapchain = VK_NULL_HANDLE;
+            }
+            if (swapchainImages != 0L) {
+                Long.free(swapchainImages);
+                swapchainImages = 0L;
+            }
+            initSwapchain(stack, swapchainWidth, swapchainHeight, mode);
+        }
+        System.out.println("Vulkan swapchain recreated with present mode: " + mode);
+    }
+
     private static void initInstance(MemoryStack stack) {
         // VK_EXT_debug_utils may be advertised by the validation layer rather than
         // by the bare loader, so do not reject the layer based on global extension
