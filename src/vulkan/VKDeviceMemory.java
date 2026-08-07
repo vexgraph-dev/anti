@@ -579,6 +579,15 @@ public final class VKDeviceMemory {
         }
     }
 
+    /** Binds this memory to a raw VkImage handle (see VKImage.getImage). */
+    public static void bindImage(long enginePtr, VkDevice device, long vkImage, long offset) {
+        if (enginePtr == 0L || vkImage == 0L) return;
+        long vkMemory = get(enginePtr);
+        if (vkBindImageMemory(device, vkImage, vkMemory, offset) != VK_SUCCESS) {
+            throw new RuntimeException("Failed to bind VKImage to VKDeviceMemory!");
+        }
+    }
+
     public static long map(long enginePtr, VkDevice device, long offset, long size) {
         if (enginePtr == 0L) return 0L;
         long vkMemory = get(enginePtr);
