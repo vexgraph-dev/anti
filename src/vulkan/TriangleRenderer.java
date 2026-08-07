@@ -416,7 +416,6 @@ public final class TriangleRenderer {
         if (!initialized) return;
 
         var device = Vulkan.getDevice();
-        vkDeviceWaitIdle(device);
         Renderer.destroy(device, commandPool, blitCommandPool);
         CommandPool.destroy(commandPool, device);
         CommandPool.destroy(blitCommandPool, device);
