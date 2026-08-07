@@ -49,23 +49,51 @@ public final class SpinLock {
         ForeignMemory.freeNative(block);
     }
 
-    // spin until lock is acquired
+    // lock word: 0 = free; otherwise owner-encoded: (threadId & 0x3FFFFFFF) << 1 | 1.
+    // Single word so embedded one-word locks (e.g. RingBuffer header) keep working.
+
+    private static int ticket(long threadId) {
+        return (int) ((threadId & 0x3FFFFFFFL) << 1) | 1;
+    }
+
+    private static long ownerOf(int held) {
+        return (held >>> 1) & 0x3FFFFFFFL;
+    }
+
+    // spin until lock is acquired (unbounded; use tryLock(lockPtr, timeoutNanos) for deadlock safety)
     public static void lock(long lockPtr) {
         if (lockPtr == 0L) throw new NullPointerException("Locking NULL spinlock pointer!");
-        while (!(boolean) INT_VH.compareAndSet(GLOBAL_MEMORY, lockPtr, 0, 1)) {
+        int ticket = ticket(Thread.currentThread().threadId());
+        while (!(boolean) INT_VH.compareAndSet(GLOBAL_MEMORY, lockPtr, 0, ticket)) {
             Thread.onSpinWait();
         }
     }
 
-    // try to acquire lock, returns true if successful
+    // try to acquire lock immediately, returns true if successful
     public static boolean tryLock(long lockPtr) {
         if (lockPtr == 0L) throw new NullPointerException("Locking NULL spinlock pointer!");
-        return (boolean) INT_VH.compareAndSet(GLOBAL_MEMORY, lockPtr, 0, 1);
+        return (boolean) INT_VH.compareAndSet(GLOBAL_MEMORY, lockPtr, 0, ticket(Thread.currentThread().threadId()));
     }
 
-    // release lock
+    // try to acquire lock within timeoutNanos; returns false on timeout, never spins forever
+    public static boolean tryLock(long lockPtr, long timeoutNanos) {
+        if (lockPtr == 0L) throw new NullPointerException("Locking NULL spinlock pointer!");
+        long deadline = System.nanoTime() + timeoutNanos;
+        while (!tryLock(lockPtr)) {
+            if (timeoutNanos >= 0L && System.nanoTime() >= deadline) return false;
+            Thread.onSpinWait();
+        }
+        return true;
+    }
+
+    // release lock, verifying the calling thread owns it
     public static void unlock(long lockPtr) {
         if (lockPtr == 0L) throw new NullPointerException("Unlocking NULL spinlock pointer!");
+        long owner = Thread.currentThread().threadId();
+        int held = (int) INT_VH.getVolatile(GLOBAL_MEMORY, lockPtr);
+        if (held != 0 && ownerOf(held) != owner) {
+            throw new IllegalStateException("SpinLock unlock by non-owning thread 0x" + Long.toHexString(owner));
+        }
         INT_VH.setVolatile(GLOBAL_MEMORY, lockPtr, 0);
     }
 
