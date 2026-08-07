@@ -55,12 +55,16 @@ public final class Struct {
                 ForeignMemory.freeNative(offsetsPtr);
             }
         }
+        nextStructId = 1;
         ForeignMemory.freeNative(REGISTRY_BASE);
     }
 
     private static int nextStructId = 1;
 
     public static synchronized int construct(int... fieldClassIds) {
+        if (nextStructId > MAX_STRUCTS) {
+            throw new IllegalStateException("Struct ID space exhausted: at most " + MAX_STRUCTS + " structs can be constructed");
+        }
         int id = TypeRegister.CUSTOM_STRUCT + nextStructId++;
         define(id, fieldClassIds);
         return id;
@@ -88,11 +92,8 @@ public final class Struct {
 
         long slot = REGISTRY_BASE + (index * SLOT_SIZE);
 
-        // Free previous if redefined
         long prevFieldTypesPtr = ForeignMemory.getLong(slot + 8L);
         long prevOffsetsPtr = ForeignMemory.getLong(slot + 16L);
-        if (prevFieldTypesPtr != 0L) ForeignMemory.freeNative(prevFieldTypesPtr);
-        if (prevOffsetsPtr != 0L) ForeignMemory.freeNative(prevOffsetsPtr);
 
         int currentOffset = 0;
         int len = fieldClassIds.length;
@@ -105,10 +106,18 @@ public final class Struct {
             currentOffset += Stride.get(fieldClassIds[i]);
         }
 
+        // Publish the new layout BEFORE freeing the old one (write-then-free) so
+        // concurrent readers never dereference freed arrays. Volatile-ordered
+        // pointer stores: a reader acquiring the new offsetsPtr is guaranteed to
+        // also observe the new fieldTypesPtr and count (happens-before).
         ForeignMemory.setInt(slot, currentOffset); // stride
         ForeignMemory.setInt(slot + 4L, len);      // fieldsCount
-        ForeignMemory.setLong(slot + 8L, fieldTypesPtr);
-        ForeignMemory.setLong(slot + 16L, offsetsPtr);
+        ForeignMemory.setVolatileLong(slot + 8L, fieldTypesPtr);
+        ForeignMemory.setVolatileLong(slot + 16L, offsetsPtr);
+
+        // Free the previous layout only after the new pointers are visible.
+        if (prevFieldTypesPtr != 0L) ForeignMemory.freeNative(prevFieldTypesPtr);
+        if (prevOffsetsPtr != 0L) ForeignMemory.freeNative(prevOffsetsPtr);
     }
 
     private static void checkFieldType(int generic, int fieldIndex, int expectedClassId) {
@@ -118,7 +127,7 @@ public final class Struct {
         }
         long slot = REGISTRY_BASE + (index * SLOT_SIZE);
         int fieldsCount = ForeignMemory.getInt(slot + 4L);
-        long fieldTypesPtr = ForeignMemory.getLong(slot + 8L);
+        long fieldTypesPtr = ForeignMemory.getVolatileLong(slot + 8L);
 
         if (fieldTypesPtr == 0L) {
             throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
@@ -141,7 +150,7 @@ public final class Struct {
     private static int getOffset(int generic, int fieldIndex) {
         int index = generic - TypeRegister.CUSTOM_STRUCT;
         long slot = REGISTRY_BASE + (index * SLOT_SIZE);
-        long offsetsPtr = ForeignMemory.getLong(slot + 16L);
+        long offsetsPtr = ForeignMemory.getVolatileLong(slot + 16L);
         return ForeignMemory.getInt(offsetsPtr + fieldIndex * 4L);
     }
 
@@ -166,8 +175,11 @@ public final class Struct {
     private static long getFieldAddress(int generic, long userPtr, int elementIndex, int fieldIndex, int fieldClassId) {
         int type = ForeignMemory.getInt(userPtr - 8L);
         int offset = getOffset(generic, fieldIndex);
+        int length = ForeignMemory.getInt(userPtr - 4L);
+        if (elementIndex < 0 || elementIndex >= length) {
+            throw new IndexOutOfBoundsException("Struct element index " + elementIndex + " out of bounds (length: " + length + ")");
+        }
         if (TypeRegister.isStructSOA(type)) {
-            int length = ForeignMemory.getInt(userPtr - 4L);
             int fieldStride = Stride.get(fieldClassId);
             return userPtr + (long) length * offset + (long) elementIndex * fieldStride;
         } else {
