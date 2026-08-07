@@ -89,24 +89,25 @@ public final class Mouse {
         long packed = (timeDeltaMicros << 18) | (((long) modifiers & 0xF) << 14) | (((long) button & 0xFFF) << 2) | (action & 0x3);
         RingBuffer.offer(QUEUE_PTR, packed);
     }
-    
+
     public static void pushMoveEvent(double x, double y) {
-        POS.set(ValueLayout.JAVA_DOUBLE, 0, x);
-        POS.set(ValueLayout.JAVA_DOUBLE, 8, y);
-        long packed = (255L << 8) | 5L; 
+        // Pack x and y into the 64-bit token (using 16 bits each for coords)
+        long packed = (255L << 8) | 5L;
+        packed |= (((long) (short) x & 0xFFFF) << 16);
+        packed |= (((long) (short) y & 0xFFFF) << 32);
         RingBuffer.offer(QUEUE_PTR, packed);
     }
-    
+
     public static void pushDragEvent(int button, double x, double y) {
-        POS.set(ValueLayout.JAVA_DOUBLE, 0, x);
-        POS.set(ValueLayout.JAVA_DOUBLE, 8, y);
-        long packed = ((long) button << 8) | 7L; 
+        long packed = ((long) button << 8) | 7L;
+        packed |= (((long) (short) x & 0xFFFF) << 16);
+        packed |= (((long) (short) y & 0xFFFF) << 32);
         RingBuffer.offer(QUEUE_PTR, packed);
     }
     
     public static void pushScrollEvent(double dx, double dy) {
-        short sdx = (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, dx * 100.0));
-        short sdy = (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, dy * 100.0));
+        short sdx = (short) Math.clamp(dx * 100.0, Short.MIN_VALUE, Short.MAX_VALUE);
+        short sdy = (short) Math.clamp(dy * 100.0, Short.MIN_VALUE, Short.MAX_VALUE);
         long packed = (254L << 8) | 6L; 
         packed |= ((long) (sdx & 0xFFFF) << 16);
         packed |= ((long) (sdy & 0xFFFF) << 32);
@@ -122,33 +123,29 @@ public final class Mouse {
 
     public static double getX() { return POS.get(ValueLayout.JAVA_DOUBLE, 0); }
     public static double getY() { return POS.get(ValueLayout.JAVA_DOUBLE, 8); }
-    
+
     public static void dispatchEvents() {
         long packed;
         while ((packed = RingBuffer.poll(QUEUE_PTR)) != 0L) {
             int action = (int) (packed & 0xFF);
-            int button = (int) ((packed >> 8) & 0xFF); // Used for non-button events initially
-            
-            // Re-extract action for button events which use 0x3 mask
+            int button = (int) ((packed >> 8) & 0xFF);
+
+            // Button Events
             if ((packed & 0x3) <= 2 && (action != 5 && action != 6 && action != 7 && action != 8)) {
                 action = (int) (packed & 0x3);
                 button = (int) ((packed >> 2) & 0xFFF);
                 int modifiers = (int) ((packed >> 14) & 0xF);
                 long timeDeltaMicros = (packed >>> 18) & 0x3FFFFFFFFFFFL;
                 long exactNanos = Key.ENGINE_START_NANOS + (timeDeltaMicros * 1000L);
-                
+
                 int mappedMods = 0;
                 if ((modifiers & 1) != 0) mappedMods |= Key.MOD_SHIFT;
                 if ((modifiers & 2) != 0) mappedMods |= Key.MOD_CONTROL;
                 if ((modifiers & 4) != 0) mappedMods |= Key.MOD_OPTION;
                 if ((modifiers & 8) != 0) mappedMods |= Key.MOD_COMMAND;
-                
+
                 int mouseEvent = button | mappedMods;
-                
-                if (action == 1) System.out.println("[Mouse Down] " + getString(button));
-                else if (action == 0) System.out.println("[Mouse Up] " + getString(button));
-                else if (action == 2) System.out.println("[Mouse Repeat] " + getString(button));
-                
+
                 for (int i = 0; i < listenerCount; i++) {
                     if (action == 1) listeners[i].onMouseDown(mouseEvent, exactNanos);
                     else if (action == 0) listeners[i].onMouseUp(mouseEvent, exactNanos);
@@ -156,47 +153,48 @@ public final class Mouse {
                 }
                 continue;
             }
-            
+
+            // Mouse Move
             if (button == 255 && action == 5) {
-                double x = POS.get(ValueLayout.JAVA_DOUBLE, 0);
-                double y = POS.get(ValueLayout.JAVA_DOUBLE, 8);
-                System.out.println("[Move Debug] x: " + x + " y: " + y);
+                // Unpack directly from the 64-bit token
+                double x = (short) ((packed >> 16) & 0xFFFF);
+                double y = (short) ((packed >> 32) & 0xFFFF);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onMouseMove(x, y);
                 }
                 continue;
             }
-            
+
+            // Mouse Scroll
             if (button == 254 && action == 6) {
                 double dx = (short) ((packed >> 16) & 0xFFFF) / 100.0;
                 double dy = (short) ((packed >> 32) & 0xFFFF) / 100.0;
-                System.out.println("[Scroll Debug] dx: " + dx + " dy: " + dy);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onMouseScroll(dx, dy);
                 }
                 continue;
             }
-            
+
+            // Mouse Drag
             if (action == 7) {
-                double x = POS.get(ValueLayout.JAVA_DOUBLE, 0);
-                double y = POS.get(ValueLayout.JAVA_DOUBLE, 8);
-                System.out.println("[Drag Debug] button: " + button + " x: " + x + " y: " + y);
+                // Unpack directly from the 64-bit token
+                double x = (short) ((packed >> 16) & 0xFFFF);
+                double y = (short) ((packed >> 32) & 0xFFFF);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onMouseDrag(button, x, y);
                 }
                 continue;
             }
-            
+
+            // Mouse Zoom
             if (action == 8) {
                 int floatBits = (int) ((packed >> 16) & 0xFFFFFFFFL);
                 double magnification = Float.intBitsToFloat(floatBits);
-                System.out.println("[Zoom Debug] magnification: " + magnification);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onMouseZoom(magnification);
                 }
                 continue;
             }
-            
         }
     }
     
@@ -218,11 +216,11 @@ public final class Mouse {
     public static int getKeystrokeAmount(int button) { return STATE.get(ValueLayout.JAVA_INT, (button * 32L) + 16L); }
 
     public static String getString(int button) {
-        switch(button) {
-            case 0: return "Left";
-            case 1: return "Right";
-            case 2: return "Middle";
-            default: return "Button " + (button + 1);
-        }
+        return switch(button) {
+            case 0 -> "Left";
+            case 1 -> "Right";
+            case 2 -> "Middle";
+            default -> "Button " + (button + 1);
+        };
     }
 }
