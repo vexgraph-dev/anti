@@ -5,22 +5,29 @@ import annotation.Intention;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VkAttachmentDescription;
+import org.lwjgl.vulkan.VkClearColorValue;
+import org.lwjgl.vulkan.VkClearValue;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkAttachmentReference;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
+import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
+import org.lwjgl.vulkan.VkOffset2D;
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
 import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineDynamicStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
+import org.lwjgl.vulkan.VkPushConstantRange;
+import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassCreateInfo;
-import org.lwjgl.vulkan.VkShaderModuleCreateInfo;
 import org.lwjgl.vulkan.VkSubpassDependency;
 import org.lwjgl.vulkan.VkSubpassDescription;
+import org.lwjgl.vulkan.VkViewport;
 import primitive.Long;
 
 import java.io.IOException;
@@ -29,7 +36,6 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 import static org.lwjgl.vulkan.VK10.*;
 
 /**
@@ -40,15 +46,19 @@ import static org.lwjgl.vulkan.VK10.*;
 @Intention("Builds the smallest Vulkan color-only render path before shader and draw submission integration.")
 public final class TriangleRenderer {
 
-    private static long imageViews;
+    private static long offscreenImages;
     private static long framebuffers;
     private static long renderPass;
     private static long commandPool;
+    private static long blitCommandPool;
     private static long vertexShader;
     private static long fragmentShader;
     private static long pipelineLayout;
     private static long pipeline;
+    private static int offscreenWidth;
+    private static int offscreenHeight;
     private static boolean initialized;
+    private static int offscreenImageCount;
 
     private TriangleRenderer() {}
 
@@ -67,7 +77,7 @@ public final class TriangleRenderer {
                     .stencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE)
                     .stencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
                     .initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
-                    .finalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+                    .finalLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
             VkAttachmentReference.Buffer colorReference = VkAttachmentReference.calloc(1, stack)
                     .attachment(0)
@@ -99,50 +109,79 @@ public final class TriangleRenderer {
         createGraphicsPipeline();
 
         commandPool = CommandPool.create(device, Vulkan.getGraphicsQueueFamilyIndex());
-        Renderer.init(device, commandPool);
-        createSwapchainAttachments(device);
+        blitCommandPool = CommandPool.create(device, Vulkan.getGraphicsQueueFamilyIndex());
+        createOffscreenAttachments(device);
+        Renderer.init(device, commandPool, blitCommandPool, offscreenImageCount);
         recordCommandBuffers();
         initialized = true;
         System.out.println("Hello Triangle graphics pipeline ready.");
     }
 
-    /** Builds swapchain-dependent image views and framebuffers against the current swapchain images. */
-    private static void createSwapchainAttachments(VkDevice device) {
-        int imageCount = Vulkan.getSwapchainImageCount();
+    /** Creates off-screen color images and framebuffers the draw thread renders into. */
+    private static void createOffscreenAttachments(VkDevice device) {
+        offscreenImageCount = Math.max(Vulkan.getSwapchainImageCount(), Renderer.MAX_FRAMES_IN_FLIGHT);
         int format = Vulkan.getSwapchainFormat();
 
-        imageViews = Long.allocateArray(imageCount);
-        for (int i = 0; i < imageCount; i++) {
-            long image = Long.get(Vulkan.getSwapchainImages(), i);
-            Long.set(imageViews, i, VKImageView.create(device, image, format, VK_IMAGE_ASPECT_COLOR_BIT));
+        // Render into a FIXED max-resolution buffer (the main screen in backing pixels),
+        // not the swapchain size. The present pass scales this into whatever the window
+        // currently occupies, so window/fullscreen resizes never re-create the render
+        // targets (the viewport must NOT be derived from the swapchain extent).
+        long screenSize = window.Window.getScreenBackingSize();
+        int w = (int) (screenSize >>> 32);
+        int h = (int) (screenSize & 0xFFFFFFFFL);
+        if (w <= 0 || h <= 0) {
+            w = Vulkan.getSwapchainWidth();
+            h = Vulkan.getSwapchainHeight();
         }
+        offscreenWidth = w;
+        offscreenHeight = h;
 
-        framebuffers = Long.allocateArray(imageCount);
+        offscreenImages = Long.allocateArray(offscreenImageCount);
+        framebuffers = Long.allocateArray(offscreenImageCount);
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            for (int i = 0; i < imageCount; i++) {
+            for (int i = 0; i < offscreenImageCount; i++) {
+                long image = VKImage.create(device, w, h, format,
+                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+                Long.set(offscreenImages, i, image);
+
                 LongBuffer attachment = stack.mallocLong(1);
-                attachment.put(0, VKImageView.get(Long.get(imageViews, i)));
-                Long.set(framebuffers, i, VKFramebuffer.create(
-                        device,
-                        renderPass,
-                        attachment,
-                        Vulkan.getSwapchainWidth(),
-                        Vulkan.getSwapchainHeight()
-                ));
+                attachment.put(0, VKImageView.get(VKImage.getView(image)));
+                Long.set(framebuffers, i, VKFramebuffer.create(device, renderPass, attachment, w, h));
             }
         }
     }
 
-    /** Frees swapchain-dependent image views and framebuffers (must happen before the swapchain is destroyed). */
-    private static void destroySwapchainAttachments(VkDevice device) {
-        for (int i = 0; i < Vulkan.getSwapchainImageCount(); i++) {
+    /** Frees off-screen images and framebuffers (must happen before the swapchain is destroyed). */
+    private static void destroyOffscreenAttachments(VkDevice device) {
+        for (int i = 0; i < offscreenImageCount; i++) {
             VKFramebuffer.destroy(Long.get(framebuffers, i), device);
-            VKImageView.destroy(Long.get(imageViews, i), device);
+            VKImage.destroy(Long.get(offscreenImages, i), device);
         }
         Long.free(framebuffers);
-        Long.free(imageViews);
+        Long.free(offscreenImages);
         framebuffers = 0L;
-        imageViews = 0L;
+        offscreenImages = 0L;
+        offscreenImageCount = 0;
+        offscreenWidth = 0;
+        offscreenHeight = 0;
+    }
+
+    /** Raw off-screen VkImage handle used as the blit source for the present pass. */
+    public static long getOffscreenImageHandle(int index) {
+        if (offscreenImages == 0L) return 0L;
+        return VKImage.getImage(Long.get(offscreenImages, index));
+    }
+
+    public static int getOffscreenImageCount() {
+        return offscreenImageCount;
+    }
+
+    public static int getOffscreenWidth() {
+        return offscreenWidth;
+    }
+
+    public static int getOffscreenHeight() {
+        return offscreenHeight;
     }
 
     /**
@@ -153,13 +192,40 @@ public final class TriangleRenderer {
     public static void setPresentMode(int mode) {
         if (!initialized) return;
         var device = Vulkan.getDevice();
-        vkDeviceWaitIdle(device);
-        destroySwapchainAttachments(device);
-        Vulkan.setPresentMode(mode);
-        createSwapchainAttachments(device);
-        recordCommandBuffers();
-        Renderer.resetInFlight();
-        System.out.println("TriangleRenderer rebuilt for present mode: " + mode);
+        Renderer.pauseProducer();
+        Renderer.pausePresent();
+        try {
+            vkDeviceWaitIdle(device);
+            destroyOffscreenAttachments(device);
+            Vulkan.setPresentMode(mode);
+            createOffscreenAttachments(device);
+            recordCommandBuffers();
+            Renderer.resetInFlight();
+            System.out.println("TriangleRenderer rebuilt for present mode: " + mode);
+        } finally {
+            Renderer.resumePresent();
+            Renderer.resumeProducer();
+        }
+    }
+
+    /** Recreates the swapchain at a new size, keeping the current present mode. The off-screen
+     * render targets stay pinned at max screen resolution, so this is cheap: only the swapchain
+     * (and thus the per-present blit region) changes. Must be called with the device idle. */
+    public static void resize(int width, int height) {
+        if (!initialized) return;
+        var device = Vulkan.getDevice();
+        Renderer.pauseProducer();
+        Renderer.pausePresent();
+        try {
+            vkDeviceWaitIdle(device);
+            Vulkan.resizeSwapchain(width, height);
+            Renderer.resetInFlight();
+            System.out.println("TriangleRenderer resized to " + width + "x" + height
+                    + " (offscreen " + offscreenWidth + "x" + offscreenHeight + " pinned)");
+        } finally {
+            Renderer.resumePresent();
+            Renderer.resumeProducer();
+        }
     }
 
     private static long createShaderModule(String name) {
@@ -183,20 +249,30 @@ public final class TriangleRenderer {
         }
     }
 
+    @Intention("this is how we handle things with autocloseables, methinks.")
     private static void createGraphicsPipeline() {
         System.out.println("Creating Hello Triangle graphics pipeline...");
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        try(
+            MemoryStack stack = MemoryStack.stackPush();
+
+            // stage
             VkPipelineShaderStageCreateInfo.Buffer stages = VkPipelineShaderStageCreateInfo.calloc(2, stack);
-            stages.get(0)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-                    .stage(VK_SHADER_STAGE_VERTEX_BIT)
-                    .module(VKShaderModule.get(vertexShader))
-                    .pName(stack.UTF8("main"));
-            stages.get(1)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-                    .stage(VK_SHADER_STAGE_FRAGMENT_BIT)
-                    .module(VKShaderModule.get(fragmentShader))
-                    .pName(stack.UTF8("main"));
+
+            // infos
+            VkPipelineShaderStageCreateInfo info0 = stages.get(0).sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
+            VkPipelineShaderStageCreateInfo info1 = stages.get(1).sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
+
+            // push ranges
+            VkPushConstantRange.Buffer pushRanges = VkPushConstantRange.malloc(1, stack);
+            VkPushConstantRange pushRange0 = pushRanges.get(0).stageFlags(VK_SHADER_STAGE_VERTEX_BIT).offset(0).size(4)
+        ) {
+
+            info0.stage(VK_SHADER_STAGE_VERTEX_BIT)
+                .module(VKShaderModule.get(vertexShader))
+                .pName(stack.UTF8("main"));
+            info1.stage(VK_SHADER_STAGE_FRAGMENT_BIT)
+                .module(VKShaderModule.get(fragmentShader))
+                .pName(stack.UTF8("main"));
 
             VkPipelineVertexInputStateCreateInfo vertexInput = VkPipelineVertexInputStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
@@ -205,17 +281,16 @@ public final class TriangleRenderer {
                     .topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                     .primitiveRestartEnable(false);
 
-            org.lwjgl.vulkan.VkViewport.Buffer viewport = org.lwjgl.vulkan.VkViewport.calloc(1, stack);
-            viewport.get(0).set(0.0f, 0.0f, Vulkan.getSwapchainWidth(), Vulkan.getSwapchainHeight(), 0.0f, 1.0f);
-            org.lwjgl.vulkan.VkRect2D.Buffer scissor = org.lwjgl.vulkan.VkRect2D.calloc(1, stack);
-            scissor.get(0).extent().set(Vulkan.getSwapchainWidth(), Vulkan.getSwapchainHeight());
-
+            // Viewport and scissor are made DYNAMIC so they survive swapchain resizes
+            // (fullscreen toggling). Baking them here would keep the triangle clipped to
+            // the original 800 x 600 dimensions after the window grows.
             VkPipelineViewportStateCreateInfo viewportState = VkPipelineViewportStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
                     .viewportCount(1)
-                    .pViewports(viewport)
-                    .scissorCount(1)
-                    .pScissors(scissor);
+                    .scissorCount(1);
+            VkPipelineDynamicStateCreateInfo dynamicState = VkPipelineDynamicStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO)
+                    .pDynamicStates(stack.ints(VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR));
 
             VkPipelineRasterizationStateCreateInfo rasterizer = VkPipelineRasterizationStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
@@ -245,7 +320,8 @@ public final class TriangleRenderer {
 
             pipelineLayout = VKPipelineLayout.create(Vulkan.getDevice(),
                     org.lwjgl.vulkan.VkPipelineLayoutCreateInfo.calloc(stack)
-                            .sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO));
+                            .sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+                            .pPushConstantRanges(pushRanges));
 
             VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack)
                     .sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
@@ -256,6 +332,7 @@ public final class TriangleRenderer {
                     .pRasterizationState(rasterizer)
                     .pMultisampleState(multisampling)
                     .pColorBlendState(colorBlending)
+                    .pDynamicState(dynamicState)
                     .layout(VKPipelineLayout.get(pipelineLayout))
                     .renderPass(RenderPass.get(renderPass))
                     .subpass(0);
@@ -266,17 +343,39 @@ public final class TriangleRenderer {
     }
 
     private static void recordCommandBuffers() {
-        for (int i = 0; i < Vulkan.getSwapchainImageCount(); i++) {
-            recordCommandBuffer(Renderer.getCommandBuffer(i), i);
+        for (int i = 0; i < offscreenImageCount; i++) {
+            recordCommandBuffer(Renderer.getCommandBuffer(i), i, 0.0f);
         }
     }
 
-    static void recordCommandBuffer(long commandBuffer, int imageIndex) {
+    /** Re-records the draw command buffer for a slot with the current animation time. */
+    public static void recordDraw(int slot, float time) {
+        recordCommandBuffer(Renderer.getCommandBuffer(slot), slot, time);
+    }
+
+    static void recordCommandBuffer(long commandBuffer, int imageIndex, float time) {
         if (commandBuffer == VK_NULL_HANDLE) {
             throw new IllegalStateException("Triangle command buffer handle is NULL at index " + imageIndex);
         }
-        System.out.println("Recording triangle command buffer: 0x" + java.lang.Long.toHexString(commandBuffer));
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        try (
+                MemoryStack stack = MemoryStack.stackPush();
+                VkClearValue.Buffer clearValues = VkClearValue.calloc(1, stack);
+                VkClearColorValue clearColorValue0 = clearValues.get(0).color()
+                        // background color for the window (in RGBA)
+                        .float32(0, 0f)
+                        .float32(1, 0f)
+                        .float32(2, 0f)
+                        .float32(3, 1.0f);
+
+                // Dynamic viewport + scissor: set to the FIXED off-screen resolution so the
+                // render targets stay pinned and only the present blit scales to the window.
+                VkViewport.Buffer vpBuffer = VkViewport.calloc(1, stack);
+                VkViewport _viewport = vpBuffer.get(0).set(0.0f, 0.0f, offscreenWidth, offscreenHeight, 0.0f, 1.0f);
+
+                VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack);
+                VkOffset2D scissorOffset = scissor.get(0).offset().set(0, 0);
+                VkExtent2D scissorExtent = scissor.get(0).extent().set(offscreenWidth, offscreenHeight)
+        ) {
             org.lwjgl.vulkan.VkCommandBuffer command = new org.lwjgl.vulkan.VkCommandBuffer(commandBuffer, Vulkan.getDevice());
             VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
@@ -288,13 +387,22 @@ public final class TriangleRenderer {
                     .sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
                     .renderPass(RenderPass.get(renderPass))
                     .framebuffer(VKFramebuffer.get(Long.get(framebuffers, imageIndex)))
-                    .renderArea(r -> r.offset(o -> o.set(0, 0)).extent(e -> e.set(Vulkan.getSwapchainWidth(), Vulkan.getSwapchainHeight())));
-            org.lwjgl.vulkan.VkClearValue.Buffer clearValues = org.lwjgl.vulkan.VkClearValue.calloc(1, stack);
-            clearValues.get(0).color().float32(0, 0.03f).float32(1, 0.03f).float32(2, 0.08f).float32(3, 1.0f);
+                    .renderArea(r -> r.offset(o -> o.set(0, 0)).extent(e -> e.set(offscreenWidth, offscreenHeight)));
             renderBegin.pClearValues(clearValues);
 
             vkCmdBeginRenderPass(command, renderBegin, VK_SUBPASS_CONTENTS_INLINE);
             vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(pipeline));
+
+            // Push the animation time so the draw thread's per-frame re-records visibly animate.
+            vkCmdPushConstants(command, VKPipelineLayout.get(pipelineLayout),
+                    VK_SHADER_STAGE_VERTEX_BIT, 0, stack.floats(time));
+
+            // setting the viewport
+            vkCmdSetViewport(command, 0, vpBuffer);
+
+            // setting the scissor
+            vkCmdSetScissor(command, 0, scissor);
+
             vkCmdDraw(command, 3, 1, 0, 0);
             vkCmdEndRenderPass(command);
 
@@ -309,19 +417,21 @@ public final class TriangleRenderer {
 
         var device = Vulkan.getDevice();
         vkDeviceWaitIdle(device);
-        Renderer.destroy(device, commandPool);
+        Renderer.destroy(device, commandPool, blitCommandPool);
         CommandPool.destroy(commandPool, device);
+        CommandPool.destroy(blitCommandPool, device);
 
         VKPipeline.destroy(pipeline, device);
         VKPipelineLayout.destroy(pipelineLayout, device);
         VKShaderModule.destroy(fragmentShader, device);
         VKShaderModule.destroy(vertexShader, device);
 
-        destroySwapchainAttachments(device);
+        destroyOffscreenAttachments(device);
 
         RenderPass.destroy(renderPass, device);
         renderPass = 0L;
         commandPool = 0L;
+        blitCommandPool = 0L;
         pipeline = 0L;
         pipelineLayout = 0L;
         fragmentShader = 0L;
