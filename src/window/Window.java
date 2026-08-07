@@ -45,6 +45,11 @@ public final class Window {
     /** Set once per minimized violation so the "can't do that" error is raised only a single time. */
     private static volatile boolean MINIMIZED_VIOLATION_FLAGGED;
 
+    /** Chrome modes for {@link #setUndecorated}. Must match macOSWindow.UNDECORATED_*. */
+    public static final int DECORATED   = 0;
+    public static final int BORDERLESS  = 1;
+    public static final int NAKED       = 2;
+
     /** Effective FPS cap, recomputed every iteration on the Main Thread (AppKit must stay on the Main Thread). */
     private static volatile int EFFECTIVE_FPS;
 
@@ -270,6 +275,58 @@ public final class Window {
 
     public static void toggleFullscreen(long pointer) {
         if (IS_MAC) macOSWindow.toggleFullscreen(pointer);
+    }
+
+    // --- Capability / chrome state (style-mask) API ---
+
+    public static boolean isResizable(long pointer) {
+        if (IS_MAC) return macOSWindow.isResizable(pointer);
+        return true;
+    }
+
+    public static boolean isClosable(long pointer) {
+        if (IS_MAC) return macOSWindow.isClosable(pointer);
+        return true;
+    }
+
+    public static boolean isMiniaturizable(long pointer) {
+        if (IS_MAC) return macOSWindow.isMiniaturizable(pointer);
+        return true;
+    }
+
+    /**
+     * Window chrome/capability setters. On macOS these must run on Thread 0 (AppKit
+     * is main-thread only), so call them after allocate() and before show() — the
+     * style mask is fixed once the window is on screen.
+     */
+    public static void setResizable(long pointer, boolean resizable) {
+        if (IS_MAC) macOSWindow.setResizable(pointer, resizable);
+    }
+
+    public static void setMiniaturizable(long pointer, boolean miniaturizable) {
+        if (IS_MAC) macOSWindow.setMiniaturizable(pointer, miniaturizable);
+    }
+
+    public static void setClosable(long pointer, boolean closable) {
+        if (IS_MAC) macOSWindow.setClosable(pointer, closable);
+    }
+
+    /** Green traffic light (zoom/fullscreen). Pre-show, Thread 0 only. */
+    public static void setFullscreenButton(long pointer, boolean enabled) {
+        if (IS_MAC) macOSWindow.setFullscreenButton(pointer, enabled);
+    }
+
+    /** Switch window chrome: DECORATED, BORDERLESS (no buttons), or NAKED (hidden title, buttons kept). */
+    public static void setUndecorated(long pointer, int mode) {
+        if (IS_MAC) macOSWindow.setUndecorated(pointer, mode);
+    }
+
+    public static void setMinSize(long pointer, int width, int height) {
+        if (IS_MAC) macOSWindow.setMinSize(pointer, width, height);
+    }
+
+    public static void setMaxSize(long pointer, int width, int height) {
+        if (IS_MAC) macOSWindow.setMaxSize(pointer, width, height);
     }
 
     /** CAMetalLayer vsync: YES = synced to display, NO = uncapped presentation. */
