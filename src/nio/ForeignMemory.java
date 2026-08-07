@@ -32,6 +32,7 @@ import search.Trie;
 import spatial.GridArray;
 import spatial.CircularArray;
 import thread.RingBuffer;
+import vulkan.VKImage;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
@@ -59,6 +60,24 @@ public class ForeignMemory {
     private static final MethodHandle MALLOC_HANDLE;
     private static final MethodHandle FREE_HANDLE;
 
+    // --- Native allocation registry (double-free + leak tracking) ---
+    // Lock-free off-heap open-addressing table of live malloc'd addresses.
+    // Enabled unless -Danti.native-memory-tracking=false; "warn" downgrades
+    // double-free detection from throwing to warning; "leaks" additionally
+    // records the call site of every allocation and dumps a live-allocation
+    // report (grouped by allocator) at JVM shutdown.
+    static final int ALLOC_SLOT_LOG2 = 20;
+    static final int ALLOC_SLOTS = 1 << ALLOC_SLOT_LOG2;
+    static final int ALLOC_MASK = ALLOC_SLOTS - 1;
+    static final long ALLOC_TOMBSTONE = -1L;
+    static final long ALLOC_REGISTRY;
+    private static final boolean NATIVE_TRACKING;
+    private static final boolean NATIVE_TRACKING_STRICT;
+    private static final boolean NATIVE_TRACKING_CALL_SITES;
+    private static final java.util.concurrent.ConcurrentHashMap<String, long[]> ALLOC_SITE_COUNTS;
+    private static final java.util.concurrent.ConcurrentHashMap<java.lang.Long, AllocInfo> ALLOC_ADDR_SITES;
+    private static final java.lang.StackWalker SITE_WALKER = java.lang.StackWalker.getInstance();
+
     static {
         Linker linker = Linker.nativeLinker();
         SymbolLookup stdlib = linker.defaultLookup();
@@ -76,13 +95,80 @@ public class ForeignMemory {
         } catch (Throwable t) {
             throw new ExceptionInInitializerError(t);
         }
+
+        String tracking = java.lang.System.getProperty("anti.native-memory-tracking", "true");
+        NATIVE_TRACKING = !"false".equalsIgnoreCase(tracking) && !"off".equalsIgnoreCase(tracking);
+        NATIVE_TRACKING_STRICT = !"warn".equalsIgnoreCase(tracking);
+        NATIVE_TRACKING_CALL_SITES = "leaks".equalsIgnoreCase(tracking);
+        if (NATIVE_TRACKING_CALL_SITES) {
+            ALLOC_SITE_COUNTS = new java.util.concurrent.ConcurrentHashMap<>();
+            ALLOC_ADDR_SITES = new java.util.concurrent.ConcurrentHashMap<>();
+            System.out.println("[ForeignMemory] call-site leak tracking armed");
+        } else {
+            ALLOC_SITE_COUNTS = null;
+            ALLOC_ADDR_SITES = null;
+        }
+
+        if (NATIVE_TRACKING) {
+            try {
+                long table = ((MemorySegment) MALLOC_HANDLE.invokeExact((long) ALLOC_SLOTS * 8L)).address();
+                MemorySegment.ofAddress(table).reinterpret((long) ALLOC_SLOTS * 8L).fill((byte) 0);
+                ALLOC_REGISTRY = table;
+            } catch (Throwable t) {
+                throw new ExceptionInInitializerError("Failed to allocate native allocation registry: " + t);
+            }
+        } else {
+            ALLOC_REGISTRY = 0L;
+        }
+
+        if (NATIVE_TRACKING_CALL_SITES) {
+            Runtime.getRuntime().addShutdownHook(
+                    new Thread(ForeignMemory::dumpAllocationLeaks, "anti-native-leak-report"));
+        }
+    }
+
+    private static int registrySlot(long address) {
+        return (int) ((address * 0x9E3779B97F4A7C15L) >>> (64 - ALLOC_SLOT_LOG2));
+    }
+
+    private static void trackAllocation(long address) {
+        int i = registrySlot(address);
+        for (int probes = 0; probes < ALLOC_SLOTS; probes++) {
+            long slot = ALLOC_REGISTRY + i * 8L;
+            long cur = (long) LONG_VH.getVolatile(GLOBAL_MEMORY, slot);
+            if (cur == 0L || cur == ALLOC_TOMBSTONE) {
+                if ((boolean) LONG_VH.compareAndSet(GLOBAL_MEMORY, slot, cur, address)) return;
+            }
+            i = (i + 1) & ALLOC_MASK;
+        }
+        throw new IllegalStateException("Native allocation registry exhausted (" + ALLOC_SLOTS + " live allocations)!");
+    }
+
+    private static boolean untrackAllocation(long address) {
+        int i = registrySlot(address);
+        for (int probes = 0; probes < ALLOC_SLOTS; probes++) {
+            long slot = ALLOC_REGISTRY + i * 8L;
+            long cur = (long) LONG_VH.getVolatile(GLOBAL_MEMORY, slot);
+            if (cur == 0L) return false; // not present -> double-free or unknown pointer
+            if (cur == address) {
+                if ((boolean) LONG_VH.compareAndSet(GLOBAL_MEMORY, slot, address, ALLOC_TOMBSTONE)) return true;
+                // lost the race to a concurrent free; keep probing
+            }
+            i = (i + 1) & ALLOC_MASK;
+        }
+        return false;
     }
 
     public static long allocateNative(long bytes) {
         if (bytes <= 0) return 0L;
         try {
             MemorySegment seg = (MemorySegment) MALLOC_HANDLE.invokeExact(bytes);
-            return seg.address();
+            long addr = seg.address();
+            if (NATIVE_TRACKING) {
+                trackAllocation(addr);
+                if (NATIVE_TRACKING_CALL_SITES) recordAllocationSite(addr, bytes);
+            }
+            return addr;
         } catch (Throwable t) {
             throw new OutOfMemoryError("Native malloc failed for size: " + bytes);
         }
@@ -91,11 +177,123 @@ public class ForeignMemory {
     public static void freeNative(long address) {
         if (address == 0L)
             throw new RuntimeException("cant free a null pointer silly!");
+        if (NATIVE_TRACKING) {
+            if (untrackAllocation(address)) {
+                if (NATIVE_TRACKING_CALL_SITES) releaseAllocationSite(address);
+            } else if (NATIVE_TRACKING_STRICT) {
+                throw new RuntimeException("Double-free or untracked native free at 0x" + java.lang.Long.toHexString(address));
+            } else {
+                System.err.println("[ForeignMemory] WARNING: double-free or untracked native free at 0x" + java.lang.Long.toHexString(address));
+            }
+        }
         try {
             FREE_HANDLE.invokeExact(MemorySegment.ofAddress(address));
         } catch (Throwable t) {
             throw new RuntimeException("Native free failed for address: " + address, t);
         }
+    }
+
+    // --- Call-site leak tracking ("leaks" mode) ---
+    // Heap-backed, opt-in, and only active while hunting a leak. Every live
+    // malloc'd address maps to its allocation site + size, and per-site live
+    // counters are maintained so dumpAllocationLeaks can show "who still holds
+    // memory" at JVM shutdown instead of a wall of opaque addresses.
+
+    private static final class AllocInfo {
+        final String site;
+        final long bytes;
+
+        AllocInfo(String site, long bytes) {
+            this.site = site;
+            this.bytes = bytes;
+        }
+    }
+
+    private static String captureAllocSite() {
+        return SITE_WALKER.walk(fs -> {
+            java.util.Iterator<java.lang.StackWalker.StackFrame> it = fs.iterator();
+            while (it.hasNext()) {
+                java.lang.StackWalker.StackFrame f = it.next();
+                String cn = f.getClassName();
+                if (cn.startsWith("java.") || cn.startsWith("jdk.") || cn.startsWith("nio.ForeignMemory"))
+                    continue;
+                String line = f.getLineNumber() > 0 ? ":" + f.getLineNumber() : "";
+                return cn + "." + f.getMethodName() + "("
+                        + (f.getFileName() != null ? f.getFileName() : "?") + line + ")";
+            }
+            return "unknown";
+        });
+    }
+
+    private static void recordAllocationSite(long address, long bytes) {
+        String site = captureAllocSite();
+        long[] c = ALLOC_SITE_COUNTS.computeIfAbsent(site, k -> new long[2]);
+        c[0]++;
+        c[1] += bytes;
+        ALLOC_ADDR_SITES.put(java.lang.Long.valueOf(address), new AllocInfo(site, bytes));
+    }
+
+    private static void releaseAllocationSite(long address) {
+        AllocInfo info = ALLOC_ADDR_SITES.remove(address);
+        if (info != null) {
+            long[] c = ALLOC_SITE_COUNTS.get(info.site);
+            if (c != null) {
+                c[0]--;
+                c[1] -= info.bytes;
+            }
+        }
+    }
+
+    /** Prints every allocation site that still holds live native memory, biggest first. */
+    public static void dumpAllocationLeaks() {
+        if (!NATIVE_TRACKING_CALL_SITES) {
+            System.out.println("[ForeignMemory] call-site leak report disabled; rerun with -Danti.native-memory-tracking=leaks");
+            return;
+        }
+        java.util.ArrayList<java.util.Map.Entry<String, long[]>> live = new java.util.ArrayList<>();
+        long totalCount = 0L, totalBytes = 0L;
+        for (java.util.Map.Entry<String, long[]> e : ALLOC_SITE_COUNTS.entrySet()) {
+            if (e.getValue()[0] > 0) {
+                live.add(e);
+                totalCount += e.getValue()[0];
+                totalBytes += e.getValue()[1];
+            }
+        }
+        live.sort((a, b) -> java.lang.Long.compare(b.getValue()[1], a.getValue()[1]));
+        System.out.println("=== Native allocation leak report: " + totalCount + " live allocations, " + totalBytes + " bytes ===");
+        for (java.util.Map.Entry<String, long[]> e : live) {
+            long[] v = e.getValue();
+            System.out.printf("  %6d allocs  %10d bytes  %s%n", v[0], v[1], e.getKey());
+        }
+        if (live.isEmpty()) System.out.println("  (none - clean teardown)");
+    }
+
+    /** Number of currently live native allocations (0 when tracking is disabled). */
+    public static long liveAllocationCount() {
+        if (!NATIVE_TRACKING) return -1L;
+        long count = 0L;
+        for (int i = 0; i < ALLOC_SLOTS; i++) {
+            long cur = (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ALLOC_REGISTRY + i * 8L);
+            if (cur != 0L && cur != ALLOC_TOMBSTONE) count++;
+        }
+        return count;
+    }
+
+    /** Prints every live native allocation for leak analysis (tracking must be enabled). */
+    public static void dumpAllocations() {
+        if (!NATIVE_TRACKING) {
+            System.out.println("[ForeignMemory] allocation tracking disabled (-Danti.native-memory-tracking=false)");
+            return;
+        }
+        long count = 0L;
+        for (int i = 0; i < ALLOC_SLOTS; i++) {
+            long cur = (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ALLOC_REGISTRY + i * 8L);
+            if (cur != 0L && cur != ALLOC_TOMBSTONE) {
+                System.out.println("[ForeignMemory] live allocation: 0x" + java.lang.Long.toHexString(cur));
+                count++;
+            }
+        }
+        System.out.println("[ForeignMemory] total live allocations: " + count);
     }
 
     // =========================================================================
@@ -735,5 +933,6 @@ public class ForeignMemory {
         GridArray.freeAll();
         CircularArray.freeAll();
         RingBuffer.freeAll();
+        VKImage.freeAll();
     }
 }
