@@ -23,7 +23,7 @@ public final class Variable {
     @Required
     public static final int CLASS_ID = TypeRegister.ID_VARIABLE;
 
-    // 48 bytes slot layout: 32B lowercase name + 4B classId + 4B padding + 8B target pointer payload
+    // 48 bytes slot layout: 32 bytes lowercase name + 4 bytes classId + 4 bytes padding + 8 bytes target pointer payload
     private static final long NAME_SIZE = 32L;
     private static final long SLOT_SIZE = 48L;
     private static final int DEFAULT_CAPACITY = 1024;
@@ -81,6 +81,7 @@ public final class Variable {
         }
     }
 
+    @Draft // we need better implementation of this hash, maybe Hash.hashCode() instead of hardcoding
     private static int hashName(long l0, long l1, long l2, long l3) {
         long mix = l0 ^ (l1 >>> 7) ^ (l2 << 9) ^ (l3 >>> 13);
         return (int) (mix ^ (mix >>> 32));
@@ -328,8 +329,7 @@ public final class Variable {
     // payload accessors
     public static void setPointer(int varId, long targetPointer) {
         checkBounds(varId);
-        long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.setLong(slot + 40L, targetPointer);
+        unsafeSetPointer(varId, targetPointer);
     }
 
     public static long getPointer(int varId) {
@@ -358,8 +358,7 @@ public final class Variable {
     @Volatile
     public static void setPointerVolatile(int varId, long targetPointer) {
         checkBounds(varId);
-        long slot = baseAddress + (varId * SLOT_SIZE);
-        ForeignMemory.setVolatileLong(slot + 40L, targetPointer);
+        setUnsafeVolatilePointer(varId, targetPointer);
     }
 
     @Volatile
@@ -411,7 +410,7 @@ public final class Variable {
 
     public static char[] getChars(int varId) {
         String name = getName(varId);
-        return name != null ? name.toCharArray() : null;
+        return name.toCharArray();
     }
 
     public static int getActiveCount() {
