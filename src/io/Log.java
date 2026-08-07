@@ -19,7 +19,8 @@ import nio.ForeignMemory;
  * file through {@link FileWriter}; all formatting happens on read via
  * {@link LogParser}.
  *
- * Enabled with -Danti.log=&lt;path&gt; (default "off" makes the hot path a no-op).
+ * On by default: the sink is ~/anti/logs/engine.bin (see {@link AntiHome}).
+ * Override with -Danti.log=&lt;path&gt;, or disable entirely with -Danti.log=off.
  */
 @Draft
 @Intention("Off-heap MPSC event ring: CAD-claim, volatile release-publish, dedicated daemon writer. Drop-before-claim so every published record is drained.")
@@ -67,8 +68,11 @@ public final class Log {
     private static final byte[] COPY = new byte[RECORD_BYTES];
 
     static {
-        String prop = System.getProperty("anti.log", "off");
-        boolean enabled = prop != null && !prop.isEmpty() && !"off".equalsIgnoreCase(prop);
+        String prop = System.getProperty("anti.log");
+        boolean enabled = prop == null || !"off".equalsIgnoreCase(prop);
+        if (prop == null || prop.isEmpty()) {
+            prop = AntiHome.defaultLogPath();
+        }
         ENABLED = enabled;
         PATH = enabled ? prop : null;
         active = enabled;
