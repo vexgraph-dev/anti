@@ -363,7 +363,7 @@ public final class DrawThread {
                     // Publish to the title mailbox; Thread 0's pump applies it (AppKit).
                     if (windowPtr != 0L)
                         window.Window.publishTitle(String.format(
-                                "Anti Engine | Draw %.1f FPS | Present %.1f FPS", drawFps, presentFps));
+                                "Window | Draw %.1f FPS | Present %.1f FPS", drawFps, presentFps));
                     fpsWindowStart = now;
                     lastDraw = currDraw;
                     lastPresent = currPresent;
