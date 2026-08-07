@@ -41,6 +41,7 @@ final class macOSWindow {
     private static MethodHandle MSG_SEND_INT;
     private static MethodHandle MSG_SEND_BOOL;
     private static MethodHandle MSG_SEND_BOOL_RET;
+    private static MethodHandle MSG_SEND_BOOL_RET_LONG;
     private static MethodHandle MSG_SEND_PTR_DOUBLE;
     private static MethodHandle MSG_SEND_INIT_WINDOW;
     private static MethodHandle MSG_SEND_NEXT_EVENT;
@@ -53,6 +54,19 @@ final class macOSWindow {
     private static StructLayout CG_RECT;
     private static StructLayout CG_SIZE;
 
+    // --- NSWindowStyleMask bits ---
+    private static final long STYLE_TITLED            = 1L << 0;
+    private static final long STYLE_CLOSABLE          = 1L << 1;
+    private static final long STYLE_MINIATURIZABLE    = 1L << 2;
+    private static final long STYLE_RESIZABLE         = 1L << 3;
+    private static final long STYLE_FULL_SCREEN       = 1L << 14;
+    private static final long STYLE_FULL_SIZE_CONTENT = 1L << 15;
+
+    /** setUndecorated modes. */
+    public static final int UNDECORATED_DECORATED  = 0; // Standard title bar: opaque, title visible
+    public static final int UNDECORATED_BORDERLESS = 1; // True borderless: no title bar, no traffic lights
+    public static final int UNDECORATED_NAKED      = 2; // Hidden title bar, traffic lights retained
+
     // Translation map for macOS virtual key codes -> cross-platform Key constants
     private static final int[] MAC_KEY_MAP = new int[128];
 
@@ -62,7 +76,7 @@ final class macOSWindow {
 
     static {
         SymbolLookup objcLib;
-        MethodHandle getClass, selRegName, msgSendPtr, msgSendPtrPtr, msgSendPtrLong, msgSendPtrLongPtr, msgSendPtrSize, msgSendVoid, msgSendVoidPtr, msgSendInt, msgSendBool, msgSendBoolRet, msgSendInitWindow, msgSendNextEvent, msgSendLongRet, msgSendShortRet, msgSendPointRet, msgSendPtrDouble, msgSendRectRet, msgSendDoubleRet, metalCreateSystemDefaultDevice;
+        MethodHandle getClass, selRegName, msgSendPtr, msgSendPtrPtr, msgSendPtrLong, msgSendPtrLongPtr, msgSendPtrSize, msgSendVoid, msgSendVoidPtr, msgSendInt, msgSendBool, msgSendBoolRet, msgSendBoolLongRet, msgSendInitWindow, msgSendNextEvent, msgSendLongRet, msgSendShortRet, msgSendPointRet, msgSendPtrDouble, msgSendRectRet, msgSendDoubleRet, metalCreateSystemDefaultDevice;
         StructLayout cgRect, cgSize;
 
         try {
@@ -105,6 +119,7 @@ final class macOSWindow {
             msgSendInt = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
             msgSendBool = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BYTE));
             msgSendBoolRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+            msgSendBoolLongRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
             msgSendPtrDouble = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_DOUBLE));
 
             msgSendNextEvent = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(
@@ -148,6 +163,7 @@ final class macOSWindow {
         MSG_SEND_INT = msgSendInt;
         MSG_SEND_BOOL = msgSendBool;
         MSG_SEND_BOOL_RET = msgSendBoolRet;
+        MSG_SEND_BOOL_RET_LONG = msgSendBoolLongRet;
         MSG_SEND_PTR_DOUBLE = msgSendPtrDouble;
         MSG_SEND_INIT_WINDOW = msgSendInitWindow;
         MSG_SEND_NEXT_EVENT = msgSendNextEvent;
@@ -245,8 +261,8 @@ final class macOSWindow {
                 rect.set(ValueLayout.JAVA_DOUBLE, 16, 1280);
                 rect.set(ValueLayout.JAVA_DOUBLE, 24, 720);
 
-                long styleMask = 1 | 2 | 4 | 8;
-                if (borderless) styleMask |= 32768; // FullSizeContentView
+                long styleMask = STYLE_TITLED | STYLE_CLOSABLE | STYLE_MINIATURIZABLE | STYLE_RESIZABLE;
+                if (borderless) styleMask |= STYLE_FULL_SIZE_CONTENT;
                 
                 long backingStore = 2;
 
@@ -257,6 +273,11 @@ final class macOSWindow {
                     MemorySegment setTitlebarAppearsTransparentSel = getSel(arena, "setTitlebarAppearsTransparent:");
                     MSG_SEND_BOOL.invoke(window, setTitlebarAppearsTransparentSel, (byte)1);
                 }
+
+                // NSWindowCollectionBehaviorFullScreenPrimary = 1 << 7: the green zoom button
+                // enters native fullscreen, keeping it in sync with toggleFullscreen.
+                MemorySegment setCollectionBehaviorSel = getSel(arena, "setCollectionBehavior:");
+                MSG_SEND_INT.invoke(window, setCollectionBehaviorSel, 128L);
 
                 MemorySegment centerSel = getSel(arena, "center");
                 MSG_SEND_VOID.invoke(window, centerSel);
@@ -290,6 +311,18 @@ final class macOSWindow {
             
             MemorySegment setTitleSel = getSel(arena, "setTitle:");
             MSG_SEND_VOID_PTR.invoke(window, setTitleSel, titleStr);
+
+            // macOS 15+ re-reveals the native title view whenever the title string
+            // changes, even when titleVisibility is hidden. Re-apply the hidden state
+            // for FullSizeContentView (NAKED/borderless) windows, mirroring the
+            // Ghostty didSet guard.
+            long mask = (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, "styleMask"));
+            if ((mask & STYLE_FULL_SIZE_CONTENT) != 0) {
+                MemorySegment setTitlebarAppearsTransparentSel = getSel(arena, "setTitlebarAppearsTransparent:");
+                MSG_SEND_BOOL.invoke(window, setTitlebarAppearsTransparentSel, (byte)1);
+                MemorySegment setTitleVisibilitySel = getSel(arena, "setTitleVisibility:");
+                MSG_SEND_INT.invoke(window, setTitleVisibilitySel, 1L); // NSWindowTitleHidden
+            }
         } catch (Throwable t) {
             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
@@ -315,19 +348,32 @@ final class macOSWindow {
         setVisible(pointer, true);
     }
 
+    /**
+     * Modern app activation. activateIgnoringOtherApps: is deprecated and unreliable
+     * on recent macOS (leaves traffic lights greyed = window never becomes key).
+     * NSApplicationActivateIgnoringOtherApps = 1&lt;&lt;1, NSApplicationActivateAllWindows = 1&lt;&lt;0.
+     */
+    private static void activateApp() {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment nsRunningAppClass = getObjcClass(arena, "NSRunningApplication");
+            MemorySegment currentApplicationSel = getSel(arena, "currentApplication");
+            MemorySegment runningApp = (MemorySegment) MSG_SEND_PTR.invoke(nsRunningAppClass, currentApplicationSel);
+            if (runningApp == null || runningApp.address() == 0L) return;
+            MemorySegment activateWithOptionsSel = getSel(arena, "activateWithOptions:");
+            MSG_SEND_BOOL_RET_LONG.invoke(runningApp, activateWithOptionsSel, 3L);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
     public static void setVisible(long pointer, boolean visible) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
             if (visible) {
+                activateApp(); // before makeKeyAndOrderFront so the key window sticks
                 MemorySegment makeKeyAndOrderFrontSel = getSel(arena, "makeKeyAndOrderFront:");
                 MSG_SEND_PTR_PTR.invoke(window, makeKeyAndOrderFrontSel, MemorySegment.NULL);
-                
-                MemorySegment nsAppClass = getObjcClass(arena, "NSApplication");
-                MemorySegment sharedAppSel = getSel(arena, "sharedApplication");
-                MemorySegment app = (MemorySegment) MSG_SEND_PTR.invoke(nsAppClass, sharedAppSel);
-                MemorySegment activateSel = getSel(arena, "activateIgnoringOtherApps:");
-                MSG_SEND_BOOL.invoke(app, activateSel, (byte)1);
             } else {
                 MemorySegment orderOutSel = getSel(arena, "orderOut:");
                 MSG_SEND_PTR_PTR.invoke(window, orderOutSel, MemorySegment.NULL);
@@ -435,6 +481,140 @@ final class macOSWindow {
             MemorySegment window = MemorySegment.ofAddress(pointer);
             MemorySegment toggleFullScreenSel = getSel(arena, "toggleFullScreen:");
             MSG_SEND_VOID_PTR.invoke(window, toggleFullScreenSel, MemorySegment.NULL);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    // --- Style-mask state API (NSWindowStyleMask) ---
+
+    private static long getStyleMask(long pointer) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            return (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, "styleMask"));
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    /**
+     * Single mask-rewrite path for all capability toggles. While native fullscreen
+     * AppKit owns the mask (the FullScreen bit can only change inside a transition),
+     * so style mutations are skipped then — mirroring the Ghostty guard. When not
+     * fullscreen the bit is simply never present, so it is never forced via setStyleMask:.
+     */
+    private static void updateStyleMask(long pointer, long addBits, long clearBits) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            long mask = getStyleMask(pointer);
+            if ((mask & STYLE_FULL_SCREEN) != 0) return; // AppKit owns the mask in fullscreen
+            long next = (mask & ~clearBits) | addBits;
+            MemorySegment setStyleMaskSel = getSel(arena, "setStyleMask:");
+            MSG_SEND_INT.invoke(window, setStyleMaskSel, next);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    private static boolean hasStyleBit(long pointer, long bit) {
+        return (getStyleMask(pointer) & bit) != 0;
+    }
+
+    public static boolean isResizable(long pointer)       { return hasStyleBit(pointer, STYLE_RESIZABLE); }
+    public static boolean isClosable(long pointer)        { return hasStyleBit(pointer, STYLE_CLOSABLE); }
+    public static boolean isMiniaturizable(long pointer)  { return hasStyleBit(pointer, STYLE_MINIATURIZABLE); }
+
+    public static void setResizable(long pointer, boolean resizable) {
+        updateStyleMask(pointer, resizable ? STYLE_RESIZABLE : 0L, resizable ? 0L : STYLE_RESIZABLE);
+    }
+
+    public static void setClosable(long pointer, boolean closable) {
+        updateStyleMask(pointer, closable ? STYLE_CLOSABLE : 0L, closable ? 0L : STYLE_CLOSABLE);
+    }
+
+    public static void setMiniaturizable(long pointer, boolean miniaturizable) {
+        updateStyleMask(pointer, miniaturizable ? STYLE_MINIATURIZABLE : 0L, miniaturizable ? 0L : STYLE_MINIATURIZABLE);
+    }
+
+    /**
+     * Green traffic light (zoom/fullscreen entry). It is gated by
+     * NSWindowCollectionBehaviorFullScreenPrimary (1 &lt;&lt; 7), set in allocate(); clear it
+     * before show() to remove the button. Call on Thread 0 before the window shows.
+     */
+    public static void setFullscreenButton(long pointer, boolean enabled) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            long behavior = (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, "collectionBehavior"));
+            if (enabled) behavior |= 128L;
+            else behavior &= ~128L;
+            MemorySegment setCollectionBehaviorSel = getSel(arena, "setCollectionBehavior:");
+            MSG_SEND_INT.invoke(window, setCollectionBehaviorSel, behavior);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    /**
+     * Switch window chrome at runtime.
+     * UNDECORATED_DECORATED: standard opaque title bar, title visible.
+     * UNDECORATED_BORDERLESS: no title bar and no traffic lights (styleMask = 0).
+     * UNDECORATED_NAKED: transparent title bar with hidden title; the traffic
+     * lights stay because the Closable/Miniaturizable bits are retained.
+     */
+    public static void setUndecorated(long pointer, int mode) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            long mask = getStyleMask(pointer);
+            if ((mask & STYLE_FULL_SCREEN) != 0) return; // AppKit owns the mask in fullscreen
+
+            long next;
+            switch (mode) {
+                case UNDECORATED_BORDERLESS:
+                    next = 0L;
+                    break;
+                case UNDECORATED_NAKED:
+                    next = STYLE_TITLED | STYLE_CLOSABLE | STYLE_MINIATURIZABLE | STYLE_RESIZABLE | STYLE_FULL_SIZE_CONTENT;
+                    break;
+                default: // UNDECORATED_DECORATED
+                    next = STYLE_TITLED | STYLE_CLOSABLE | STYLE_MINIATURIZABLE | STYLE_RESIZABLE;
+                    break;
+            }
+
+            MemorySegment setStyleMaskSel = getSel(arena, "setStyleMask:");
+            MSG_SEND_INT.invoke(window, setStyleMaskSel, next);
+
+            boolean transparent = mode == UNDECORATED_NAKED;
+            MemorySegment setTitlebarAppearsTransparentSel = getSel(arena, "setTitlebarAppearsTransparent:");
+            MSG_SEND_BOOL.invoke(window, setTitlebarAppearsTransparentSel, (byte) (transparent ? 1 : 0));
+
+            MemorySegment setTitleVisibilitySel = getSel(arena, "setTitleVisibility:");
+            MSG_SEND_INT.invoke(window, setTitleVisibilitySel, transparent ? 1L : 0L); // NSWindowTitleHidden / Visible
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    /** Hard minimum content size for resizable windows. */
+    public static void setMinSize(long pointer, int width, int height) {
+        setSizeSelector(pointer, "setMinSize:", width, height);
+    }
+
+    /** Hard maximum content size for resizable windows. */
+    public static void setMaxSize(long pointer, int width, int height) {
+        setSizeSelector(pointer, "setMaxSize:", width, height);
+    }
+
+    private static void setSizeSelector(long pointer, String selector, int width, int height) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            MemorySegment size = arena.allocate(CG_SIZE);
+            size.set(ValueLayout.JAVA_DOUBLE, 0, width);
+            size.set(ValueLayout.JAVA_DOUBLE, 8, height);
+            MSG_SEND_PTR_SIZE.invoke(window, getSel(arena, selector), size);
         } catch (Throwable t) {
             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
