@@ -37,6 +37,7 @@ public final class Vulkan {
     private static int swapchainHeight;
     private static int swapchainFormat;
     private static int presentMode;
+    private static long layerPointer;
     private static long debugMessenger;
     private static VkDebugUtilsMessengerCallbackEXT debugCallback;
     
@@ -61,8 +62,42 @@ public final class Vulkan {
             initSurface(stack, caMetalLayer);
             initDevice(stack);
             initSwapchain(stack, windowWidth, windowHeight, presentModePreference);
+        } catch (RuntimeException e) {
+            shutdown();
+            throw e;
         }
+        applyLayerSync();
         System.out.println("Vulkan Swapchain ready.");
+    }
+
+    /** Releases every Vulkan resource created so far. Safe on partially-initialized state. */
+    public static void shutdown() {
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            if (swapchainImages != 0L) {
+                Long.free(swapchainImages);
+                swapchainImages = 0L;
+            }
+            if (swapchain != 0L && device != null && device.address() != 0L) {
+                vkDestroySwapchainKHR(device, swapchain, null);
+                swapchain = 0L;
+            }
+            if (surface != 0L && instance != null && instance.address() != 0L) {
+                vkDestroySurfaceKHR(instance, surface, null);
+                surface = 0L;
+            }
+            if (device != null && device.address() != 0L) {
+                vkDestroyDevice(device, null);
+                device = null;
+            }
+            if (debugMessenger != 0L && instance != null && instance.address() != 0L) {
+                vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, null);
+                debugMessenger = 0L;
+            }
+            if (instance != null && instance.address() != 0L) {
+                vkDestroyInstance(instance, null);
+                instance = null;
+            }
+        }
     }
 
     private static void configureValidationLoader() {
@@ -89,6 +124,10 @@ public final class Vulkan {
 
     public static VkDevice getDevice() {
         return device;
+    }
+
+    public static VkPhysicalDevice getPhysicalDevice() {
+        return physicalDevice;
     }
 
     public static VkQueue getGraphicsQueue() {
@@ -145,17 +184,36 @@ public final class Vulkan {
         if (device == null) return;
         vkDeviceWaitIdle(device);
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            if (swapchain != VK_NULL_HANDLE) {
-                vkDestroySwapchainKHR(device, swapchain, null);
-                swapchain = VK_NULL_HANDLE;
-            }
             if (swapchainImages != 0L) {
                 Long.free(swapchainImages);
                 swapchainImages = 0L;
             }
             initSwapchain(stack, swapchainWidth, swapchainHeight, mode);
         }
+        applyLayerSync();
         System.out.println("Vulkan swapchain recreated with present mode: " + mode);
+    }
+
+    /** Recreates the swapchain at a new size, keeping the current present mode. Must be called with the device idle and free attachments first. */
+    public static void resizeSwapchain(int width, int height) {
+        if (device == null) return;
+        vkDeviceWaitIdle(device);
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            if (swapchainImages != 0L) {
+                Long.free(swapchainImages);
+                swapchainImages = 0L;
+            }
+            initSwapchain(stack, width, height, presentMode);
+        }
+        applyLayerSync();
+        System.out.println("Vulkan swapchain resized to " + width + "x" + height);
+    }
+
+    /** Propagates the swapchain vsync state onto the CAMetalLayer (displaySyncEnabled). */
+    private static void applyLayerSync() {
+        if (layerPointer == 0L) return;
+        boolean synced = presentMode == VK_PRESENT_MODE_FIFO_KHR;
+        window.Window.setDisplaySyncEnabled(layerPointer, synced);
     }
 
     private static void initInstance(MemoryStack stack) {
@@ -295,6 +353,7 @@ public final class Vulkan {
     }
 
     private static void initSurface(MemoryStack stack, long caMetalLayer) {
+        layerPointer = caMetalLayer;
         VkMetalSurfaceCreateInfoEXT createInfo = VkMetalSurfaceCreateInfoEXT.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT);
         MemoryUtil.memPutAddress(createInfo.address() + VkMetalSurfaceCreateInfoEXT.PLAYER, caMetalLayer);
@@ -315,8 +374,30 @@ public final class Vulkan {
         VK10.vkEnumeratePhysicalDevices(instance, pDeviceCount, pDevices);
         physicalDevice = new VkPhysicalDevice(pDevices.get(0), instance);
 
-        graphicsQueueFamilyIndex = 0;
-        presentQueueFamilyIndex = 0;
+        // Select a queue family supporting BOTH graphics and presentation instead
+        // of assuming family 0 (breaks on drivers that expose a transfer-only family 0).
+        java.nio.IntBuffer qCount = stack.mallocInt(1);
+        VK10.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, qCount, null);
+        VkQueueFamilyProperties.Buffer queueProps = VkQueueFamilyProperties.calloc(Math.max(qCount.get(0), 1), stack);
+        VK10.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, qCount, queueProps);
+
+        graphicsQueueFamilyIndex = -1;
+        presentQueueFamilyIndex = -1;
+        for (int i = 0; i < qCount.get(0); i++) {
+            System.out.println("[Vulkan] Queue family " + i + ": flags=" + queueProps.get(i).queueFlags()
+                    + " count=" + queueProps.get(i).queueCount());
+            if ((queueProps.get(i).queueFlags() & VK_QUEUE_GRAPHICS_BIT) == 0) continue;
+            java.nio.IntBuffer supported = stack.mallocInt(1);
+            vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, supported);
+            if (supported.get(0) == VK_TRUE) {
+                graphicsQueueFamilyIndex = i;
+                presentQueueFamilyIndex = i;
+                break;
+            }
+        }
+        if (graphicsQueueFamilyIndex < 0) {
+            throw new RuntimeException("No queue family supports both graphics and presentation.");
+        }
 
         VkDeviceQueueCreateInfo.Buffer queueCreateInfo = VkDeviceQueueCreateInfo.calloc(1, stack)
                 .sType(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
@@ -367,22 +448,51 @@ public final class Vulkan {
     private static void initSwapchain(MemoryStack stack, int width, int height, int preferredMode) {
         swapchainWidth = width;
         swapchainHeight = height;
-        swapchainFormat = VK_FORMAT_B8G8R8A8_SRGB;
+
+        // Query supported surface formats; prefer B8G8R8A8_SRGB, else the first offered.
+        java.nio.IntBuffer formatCount = stack.mallocInt(1);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, formatCount, null);
+        VkSurfaceFormatKHR.Buffer formats = VkSurfaceFormatKHR.calloc(Math.max(formatCount.get(0), 1), stack);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, formatCount, formats);
+        int chosenFormat = 0;
+        int chosenColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        for (VkSurfaceFormatKHR fmt : formats) {
+            if (fmt.format() == VK_FORMAT_B8G8R8A8_SRGB && fmt.colorSpace() == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                chosenFormat = VK_FORMAT_B8G8R8A8_SRGB;
+                break;
+            }
+            if (chosenFormat == 0) {
+                chosenFormat = fmt.format();
+                chosenColorSpace = fmt.colorSpace();
+            }
+        }
+        if (chosenFormat == 0) throw new RuntimeException("No supported surface formats found!");
+        swapchainFormat = chosenFormat;
 
         // Query supported present modes to find the best low-latency/un-throttled mode
         java.nio.IntBuffer modeCount = stack.mallocInt(1);
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, modeCount, null);
         java.nio.IntBuffer modes = stack.mallocInt(modeCount.get(0));
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, modeCount, modes);
+        StringBuilder modeList = new StringBuilder("Supported present modes:");
+        for (int i = 0; i < modeCount.get(0); i++) modeList.append(" ").append(modes.get(i));
+        System.out.println(modeList);
 
         int chosenMode;
         if (preferredMode >= 0) {
             chosenMode = VK_PRESENT_MODE_FIFO_KHR; // default required fallback
+            boolean foundPreferred = false;
+            boolean foundMailbox = false;
             for (int i = 0; i < modeCount.get(0); i++) {
-                if (modes.get(i) == preferredMode) {
-                    chosenMode = preferredMode;
-                    break;
-                }
+                int mode = modes.get(i);
+                if (mode == preferredMode) foundPreferred = true;
+                if (mode == VK_PRESENT_MODE_MAILBOX_KHR) foundMailbox = true;
+            }
+            if (foundPreferred) {
+                chosenMode = preferredMode;
+            } else if (preferredMode == VK_PRESENT_MODE_IMMEDIATE_KHR && foundMailbox) {
+                // If IMMEDIATE is missing (common on MoltenVK), fallback to MAILBOX for uncapped rendering
+                chosenMode = VK_PRESENT_MODE_MAILBOX_KHR;
             }
         } else {
             chosenMode = VK_PRESENT_MODE_FIFO_KHR; // default required fallback
@@ -397,23 +507,31 @@ public final class Vulkan {
             }
         }
         presentMode = chosenMode;
-        System.out.println("Vulkan present mode chosen: " + chosenMode
-                + (chosenMode == VK_PRESENT_MODE_FIFO_KHR ? " (FIFO/vsync)" : " (IMMEDIATE)"));
+        String modeLabel;
+        if (chosenMode == VK_PRESENT_MODE_FIFO_KHR) modeLabel = " (FIFO/vsync)";
+        else if (chosenMode == VK_PRESENT_MODE_MAILBOX_KHR) modeLabel = " (MAILBOX/uncapped)";
+        else if (chosenMode == VK_PRESENT_MODE_IMMEDIATE_KHR) modeLabel = " (IMMEDIATE/uncapped)";
+        else modeLabel = " (unknown/" + chosenMode + ")";
+        System.out.println("Vulkan present mode chosen: " + chosenMode + modeLabel);
 
+        // Pass the current swapchain as oldSwapchain so the driver can hand over the
+        // surface safely; destroying it before the new swapchain exists leaves the
+        // semaphores/present queue in a state the validation layer flags as "still in use".
+        long oldSwapchain = swapchain;
         VkSwapchainCreateInfoKHR createInfo = VkSwapchainCreateInfoKHR.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
                 .surface(surface)
                 .minImageCount(3)
-                .imageFormat(VK_FORMAT_B8G8R8A8_SRGB)
-                .imageColorSpace(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+                .imageFormat(swapchainFormat)
+                .imageColorSpace(chosenColorSpace)
                 .imageArrayLayers(1)
-                .imageUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                .imageUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
                 .imageSharingMode(VK_SHARING_MODE_EXCLUSIVE)
                 .preTransform(VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
                 .compositeAlpha(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
                 .presentMode(chosenMode)
                 .clipped(true)
-                .oldSwapchain(VK_NULL_HANDLE);
+                .oldSwapchain(oldSwapchain);
         
         createInfo.imageExtent().width(width).height(height);
 
@@ -422,6 +540,11 @@ public final class Vulkan {
             throw new RuntimeException("Failed to create Swapchain.");
         }
         swapchain = pSwapchain.get(0);
+
+        // The new swapchain has taken over the surface; only now free the old handle.
+        if (oldSwapchain != VK_NULL_HANDLE) {
+            vkDestroySwapchainKHR(device, oldSwapchain, null);
+        }
 
         java.nio.IntBuffer pImageCount = stack.mallocInt(1);
         if (KHRSwapchain.vkGetSwapchainImagesKHR(device, swapchain, pImageCount, null) != VK_SUCCESS) {
