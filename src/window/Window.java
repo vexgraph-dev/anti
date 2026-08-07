@@ -85,14 +85,34 @@ public final class Window {
     }
 
     /**
-     * Pure park until the deadline. parkNanos is only a hint, so re-park if woken early.
-     * Never busy-spins; each iteration sleeps on the OS scheduler.
+     * Hybrid sleep-spin until the deadline. LockSupport.parkNanos() is only a hint and on
+     * macOS oversleeps by ~1-2ms of scheduler granularity, which compounds into draw jitter.
+     * Park for the bulk of the wait, then busy-spin the final micro-window so the deadline
+     * is met to sub-millisecond precision.
      */
-    private static void parkUntil(long deadline) {
-        long now;
-        while ((now = java.lang.System.nanoTime()) < deadline) {
-            parkNanos(deadline - now);
+    public static void parkUntil(long deadline) {
+        long now = java.lang.System.nanoTime();
+        long remaining = deadline - now;
+        if (remaining <= 0L) return;
+
+        // Park while more than ~1ms remains; spin the tail for precision.
+        if (remaining > 1_000_000L) {
+            parkNanos(remaining - 1_000_000L);
         }
+        while (java.lang.System.nanoTime() < deadline) {
+            Thread.onSpinWait();
+        }
+    }
+
+    /**
+     * Resolve the DRAW-side FPS cap for the Core Draw Worker.
+     * 0 = uncapped (no parking; the worker spins as fast as the pipeline allows).
+     * The vsync-lock bound does NOT apply here because present is decoupled from
+     * draw — only the minimized clamp throttles the draw rate.
+     */
+    public static int getDrawCap(long pointer) {
+        if (IS_MAC && macOSWindow.isMinimized(pointer)) return MINIMIZED_FPS;
+        return TARGET_FPS;
     }
 
     /**
@@ -181,6 +201,20 @@ public final class Window {
         setTitle(pointer, new String(buf, StandardCharsets.UTF_8));
     }
 
+    /** CORE worker side: request a fullscreen toggle. AppKit animation is main-thread
+     *  only, so Thread 0 applies it in applyPendingFullscreen. */
+    public static void requestFullscreenToggle() {
+        FULLSCREEN_TOGGLE_REQUEST.set(true);
+    }
+    private static final AtomicBoolean FULLSCREEN_TOGGLE_REQUEST = new AtomicBoolean(false);
+
+    /** Thread 0 side: apply a pending fullscreen toggle (called from the event pump). */
+    private static void applyPendingFullscreen(long pointer) {
+        if (FULLSCREEN_TOGGLE_REQUEST.compareAndSet(true, false)) {
+            toggleFullscreen(pointer);
+        }
+    }
+
     public static void setSize(long pointer, int width, int height) {
         if (IS_MAC) macOSWindow.setSize(pointer, width, height);
         else if (IS_WIN) windowsWindow.setSize(pointer, width, height);
@@ -249,6 +283,12 @@ public final class Window {
         return 0L;
     }
 
+    /** Main screen size in backing pixels, packed (width &lt;&lt; 32) | height. 0 if unavailable. */
+    public static long getScreenBackingSize() {
+        if (IS_MAC) return macOSWindow.getScreenBackingSize();
+        return 0L;
+    }
+
     public static void pollEvents() {
         if (IS_MAC) macOSWindow.pollEvents();
         else if (IS_WIN) windowsWindow.pollEvents();
@@ -278,16 +318,26 @@ public final class Window {
         input.Mouse.addMouseEvent(listener);
     }
 
+    /** Fired by the Core Draw Worker whenever the window enters or exits fullscreen (argument = now fullscreen). */
+    public static void setFullscreenListener(java.util.function.Consumer<Boolean> listener) {
+        FULLSCREEN_LISTENER = listener;
+    }
+    public static java.util.function.Consumer<Boolean> getFullscreenListener() {
+        return FULLSCREEN_LISTENER;
+    }
+    private static volatile java.util.function.Consumer<Boolean> FULLSCREEN_LISTENER;
+
     public static void run(long pointer, EngineLoop loop) {
         // Thread 0 = pure AppKit event pump. The Core Draw Worker owns the render
         // loop: it drains the input RingBuffers and drives Renderer.produceOnce()/
         // presentOnce(), so the FIFO vblank sleep happens on the worker, never here.
         // This thread spins as fast as the CPU allows, shoving high-precision
         // keyboard/mouse timestamps into the lock-free input RingBuffers.
-        System.out.println("[Main Thread] Event pump engaged: Thread 0 spinning free.");
+        System.out.println("[Main Thread] Event pump engaged: Thread 0 parked, woken by AppKit events.");
         while (!shouldClose(pointer)) {
             applyPendingTitle(pointer); // CORE worker's FPS label -> AppKit (main thread only)
-            pollEvents();
+            applyPendingFullscreen(pointer); // CORE worker's fullscreen toggle -> AppKit (main thread only)
+            waitEvents(); // bounded block: ~16ms cadence when idle, instant wake on input
         }
         System.out.println("[Main Thread] Window closed. Releasing Thread 0.");
     }
