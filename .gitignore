@@ -3,10 +3,10 @@
 *.iml
 out/
 
-### Mac OS ###
+### macOS ###
 .DS_Store
 
-### Build & Native Artifacts ###
+### Build & Native Artifacts and crashes and some bs ###
 natives/
 crash-dump.txt
 crash-dump_*.txt
@@ -28,8 +28,9 @@ scratch/
 preferences.txt
 regurgitation/
 code.txt
+debug_code.txt
 *.regurgitation
 
-### Not ready for presenting ###
+### api class for vexgraph/api-haven repository ###
 src/api/com/api/
 **/api/
