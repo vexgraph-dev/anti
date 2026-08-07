@@ -6,6 +6,7 @@ import annotation.Unsafe;
 import annotation.Volatile;
 import oop.Struct;
 import primitive.Byte;
+import primitive.Bool;
 import primitive.Double;
 import primitive.Float;
 import primitive.Brain;
@@ -32,7 +33,30 @@ import search.Trie;
 import spatial.GridArray;
 import spatial.CircularArray;
 import thread.RingBuffer;
+import thread.DrawThread;
+import thread.NetworkingThread;
+import thread.ConsoleThread;
+import thread.ScriptingThread;
+import audio.AudioBuffer;
+import audio.AudioBufferLayer;
+import audio.AudioSource;
+import audio.Sampler;
+import audio.vulkan.AudioComputeBuffer;
+import buffers.Buffer;
+import vulkan.CommandBuffer;
+import vulkan.CommandPool;
+import vulkan.Fence;
+import vulkan.RenderPass;
+import vulkan.Semaphore;
+import vulkan.Swapchain;
+import vulkan.VKBuffer;
+import vulkan.VKDeviceMemory;
+import vulkan.VKFramebuffer;
 import vulkan.VKImage;
+import vulkan.VKImageView;
+import vulkan.VKPipeline;
+import vulkan.VKPipelineLayout;
+import vulkan.VKShaderModule;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
@@ -904,12 +928,42 @@ public class ForeignMemory {
     @HotCode
     @Intention("the garbage collection to end the actual application")
     public static void freeAllClasses() {
+        // Stop/join worker threads first: their teardown drains RingBuffer/Map/Array
+        // which are freed below.
+        DrawThread.freeAllSystem();
+        NetworkingThread.freeAllSystem();
+        ConsoleThread.freeAllSystem();
+        ScriptingThread.freeAllSystem();
+
+        // Close subsystem pool arenas.
+        AudioBuffer.freeAll();
+        AudioBufferLayer.freeAll();
+        AudioSource.freeAll();
+        Sampler.freeAll();
+        AudioComputeBuffer.freeAll();
+        Buffer.freeAll();
+        CommandBuffer.freeAll();
+        CommandPool.freeAll();
+        Fence.freeAll();
+        RenderPass.freeAll();
+        Semaphore.freeAll();
+        Swapchain.freeAll();
+        VKBuffer.freeAll();
+        VKDeviceMemory.freeAll();
+        VKFramebuffer.freeAll();
+        VKImage.freeAll();
+        VKImageView.freeAll();
+        VKPipeline.freeAll();
+        VKPipelineLayout.freeAll();
+        VKShaderModule.freeAll();
+
         Byte.freeAll();
         Short.freeAll();
         Int.freeAll();
         Long.freeAll();
         Float.freeAll();
         Double.freeAll();
+        Bool.freeAll();
         IntFloat.freeAll();
         IntDouble.freeAll();
         LongFloat.freeAll();
@@ -933,6 +987,5 @@ public class ForeignMemory {
         GridArray.freeAll();
         CircularArray.freeAll();
         RingBuffer.freeAll();
-        VKImage.freeAll();
     }
 }
