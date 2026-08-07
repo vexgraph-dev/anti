@@ -258,11 +258,14 @@ public final class DrawThread {
         // sleep on the WindowServer refresh (60/120Hz) right here, never on Thread 0.
         long windowPtr = isCore(workerPtr) ? ForeignMemory.getLong(workerPtr + 24L) : 0L;
         long lastContentSize = windowPtr != 0L ? window.Window.getContentSize(windowPtr) : 0L;
+        boolean lastFullscreen = windowPtr != 0L && window.Window.isFullscreen(windowPtr);
         long pendingResizeSize = 0L;
         long lastResizeEventTime = 0L;
 
         long fpsWindowStart = java.lang.System.nanoTime();
         long lastDraw = 0L, lastPresent = 0L;
+        long frameDeadline = 0L;
+        long dbgIterNanos = 0L;
 
         while (ForeignMemory.getInt(workerPtr) == 1 && !Thread.currentThread().isInterrupted()) {
             // 1. CORE worker: run the main engine loop.
@@ -274,6 +277,18 @@ public final class DrawThread {
 
                 // Debounced resize -> swapchain rebuild (policy Window.run used to own).
                 if (windowPtr != 0L) {
+                    boolean fullscreen = window.Window.isFullscreen(windowPtr);
+                    if (fullscreen != lastFullscreen) {
+                        lastFullscreen = fullscreen;
+                        var listener = window.Window.getFullscreenListener();
+                        if (listener != null) {
+                            try {
+                                listener.accept(fullscreen);
+                            } catch (Throwable t) {
+                                System.out.println("[draw] fullscreen listener failed: " + t);
+                            }
+                        }
+                    }
                     long contentSize = window.Window.getContentSize(windowPtr);
                     if (contentSize != lastContentSize && contentSize != 0L) {
                         pendingResizeSize = contentSize;
@@ -281,7 +296,7 @@ public final class DrawThread {
                         lastResizeEventTime = java.lang.System.nanoTime();
                     }
                     if (pendingResizeSize != 0L
-                            && (java.lang.System.nanoTime() - lastResizeEventTime > 200_000_000L)) {
+                            && (java.lang.System.nanoTime() - lastResizeEventTime > 100_000_000L)) {
                         int w = (int) (pendingResizeSize >>> 32);
                         int h = (int) (pendingResizeSize & 0xFFFFFFFFL);
                         vulkan.TriangleRenderer.resize(w, h);
@@ -294,10 +309,25 @@ public final class DrawThread {
                     }
                 }
 
-                // Render the frame (produce off-screen, then present at the
-                // display's FIFO pace — this sleeps to match 60/120Hz).
+                // Render the frame off-screen. The dedicated Core-Present thread owns
+                // presentOnce() and drains the completed ring at the swapchain's FIFO
+                // pace, so DRAW rate and PRESENT rate are fully decoupled here.
+                //
+                // FPS cap: 0 = uncapped (draw as fast as the pipeline allows).
+                // A positive cap parks to hit the target DRAW rate exactly;
+                // present stays decoupled and only fires when a swapchain image
+                // is free, so draw:500 / present:60 is reachable on FIFO.
+                int cap = window.Window.getDrawCap(windowPtr);
+                if (cap > 0) {
+                    long period = 1_000_000_000L / cap;
+                    long now = java.lang.System.nanoTime();
+                    if (frameDeadline < now) frameDeadline = now;
+                    frameDeadline += period;
+                    window.Window.parkUntil(frameDeadline);
+                }
+                long iterT0 = java.lang.System.nanoTime();
                 vulkan.Renderer.produceOnce();
-                vulkan.Renderer.presentOnce();
+                dbgIterNanos += java.lang.System.nanoTime() - iterT0;
 
                 // 1Hz window-title FPS counter (was owned by Window.run's old loop).
                 long now = java.lang.System.nanoTime();
@@ -309,7 +339,27 @@ public final class DrawThread {
                     double presentFps = (currPresent - lastPresent) / elaps;
                     if (System.getProperty("anti.debug.present") != null)
                         System.out.println("[DEBUG] Draw=" + String.format("%.1f", drawFps)
-                                + " Present=" + String.format("%.1f", presentFps));
+                                + " Present=" + String.format("%.1f", presentFps)
+                                + " iterMs=" + (dbgIterNanos / 1_000_000)
+                                + " acqMs=" + (vulkan.Renderer.dbgAcquireNanos / 1_000_000)
+                                + " relWaitMs=" + (vulkan.Renderer.dbgReleasedWaitNanos / 1_000_000)
+                                + " qLockMs=" + (vulkan.Renderer.dbgQueueLockNanos / 1_000_000)
+                                + " presBlockMs=" + (vulkan.Renderer.dbgPresentBlockNanos / 1_000_000)
+                                + " presSubMs=" + (vulkan.Renderer.dbgPresentSubmitNanos / 1_000_000)
+                                + " presCallMs=" + (vulkan.Renderer.dbgPresentCallNanos / 1_000_000)
+                                + " pLoops=" + vulkan.Renderer.dbgPresentThreadLoops
+                                + " pParkMs=" + (vulkan.Renderer.dbgPresentThreadParkMs)
+                                + " notReady=" + vulkan.Renderer.dbgPresentNotReady);
+                    dbgIterNanos = 0L;
+                    vulkan.Renderer.dbgAcquireNanos = 0L;
+                    vulkan.Renderer.dbgReleasedWaitNanos = 0L;
+                    vulkan.Renderer.dbgQueueLockNanos = 0L;
+                    vulkan.Renderer.dbgPresentBlockNanos = 0L;
+                    vulkan.Renderer.dbgPresentNotReady = 0L;
+                    vulkan.Renderer.dbgPresentSubmitNanos = 0L;
+                    vulkan.Renderer.dbgPresentCallNanos = 0L;
+                    vulkan.Renderer.dbgPresentThreadLoops = 0L;
+                    vulkan.Renderer.dbgPresentThreadParkMs = 0L;
                     // Publish to the title mailbox; Thread 0's pump applies it (AppKit).
                     if (windowPtr != 0L)
                         window.Window.publishTitle(String.format(
