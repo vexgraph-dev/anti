@@ -130,6 +130,7 @@ public class TypeRegister
     public static final int ID_VK_DEVICE_MEMORY = 0x000047; // VKDeviceMemory class // 71
     public static final int ID_VK_IMAGE_VIEW = 0x000048; // VKImageView class // 72
     public static final int ID_VK_FRAMEBUFFER = 0x000049; // VKFramebuffer class // 73
+    public static final int ID_VK_IMAGE = 0x00004B; // VKImage class // 75
 
 
     // --- BUFFER CLASSES ---
@@ -177,6 +178,7 @@ public class TypeRegister
     public static final int ID_LOCAL = 0x000074; // Local class
     public static final int ID_GLOBAL = 0x000075; // Global class
     public static final int ID_QUEUE = 0x000076; // Queue class
+    public static final int ID_THREAD_REGISTRY = 0x000077; // ThreadRegistry class
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
@@ -249,6 +251,11 @@ public class TypeRegister
     public static final int VK_FRAMEBUFFER_SINGLETON = FORM_SINGLETON | ID_VK_FRAMEBUFFER;
     public static final int VK_FRAMEBUFFER_ARRAY = FORM_ARRAY | ID_VK_FRAMEBUFFER;
     public static final int VK_FRAMEBUFFER_POINTER = FORM_POINTER | ID_VK_FRAMEBUFFER;
+
+    // VKImage class
+    public static final int VK_IMAGE_SINGLETON = FORM_SINGLETON | ID_VK_IMAGE;
+    public static final int VK_IMAGE_ARRAY = FORM_ARRAY | ID_VK_IMAGE;
+    public static final int VK_IMAGE_POINTER = FORM_POINTER | ID_VK_IMAGE;
 
     // Int class
     public static final int INT_SINGLETON = FORM_SINGLETON | ID_INT;
