@@ -8,7 +8,7 @@ import oop.TypeRegister;
 public final class ThreadRegistry {
 
     @Required
-    public static final int CLASS_ID = TypeRegister.ID_SLAB_ALLOCATOR; // Using SLAB_ALLOCATOR or custom ID
+    public static final int CLASS_ID = TypeRegister.ID_THREAD_REGISTRY;
 
     private static final int TABLE_SIZE = 256;
     private static final int MASK = TABLE_SIZE - 1;
