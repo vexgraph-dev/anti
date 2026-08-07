@@ -225,9 +225,9 @@ public final class Vulkan {
 
         VkApplicationInfo appInfo = VkApplicationInfo.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_APPLICATION_INFO)
-                .pApplicationName(stack.UTF8("Anti Engine"))
+                .pApplicationName(stack.UTF8("Engine"))
                 .applicationVersion(VK_MAKE_VERSION(1, 0, 0))
-                .pEngineName(stack.UTF8("Anti Engine"))
+                .pEngineName(stack.UTF8("Engine"))
                 .engineVersion(VK_MAKE_VERSION(1, 0, 0))
                 .apiVersion(VK_API_VERSION_1_2);
 
@@ -443,7 +443,8 @@ public final class Vulkan {
         presentQueue = graphicsQueue;
     }
 
-    @Intention("Best low-latency present mode selection. On macOS this is only honored in fullscreen; a windowed CAMetalLayer is vsync-throttled to the display refresh rate regardless of the chosen mode.")
+    @Intention("Best low-latency present mode selection. On macOS this is only honored in fullscreen; " +
+            "a windowed CAMetalLayer is vsync-throttled to the display refresh rate regardless of the chosen mode.")
     @Citatiom(cite = 3)
     private static void initSwapchain(MemoryStack stack, int width, int height, int preferredMode) {
         swapchainWidth = width;
