@@ -501,10 +501,10 @@ public final class Renderer {
 
     public static void destroy(VkDevice device, long drawCommandPoolPtr, long blitCommandPoolPtr) {
         if (commandBuffersArray == 0L) return;
+        stopPresentThread();
         if (device != null && device.address() != 0L) {
             VK10.vkDeviceWaitIdle(device);
         }
-        stopPresentThread();
         for (int i = 0; i < frameCount; i++) {
             CommandBuffer.destroy(CommandBuffer.get(commandBuffersArray, i), device, drawCommandPoolPtr);
             CommandBuffer.destroy(CommandBuffer.get(blitCommandBuffersArray, i), device, blitCommandPoolPtr);
