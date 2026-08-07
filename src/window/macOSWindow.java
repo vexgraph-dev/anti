@@ -56,6 +56,10 @@ final class macOSWindow {
     // Translation map for macOS virtual key codes -> cross-platform Key constants
     private static final int[] MAC_KEY_MAP = new int[128];
 
+    // Event pump idle cadence (seconds): bounded blocking wait for AppKit events.
+    // Parks Thread 0 at ~60Hz between events but wakes instantly on mouse/key/touch.
+    private static final double IDLE_EVENT_TIMEOUT_SECONDS = 0.016;
+
     static {
         SymbolLookup objcLib;
         MethodHandle getClass, selRegName, msgSendPtr, msgSendPtrPtr, msgSendPtrLong, msgSendPtrLongPtr, msgSendPtrSize, msgSendVoid, msgSendVoidPtr, msgSendInt, msgSendBool, msgSendBoolRet, msgSendInitWindow, msgSendNextEvent, msgSendLongRet, msgSendShortRet, msgSendPointRet, msgSendPtrDouble, msgSendRectRet, msgSendDoubleRet, metalCreateSystemDefaultDevice;
@@ -258,8 +262,7 @@ final class macOSWindow {
                 MSG_SEND_VOID.invoke(window, centerSel);
                 
                 // Enable trackpad touch events on the window's content view
-                MemorySegment contentViewSel = getSel(arena, "contentView");
-                MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(window, contentViewSel);
+                MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "contentView"));
                 MemorySegment setAcceptsTouchEventsSel = getSel(arena, "setAcceptsTouchEvents:");
                 MSG_SEND_BOOL.invoke(contentView, setAcceptsTouchEventsSel, (byte)1);
 
@@ -343,8 +346,7 @@ final class macOSWindow {
             MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
             MemorySegment mainScreenSel = getSel(arena, "mainScreen");
             MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, mainScreenSel);
-            MemorySegment frameSel = getSel(arena, "frame");
-            MemorySegment screenRect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, frameSel);
+            MemorySegment screenRect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, getSel(arena, "frame"));
             double screenHeight = screenRect.get(ValueLayout.JAVA_DOUBLE, 24);
             
             MemorySegment setFrameTopLeftPointSel = getSel(arena, "setFrameTopLeftPoint:");
@@ -364,8 +366,7 @@ final class macOSWindow {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
             
-            MemorySegment contentViewSel = getSel(arena, "contentView");
-            MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, contentViewSel);
+            MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "contentView"));
             
             MemorySegment caMetalLayerClass = getObjcClass(arena, "CAMetalLayer");
             MemorySegment allocSel = getSel(arena, "alloc");
@@ -428,6 +429,76 @@ final class macOSWindow {
         }
     }
 
+    public static void toggleFullscreen(long pointer) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            MemorySegment toggleFullScreenSel = getSel(arena, "toggleFullScreen:");
+            MSG_SEND_VOID_PTR.invoke(window, toggleFullScreenSel, MemorySegment.NULL);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    /** Sets CAMetalLayer displaySyncEnabled (YES = vsync, NO = uncapped presentation). */
+    public static void setDisplaySyncEnabled(long layerPointer, boolean enabled) {
+        if (layerPointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment layer = MemorySegment.ofAddress(layerPointer);
+            MemorySegment setDisplaySyncSel = getSel(arena, "setDisplaySyncEnabled:");
+            MSG_SEND_BOOL.invoke(layer, setDisplaySyncSel, (byte) (enabled ? 1 : 0));
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    /** Content view size in backing pixels, packed as (width &lt;&lt; 32) | height. 0 if unavailable. */
+    public static long getContentSize(long pointer) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return 0L;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+
+            MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+            double scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
+            if (scale <= 0.0) scale = 1.0;
+
+            MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "contentView"));
+            if (view == null || view.address() == 0L) return 0L;
+
+            MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, view, getSel(arena, "frame"));
+            int w = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 16) * scale);
+            int h = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 24) * scale);
+            if (w <= 0 || h <= 0) return 0L;
+            return ((long) w << 32) | (h & 0xFFFFFFFFL);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    /** Main screen size in backing pixels, packed (width &lt;&lt; 32) | height. 0 if unavailable. */
+    @annotation.Intention("Overshoots on scaled displays: frame x backingScaleFactor returns 3274x2048 on a 2408x1506 MacBook. Fix with convertRectToBacking: or CGDisplayPixelsWide/High.")
+    public static long getScreenBackingSize() {
+        if (OBJC_GET_CLASS == null) return 0L;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
+            MemorySegment mainScreenSel = getSel(arena, "mainScreen");
+            MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, mainScreenSel);
+            if (mainScreen == null || mainScreen.address() == 0L) return 0L;
+
+            MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+            double scale = (double) MSG_SEND_DOUBLE_RET.invoke(mainScreen, backingScaleFactorSel);
+            if (scale <= 0.0) scale = 1.0;
+
+            MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, getSel(arena, "frame"));
+            int w = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 16) * scale);
+            int h = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 24) * scale);
+            if (w <= 0 || h <= 0) return 0L;
+            return ((long) w << 32) | (h & 0xFFFFFFFFL);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
     public static int getDisplayRefreshRate() {
         if (OBJC_GET_CLASS == null) return 60;
         try (Arena arena = Arena.ofConfined()) {
@@ -481,18 +552,21 @@ final class macOSWindow {
             MemorySegment normalizedPositionSel = getSel(arena, "normalizedPosition");
             MemorySegment isRestingSel = getSel(arena, "isResting");
 
+            // Selectors used per-event; hoisted out of the hot loop so no segment
+            // is allocated while draining a burst of input events.
+            MemorySegment buttonNumberSel = getSel(arena, "buttonNumber");
+            MemorySegment locationInWindowSel = getSel(arena, "locationInWindow");
+            MemorySegment windowSel = getSel(arena, "window");
+            MemorySegment contentViewSel = getSel(arena, "contentView");
+            MemorySegment frameSel = getSel(arena, "frame");
+
             long NSAnyEventMask = -1L;
-            boolean first = true;
 
             while (true) {
-                MemorySegment timeout = MemorySegment.NULL;
-                if (first)
-                    timeout = (MemorySegment) MSG_SEND_PTR_DOUBLE.invoke(nsDateClass, dateWithTimeIntervalSel, 1.0);
+                MemorySegment timeout = (MemorySegment) MSG_SEND_PTR_DOUBLE.invoke(nsDateClass, dateWithTimeIntervalSel, IDLE_EVENT_TIMEOUT_SECONDS);
 
-                
                 MemorySegment event = (MemorySegment) MSG_SEND_NEXT_EVENT.invoke(app, nextEventSel, NSAnyEventMask, timeout, runLoopMode, (byte)1);
                 if (event.address() == 0L) break;
-                first = false;
                 
                 long eventType = (long) MSG_SEND_LONG_RET.invoke(event, typeSel);
                 
@@ -526,7 +600,7 @@ final class macOSWindow {
                     int button = (eventType == 1) ? Mouse.LEFT : ((eventType == 3) ? Mouse.RIGHT : -1);
                     if (eventType == 25) {
                         try {
-                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
+                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
                             button = (int) btnNum;
                         } catch (Throwable t) {
                             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
@@ -537,7 +611,7 @@ final class macOSWindow {
                     int button = (eventType == 2) ? Mouse.LEFT : ((eventType == 4) ? Mouse.RIGHT : -1);
                     if (eventType == 26) {
                         try {
-                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
+                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
                             button = (int) btnNum;
                         } catch (Throwable t) {
                             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
@@ -546,18 +620,14 @@ final class macOSWindow {
                     if (button != -1) Mouse.pushButtonEvent(button, 0, 250_000_000L);
                 } else if (eventType == 5 || eventType == 6 || eventType == 7 || eventType == 27) { // Mouse Move/Drag
                     try {
-                        MemorySegment locationSel = getSel(arena, "locationInWindow");
-                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationInWindowSel);
                         double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
                         double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
                         
-                        MemorySegment windowSel = getSel(arena, "window");
                         MemorySegment eventWindow = (MemorySegment) MSG_SEND_PTR.invoke(event, windowSel);
                         if (eventWindow.address() != 0L) {
-                            MemorySegment contentViewSel = getSel(arena, "contentView");
                             MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(eventWindow, contentViewSel);
                             if (contentView.address() != 0L) {
-                                MemorySegment frameSel = getSel(arena, "frame");
                                 MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, contentView, frameSel);
                                 double height = rect.get(ValueLayout.JAVA_DOUBLE, 24);
                                 y = height - y;
@@ -576,7 +646,6 @@ final class macOSWindow {
                                 button = Mouse.RIGHT;
                             else // defauls to 27, unless will be added smth, will be added an arg
                             {
-                                MemorySegment buttonNumberSel = getSel(arena, "buttonNumber");
                                 long btn = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
                                 button = (int) btn;
                             }
@@ -588,17 +657,14 @@ final class macOSWindow {
                     }
                 } else if (eventType == 29 || eventType == 19 || eventType == 20) { // Touch events
                     try {
-                        MemorySegment windowSel = getSel(arena, "window");
                         MemorySegment eventWindow = (MemorySegment) MSG_SEND_PTR.invoke(event, windowSel);
                         if (eventWindow.address() != 0L) {
-                            MemorySegment contentViewSel = getSel(arena, "contentView");
                             MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(eventWindow, contentViewSel);
                             if (contentView.address() != 0L) {
                                 MemorySegment touchesSet = (MemorySegment) MSG_SEND_PTR_LONG_PTR.invoke(event, touchesMatchingPhaseSel, -1L, contentView);
                                 if (touchesSet != null && touchesSet.address() != 0L) {
                                     long count = (long) MSG_SEND_LONG_RET.invoke(touchesSet, countSel);
                                     if (count > 0) {
-                                        System.out.printf("[macOSWindow Debug] Captured trackpad event type: %d with %d touches%n", eventType, count);
                                         MemorySegment allObjs = (MemorySegment) MSG_SEND_PTR.invoke(touchesSet, allObjectsSel);
                                         for (int j = 0; j < count; j++) {
                                             MemorySegment touch = (MemorySegment) MSG_SEND_PTR_LONG.invoke(allObjs, objectAtIndexSel, (long)j);
@@ -612,7 +678,6 @@ final class macOSWindow {
                                             
                                             byte isResting = (byte) MSG_SEND_BOOL_RET.invoke(touch, isRestingSel);
                                             
-                                            MemorySegment frameSel = getSel(arena, "frame");
                                             MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, contentView, frameSel);
                                             double winW = rect.get(ValueLayout.JAVA_DOUBLE, 16);
                                             double winH = rect.get(ValueLayout.JAVA_DOUBLE, 24);
@@ -636,18 +701,14 @@ final class macOSWindow {
                 // For Mouse clicks, we can also extract the coordinate so the state has it
                 if (eventType == 1 || eventType == 2 || eventType == 3 || eventType == 4 || eventType == 25 || eventType == 26) {
                     try {
-                        MemorySegment locationSel = getSel(arena, "locationInWindow");
-                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationInWindowSel);
                         double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
                         double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
                         
-                        MemorySegment windowSel = getSel(arena, "window");
                         MemorySegment eventWindow = (MemorySegment) MSG_SEND_PTR.invoke(event, windowSel);
                         if (eventWindow.address() != 0L) {
-                            MemorySegment contentViewSel = getSel(arena, "contentView");
                             MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(eventWindow, contentViewSel);
                             if (contentView.address() != 0L) {
-                                MemorySegment frameSel = getSel(arena, "frame");
                                 MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, contentView, frameSel);
                                 double height = rect.get(ValueLayout.JAVA_DOUBLE, 24);
                                 y = height - y;
@@ -705,9 +766,19 @@ final class macOSWindow {
 
             long NSAnyEventMask = -1L;
 
+            MemorySegment nsDateClass = getObjcClass(arena, "NSDate");
+            MemorySegment distantPastSel = getSel(arena, "distantPast");
+            MemorySegment distantPast = (MemorySegment) MSG_SEND_PTR.invoke(nsDateClass, distantPastSel);
+
+            MemorySegment buttonNumberSel = getSel(arena, "buttonNumber");
+            MemorySegment locationInWindowSel = getSel(arena, "locationInWindow");
+            MemorySegment windowSel = getSel(arena, "window");
+            MemorySegment contentViewSel = getSel(arena, "contentView");
+            MemorySegment frameSel = getSel(arena, "frame");
+
             while (true) {
                 int button = 0;
-                MemorySegment event = (MemorySegment) MSG_SEND_NEXT_EVENT.invoke(app, nextEventSel, NSAnyEventMask, MemorySegment.NULL, runLoopMode, (byte)1);
+                MemorySegment event = (MemorySegment) MSG_SEND_NEXT_EVENT.invoke(app, nextEventSel, NSAnyEventMask, distantPast, runLoopMode, (byte)1);
                 if (event.address() == 0L) break;
                 
                 long eventType = (long) MSG_SEND_LONG_RET.invoke(event, typeSel);
@@ -742,7 +813,7 @@ final class macOSWindow {
                     button = (eventType == 1) ? Mouse.LEFT : ((eventType == 3) ? Mouse.RIGHT : -1);
                     if (eventType == 25) {
                         try {
-                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
+                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
                             button = (int) btnNum;
                         } catch (Throwable t) {
                             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
@@ -753,7 +824,7 @@ final class macOSWindow {
                     button = (eventType == 2) ? Mouse.LEFT : ((eventType == 4) ? Mouse.RIGHT : -1);
                     if (eventType == 26) {
                         try {
-                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, getSel(arena, "buttonNumber"));
+                            long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
                             button = (int) btnNum;
                         } catch (Throwable t) {
                             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
@@ -762,19 +833,15 @@ final class macOSWindow {
                     if (button != -1) Mouse.pushButtonEvent(button, 0, 250_000_000L);
                 } else if (eventType == 5 || eventType == 6 || eventType == 7 || eventType == 27) { // Mouse Move/Drag
                     try {
-                        MemorySegment locationSel = getSel(arena, "locationInWindow");
-                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationInWindowSel);
                         double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
                         double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
 
                         // Standardize top-left origin inversion, mirroring waitEvents()
-                        MemorySegment windowSel = getSel(arena, "window");
                         MemorySegment eventWindow = (MemorySegment) MSG_SEND_PTR.invoke(event, windowSel);
                         if (eventWindow.address() != 0L) {
-                            MemorySegment contentViewSel = getSel(arena, "contentView");
                             MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(eventWindow, contentViewSel);
                             if (contentView.address() != 0L) {
-                                MemorySegment frameSel = getSel(arena, "frame");
                                 MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, contentView, frameSel);
                                 double height = rect.get(ValueLayout.JAVA_DOUBLE, 24);
                                 y = height - y;
@@ -792,7 +859,6 @@ final class macOSWindow {
                                 dragButton = Mouse.RIGHT;
                             else // defaults to 27, unless more buttons are added
                             {
-                                MemorySegment buttonNumberSel = getSel(arena, "buttonNumber");
                                 long btn = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
                                 dragButton = (int) btn;
                             }
@@ -806,18 +872,14 @@ final class macOSWindow {
                 // For Mouse clicks, we can also extract the coordinate so the state has it
                 if (eventType == 1 || eventType == 2 || eventType == 3 || eventType == 4 || eventType == 25 || eventType == 26) {
                     try {
-                        MemorySegment locationSel = getSel(arena, "locationInWindow");
-                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationSel);
+                        MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationInWindowSel);
                         double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
                         double y = point.get(ValueLayout.JAVA_DOUBLE, 8);
                         
-                        MemorySegment windowSel = getSel(arena, "window");
                         MemorySegment eventWindow = (MemorySegment) MSG_SEND_PTR.invoke(event, windowSel);
                         if (eventWindow.address() != 0L) {
-                            MemorySegment contentViewSel = getSel(arena, "contentView");
                             MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(eventWindow, contentViewSel);
                             if (contentView.address() != 0L) {
-                                MemorySegment frameSel = getSel(arena, "frame");
                                 MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, contentView, frameSel);
                                 double height = rect.get(ValueLayout.JAVA_DOUBLE, 24);
                                 y = height - y;
