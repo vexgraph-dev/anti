@@ -3,6 +3,7 @@ package io;
 import annotation.Draft;
 
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
@@ -19,8 +20,13 @@ public class FileWriter {
     public FileWriter() {
     }
 
-    /** Creates/truncates the file at path. Returns true on success. */
+    /** Creates parent dirs (if needed) then creates/truncates the file at path. Returns true on success. */
     public boolean open(String path) {
+        File parent = new File(path).getParentFile();
+        if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
+            open = false;
+            return false;
+        }
         try {
             out = new BufferedOutputStream(
                 new FileOutputStream(path, false), 1 << 16);
