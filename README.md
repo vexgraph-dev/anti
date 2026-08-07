@@ -23,7 +23,7 @@ This is Java stripped of its safety nets and rebuilt for raw performance.
 
 This framework is built using an unconventional AI-orchestrated development process.
 
-I leverage Google **[Antigravity](https://antigravity.google)** as my primary coding agent. However, the architecture is entirely mine. I orchestrate the AI's operations, strictly dictate its boundaries, and rigorously audit all generated code to ensure it flawlessly complies with my zero-allocation standards. The AI acts as a high-speed implementer of my architectural manifesto.
+I leverage coding agents. I orchestrate the AI's operations, strictly dictate its boundaries, and rigorously audit all generated code to ensure it flawlessly complies with my zero-allocation standards. The AI acts as a high-speed implementer of my architectural manifesto. I sometimes feel frustrated just like a software engineer lol.
 
 ## Building & Dependencies
 
