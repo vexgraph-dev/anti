@@ -357,6 +357,10 @@ public final class TriangleRenderer {
         if (commandBuffer == VK_NULL_HANDLE) {
             throw new IllegalStateException("Triangle command buffer handle is NULL at index " + imageIndex);
         }
+        
+        int currentW = Vulkan.getSwapchainWidth();
+        int currentH = Vulkan.getSwapchainHeight();
+        
         try (
                 MemoryStack stack = MemoryStack.stackPush();
                 VkClearValue.Buffer clearValues = VkClearValue.calloc(1, stack);
@@ -367,14 +371,14 @@ public final class TriangleRenderer {
                         .float32(2, 0f)
                         .float32(3, 1.0f);
 
-                // Dynamic viewport + scissor: set to the FIXED off-screen resolution so the
-                // render targets stay pinned and only the present blit scales to the window.
+                // Only shade the portion of the pinned framebuffer that actually matches
+                // the current swapchain size! This prevents rendering 6M pixels for an 800x600 window.
                 VkViewport.Buffer vpBuffer = VkViewport.calloc(1, stack);
-                VkViewport _viewport = vpBuffer.get(0).set(0.0f, 0.0f, offscreenWidth, offscreenHeight, 0.0f, 1.0f);
+                VkViewport _viewport = vpBuffer.get(0).set(0.0f, 0.0f, currentW, currentH, 0.0f, 1.0f);
 
                 VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack);
                 VkOffset2D scissorOffset = scissor.get(0).offset().set(0, 0);
-                VkExtent2D scissorExtent = scissor.get(0).extent().set(offscreenWidth, offscreenHeight)
+                VkExtent2D scissorExtent = scissor.get(0).extent().set(currentW, currentH)
         ) {
             org.lwjgl.vulkan.VkCommandBuffer command = new org.lwjgl.vulkan.VkCommandBuffer(commandBuffer, Vulkan.getDevice());
             VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack)
@@ -387,7 +391,7 @@ public final class TriangleRenderer {
                     .sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
                     .renderPass(RenderPass.get(renderPass))
                     .framebuffer(VKFramebuffer.get(Long.get(framebuffers, imageIndex)))
-                    .renderArea(r -> r.offset(o -> o.set(0, 0)).extent(e -> e.set(offscreenWidth, offscreenHeight)));
+                    .renderArea(r -> r.offset(o -> o.set(0, 0)).extent(e -> e.set(currentW, currentH)));
             renderBegin.pClearValues(clearValues);
 
             vkCmdBeginRenderPass(command, renderBegin, VK_SUBPASS_CONTENTS_INLINE);
