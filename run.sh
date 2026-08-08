@@ -61,8 +61,33 @@ SOURCES=$(find src -name "*.java" -not -path "*/api/*" -not -name "FFMRegistrati
 }
 echo "[run.sh] Build OK."
 
-# 6. Run EngineTest
-export MTL_CAPTURE_ENABLED=1
-"$JAVA_HOME/bin/java" --enable-preview --enable-native-access=ALL-UNNAMED -Xmx64m \
-    -cp "$CP" \
-    process.EngineTest
+if [ "$1" == "--native" ]; then
+    echo "[run.sh] Generating GraalVM configurations via Tracing Agent..."
+    # 1. Run the app for a few seconds with the agent attached. 
+    # (Close the window manually for the script to continue)
+    "$JAVA_HOME/bin/java" --enable-preview --enable-native-access=ALL-UNNAMED \
+        -agentlib:native-image-agent=config-output-dir=META-INF/native-image \
+        -cp "$CP" process.EngineTest
+        
+    echo "[run.sh] Building standalone Native Binary..."
+    # 2. Compile the AOT Native Image using the generated configs
+    "$JAVA_HOME/bin/native-image" \
+        --no-fallback \
+        --enable-preview \
+        --enable-native-access=ALL-UNNAMED \
+        -cp "$CP" \
+        -H:ConfigurationFileDirectories=META-INF/native-image \
+        --initialize-at-run-time=window.macOSWindow \
+        process.EngineTest \
+        AntiEngine
+
+    echo "[run.sh] Build complete! Run it with: ./AntiEngine"
+    exit 0
+else
+    # Normal JVM Run
+    # 6. Run EngineTest
+    export MTL_CAPTURE_ENABLED=1
+    "$JAVA_HOME/bin/java" --enable-preview --enable-native-access=ALL-UNNAMED -Xmx64m \
+        -cp "$CP" \
+        process.EngineTest
+fi
