@@ -42,6 +42,7 @@ final class macOSWindow {
     private static MethodHandle MSG_SEND_BOOL;
     private static MethodHandle MSG_SEND_BOOL_RET;
     private static MethodHandle MSG_SEND_BOOL_RET_LONG;
+    private static MethodHandle MSG_SEND_BOOL_RET_PTR_PTR;
     private static MethodHandle MSG_SEND_PTR_DOUBLE;
     private static MethodHandle MSG_SEND_INIT_WINDOW;
     private static MethodHandle MSG_SEND_NEXT_EVENT;
@@ -83,7 +84,7 @@ final class macOSWindow {
 
     static {
         SymbolLookup objcLib;
-        MethodHandle getClass, selRegName, msgSendPtr, msgSendPtrPtr, msgSendPtrLong, msgSendPtrLongPtr, msgSendPtrSize, msgSendVoid, msgSendVoidPtr, msgSendInt, msgSendBool, msgSendBoolRet, msgSendBoolLongRet, msgSendInitWindow, msgSendNextEvent, msgSendLongRet, msgSendShortRet, msgSendPointRet, msgSendPtrDouble, msgSendRectRet, msgSendDoubleRet, metalCreateSystemDefaultDevice;
+        MethodHandle getClass, selRegName, msgSendPtr, msgSendPtrPtr, msgSendPtrLong, msgSendPtrLongPtr, msgSendPtrSize, msgSendVoid, msgSendVoidPtr, msgSendInt, msgSendBool, msgSendBoolRet, msgSendBoolLongRet, msgSendBoolRetPtrPtr, msgSendInitWindow, msgSendNextEvent, msgSendLongRet, msgSendShortRet, msgSendPointRet, msgSendPtrDouble, msgSendRectRet, msgSendDoubleRet, metalCreateSystemDefaultDevice;
         StructLayout cgRect, cgSize;
 
         try {
@@ -137,6 +138,7 @@ final class macOSWindow {
             msgSendBool = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BYTE));
             msgSendBoolRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
             msgSendBoolLongRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+            msgSendBoolRetPtrPtr = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
             msgSendPtrDouble = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_DOUBLE));
 
             msgSendNextEvent = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(
@@ -181,6 +183,7 @@ final class macOSWindow {
         MSG_SEND_BOOL = msgSendBool;
         MSG_SEND_BOOL_RET = msgSendBoolRet;
         MSG_SEND_BOOL_RET_LONG = msgSendBoolLongRet;
+        MSG_SEND_BOOL_RET_PTR_PTR = msgSendBoolRetPtrPtr;
         MSG_SEND_PTR_DOUBLE = msgSendPtrDouble;
         MSG_SEND_INIT_WINDOW = msgSendInitWindow;
         MSG_SEND_NEXT_EVENT = msgSendNextEvent;
@@ -453,6 +456,89 @@ final class macOSWindow {
             return metalLayer.address();
         } catch (Throwable t) {
             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    public static void setFullscreen(long pointer, boolean fullscreen) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            long currentStyle = (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, "styleMask"));
+            boolean isCurrentlyFullscreen = (currentStyle & STYLE_FULL_SCREEN) != 0;
+            
+            if (fullscreen != isCurrentlyFullscreen) {
+                MemorySegment toggleFullScreenSel = getSel(arena, "toggleFullScreen:");
+                MSG_SEND_VOID_PTR.invoke(window, toggleFullScreenSel, MemorySegment.NULL);
+            }
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    public static void center(long pointer) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            MemorySegment centerSel = getSel(arena, "center");
+            MSG_SEND_VOID.invoke(window, centerSel);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    private static boolean cursorVisible = true;
+    public static void setCursorVisible(boolean visible) {
+        if (OBJC_GET_CLASS == null) return;
+        if (cursorVisible == visible) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment nsCursorClass = getObjcClass(arena, "NSCursor");
+            if (visible) {
+                MSG_SEND_VOID.invoke(nsCursorClass, getSel(arena, "unhide"));
+            } else {
+                MSG_SEND_VOID.invoke(nsCursorClass, getSel(arena, "hide"));
+            }
+            cursorVisible = visible;
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    public static void setClipboardString(String text) {
+        if (OBJC_GET_CLASS == null || text == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment nsPasteboardClass = getObjcClass(arena, "NSPasteboard");
+            MemorySegment pasteboard = (MemorySegment) MSG_SEND_PTR.invoke(nsPasteboardClass, getSel(arena, "generalPasteboard"));
+            MSG_SEND_LONG_RET.invoke(pasteboard, getSel(arena, "clearContents"));
+            
+            MemorySegment nsStringClass = getObjcClass(arena, "NSString");
+            MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, getSel(arena, "alloc"));
+            MemorySegment nameStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, getSel(arena, "initWithUTF8String:"), arena.allocateFrom(text));
+            
+            MemorySegment typeStr = arena.allocateFrom("public.utf8-plain-text");
+            MSG_SEND_BOOL_RET_PTR_PTR.invoke(pasteboard, getSel(arena, "setString:forType:"), nameStr, typeStr);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    public static String getClipboardString() {
+        if (OBJC_GET_CLASS == null) return "";
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment nsPasteboardClass = getObjcClass(arena, "NSPasteboard");
+            MemorySegment pasteboard = (MemorySegment) MSG_SEND_PTR.invoke(nsPasteboardClass, getSel(arena, "generalPasteboard"));
+            
+            MemorySegment typeStr = arena.allocateFrom("public.utf8-plain-text");
+            MemorySegment nsStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(pasteboard, getSel(arena, "stringForType:"), typeStr);
+            
+            if (nsStr != null && nsStr.address() != 0) {
+                MemorySegment utf8 = (MemorySegment) MSG_SEND_PTR.invoke(nsStr, getSel(arena, "UTF8String"));
+                if (utf8 != null && utf8.address() != 0) {
+                    return utf8.getString(0);
+                }
+            }
+            return "";
+        } catch (Throwable t) {
+            return "";
         }
     }
 
