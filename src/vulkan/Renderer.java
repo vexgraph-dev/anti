@@ -379,8 +379,8 @@ public final class Renderer {
 
         long swapchainImage = Long.get(Vulkan.getSwapchainImages(), imgIndex);
         long offscreenImage = TriangleRenderer.getOffscreenImageHandle(slot);
-        int srcW = TriangleRenderer.getOffscreenWidth();
-        int srcH = TriangleRenderer.getOffscreenHeight();
+        int srcW = Vulkan.getSwapchainWidth();
+        int srcH = Vulkan.getSwapchainHeight();
         int dstW = Vulkan.getSwapchainWidth();
         int dstH = Vulkan.getSwapchainHeight();
 
