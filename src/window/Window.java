@@ -157,11 +157,25 @@ public final class Window {
         return cap;
     }
 
-    public static long allocate(boolean borderless) {
-        if (IS_MAC) return macOSWindow.allocate(borderless);
-        if (IS_WIN) return windowsWindow.allocate(borderless);
-        if (IS_LINUX) return linuxWindow.allocate(borderless);
-        throw new UnsupportedOperationException("Unsupported OS: " + OS);
+    public static long allocate() {
+        return allocate("Anti Engine", 1280, 720);
+    }
+
+    public static long allocate(String title) {
+        return allocate(title, 1280, 720);
+    }
+
+    public static long allocate(String title, int width, int height) {
+        long ptr = 0;
+        if (IS_MAC) ptr = macOSWindow.allocate(width, height);
+        else if (IS_WIN) ptr = windowsWindow.allocate(width, height);
+        else if (IS_LINUX) ptr = linuxWindow.allocate(width, height);
+        else throw new UnsupportedOperationException("Unsupported OS: " + OS);
+
+        if (ptr != 0) {
+            setTitle(ptr, title);
+        }
+        return ptr;
     }
 
     public static void free(long pointer) {
@@ -224,6 +238,19 @@ public final class Window {
         if (IS_MAC) macOSWindow.setSize(pointer, width, height);
         else if (IS_WIN) windowsWindow.setSize(pointer, width, height);
         else if (IS_LINUX) linuxWindow.setSize(pointer, width, height);
+    }
+
+    /**
+     * Toggles Digital Rights Management (DRM) capture protection on the window.
+     * When enabled, the OS prevents screenshots, screen recording, or screen sharing
+     * from capturing the contents of this window.
+     * @param pointer The window pointer
+     * @param enabled True to enable DRM (block capture), false to disable.
+     */
+    public static void setDRM(long pointer, boolean enabled) {
+        if (IS_MAC) macOSWindow.setDRM(pointer, enabled);
+        else if (IS_WIN) windowsWindow.setDRM(pointer, enabled);
+        else if (IS_LINUX) linuxWindow.setDRM(pointer, enabled);
     }
 
     public static void show(long pointer) {
@@ -327,6 +354,52 @@ public final class Window {
 
     public static void setMaxSize(long pointer, int width, int height) {
         if (IS_MAC) macOSWindow.setMaxSize(pointer, width, height);
+    }
+
+    public static long getMinSize(long pointer) {
+        if (IS_MAC) return macOSWindow.getMinSize(pointer);
+        return 0L;
+    }
+
+    public static long getMaxSize(long pointer) {
+        if (IS_MAC) return macOSWindow.getMaxSize(pointer);
+        return 0L;
+    }
+
+    public static void setMinWidth(long pointer, int width) {
+        long current = getMinSize(pointer);
+        setMinSize(pointer, width, (int) current);
+    }
+
+    public static void setMinHeight(long pointer, int height) {
+        long current = getMinSize(pointer);
+        setMinSize(pointer, (int) (current >>> 32), height);
+    }
+
+    public static void setMaxWidth(long pointer, int width) {
+        long current = getMaxSize(pointer);
+        setMaxSize(pointer, width, (int) current);
+    }
+
+    public static void setMaxHeight(long pointer, int height) {
+        long current = getMaxSize(pointer);
+        setMaxSize(pointer, (int) (current >>> 32), height);
+    }
+
+    public static int getMinWidth(long pointer) {
+        return (int) (getMinSize(pointer) >>> 32);
+    }
+
+    public static int getMinHeight(long pointer) {
+        return (int) getMinSize(pointer);
+    }
+
+    public static int getMaxWidth(long pointer) {
+        return (int) (getMaxSize(pointer) >>> 32);
+    }
+
+    public static int getMaxHeight(long pointer) {
+        return (int) getMaxSize(pointer);
     }
 
     /** CAMetalLayer vsync: YES = synced to display, NO = uncapped presentation. */
