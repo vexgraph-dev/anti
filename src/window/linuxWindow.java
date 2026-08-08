@@ -29,9 +29,9 @@ final class linuxWindow {
         LIB_X11 = libX11;
     }
 
-    public static long allocate(boolean borderless) {
-        // TODO: Implement X11 XCreateWindow via FFM
-        throw new UnsupportedOperationException("Linux FFM Window not implemented yet");
+    public static long allocate(int width, int height) {
+        // TODO: Implement X11/Wayland window creation
+        return 0L;
     }
 
     public static void setTitle(long pointer, String title) {
@@ -40,6 +40,11 @@ final class linuxWindow {
 
     public static void setSize(long pointer, int width, int height) {
         // TODO: Implement X11 XResizeWindow
+    }
+
+    @Draft
+    public static void setDRM(long pointer, boolean enabled) {
+        // TODO: Wayland/X11 DRM protection (if supported by compositor)
     }
 
     public static void show(long pointer) {
