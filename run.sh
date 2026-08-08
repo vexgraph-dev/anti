@@ -56,7 +56,7 @@ CP="out/production/anti:lib/lwjgl-release-3.4.2-custom/*:lib/oshi/*"
 #    - Recompile EngineTest into out/production/anti so the JVM can load it as a class.
 echo "[run.sh] Building project..."
 SOURCES=$(find src -name "*.java" -not -path "*/api/*" -not -name "FFMRegistrationFeature.java")
-"$JAVA_HOME/bin/javac" --release 25 --enable-preview -cp "$CP" -d out/production/anti $SOURCES scratch/EngineTest.java || {
+"$JAVA_HOME/bin/javac" --release 25 --enable-preview -cp "$CP" -d out/production/anti $SOURCES || {
     echo "[run.sh] BUILD FAILED"; exit 1;
 }
 echo "[run.sh] Build OK."
@@ -65,4 +65,4 @@ echo "[run.sh] Build OK."
 export MTL_CAPTURE_ENABLED=1
 "$JAVA_HOME/bin/java" --enable-preview --enable-native-access=ALL-UNNAMED -Xmx64m \
     -cp "$CP" \
-    EngineTest
+    process.EngineTest
