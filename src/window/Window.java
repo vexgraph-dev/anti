@@ -1,5 +1,6 @@
 package window;
 
+import annotation.Intention;
 import engine.EngineLoop;
 import annotation.Draft;
 
@@ -184,6 +185,11 @@ public final class Window {
         else if (IS_LINUX) linuxWindow.free(pointer);
     }
 
+    @Intention("redundant function for term similarity")
+    public static void close(long pointer) {
+        free(pointer);
+    }
+
     public static void setTitle(long pointer, String title) {
         if (IS_MAC) macOSWindow.setTitle(pointer, title);
         else if (IS_WIN) windowsWindow.setTitle(pointer, title);
@@ -276,6 +282,71 @@ public final class Window {
         if (IS_WIN) return windowsWindow.createSurface(pointer);
         if (IS_LINUX) return linuxWindow.createSurface(pointer);
         return 0L;
+    }
+
+    /**
+     * Toggles fullscreen mode for the window.
+     */
+    public static void setFullscreen(long pointer, boolean fullscreen) {
+        if (IS_MAC) {
+            macOSWindow.setFullscreen(pointer, fullscreen);
+        } else if (IS_WIN) {
+            // windowsWindow.setFullscreen(pointer, fullscreen);
+        } else {
+            // linuxWindow.setFullscreen(pointer, fullscreen);
+        }
+    }
+
+    /**
+     * Centers the window on the primary display.
+     */
+    public static void center(long pointer) {
+        if (IS_MAC) {
+            macOSWindow.center(pointer);
+        } else if (IS_WIN) {
+            // windowsWindow.center(pointer);
+        } else {
+            // linuxWindow.center(pointer);
+        }
+    }
+
+    /**
+     * Hides or unhides the system cursor globally or for this application.
+     */
+    public static void setCursorVisible(boolean visible) {
+        if (IS_MAC) {
+            macOSWindow.setCursorVisible(visible);
+        } else if (IS_WIN) {
+            // windowsWindow.setCursorVisible(visible);
+        } else {
+            // linuxWindow.setCursorVisible(visible);
+        }
+    }
+
+    /**
+     * Writes a string to the system clipboard.
+     */
+    public static void setClipboardString(String text) {
+        if (IS_MAC) {
+            macOSWindow.setClipboardString(text);
+        } else if (IS_WIN) {
+            // windowsWindow.setClipboardString(text);
+        } else {
+            // linuxWindow.setClipboardString(text);
+        }
+    }
+
+    /**
+     * Reads a string from the system clipboard.
+     */
+    public static String getClipboardString() {
+        if (IS_MAC) {
+            return macOSWindow.getClipboardString();
+        } else if (IS_WIN) {
+            return ""; // windowsWindow.getClipboardString();
+        } else {
+            return ""; // linuxWindow.getClipboardString();
+        }
     }
 
     public static boolean isMetalDeviceAvailable() {
