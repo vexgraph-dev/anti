@@ -1,0 +1,67 @@
+package process;
+
+import nio.ForeignMemory;
+import window.Window;
+
+import static org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_FIFO_KHR;
+
+public class EngineTest {
+    public static void main(String[] args) throws Throwable
+    {
+        AntiRuntime.init(null);
+        // ACTUAL ENGINE LOGIC
+
+        io.LogKind.registerNames();
+        System.out.println("Starting Engine Window Test...");
+        long windowPtr = Window.allocate("Engine", 800, 600);
+        System.out.println("Window spawned at: " + windowPtr);
+        Window.setTargetFps(60);
+        Window.show(windowPtr);
+
+        // FIFO: the Core Draw Worker presents at the WindowServer's refresh (60/120Hz).
+        // Override via -Danti.present=fifo|mailbox|immediate|-1 (auto) for headless testing.
+        int bootPresentMode;
+        String bootMode = System.getProperty("anti.present", "fifo").toLowerCase();
+        switch (bootMode) {
+            case "mailbox" -> bootPresentMode = org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR;
+            case "immediate" -> bootPresentMode = org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR;
+            case "auto" -> bootPresentMode = -1;
+            default -> bootPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+        }
+        Window.setFpsMode(windowPtr, bootPresentMode);
+
+        System.out.println("Metal device available to this process: " + Window.isMetalDeviceAvailable());
+        long surfacePtr = Window.createSurface(windowPtr);
+        System.out.println("Surface created at (CAMetalLayer): " + surfacePtr);
+
+        // Setup vulkan (which inherently spawns the DrawThread and binds to the surface)
+        vulkan.Vulkan.initVulkan(surfacePtr, 800, 600, bootPresentMode);
+        vulkan.TriangleRenderer.init();
+
+        System.out.println("[Main Thread] Handing over control to the event pump...");
+
+        // Boot the Core Draw Worker: it drains the input RingBuffers and owns the
+        // render loop (produceOnce + presentOnce), paced by the FIFO swapchain.
+        long coreDrawWorker = thread.DrawThread.getCoreWorker();
+        thread.DrawThread.bindWindow(coreDrawWorker, windowPtr);
+        thread.DrawThread.run(coreDrawWorker);
+
+        // Trap Thread 0 in the OS event pump. It spins freely, feeding the input
+        // RingBuffers, and never sleeps / never touches Vulkan.
+        Window.run(windowPtr, () -> {
+            // Spin freely!
+        });
+
+        // Window closed: stop the worker before tearing down Vulkan.
+        thread.DrawThread.freeAllSystem();
+        vulkan.TriangleRenderer.destroy();
+        Window.free(windowPtr);
+        System.out.println("Test complete.");
+
+        // free everything btw
+        ForeignMemory.freeAllClasses();
+
+        // Force kill the JVM and all AppKit/GCD background threads
+        System.exit(0);
+    }
+}
