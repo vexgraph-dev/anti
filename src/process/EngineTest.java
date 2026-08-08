@@ -55,17 +55,20 @@ public class EngineTest {
             // Spin freely!
         });
 
-        // Window closed: hide immediately, then stop the worker before tearing down Vulkan.
-        Window.setVisible(windowPtr, false);
-        thread.DrawThread.freeAllSystem();
-        vulkan.TriangleRenderer.destroy();
-        Window.free(windowPtr);
-        System.out.println("Test complete.");
+        // Window closed: start background teardown to prevent main-thread freeze.
+        // AppKit requires the main thread to remain unblocked to play fullscreen exit animations.
+        System.out.println("Test complete. Tearing down Vulkan in background...");
+        new Thread(() -> {
+            thread.DrawThread.freeAllSystem();
+            vulkan.TriangleRenderer.destroy();
+            Window.free(windowPtr);
+            nio.ForeignMemory.freeAllClasses();
+            System.exit(0);
+        }).start();
 
-        // free everything btw
-        ForeignMemory.freeAllClasses();
-
-        // Force kill the JVM and all AppKit/GCD background threads
-        System.exit(0);
+        // Keep pumping events on main thread so the fullscreen close animation plays smoothly
+        while (true) {
+            window.Window.waitEvents();
+        }
     }
 }
