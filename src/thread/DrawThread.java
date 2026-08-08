@@ -338,10 +338,12 @@ public final class DrawThread {
                     double elaps = (now - fpsWindowStart) / 1_000_000_000.0;
                     double drawFps = (currDraw - lastDraw) / elaps;
                     double presentFps = (currPresent - lastPresent) / elaps;
+                    long totalIterNanos = dbgIterNanos;
+                    
                     if (System.getProperty("anti.debug.present") != null)
                         System.out.println("[DEBUG] Draw=" + String.format("%.1f", drawFps)
                                 + " Present=" + String.format("%.1f", presentFps)
-                                + " iterMs=" + (dbgIterNanos / 1_000_000)
+                                + " iterMs=" + (totalIterNanos / 1_000_000)
                                 + " acqMs=" + (vulkan.Renderer.dbgAcquireNanos / 1_000_000)
                                 + " relWaitMs=" + (vulkan.Renderer.dbgReleasedWaitNanos / 1_000_000)
                                 + " qLockMs=" + (vulkan.Renderer.dbgQueueLockNanos / 1_000_000)
@@ -362,9 +364,12 @@ public final class DrawThread {
                     vulkan.Renderer.dbgPresentThreadLoops = 0L;
                     vulkan.Renderer.dbgPresentThreadParkMs = 0L;
                     // Publish to the title mailbox; Thread 0's pump applies it (AppKit).
-                    if (windowPtr != 0L)
+                    if (windowPtr != 0L) {
+                        double drawDelta = (currDraw - lastDraw);
+                        double avgDrawMs = drawDelta > 0 ? (totalIterNanos / 1_000_000.0) / drawDelta : 0.0;
                         window.Window.publishTitle(String.format(
-                                "Window | Draw %.1f FPS | Present %.1f FPS", drawFps, presentFps));
+                                "Window | Draw %.1f FPS (%.2f ms) | Present %.1f FPS", drawFps, avgDrawMs, presentFps));
+                    }
                     fpsWindowStart = now;
                     lastDraw = currDraw;
                     lastPresent = currPresent;
