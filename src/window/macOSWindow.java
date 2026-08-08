@@ -51,6 +51,13 @@ final class macOSWindow {
     private static MethodHandle MSG_SEND_RECT_RET;
     private static MethodHandle MSG_SEND_DOUBLE_RET;
     private static MethodHandle METAL_CREATE_SYSTEM_DEFAULT_DEVICE;
+    private static MethodHandle CG_MAIN_DISPLAY_ID;
+    private static MethodHandle CG_DISPLAY_COPY_ALL_DISPLAY_MODES;
+    private static MethodHandle CF_ARRAY_GET_COUNT;
+    private static MethodHandle CF_ARRAY_GET_VALUE_AT_INDEX;
+    private static MethodHandle CG_DISPLAY_MODE_GET_PIXEL_WIDTH;
+    private static MethodHandle CG_DISPLAY_MODE_GET_PIXEL_HEIGHT;
+    private static MethodHandle CF_RELEASE;
     private static StructLayout CG_RECT;
     private static StructLayout CG_SIZE;
 
@@ -86,6 +93,16 @@ final class macOSWindow {
                 SymbolLookup.libraryLookup("/System/Library/Frameworks/AppKit.framework/AppKit", Arena.global());
                 SymbolLookup.libraryLookup("/System/Library/Frameworks/QuartzCore.framework/QuartzCore", Arena.global());
                 SymbolLookup metalLib = SymbolLookup.libraryLookup("/System/Library/Frameworks/Metal.framework/Metal", Arena.global());
+                SymbolLookup coreGraphics = SymbolLookup.libraryLookup("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", Arena.global());
+                SymbolLookup coreFoundation = SymbolLookup.libraryLookup("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", Arena.global());
+
+                CG_MAIN_DISPLAY_ID = LINKER.downcallHandle(coreGraphics.find("CGMainDisplayID").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_INT));
+                CG_DISPLAY_COPY_ALL_DISPLAY_MODES = LINKER.downcallHandle(coreGraphics.find("CGDisplayCopyAllDisplayModes").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                CF_ARRAY_GET_COUNT = LINKER.downcallHandle(coreFoundation.find("CFArrayGetCount").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+                CF_ARRAY_GET_VALUE_AT_INDEX = LINKER.downcallHandle(coreFoundation.find("CFArrayGetValueAtIndex").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+                CG_DISPLAY_MODE_GET_PIXEL_WIDTH = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetPixelWidth").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+                CG_DISPLAY_MODE_GET_PIXEL_HEIGHT = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetPixelHeight").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+                CF_RELEASE = LINKER.downcallHandle(coreFoundation.find("CFRelease").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
                 metalCreateSystemDefaultDevice = LINKER.downcallHandle(
                     metalLib.find("MTLCreateSystemDefaultDevice").orElseThrow(),
                     FunctionDescriptor.of(ValueLayout.ADDRESS)
@@ -224,7 +241,7 @@ final class macOSWindow {
         }
     }
 
-    public static long allocate(boolean borderless) {
+    public static long allocate(int width, int height) {
         if (OBJC_GET_CLASS == null) return 0L;
         try {
             try (Arena arena = Arena.ofConfined()) {
@@ -258,21 +275,15 @@ final class macOSWindow {
                 MemorySegment rect = arena.allocate(CG_RECT);
                 rect.set(ValueLayout.JAVA_DOUBLE, 0, 100);
                 rect.set(ValueLayout.JAVA_DOUBLE, 8, 100);
-                rect.set(ValueLayout.JAVA_DOUBLE, 16, 1280);
-                rect.set(ValueLayout.JAVA_DOUBLE, 24, 720);
+                rect.set(ValueLayout.JAVA_DOUBLE, 16, width);
+                rect.set(ValueLayout.JAVA_DOUBLE, 24, height);
 
                 long styleMask = STYLE_TITLED | STYLE_CLOSABLE | STYLE_MINIATURIZABLE | STYLE_RESIZABLE;
-                if (borderless) styleMask |= STYLE_FULL_SIZE_CONTENT;
                 
                 long backingStore = 2;
 
                 MemorySegment initWithContentRectSel = getSel(arena, "initWithContentRect:styleMask:backing:defer:");
                 MemorySegment window = (MemorySegment) MSG_SEND_INIT_WINDOW.invoke(windowAlloc, initWithContentRectSel, rect, styleMask, backingStore, (byte)0);
-
-                if (borderless) {
-                    MemorySegment setTitlebarAppearsTransparentSel = getSel(arena, "setTitlebarAppearsTransparent:");
-                    MSG_SEND_BOOL.invoke(window, setTitlebarAppearsTransparentSel, (byte)1);
-                }
 
                 // NSWindowCollectionBehaviorFullScreenPrimary = 1 << 7: the green zoom button
                 // enters native fullscreen, keeping it in sync with toggleFullscreen.
@@ -402,6 +413,19 @@ final class macOSWindow {
             point.set(ValueLayout.JAVA_DOUBLE, 8, screenHeight - y);
             
             MSG_SEND_PTR_SIZE.invoke(window, setFrameTopLeftPointSel, point);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    public static void setDRM(long pointer, boolean enabled) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            MemorySegment setSharingTypeSel = getSel(arena, "setSharingType:");
+            // NSWindowSharingNone = 0, NSWindowSharingReadOnly = 1
+            long sharingType = enabled ? 0L : 1L;
+            MSG_SEND_INT.invoke(window, setSharingTypeSel, sharingType);
         } catch (Throwable t) {
             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
@@ -620,6 +644,27 @@ final class macOSWindow {
         }
     }
 
+    public static long getMinSize(long pointer) {
+        return getSizeSelector(pointer, "minSize");
+    }
+
+    public static long getMaxSize(long pointer) {
+        return getSizeSelector(pointer, "maxSize");
+    }
+
+    private static long getSizeSelector(long pointer, String selector) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return 0L;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            MemorySegment size = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, window, getSel(arena, selector));
+            int w = (int) Math.round(size.get(ValueLayout.JAVA_DOUBLE, 0));
+            int h = (int) Math.round(size.get(ValueLayout.JAVA_DOUBLE, 8));
+            return ((long) w << 32) | (h & 0xFFFFFFFFL);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
     /** Sets CAMetalLayer displaySyncEnabled (YES = vsync, NO = uncapped presentation). */
     public static void setDisplaySyncEnabled(long layerPointer, boolean enabled) {
         if (layerPointer == 0L || OBJC_GET_CLASS == null) return;
@@ -632,7 +677,7 @@ final class macOSWindow {
         }
     }
 
-    /** Content view size in backing pixels, packed as (width &lt;&lt; 32) | height. 0 if unavailable. */
+    /** Content view size in backing pixels, packed as (width << 32) | height. 0 if unavailable. */
     public static long getContentSize(long pointer) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return 0L;
         try (Arena arena = Arena.ofConfined()) {
@@ -641,6 +686,26 @@ final class macOSWindow {
             MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
             double scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
             if (scale <= 0.0) scale = 1.0;
+
+            long nativeScreen = getScreenBackingSize();
+            if (nativeScreen != 0L) {
+                int nativeW = (int) (nativeScreen >>> 32);
+                int nativeH = (int) nativeScreen;
+                MemorySegment screen = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "screen"));
+                if (screen != null && screen.address() != 0L) {
+                    MemorySegment screenRect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, screen, getSel(arena, "frame"));
+                    double screenPtsW = screenRect.get(ValueLayout.JAVA_DOUBLE, 16);
+                    double screenPtsH = screenRect.get(ValueLayout.JAVA_DOUBLE, 24);
+                    if (screenPtsW > 0 && screenPtsH > 0) {
+                        double virtualW = screenPtsW * scale;
+                        double virtualH = screenPtsH * scale;
+                        if (virtualW > nativeW || virtualH > nativeH) {
+                            double minRatio = Math.min(nativeW / virtualW, nativeH / virtualH);
+                            scale *= minRatio;
+                        }
+                    }
+                }
+            }
 
             MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "contentView"));
             if (view == null || view.address() == 0L) return 0L;
@@ -655,25 +720,33 @@ final class macOSWindow {
         }
     }
 
-    /** Main screen size in backing pixels, packed (width &lt;&lt; 32) | height. 0 if unavailable. */
-    @annotation.Intention("Overshoots on scaled displays: frame x backingScaleFactor returns 3274x2048 on a 2408x1506 MacBook. Fix with convertRectToBacking: or CGDisplayPixelsWide/High.")
+    /** Main screen true physical hardware pixels, packed (width << 32) | height. 0 if unavailable. */
+    @annotation.Intention("Bypasses macOS scaling by directly reading hardware display modes.")
     public static long getScreenBackingSize() {
-        if (OBJC_GET_CLASS == null) return 0L;
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
-            MemorySegment mainScreenSel = getSel(arena, "mainScreen");
-            MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, mainScreenSel);
-            if (mainScreen == null || mainScreen.address() == 0L) return 0L;
-
-            MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
-            double scale = (double) MSG_SEND_DOUBLE_RET.invoke(mainScreen, backingScaleFactorSel);
-            if (scale <= 0.0) scale = 1.0;
-
-            MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, getSel(arena, "frame"));
-            int w = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 16) * scale);
-            int h = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 24) * scale);
-            if (w <= 0 || h <= 0) return 0L;
-            return ((long) w << 32) | (h & 0xFFFFFFFFL);
+        if (CG_MAIN_DISPLAY_ID == null) return 0L;
+        try {
+            int mainDisplayId = (int) CG_MAIN_DISPLAY_ID.invoke();
+            MemorySegment modesArray = (MemorySegment) CG_DISPLAY_COPY_ALL_DISPLAY_MODES.invoke(mainDisplayId, MemorySegment.NULL);
+            if (modesArray == null || modesArray.address() == 0L) return 0L;
+            
+            long count = (long) CF_ARRAY_GET_COUNT.invoke(modesArray);
+            long maxWidth = 0;
+            long maxHeight = 0;
+            
+            for (long i = 0; i < count; i++) {
+                MemorySegment mode = (MemorySegment) CF_ARRAY_GET_VALUE_AT_INDEX.invoke(modesArray, i);
+                long w = (long) CG_DISPLAY_MODE_GET_PIXEL_WIDTH.invoke(mode);
+                long h = (long) CG_DISPLAY_MODE_GET_PIXEL_HEIGHT.invoke(mode);
+                if (w > maxWidth) maxWidth = w;
+                if (h > maxHeight) maxHeight = h;
+            }
+            
+            CF_RELEASE.invoke(modesArray);
+            
+            if (maxWidth > 0 && maxHeight > 0) {
+                return (maxWidth << 32) | (maxHeight & 0xFFFFFFFFL);
+            }
+            return 0L;
         } catch (Throwable t) {
             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
