@@ -16,6 +16,7 @@ public class EngineTest {
         long windowPtr = Window.allocate("Engine", 800, 600);
         System.out.println("Window spawned at: " + windowPtr);
         Window.setTargetFps(60);
+        Window.setUndecorated(windowPtr, Window.DECORATED);
         Window.show(windowPtr);
 
         // FIFO: the Core Draw Worker presents at the WindowServer's refresh (60/120Hz).
@@ -33,6 +34,8 @@ public class EngineTest {
         System.out.println("Metal device available to this process: " + Window.isMetalDeviceAvailable());
         long surfacePtr = Window.createSurface(windowPtr);
         System.out.println("Surface created at (CAMetalLayer): " + surfacePtr);
+
+
 
         // Setup vulkan (which inherently spawns the DrawThread and binds to the surface)
         vulkan.Vulkan.initVulkan(surfacePtr, 800, 600, bootPresentMode);
@@ -52,7 +55,8 @@ public class EngineTest {
             // Spin freely!
         });
 
-        // Window closed: stop the worker before tearing down Vulkan.
+        // Window closed: hide immediately, then stop the worker before tearing down Vulkan.
+        Window.setVisible(windowPtr, false);
         thread.DrawThread.freeAllSystem();
         vulkan.TriangleRenderer.destroy();
         Window.free(windowPtr);
