@@ -28,7 +28,7 @@ final class windowsWindow {
         USER32 = user32;
     }
 
-    public static long allocate(boolean borderless) {
+    public static long allocate(int width, int height) {
         // TODO: Implement Win32 window creation
         return 0L;
     }
@@ -39,6 +39,11 @@ final class windowsWindow {
 
     public static void setSize(long pointer, int width, int height) {
         // TODO: Implement Win32 SetWindowPos
+    }
+
+    @Draft
+    public static void setDRM(long pointer, boolean enabled) {
+        // TODO: SetWindowDisplayAffinity(hwnd, enabled ? WDA_MONITOR : WDA_NONE)
     }
 
     public static void show(long pointer) {
