@@ -8,6 +8,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 import struct.Map;
 import struct.Array;
+import window.Window;
 
 /**
  * Data-Oriented Design (DOD) off-heap Draw Thread Pool Manager.
@@ -257,8 +258,8 @@ public final class DrawThread {
         // then draws and presents. FIFO present mode makes vkAcquireNextImageKHR
         // sleep on the WindowServer refresh (60/120Hz) right here, never on Thread 0.
         long windowPtr = isCore(workerPtr) ? ForeignMemory.getLong(workerPtr + 24L) : 0L;
-        long lastContentSize = windowPtr != 0L ? window.Window.getContentSize(windowPtr) : 0L;
-        boolean lastFullscreen = windowPtr != 0L && window.Window.isFullscreen(windowPtr);
+        long lastContentSize = windowPtr != 0L ? Window.getContentSize(windowPtr) : 0L;
+        boolean lastFullscreen = windowPtr != 0L && Window.isFullscreen(windowPtr);
         long pendingResizeSize = 0L;
         long lastResizeEventTime = 0L;
 
@@ -377,13 +378,8 @@ public final class DrawThread {
                     // process render task handle
                 }
             } else if (!isCore(workerPtr)) {
-                // Non-core workers sleep if they have no tasks.
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
+                // Non-core workers park if they have no tasks.
+                java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
             }
         }
     }
