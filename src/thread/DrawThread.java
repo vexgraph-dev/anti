@@ -27,10 +27,22 @@ public final class DrawThread {
     // Central off-heap manager registry mapping workerPtr -> Thread instance
     private static final long WORKER_MAP_PTR = Map.instant(TypeRegister.ID_LONG, TypeRegister.ID_VARIABLE, 128);
 
+    // Built-in worker roles. The CORE worker is the scheduler: it drains the SCENE,
+    // UI and user roles each frame and writes every role's recorded ops into ONE
+    // command buffer, so the window receives a single merged submit per frame.
+    public static final int ROLE_CORE = 1;
+    public static final int ROLE_SCENE = 2;      // scene #1 placeholder (gradient rect)
+    public static final int ROLE_UI = 3;        // event-driven UI renderer (not ImGui)
+    public static final int ROLE_USER = 4;      // start of user-generated registers
+
     private static final long CORE_WORKER_PTR;
+    private static final long SCENE_WORKER_PTR;
+    private static final long UI_WORKER_PTR;
 
     static {
-        CORE_WORKER_PTR = invoke(true);
+        CORE_WORKER_PTR = invokeRole(ROLE_CORE);
+        SCENE_WORKER_PTR = invokeRole(ROLE_SCENE);
+        UI_WORKER_PTR = invokeRole(ROLE_UI);
     }
 
     private DrawThread() {}
@@ -43,20 +55,37 @@ public final class DrawThread {
         return CORE_WORKER_PTR;
     }
 
+    public static long getSceneWorker() {
+        return SCENE_WORKER_PTR;
+    }
+
+    public static long getUiWorker() {
+        return UI_WORKER_PTR;
+    }
+
     public static boolean isCore(long workerPtr) {
-        if (workerPtr == 0L) return false;
-        return ForeignMemory.getInt(workerPtr + 16L) == 1;
+        return getRole(workerPtr) == ROLE_CORE;
+    }
+
+    public static int getRole(long workerPtr) {
+        if (workerPtr == 0L) return 0;
+        return ForeignMemory.getInt(workerPtr + 32L);
+    }
+
+    public static boolean isBuiltIn(long workerPtr) {
+        int role = getRole(workerPtr);
+        return role == ROLE_CORE || role == ROLE_SCENE || role == ROLE_UI;
     }
 
     /**
-     * Creates and registers a new off-heap draw worker thread handle.
+     * Creates and registers a new off-heap draw worker thread handle as a user role.
      */
     public static long invoke() {
-        return invoke(false);
+        return invokeRole(ROLE_USER);
     }
 
-    private static long invoke(boolean isCore) {
-        long block = ForeignMemory.allocateNative(56);
+    public static long invokeRole(int role) {
+        long block = ForeignMemory.allocateNative(64);
         long workerPtr = block + 8L;
 
         // Write bit-packed header ID & length header
@@ -69,13 +98,15 @@ public final class DrawThread {
         // workerPtr + 0: state (0 = STOPPED, 1 = RUNNING)
         // workerPtr + 4: poolSize (1 thread per worker handle)
         // workerPtr + 8: workQueuePtr (RingBuffer handle)
-        // workerPtr + 16: isCore (1 = CORE, 0 = USER)
+        // workerPtr + 16: reserved (kept 0; role supersedes the old isCore flag)
         // workerPtr + 24: windowPtr bound to this worker (only used by CORE)
+        // workerPtr + 32: role (ROLE_CORE / ROLE_SCENE / ROLE_UI / ROLE_USER + N)
         ForeignMemory.setInt(workerPtr, 0);                 // STOPPED
         ForeignMemory.setInt(workerPtr + 4L, 1);             // 1 thread
         ForeignMemory.setLong(workerPtr + 8L, workQueuePtr);
-        ForeignMemory.setInt(workerPtr + 16L, isCore ? 1 : 0);
+        ForeignMemory.setInt(workerPtr + 16L, 0);
         ForeignMemory.setLong(workerPtr + 24L, 0L);
+        ForeignMemory.setInt(workerPtr + 32L, role);
 
         // Register worker handle in central pool manager registry
         Map.put(WORKER_MAP_PTR, workerPtr, 1L);
@@ -133,6 +164,29 @@ public final class DrawThread {
         if (!isRunning(workerPtr)) {
             return false;
         }
+        long queuePtr = getQueue(workerPtr);
+        return RingBuffer.offer(queuePtr, taskPtr);
+    }
+
+    /**
+     * Submits a task handle to a built-in role (SCENE / UI) or any worker. Unlike
+     * {@link #submit(long, long)} this does not require the worker to be running:
+     * built-in roles are drained by the CORE scheduler each frame, not by their
+     * own thread, so they stay writable while their "thread" is parked.
+     */
+    public static long roleHandle(int role) {
+        return switch (role) {
+            case ROLE_CORE -> CORE_WORKER_PTR;
+            case ROLE_SCENE -> SCENE_WORKER_PTR;
+            case ROLE_UI -> UI_WORKER_PTR;
+            default -> 0L;
+        };
+    }
+
+    public static boolean submitRole(int role, long taskPtr) {
+        long workerPtr = role == ROLE_CORE || role == ROLE_SCENE || role == ROLE_UI
+                ? roleHandle(role) : 0L;
+        if (workerPtr == 0L || !isRegistered(workerPtr)) return false;
         long queuePtr = getQueue(workerPtr);
         return RingBuffer.offer(queuePtr, taskPtr);
     }
@@ -330,6 +384,10 @@ public final class DrawThread {
                 vulkan.Renderer.produceOnce();
                 dbgIterNanos += java.lang.System.nanoTime() - iterT0;
 
+                // After recording the frame, CORE merges every role's queue into the
+                // SAME command buffer so the next produceOnce submits one combined frame.
+                dispatchRoleQueues();
+
                 // 1Hz window-title FPS counter (was owned by Window.run's old loop).
                 long now = java.lang.System.nanoTime();
                 if (now - fpsWindowStart >= 1_000_000_000L) {
@@ -380,12 +438,47 @@ public final class DrawThread {
             if (queuePtr != 0L && !RingBuffer.isEmpty(queuePtr)) {
                 long taskPtr = RingBuffer.poll(queuePtr);
                 if (taskPtr != 0L) {
-                    // process render task handle
+                    // The CORE worker is ALSO reading the merged role queues here via
+                    // drainRoleQueues() below; a worker's own loop only performs its
+                    // role-specific record if no CORE scheduler is driving it.
+                    dispatch(getRole(workerPtr), taskPtr);
                 }
             } else if (!isCore(workerPtr)) {
                 // Non-core workers park if they have no tasks.
                 java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
             }
+        }
+    }
+
+    /**
+     * CORE scheduling pass: drains the SCENE, UI and every registered USER role
+     * after each produceOnce(), dispatching each recorded op into the CURRENT
+     * frame's command buffer. The window then receives ONE merged submit.
+     */
+    private static void dispatchRoleQueues() {
+        long keysPtr = Map.getKeys(WORKER_MAP_PTR);
+        if (keysPtr == 0L) return;
+        int count = Array.length(keysPtr);
+        for (int i = 0; i < count; i++) {
+            long workerPtr = Array.get(keysPtr, i);
+            if (isCore(workerPtr)) continue; // CORE's own queue is its engine loop
+            int role = getRole(workerPtr);
+            if (role == ROLE_UI) continue; // UI is unused for now: keeper handle only
+            long queuePtr = getQueue(workerPtr);
+            while (queuePtr != 0L && !RingBuffer.isEmpty(queuePtr)) {
+                long taskPtr = RingBuffer.poll(queuePtr);
+                if (taskPtr != 0L) dispatch(role, taskPtr);
+            }
+        }
+        Array.free(keysPtr);
+    }
+
+    /** Routes a task handle by role into the single merged frame the CORE will submit. */
+    private static void dispatch(int role, long taskPtr) {
+        switch (role) {
+            case ROLE_SCENE -> scene.SceneRole.record(taskPtr);
+            case ROLE_UI -> ui.UiRole.record(taskPtr);
+            default -> render.UserRole.record(taskPtr); // ROLE_USER..N
         }
     }
 }
