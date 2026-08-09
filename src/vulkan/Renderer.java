@@ -28,7 +28,7 @@ public final class Renderer {
     /** Monotonic origin for the per-draw animation clock. */
     private static final long START_NANO = java.lang.System.nanoTime();
 
-    public static final int MAX_FRAMES_IN_FLIGHT = 16;
+    public static final int MAX_FRAMES_IN_FLIGHT = 3;
 
     /** Software present cadence used to pace IMMEDIATE/uncapped present modes. */
     public static final int PRESENT_FPS = 60;
