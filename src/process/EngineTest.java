@@ -58,17 +58,20 @@ public class EngineTest {
         // Window closed: start background teardown to prevent main-thread freeze.
         // AppKit requires the main thread to remain unblocked to play fullscreen exit animations.
         System.out.println("Test complete. Tearing down Vulkan in background...");
+        java.util.concurrent.atomic.AtomicBoolean teardownComplete = new java.util.concurrent.atomic.AtomicBoolean(false);
         new Thread(() -> {
             thread.DrawThread.freeAllSystem();
             vulkan.TriangleRenderer.destroy();
             Window.free(windowPtr);
             nio.ForeignMemory.freeAllClasses();
-            System.exit(0);
+            teardownComplete.set(true);
         }).start();
 
         // Keep pumping events on main thread so the fullscreen close animation plays smoothly
-        while (true) {
-            window.Window.waitEvents();
+        while (!teardownComplete.get()) {
+            window.Window.pollEvents();
+            try { Thread.sleep(16); } catch (Exception ignored) {}
         }
+        System.exit(0);
     }
 }
