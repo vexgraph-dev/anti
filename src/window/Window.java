@@ -324,6 +324,21 @@ public final class Window {
     }
 
     /**
+     * Locks the cursor to the centre of a window. While locked, the OS cursor is
+     * hidden, re-warped to the window centre each pump pass, and mouse movement is
+     * reported as relative deltas via MouseEvent.onMouseMoveDelta.
+     */
+    public static void setCursorLock(long pointer, boolean lock) {
+        if (IS_MAC) {
+            macOSWindow.setCursorLock(pointer, lock);
+        } else if (IS_WIN) {
+            // windowsWindow.setCursorLock(pointer, lock);
+        } else {
+            // linuxWindow.setCursorLock(pointer, lock);
+        }
+    }
+
+    /**
      * Writes a string to the system clipboard.
      */
     public static void setClipboardString(String text) {
