@@ -31,6 +31,7 @@ import org.lwjgl.vulkan.VkViewport;
 import primitive.Long;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.LongBuffer;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -229,6 +230,15 @@ public final class TriangleRenderer {
     }
 
     private static long createShaderModule(String name) {
+        String resourcePath = "/vulkan/spv/" + name;
+        try (InputStream in = TriangleRenderer.class.getResourceAsStream(resourcePath)) {
+            if (in != null) {
+                byte[] bytes = in.readAllBytes();
+                System.out.println("Loading triangle shader module from classpath: " + resourcePath);
+                return buildShaderModule(name, bytes);
+            }
+        } catch (IOException ignored) {
+        }
         Path sourcePath = Path.of("src", "vulkan", "spv", name);
         if (!Files.exists(sourcePath)) {
             sourcePath = Path.of("out", "production", "anti", "vulkan", "spv", name);
@@ -236,6 +246,14 @@ public final class TriangleRenderer {
         try {
             byte[] bytes = Files.readAllBytes(sourcePath);
             System.out.println("Loading triangle shader module: " + name);
+            return buildShaderModule(name, bytes);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to load triangle shader: " + sourcePath, e);
+        }
+    }
+
+    private static long buildShaderModule(String name, byte[] bytes) {
+        try {
             ByteBuffer code = MemoryUtil.memAlloc(bytes.length).put(bytes).flip();
             try {
                 long module = VKShaderModule.create(Vulkan.getDevice(), code);
@@ -244,8 +262,8 @@ public final class TriangleRenderer {
             } finally {
                 MemoryUtil.memFree(code);
             }
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to load triangle shader: " + sourcePath, e);
+        } catch (Exception e) {
+            throw new IllegalStateException("Unable to build triangle shader module: " + name, e);
         }
     }
 
