@@ -34,3 +34,16 @@ debug_code.txt
 ### api class for vexgraph/api-haven repository ###
 src/api/com/api/
 **/api/
+
+### goals of this god damn project
+goals.txt
+
+### Private / agent-adjacent config (keep out of the face, keep out of git)
+preferences/
+preferences*.local.txt
+
+### IDE build output
+bin/
+
+### Private reference dumps / screenshots
+clipboard.png
