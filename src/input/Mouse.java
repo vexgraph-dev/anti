@@ -98,6 +98,18 @@ public final class Mouse {
         RingBuffer.offer(QUEUE_PTR, packed);
     }
 
+    /**
+     * Relative mouse delta event (action 9), used while the cursor is locked.
+     * Carrier still reports x/y (the locked anchor), but the meaning is "moved by
+     * (dx, dy) this step" so FPS-style cameras can accumulate rotation freely.
+     */
+    public static void pushMoveDeltaEvent(double dx, double dy) {
+        long packed = (255L << 8) | 9L;
+        packed |= (((long) (short) dx & 0xFFFF) << 16);
+        packed |= (((long) (short) dy & 0xFFFF) << 32);
+        RingBuffer.offer(QUEUE_PTR, packed);
+    }
+
     public static void pushDragEvent(int button, double x, double y) {
         long packed = ((long) button << 8) | 7L;
         packed |= (((long) (short) x & 0xFFFF) << 16);
@@ -161,6 +173,16 @@ public final class Mouse {
                 double y = (short) ((packed >> 32) & 0xFFFF);
                 for (int i = 0; i < listenerCount; i++) {
                     listeners[i].onMouseMove(x, y);
+                }
+                continue;
+            }
+
+            // Relative Mouse Delta (cursor locked): dx/dy per step, position is constant
+            if (button == 255 && action == 9) {
+                double dx = (short) ((packed >> 16) & 0xFFFF);
+                double dy = (short) ((packed >> 32) & 0xFFFF);
+                for (int i = 0; i < listenerCount; i++) {
+                    listeners[i].onMouseMoveDelta(dx, dy);
                 }
                 continue;
             }
