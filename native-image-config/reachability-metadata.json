@@ -1,0 +1,1754 @@
+{
+  "reflection": [
+    {
+      "type": "audio.AudioBuffer",
+      "fields": [
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "audio.AudioBufferLayer",
+      "fields": [
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "audio.AudioSource",
+      "fields": [
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "audio.Sampler",
+      "fields": [
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "audio.vulkan.AudioComputeBuffer",
+      "fields": [
+        {
+          "name": "expanding"
+        },
+        {
+          "name": "freeHead"
+        }
+      ]
+    },
+    {
+      "type": "buffers.Buffer",
+      "fields": [
+        {
+          "name": "arrayExpanding128"
+        },
+        {
+          "name": "arrayExpanding32"
+        },
+        {
+          "name": "arrayExpanding512"
+        },
+        {
+          "name": "arrayExpanding8"
+        },
+        {
+          "name": "arrayFreeHead128"
+        },
+        {
+          "name": "arrayFreeHead32"
+        },
+        {
+          "name": "arrayFreeHead512"
+        },
+        {
+          "name": "arrayFreeHead8"
+        }
+      ]
+    },
+    {
+      "type": "input.Key",
+      "fields": [
+        {
+          "name": "A"
+        },
+        {
+          "name": "APOSTROPHE"
+        },
+        {
+          "name": "B"
+        },
+        {
+          "name": "BACKSLASH"
+        },
+        {
+          "name": "BACKSPACE"
+        },
+        {
+          "name": "C"
+        },
+        {
+          "name": "CAPS_LOCK"
+        },
+        {
+          "name": "COMMA"
+        },
+        {
+          "name": "D"
+        },
+        {
+          "name": "DELETE"
+        },
+        {
+          "name": "DOWN"
+        },
+        {
+          "name": "E"
+        },
+        {
+          "name": "END"
+        },
+        {
+          "name": "ENTER"
+        },
+        {
+          "name": "EQUAL"
+        },
+        {
+          "name": "ESCAPE"
+        },
+        {
+          "name": "F"
+        },
+        {
+          "name": "F1"
+        },
+        {
+          "name": "F10"
+        },
+        {
+          "name": "F11"
+        },
+        {
+          "name": "F12"
+        },
+        {
+          "name": "F13"
+        },
+        {
+          "name": "F14"
+        },
+        {
+          "name": "F15"
+        },
+        {
+          "name": "F16"
+        },
+        {
+          "name": "F17"
+        },
+        {
+          "name": "F18"
+        },
+        {
+          "name": "F19"
+        },
+        {
+          "name": "F2"
+        },
+        {
+          "name": "F20"
+        },
+        {
+          "name": "F21"
+        },
+        {
+          "name": "F22"
+        },
+        {
+          "name": "F23"
+        },
+        {
+          "name": "F24"
+        },
+        {
+          "name": "F25"
+        },
+        {
+          "name": "F3"
+        },
+        {
+          "name": "F4"
+        },
+        {
+          "name": "F5"
+        },
+        {
+          "name": "F6"
+        },
+        {
+          "name": "F7"
+        },
+        {
+          "name": "F8"
+        },
+        {
+          "name": "F9"
+        },
+        {
+          "name": "FN"
+        },
+        {
+          "name": "G"
+        },
+        {
+          "name": "GRAVE_ACCENT"
+        },
+        {
+          "name": "H"
+        },
+        {
+          "name": "HOME"
+        },
+        {
+          "name": "I"
+        },
+        {
+          "name": "INSERT"
+        },
+        {
+          "name": "J"
+        },
+        {
+          "name": "K"
+        },
+        {
+          "name": "L"
+        },
+        {
+          "name": "LEFT"
+        },
+        {
+          "name": "LEFT_ALT"
+        },
+        {
+          "name": "LEFT_BRACKET"
+        },
+        {
+          "name": "LEFT_CONTROL"
+        },
+        {
+          "name": "LEFT_SHIFT"
+        },
+        {
+          "name": "LEFT_SUPER"
+        },
+        {
+          "name": "LINUX_SUPER"
+        },
+        {
+          "name": "M"
+        },
+        {
+          "name": "MAC_COMMAND"
+        },
+        {
+          "name": "MAC_CONTROL"
+        },
+        {
+          "name": "MAC_FN"
+        },
+        {
+          "name": "MAC_OPTION"
+        },
+        {
+          "name": "MASK_KEYCODE"
+        },
+        {
+          "name": "MENU"
+        },
+        {
+          "name": "MINUS"
+        },
+        {
+          "name": "MOD_ALT"
+        },
+        {
+          "name": "MOD_COMMAND"
+        },
+        {
+          "name": "MOD_CONTROL"
+        },
+        {
+          "name": "MOD_OPTION"
+        },
+        {
+          "name": "MOD_SHIFT"
+        },
+        {
+          "name": "MOD_SUPER"
+        },
+        {
+          "name": "MOD_WINDOWS"
+        },
+        {
+          "name": "N"
+        },
+        {
+          "name": "NUM_0"
+        },
+        {
+          "name": "NUM_1"
+        },
+        {
+          "name": "NUM_2"
+        },
+        {
+          "name": "NUM_3"
+        },
+        {
+          "name": "NUM_4"
+        },
+        {
+          "name": "NUM_5"
+        },
+        {
+          "name": "NUM_6"
+        },
+        {
+          "name": "NUM_7"
+        },
+        {
+          "name": "NUM_8"
+        },
+        {
+          "name": "NUM_9"
+        },
+        {
+          "name": "NUM_LOCK"
+        },
+        {
+          "name": "O"
+        },
+        {
+          "name": "P"
+        },
+        {
+          "name": "PAGE_DOWN"
+        },
+        {
+          "name": "PAGE_UP"
+        },
+        {
+          "name": "PAUSE"
+        },
+        {
+          "name": "PERIOD"
+        },
+        {
+          "name": "PRINT_SCREEN"
+        },
+        {
+          "name": "Q"
+        },
+        {
+          "name": "R"
+        },
+        {
+          "name": "RIGHT"
+        },
+        {
+          "name": "RIGHT_ALT"
+        },
+        {
+          "name": "RIGHT_BRACKET"
+        },
+        {
+          "name": "RIGHT_CONTROL"
+        },
+        {
+          "name": "RIGHT_SHIFT"
+        },
+        {
+          "name": "RIGHT_SUPER"
+        },
+        {
+          "name": "S"
+        },
+        {
+          "name": "SCROLL_LOCK"
+        },
+        {
+          "name": "SEMICOLON"
+        },
+        {
+          "name": "SLASH"
+        },
+        {
+          "name": "SPACE"
+        },
+        {
+          "name": "T"
+        },
+        {
+          "name": "TAB"
+        },
+        {
+          "name": "U"
+        },
+        {
+          "name": "UP"
+        },
+        {
+          "name": "V"
+        },
+        {
+          "name": "W"
+        },
+        {
+          "name": "WINDOWS"
+        },
+        {
+          "name": "X"
+        },
+        {
+          "name": "Y"
+        },
+        {
+          "name": "Z"
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Boolean",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "getBoolean",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.String",
+      "fields": [
+        {
+          "name": "coder"
+        },
+        {
+          "name": "value"
+        }
+      ]
+    },
+    {
+      "type": "java.lang.foreign.MemorySegment",
+      "methods": [
+        {
+          "name": "asByteBuffer",
+          "parameterTypes": []
+        },
+        {
+          "name": "ofBuffer",
+          "parameterTypes": [
+            "java.nio.Buffer"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.nio.Buffer",
+      "fields": [
+        {
+          "name": "address"
+        },
+        {
+          "name": "capacity"
+        },
+        {
+          "name": "limit"
+        },
+        {
+          "name": "mark"
+        },
+        {
+          "name": "position"
+        },
+        {
+          "name": "segment"
+        }
+      ]
+    },
+    {
+      "type": "java.nio.ByteBuffer",
+      "fields": [
+        {
+          "name": "offset"
+        }
+      ]
+    },
+    {
+      "type": "java.nio.DirectByteBuffer",
+      "unsafeAllocated": true,
+      "fields": [
+        {
+          "name": "att"
+        }
+      ]
+    },
+    {
+      "type": "java.nio.DirectCharBufferU",
+      "fields": [
+        {
+          "name": "att"
+        }
+      ]
+    },
+    {
+      "type": "java.nio.DirectDoubleBufferU",
+      "fields": [
+        {
+          "name": "att"
+        }
+      ]
+    },
+    {
+      "type": "java.nio.DirectFloatBufferU",
+      "unsafeAllocated": true,
+      "fields": [
+        {
+          "name": "att"
+        }
+      ]
+    },
+    {
+      "type": "java.nio.DirectIntBufferU",
+      "unsafeAllocated": true,
+      "fields": [
+        {
+          "name": "att"
+        }
+      ]
+    },
+    {
+      "type": "java.nio.DirectLongBufferU",
+      "unsafeAllocated": true,
+      "fields": [
+        {
+          "name": "att"
+        }
+      ]
+    },
+    {
+      "type": "java.nio.DirectShortBufferU",
+      "fields": [
+        {
+          "name": "att"
+        }
+      ]
+    },
+    {
+      "type": "java.nio.MappedByteBuffer"
+    },
+    {
+      "type": "org.lwjgl.system.MemoryBackendUnsafe"
+    },
+    {
+      "type": "org.lwjgl.system.MemoryBackendUnsafeLegacy25",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.lwjgl.system.mimalloc.mimalloc$Allocator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "primitive.Bool",
+      "fields": [
+        {
+          "name": "arrayExpanding128"
+        },
+        {
+          "name": "arrayExpanding32"
+        },
+        {
+          "name": "arrayExpanding512"
+        },
+        {
+          "name": "arrayExpanding8"
+        },
+        {
+          "name": "arrayFreeHead128"
+        },
+        {
+          "name": "arrayFreeHead32"
+        },
+        {
+          "name": "arrayFreeHead512"
+        },
+        {
+          "name": "arrayFreeHead8"
+        },
+        {
+          "name": "matrixExpanding128"
+        },
+        {
+          "name": "matrixExpanding32"
+        },
+        {
+          "name": "matrixExpanding512"
+        },
+        {
+          "name": "matrixExpanding8"
+        },
+        {
+          "name": "matrixFreeHead128"
+        },
+        {
+          "name": "matrixFreeHead32"
+        },
+        {
+          "name": "matrixFreeHead512"
+        },
+        {
+          "name": "matrixFreeHead8"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.Brain",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.Byte",
+      "fields": [
+        {
+          "name": "arrayExpanding128"
+        },
+        {
+          "name": "arrayExpanding32"
+        },
+        {
+          "name": "arrayExpanding512"
+        },
+        {
+          "name": "arrayExpanding8"
+        },
+        {
+          "name": "arrayFreeHead128"
+        },
+        {
+          "name": "arrayFreeHead32"
+        },
+        {
+          "name": "arrayFreeHead512"
+        },
+        {
+          "name": "arrayFreeHead8"
+        },
+        {
+          "name": "matrixExpanding128"
+        },
+        {
+          "name": "matrixExpanding32"
+        },
+        {
+          "name": "matrixExpanding512"
+        },
+        {
+          "name": "matrixExpanding8"
+        },
+        {
+          "name": "matrixFreeHead128"
+        },
+        {
+          "name": "matrixFreeHead32"
+        },
+        {
+          "name": "matrixFreeHead512"
+        },
+        {
+          "name": "matrixFreeHead8"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.Double",
+      "fields": [
+        {
+          "name": "arrayExpanding128"
+        },
+        {
+          "name": "arrayExpanding32"
+        },
+        {
+          "name": "arrayExpanding512"
+        },
+        {
+          "name": "arrayExpanding8"
+        },
+        {
+          "name": "arrayFreeHead128"
+        },
+        {
+          "name": "arrayFreeHead32"
+        },
+        {
+          "name": "arrayFreeHead512"
+        },
+        {
+          "name": "arrayFreeHead8"
+        },
+        {
+          "name": "matrixExpanding128"
+        },
+        {
+          "name": "matrixExpanding32"
+        },
+        {
+          "name": "matrixExpanding512"
+        },
+        {
+          "name": "matrixExpanding8"
+        },
+        {
+          "name": "matrixFreeHead128"
+        },
+        {
+          "name": "matrixFreeHead32"
+        },
+        {
+          "name": "matrixFreeHead512"
+        },
+        {
+          "name": "matrixFreeHead8"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.Fixed32",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.Fixed64",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.Float",
+      "fields": [
+        {
+          "name": "arrayExpanding128"
+        },
+        {
+          "name": "arrayExpanding32"
+        },
+        {
+          "name": "arrayExpanding512"
+        },
+        {
+          "name": "arrayExpanding8"
+        },
+        {
+          "name": "arrayFreeHead128"
+        },
+        {
+          "name": "arrayFreeHead32"
+        },
+        {
+          "name": "arrayFreeHead512"
+        },
+        {
+          "name": "arrayFreeHead8"
+        },
+        {
+          "name": "matrixExpanding128"
+        },
+        {
+          "name": "matrixExpanding32"
+        },
+        {
+          "name": "matrixExpanding512"
+        },
+        {
+          "name": "matrixExpanding8"
+        },
+        {
+          "name": "matrixFreeHead128"
+        },
+        {
+          "name": "matrixFreeHead32"
+        },
+        {
+          "name": "matrixFreeHead512"
+        },
+        {
+          "name": "matrixFreeHead8"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.Int",
+      "fields": [
+        {
+          "name": "arrayExpanding128"
+        },
+        {
+          "name": "arrayExpanding32"
+        },
+        {
+          "name": "arrayExpanding512"
+        },
+        {
+          "name": "arrayExpanding8"
+        },
+        {
+          "name": "arrayFreeHead128"
+        },
+        {
+          "name": "arrayFreeHead32"
+        },
+        {
+          "name": "arrayFreeHead512"
+        },
+        {
+          "name": "arrayFreeHead8"
+        },
+        {
+          "name": "matrixExpanding128"
+        },
+        {
+          "name": "matrixExpanding32"
+        },
+        {
+          "name": "matrixExpanding512"
+        },
+        {
+          "name": "matrixExpanding8"
+        },
+        {
+          "name": "matrixFreeHead128"
+        },
+        {
+          "name": "matrixFreeHead32"
+        },
+        {
+          "name": "matrixFreeHead512"
+        },
+        {
+          "name": "matrixFreeHead8"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.IntDouble",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.IntFloat",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.Long",
+      "fields": [
+        {
+          "name": "arrayExpanding128"
+        },
+        {
+          "name": "arrayExpanding32"
+        },
+        {
+          "name": "arrayExpanding512"
+        },
+        {
+          "name": "arrayExpanding8"
+        },
+        {
+          "name": "arrayFreeHead128"
+        },
+        {
+          "name": "arrayFreeHead32"
+        },
+        {
+          "name": "arrayFreeHead512"
+        },
+        {
+          "name": "arrayFreeHead8"
+        },
+        {
+          "name": "matrixExpanding128"
+        },
+        {
+          "name": "matrixExpanding32"
+        },
+        {
+          "name": "matrixExpanding512"
+        },
+        {
+          "name": "matrixExpanding8"
+        },
+        {
+          "name": "matrixFreeHead128"
+        },
+        {
+          "name": "matrixFreeHead32"
+        },
+        {
+          "name": "matrixFreeHead512"
+        },
+        {
+          "name": "matrixFreeHead8"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.LongDouble",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.LongFloat",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.Short",
+      "fields": [
+        {
+          "name": "arrayExpanding128"
+        },
+        {
+          "name": "arrayExpanding32"
+        },
+        {
+          "name": "arrayExpanding512"
+        },
+        {
+          "name": "arrayExpanding8"
+        },
+        {
+          "name": "arrayFreeHead128"
+        },
+        {
+          "name": "arrayFreeHead32"
+        },
+        {
+          "name": "arrayFreeHead512"
+        },
+        {
+          "name": "arrayFreeHead8"
+        },
+        {
+          "name": "matrixExpanding128"
+        },
+        {
+          "name": "matrixExpanding32"
+        },
+        {
+          "name": "matrixExpanding512"
+        },
+        {
+          "name": "matrixExpanding8"
+        },
+        {
+          "name": "matrixFreeHead128"
+        },
+        {
+          "name": "matrixFreeHead32"
+        },
+        {
+          "name": "matrixFreeHead512"
+        },
+        {
+          "name": "matrixFreeHead8"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "primitive.string",
+      "fields": [
+        {
+          "name": "largeExpanding"
+        },
+        {
+          "name": "largeFreeHead"
+        },
+        {
+          "name": "mediumExpanding"
+        },
+        {
+          "name": "mediumFreeHead"
+        },
+        {
+          "name": "smallExpanding"
+        },
+        {
+          "name": "smallFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "sun.misc.Unsafe",
+      "fields": [
+        {
+          "name": "theUnsafe"
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData"
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData_en"
+    },
+    {
+      "type": "vulkan.CommandBuffer",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.CommandPool",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.Fence",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.RenderPass",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.Semaphore",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.Swapchain",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.VKBuffer",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.VKDeviceMemory",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.VKFramebuffer",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.VKImage",
+      "fields": [
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.VKImageView",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.VKPipeline",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.VKPipelineLayout",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "vulkan.VKShaderModule",
+      "fields": [
+        {
+          "name": "arrayExpanding"
+        },
+        {
+          "name": "arrayFreeHead"
+        },
+        {
+          "name": "matrixExpanding"
+        },
+        {
+          "name": "matrixFreeHead"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "glob": "META-INF/macos/arm64/org/lwjgl/liblwjgl.dylib.sha1"
+    },
+    {
+      "glob": "META-INF/macos/arm64/org/lwjgl/mimalloc/libmimalloc.dylib.sha1"
+    },
+    {
+      "glob": "macos/arm64/org/lwjgl/liblwjgl.dylib"
+    },
+    {
+      "glob": "macos/arm64/org/lwjgl/mimalloc/libmimalloc.dylib"
+    },
+    {
+      "glob": "vulkan/spv/hello_triangle.frag.spv"
+    },
+    {
+      "glob": "vulkan/spv/hello_triangle.vert.spv"
+    }
+  ],
+  "foreign": {
+    "downcalls": [
+      {
+        "returnType": "void",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "jlong"
+        ]
+      },
+      {
+        "returnType": "jbyte",
+        "parameterTypes": [
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "jlong",
+        "parameterTypes": [
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": []
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "jdouble"
+        ]
+      },
+      {
+        "returnType": "jdouble",
+        "parameterTypes": [
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "jlong",
+        "parameterTypes": [
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "jint",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void",
+        "parameterTypes": [
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "struct(jdouble,jdouble,jdouble,jdouble)",
+          "jlong",
+          "jlong",
+          "jbyte"
+        ]
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "void*",
+          "jlong"
+        ]
+      },
+      {
+        "returnType": "struct(jdouble,jdouble)",
+        "parameterTypes": [
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "void*"
+        ]
+      },
+      {
+        "returnType": "jbyte",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "jshort",
+        "parameterTypes": [
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void",
+        "parameterTypes": [
+          "void*"
+        ]
+      },
+      {
+        "returnType": "jbyte",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "jlong"
+        ]
+      },
+      {
+        "returnType": "struct(jdouble,jdouble,jdouble,jdouble)",
+        "parameterTypes": [
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "jlong"
+        ]
+      },
+      {
+        "returnType": "void",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "struct(jdouble,jdouble)"
+        ]
+      },
+      {
+        "returnType": "void",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "jbyte"
+        ]
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "jlong"
+        ]
+      },
+      {
+        "returnType": "jint",
+        "parameterTypes": []
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "jlong",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "void*",
+          "void*",
+          "jlong",
+          "void*",
+          "void*",
+          "jbyte"
+        ]
+      }
+    ]
+  }
+}
