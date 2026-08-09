@@ -59,6 +59,8 @@ final class macOSWindow {
     private static MethodHandle CG_DISPLAY_MODE_GET_PIXEL_WIDTH;
     private static MethodHandle CG_DISPLAY_MODE_GET_PIXEL_HEIGHT;
     private static MethodHandle CF_RELEASE;
+    private static MethodHandle CG_ASSOCIATE_MOUSE;
+    private static MethodHandle CG_WARP_MOUSE_CURSOR;
     private static StructLayout CG_RECT;
     private static StructLayout CG_SIZE;
 
@@ -103,6 +105,12 @@ final class macOSWindow {
                 CF_ARRAY_GET_VALUE_AT_INDEX = LINKER.downcallHandle(coreFoundation.find("CFArrayGetValueAtIndex").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
                 CG_DISPLAY_MODE_GET_PIXEL_WIDTH = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetPixelWidth").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
                 CG_DISPLAY_MODE_GET_PIXEL_HEIGHT = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetPixelHeight").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+                StructLayout cgPoint = MemoryLayout.structLayout(
+                    ValueLayout.JAVA_DOUBLE.withName("x"),
+                    ValueLayout.JAVA_DOUBLE.withName("y")
+                );
+                CG_ASSOCIATE_MOUSE = LINKER.downcallHandle(coreGraphics.find("CGAssociateMouseAndMouseCursorPosition").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.JAVA_BYTE));
+                CG_WARP_MOUSE_CURSOR = LINKER.downcallHandle(coreGraphics.find("CGWarpMouseCursorPosition").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_INT, cgPoint));
                 CF_RELEASE = LINKER.downcallHandle(coreFoundation.find("CFRelease").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
                 metalCreateSystemDefaultDevice = LINKER.downcallHandle(
                     metalLib.find("MTLCreateSystemDefaultDevice").orElseThrow(),
@@ -500,6 +508,75 @@ final class macOSWindow {
             cursorVisible = visible;
         } catch (Throwable t) {
             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+        }
+    }
+
+    // Cursor lock state: when locked the OS cursor is hidden and warped back to the
+    // window centre during the event pump, while raw mouse deltas keep flowing to
+    // input.Mouse. FPS-style "relative mouse" mode.
+    private static long lockWindowPtr = 0L;
+    private static int lockCenterX = 0, lockCenterY = 0;
+
+    /**
+     * Locks (or unlocks) the cursor to the centre of the given window.
+     * While locked, AppKit hides the cursor and each pump pass re-wraps it to the
+     * window centre, so the pointer never leaves the middle of the content area.
+     */
+    public static void setCursorLock(long pointer, boolean lock) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            if (lock) {
+                if (CG_ASSOCIATE_MOUSE != null) {
+                    // Decouple the cursor from mouse movement so deltas arrive without
+                    // the pointer drifting away between warp passes.
+                    CG_ASSOCIATE_MOUSE.invoke((byte) 0);
+                }
+
+                // Window frame is already in global screen coordinates (points,
+                // bottom-left origin); CGWarpMouseCursorPosition wants the same global
+                // space. Center of the window is what the lock keeps alive.
+                MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, window, getSel(arena, "frame"));
+                double x = rect.get(ValueLayout.JAVA_DOUBLE, 0);
+                double y = rect.get(ValueLayout.JAVA_DOUBLE, 8);
+                double w = rect.get(ValueLayout.JAVA_DOUBLE, 16);
+                double h = rect.get(ValueLayout.JAVA_DOUBLE, 24);
+                lockCenterX = (int) (x + w / 2.0);
+                lockCenterY = (int) (y + h / 2.0);
+
+                MemorySegment lockPoint = arena.allocate(CG_SIZE);
+                lockPoint.set(ValueLayout.JAVA_DOUBLE, 0, lockCenterX);
+                lockPoint.set(ValueLayout.JAVA_DOUBLE, 8, lockCenterY);
+                if (CG_WARP_MOUSE_CURSOR != null) {
+                    CG_WARP_MOUSE_CURSOR.invoke(lockPoint);
+                }
+                lockWindowPtr = pointer;
+                setCursorVisible(false);
+            } else {
+                if (CG_ASSOCIATE_MOUSE != null) {
+                    CG_ASSOCIATE_MOUSE.invoke((byte) 1);
+                }
+                lockWindowPtr = 0L;
+                setCursorVisible(true);
+            }
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow cursor lock Exception", t);
+        }
+    }
+
+    /**
+     * Re-centres the cursor during the pump if cursor lock is active. Called from
+     * waitEvents/pollEvents so the warp registers before the next event loop exits.
+     */
+    public static void recenterIfLocked() {
+        if (lockWindowPtr == 0L || CG_WARP_MOUSE_CURSOR == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment lockPoint = arena.allocate(CG_SIZE);
+            lockPoint.set(ValueLayout.JAVA_DOUBLE, 0, lockCenterX);
+            lockPoint.set(ValueLayout.JAVA_DOUBLE, 8, lockCenterY);
+            CG_WARP_MOUSE_CURSOR.invoke(lockPoint);
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow cursor recenter Exception", t);
         }
     }
 
@@ -905,7 +982,10 @@ final class macOSWindow {
                 MemorySegment timeout = (MemorySegment) MSG_SEND_PTR_DOUBLE.invoke(nsDateClass, dateWithTimeIntervalSel, IDLE_EVENT_TIMEOUT_SECONDS);
 
                 MemorySegment event = (MemorySegment) MSG_SEND_NEXT_EVENT.invoke(app, nextEventSel, NSAnyEventMask, timeout, runLoopMode, (byte)1);
-                if (event.address() == 0L) break;
+                if (event.address() == 0L) {
+                    recenterIfLocked();
+                    break;
+                }
                 
                 long eventType = (long) MSG_SEND_LONG_RET.invoke(event, typeSel);
                 
@@ -958,6 +1038,18 @@ final class macOSWindow {
                     }
                     if (button != -1) Mouse.pushButtonEvent(button, 0, 250_000_000L);
                 } else if (eventType == 5 || eventType == 6 || eventType == 7 || eventType == 27) { // Mouse Move/Drag
+                    if (lockWindowPtr != 0L) {
+                        // Cursor locked: AppKit reports a constant location with actual
+                        // deltas. Feed the relative movement so cameras track direction.
+                        try {
+                            double ddx = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, "deltaX"));
+                            double ddy = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, "deltaY"));
+                            Mouse.pushMoveDeltaEvent(ddx, ddy);
+                        } catch (Throwable t) {
+                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                        }
+                        continue;
+                    }
                     try {
                         MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationInWindowSel);
                         double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
@@ -1118,7 +1210,10 @@ final class macOSWindow {
             while (true) {
                 int button = 0;
                 MemorySegment event = (MemorySegment) MSG_SEND_NEXT_EVENT.invoke(app, nextEventSel, NSAnyEventMask, distantPast, runLoopMode, (byte)1);
-                if (event.address() == 0L) break;
+                if (event.address() == 0L) {
+                    recenterIfLocked();
+                    break;
+                }
                 
                 long eventType = (long) MSG_SEND_LONG_RET.invoke(event, typeSel);
                 
@@ -1171,6 +1266,18 @@ final class macOSWindow {
                     }
                     if (button != -1) Mouse.pushButtonEvent(button, 0, 250_000_000L);
                 } else if (eventType == 5 || eventType == 6 || eventType == 7 || eventType == 27) { // Mouse Move/Drag
+                    if (lockWindowPtr != 0L) {
+                        // Cursor locked: AppKit reports a constant location with actual
+                        // deltas. Feed the relative movement so cameras track direction.
+                        try {
+                            double ddx = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, "deltaX"));
+                            double ddy = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, "deltaY"));
+                            Mouse.pushMoveDeltaEvent(ddx, ddy);
+                        } catch (Throwable t) {
+                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                        }
+                        continue;
+                    }
                     try {
                         MemorySegment point = (MemorySegment) MSG_SEND_POINT_RET.invoke(arena, event, locationInWindowSel);
                         double x = point.get(ValueLayout.JAVA_DOUBLE, 0);
