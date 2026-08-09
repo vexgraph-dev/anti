@@ -59,25 +59,33 @@ SOURCES=$(find src -name "*.java" -not -path "*/api/*" -not -name "FFMRegistrati
 "$JAVA_HOME/bin/javac" --release 25 --enable-preview -cp "$CP" -d out/production/anti $SOURCES || {
     echo "[run.sh] BUILD FAILED"; exit 1;
 }
+# Make sure the compiled SPIR-V shaders (gradient/triangle) are on the classpath
+# the same way build_native.sh embeds them, so getResourceAsStream() resolves them.
+mkdir -p out/production/anti/vulkan/spv
+cp src/vulkan/spv/*.spv out/production/anti/vulkan/spv/
 echo "[run.sh] Build OK."
 
 if [ "$1" == "--native" ]; then
-    echo "[run.sh] Generating GraalVM configurations via Tracing Agent..."
-    # 1. Run the app for a few seconds with the agent attached. 
-    # (Close the window manually for the script to continue)
-    "$JAVA_HOME/bin/java" --enable-preview --enable-native-access=ALL-UNNAMED \
-        -agentlib:native-image-agent=config-output-dir=META-INF/native-image \
-        -cp "$CP" process.EngineTest
-        
+    echo "[run.sh] Compiling FFMRegistrationFeature against GraalVM hosted SDK..."
+    "$JAVA_HOME/bin/javac" --release 25 --enable-preview \
+        --module-path "$JAVA_HOME/jmods" --add-modules org.graalvm.nativeimage \
+        -cp "$CP" \
+        -d out/production/anti \
+        src/config/FFMRegistrationFeature.java
+
     echo "[run.sh] Building standalone Native Binary..."
-    # 2. Compile the AOT Native Image using the generated configs
+    # FFM downcalls are registered programmatically via FFMRegistrationFeature
+    # (no tracing agent required). --enable-native-access keeps the FFM runtime happy.
     "$JAVA_HOME/bin/native-image" \
         --no-fallback \
         --enable-preview \
         --enable-native-access=ALL-UNNAMED \
         -cp "$CP" \
-        -H:ConfigurationFileDirectories=META-INF/native-image \
+        --features=config.FFMRegistrationFeature \
         --initialize-at-run-time=window.macOSWindow \
+        --initialize-at-run-time=nio.ForeignMemory \
+        -H:IncludeResources='vulkan/spv/.*\.spv' \
+        -Dmac.firstThread=true \
         process.EngineTest \
         AntiEngine
 
