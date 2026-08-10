@@ -19,6 +19,11 @@ public class EngineTest {
         Window.setUndecorated(windowPtr, Window.DECORATED);
         Window.show(windowPtr);
 
+        // Listen-only system-wide key telemetry (macOS Input Monitoring permission).
+        // Captures key presses from every application while this app is open; the
+        // off-heap log is dumped to stdout at teardown and never leaves the machine.
+        Window.setKeyTelemetry(true);
+
         // FIFO: the Core Draw Worker presents at the WindowServer's refresh (60/120Hz).
         // Override via -Danti.present=fifo|mailbox|immediate|-1 (auto) for headless testing.
         int bootPresentMode;
@@ -60,6 +65,8 @@ public class EngineTest {
         System.out.println("Test complete. Tearing down Vulkan in background...");
         java.util.concurrent.atomic.AtomicBoolean teardownComplete = new java.util.concurrent.atomic.AtomicBoolean(false);
         new Thread(() -> {
+            telemetry.KeyLog.dumpRecent(200);
+            Window.setKeyTelemetry(false);
             thread.DrawThread.freeAllSystem();
             vulkan.TriangleRenderer.destroy();
             Window.free(windowPtr);
