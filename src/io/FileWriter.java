@@ -1,6 +1,7 @@
 package io;
 
 import annotation.Draft;
+import nio.ForeignMemory;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -45,6 +46,18 @@ public class FileWriter {
         }
         try {
             out.write(data, off, len);
+            bytesWritten += len;
+        } catch (IOException e) {
+        }
+    }
+
+    /** Writes len bytes copied from native memory into the buffered writer. Bridge helper; the zero-heap write path is io.File.write -> ForeignMemory.fileWrite. */
+    public void writeFromNative(long src, long len) {
+        if (!open || len <= 0) {
+            return;
+        }
+        try {
+            out.write(ForeignMemory.getBytes(src, (int) len));
             bytesWritten += len;
         } catch (IOException e) {
         }
