@@ -65,7 +65,11 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
 
 public class ForeignMemory {
 
@@ -358,6 +362,16 @@ public class ForeignMemory {
         MemorySegment.copy(srcArray, srcOffset, GLOBAL_MEMORY, ValueLayout.JAVA_BYTE, destAddress, length);
     }
 
+    /** Copies length bytes from off-heap into a heap byte[]. Bridge-only helper (heap boundary is allowed at platform/API edges). */
+    public static byte[] getBytes(long srcAddress, int length) {
+        if (srcAddress == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        byte[] dest = new byte[length];
+        if (length > 0) {
+            MemorySegment.copy(GLOBAL_MEMORY, ValueLayout.JAVA_BYTE, srcAddress, dest, 0, length);
+        }
+        return dest;
+    }
+
     public static byte getByte(long address) {
         if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_BYTE, address);
@@ -576,6 +590,12 @@ public class ForeignMemory {
     public static long getAndSetLong(long address, long value) {
         if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         return (long) LONG_VH.getAndSet(GLOBAL_MEMORY, address, value);
+    }
+
+    @Volatile
+    public static long getAndAddLong(long address, long delta) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        return (long) LONG_VH.getAndAdd(GLOBAL_MEMORY, address, delta);
     }
 
     public static long getAndBitwiseOrLong(long address, long mask) {
@@ -918,6 +938,253 @@ public class ForeignMemory {
     @Volatile
     public static void setUnsafeVolatile(long address, double value) {
         setUnsafeVolatileDouble(address, value);
+    }
+
+    // =========================================================================
+    // FILE I/O BRIDGE (FFM floor, cross-platform)
+    // =========================================================================
+    // Replicates the java.nio file surface WITHOUT ever crossing the heap:
+    // reads land directly in caller-owned native memory via
+    // MemorySegment.asByteBuffer() over the destination address; writes depart
+    // straight from native memory. Open files are tracked in a fixed 64-slot
+    // registry (bitmask free-list) so the handle is a long token, not an object.
+    // The only JDK object that survives is the FileChannel itself — the OS
+    // handle — which is the unavoidable boundary, same as a raw fd.
+
+    public static final int FILE_MODE_READ = 0x01;
+    public static final int FILE_MODE_WRITE = 0x02;
+    public static final int FILE_MODE_APPEND = 0x04;
+    public static final int FILE_MODE_CREATE = 0x08;
+    public static final int FILE_MODE_TRUNCATE = 0x10;
+
+    private static final int FILE_SLOTS = 64;
+    private static final FileChannel[] FILE_CHANNELS = new FileChannel[FILE_SLOTS];
+    private static final int[] FILE_MODES = new int[FILE_SLOTS];
+    private static volatile long fileSlotMask;
+    private static final VarHandle FILE_SLOT_MASK_VH;
+
+    static {
+        try {
+            FILE_SLOT_MASK_VH = MethodHandles.lookup()
+                    .findStaticVarHandle(ForeignMemory.class, "fileSlotMask", long.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    /** Returns a long file handle token (>0), or 0 on failure. Creates parent dirs if CREATE is set. */
+    public static long fileOpen(String path, int mode) {
+        if (path == null) return 0L;
+        int slot = allocFileSlot();
+        if (slot < 0) throw new IllegalStateException("File handle registry exhausted (64 open files max)");
+        try {
+            Path p = Path.of(path);
+            if ((mode & FILE_MODE_CREATE) != 0) {
+                Path parent = p.getParent();
+                if (parent != null && !java.nio.file.Files.isDirectory(parent)) {
+                    java.nio.file.Files.createDirectories(parent);
+                }
+            }
+            boolean write = (mode & (FILE_MODE_WRITE | FILE_MODE_APPEND)) != 0;
+            boolean append = (mode & FILE_MODE_APPEND) != 0;
+            java.util.ArrayList<java.nio.file.OpenOption> opts = new java.util.ArrayList<>();
+            if ((mode & FILE_MODE_READ) != 0 || !write) opts.add(java.nio.file.StandardOpenOption.READ);
+            if (write) {
+                opts.add(java.nio.file.StandardOpenOption.WRITE);
+                if ((mode & FILE_MODE_CREATE) != 0) opts.add(java.nio.file.StandardOpenOption.CREATE);
+                if ((mode & FILE_MODE_TRUNCATE) != 0) opts.add(java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
+                if (append) opts.add(java.nio.file.StandardOpenOption.APPEND);
+            }
+            FileChannel ch = FileChannel.open(p, opts.toArray(new java.nio.file.OpenOption[0]));
+            FILE_CHANNELS[slot] = ch;
+            FILE_MODES[slot] = mode;
+            return slot + 1L;
+        } catch (Throwable t) {
+            freeFileSlot(slot);
+            return 0L;
+        }
+    }
+
+    /** Reads up to len bytes into caller-owned native memory at dest. Returns bytes read, -1 on error. */
+    public static long fileRead(long handle, long dest, long len) {
+        FileChannel ch = fileChannel(handle);
+        if (ch == null || dest == 0L || len <= 0L) return 0L;
+        try {
+            ByteBuffer buf = MemorySegment.ofAddress(dest).reinterpret((int) len).asByteBuffer();
+            return ch.read(buf);
+        } catch (Throwable t) {
+            return -1L;
+        }
+    }
+
+    /** Writes len bytes from caller-owned native memory at src. Returns bytes written, -1 on error. */
+    public static long fileWrite(long handle, long src, long len) {
+        FileChannel ch = fileChannel(handle);
+        if (ch == null || src == 0L || len <= 0L) return 0L;
+        try {
+            ByteBuffer buf = MemorySegment.ofAddress(src).reinterpret((int) len).asByteBuffer();
+            return ch.write(buf);
+        } catch (Throwable t) {
+            return -1L;
+        }
+    }
+
+    /** Positions the file for the next read/write. Returns true on success. */
+    public static boolean fileSeek(long handle, long position) {
+        FileChannel ch = fileChannel(handle);
+        if (ch == null || position < 0L) return false;
+        try {
+            ch.position(position);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** Returns the current byte size of the file, or -1 on error. */
+    public static long fileSize(long handle) {
+        FileChannel ch = fileChannel(handle);
+        if (ch == null) return -1L;
+        try {
+            return ch.size();
+        } catch (Throwable t) {
+            return -1L;
+        }
+    }
+
+    public static boolean fileFlush(long handle) {
+        FileChannel ch = fileChannel(handle);
+        if (ch == null) return false;
+        try {
+            ch.force(true);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    public static boolean fileClose(long handle) {
+        if (handle <= 0L) return false;
+        int slot = (int) (handle - 1L);
+        if (slot >= FILE_SLOTS) return false;
+        FileChannel ch = FILE_CHANNELS[slot];
+        if (ch == null) return false;
+        try {
+            ch.close();
+        } catch (Throwable t) {
+            // fall through, still release the slot
+        }
+        FILE_CHANNELS[slot] = null;
+        FILE_MODES[slot] = 0;
+        freeFileSlot(slot);
+        return true;
+    }
+
+    // ------------------------------------------------------------------
+    // MAPPED FILES
+    // ------------------------------------------------------------------
+
+    private static final int MAP_SLOTS = 64;
+    private static final MemorySegment[] MAP_SEGMENTS = new MemorySegment[MAP_SLOTS];
+    private static final Arena[] MAP_ARENAS = new Arena[MAP_SLOTS];
+    private static volatile long mapSlotMask;
+    private static final VarHandle MAP_SLOT_MASK_VH;
+
+    static {
+        try {
+            MAP_SLOT_MASK_VH = MethodHandles.lookup()
+                    .findStaticVarHandle(ForeignMemory.class, "mapSlotMask", long.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    /** Maps [offset, offset+size) of the file into native address space. Returns the base address, or 0 on failure. */
+    public static long mapFile(String path, long offset, long size, boolean readOnly) {
+        if (path == null || size <= 0L) return 0L;
+        int slot = allocMapSlot();
+        if (slot < 0) throw new IllegalStateException("Mapped-file registry exhausted (64 maps max)");
+        Arena arena = null;
+        try {
+            arena = Arena.ofConfined();
+            FileChannel ch = FileChannel.open(Path.of(path),
+                    readOnly
+                            ? new java.nio.file.OpenOption[]{java.nio.file.StandardOpenOption.READ}
+                            : new java.nio.file.OpenOption[]{java.nio.file.StandardOpenOption.READ,
+                                    java.nio.file.StandardOpenOption.WRITE});
+            MemorySegment seg;
+            try (ch) {
+                seg = ch.map(readOnly ? FileChannel.MapMode.READ_ONLY : FileChannel.MapMode.READ_WRITE,
+                        offset, size, arena);
+            }
+            MAP_SEGMENTS[slot] = seg;
+            MAP_ARENAS[slot] = arena;
+            return seg.address();
+        } catch (Throwable t) {
+            if (arena != null) {
+                try { arena.close(); } catch (Throwable ignored) { }
+            }
+            freeMapSlot(slot);
+            return 0L;
+        }
+    }
+
+    public static boolean unmapFile(long address) {
+        if (address == 0L) return false;
+        for (int i = 0; i < MAP_SLOTS; i++) {
+            MemorySegment seg = MAP_SEGMENTS[i];
+            if (seg != null && seg.address() == address) {
+                try {
+                    MAP_ARENAS[i].close();
+                } catch (Throwable t) {
+                    // best effort
+                }
+                MAP_SEGMENTS[i] = null;
+                MAP_ARENAS[i] = null;
+                freeMapSlot(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ------------------------------------------------------------------
+    // helpers
+    // ------------------------------------------------------------------
+
+    private static FileChannel fileChannel(long handle) {
+        if (handle <= 0L) return null;
+        int slot = (int) (handle - 1L);
+        if (slot >= FILE_SLOTS) return null;
+        return FILE_CHANNELS[slot];
+    }
+
+    private static int allocFileSlot() {
+        while (true) {
+            long mask = fileSlotMask;
+            long free = ~mask & ~0L;
+            if (free == 0L) return -1;
+            int bit = java.lang.Long.numberOfTrailingZeros(free);
+            if (FILE_SLOT_MASK_VH.compareAndSet(mask, mask | (1L << bit))) return bit;
+        }
+    }
+
+    private static void freeFileSlot(int slot) {
+        FILE_SLOT_MASK_VH.getAndBitwiseAnd(~(1L << slot));
+    }
+
+    private static int allocMapSlot() {
+        while (true) {
+            long mask = mapSlotMask;
+            long free = ~mask & ~0L;
+            if (free == 0L) return -1;
+            int bit = java.lang.Long.numberOfTrailingZeros(free);
+            if (MAP_SLOT_MASK_VH.compareAndSet(mask, mask | (1L << bit))) return bit;
+        }
+    }
+
+    private static void freeMapSlot(int slot) {
+        MAP_SLOT_MASK_VH.getAndBitwiseAnd(~(1L << slot));
     }
 
     // =========================================================================
