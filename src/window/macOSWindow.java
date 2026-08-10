@@ -71,6 +71,7 @@ final class macOSWindow {
     private static MethodHandle CF_RUN_LOOP_ADD_SOURCE;
     private static MethodHandle CF_RUN_LOOP_RUN;
     private static MethodHandle CF_RUN_LOOP_STOP;
+    private static MethodHandle CF_STRING_CREATE_WITH_CSTRING;
     private static StructLayout CG_RECT;
     private static StructLayout CG_SIZE;
 
@@ -129,6 +130,7 @@ final class macOSWindow {
                 CF_RUN_LOOP_ADD_SOURCE = LINKER.downcallHandle(coreFoundation.find("CFRunLoopAddSource").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
                 CF_RUN_LOOP_RUN = LINKER.downcallHandle(coreFoundation.find("CFRunLoopRun").orElseThrow(), FunctionDescriptor.ofVoid());
                 CF_RUN_LOOP_STOP = LINKER.downcallHandle(coreFoundation.find("CFRunLoopStop").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+                CF_STRING_CREATE_WITH_CSTRING = LINKER.downcallHandle(coreFoundation.find("CFStringCreateWithCString").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
                 CF_RELEASE = LINKER.downcallHandle(coreFoundation.find("CFRelease").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
                 metalCreateSystemDefaultDevice = LINKER.downcallHandle(
                     metalLib.find("MTLCreateSystemDefaultDevice").orElseThrow(),
@@ -615,6 +617,7 @@ final class macOSWindow {
     private static volatile MemorySegment keyTapPort;
     private static volatile MemorySegment keyTapSource;
     private static volatile MemorySegment keyTapRunLoop;
+    private static volatile MemorySegment keyTapMode;
     private static volatile Thread keyTapThread;
     private static volatile MemorySegment keyTapStub;
     private static volatile boolean keyTapRunning;
@@ -651,12 +654,19 @@ final class macOSWindow {
             MemorySegment source = (MemorySegment) CF_MACH_PORT_CREATE_RUN_LOOP_SOURCE.invoke(MemorySegment.NULL, tap, 0L);
             keyTapSource = source;
 
+            // CFRunLoopAddSource needs a real CFStringRef mode; NULL crashes with
+            // "CFHash() called with NULL" inside __CFRunLoopCopyMode.
+            MemorySegment modeCStr = Arena.global().allocateFrom("kCFRunLoopDefaultMode");
+            MemorySegment mode = (MemorySegment) CF_STRING_CREATE_WITH_CSTRING.invoke(
+                    MemorySegment.NULL, modeCStr, 0x08000100);
+            keyTapMode = mode;
+
             // Private run loop: drains the tap without touching Thread 0.
             keyTapThread = Thread.ofPlatform().name("Anti-KeyTap").daemon(true).start(() -> {
                 try {
                     MemorySegment rl = (MemorySegment) CF_RUN_LOOP_GET_CURRENT.invoke();
                     keyTapRunLoop = rl;
-                    CF_RUN_LOOP_ADD_SOURCE.invoke(rl, source, MemorySegment.NULL);
+                    CF_RUN_LOOP_ADD_SOURCE.invoke(rl, source, mode);
                     CG_EVENT_TAP_ENABLE.invoke(tap, (byte) 1);
                     CF_RUN_LOOP_RUN.invoke();
                 } catch (Throwable t) {
@@ -687,6 +697,7 @@ final class macOSWindow {
             if (CF_RELEASE != null) {
                 if (keyTapSource != null) CF_RELEASE.invoke(keyTapSource);
                 if (keyTapPort != null) CF_RELEASE.invoke(keyTapPort);
+                if (keyTapMode != null) CF_RELEASE.invoke(keyTapMode);
             }
         } catch (Throwable t) {
             throw new macOSWindowException("CRITICAL: macOSWindow key telemetry stop Exception", t);
@@ -695,6 +706,7 @@ final class macOSWindow {
             keyTapPort = null;
             keyTapSource = null;
             keyTapRunLoop = null;
+            keyTapMode = null;
             keyTapThread = null;
         }
     }
