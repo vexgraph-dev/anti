@@ -339,6 +339,25 @@ public final class Window {
     }
 
     /**
+     * Starts/stops system-wide key telemetry (listen-only CGEventTap).
+     * Captures key presses from every application while the engine app runs,
+     * feeding the off-heap telemetry.KeyLog. Off by default, log dumped at
+     * teardown. Requires macOS Input Monitoring permission. No-op on non-macOS.
+     */
+    public static void setKeyTelemetry(boolean enabled) {
+        if (!IS_MAC) return;
+        if (enabled) {
+            macOSWindow.startKeyTelemetry();
+        } else {
+            macOSWindow.stopKeyTelemetry();
+        }
+    }
+
+    public static boolean isKeyTelemetryActive() {
+        return IS_MAC && macOSWindow.isKeyTelemetryActive();
+    }
+
+    /**
      * Writes a string to the system clipboard.
      */
     public static void setClipboardString(String text) {
