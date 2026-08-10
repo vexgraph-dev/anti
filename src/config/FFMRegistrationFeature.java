@@ -1,6 +1,7 @@
 package config;
 
 import annotation.Draft;
+import annotation.HotCode;
 import annotation.Intention;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeForeignAccess;
@@ -16,6 +17,7 @@ import java.lang.foreign.ValueLayout;
 public final class FFMRegistrationFeature implements Feature {
 
     @Override
+    @HotCode // this is important to be mindful, everything is very important during setup
     public void duringSetup(DuringSetupAccess access) {
         System.out.println("[FFMRegistrationFeature] Registering exact macOSWindow and ForeignMemory FFM downcall signatures...");
 
@@ -208,6 +210,46 @@ public final class FFMRegistrationFeature implements Feature {
         // 30. msgSendBoolRetPtrPtr
         RuntimeForeignAccess.registerForDowncall(
             FunctionDescriptor.of(ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS)
+        );
+
+        // --- System-wide CGEventTap key telemetry + CFRunLoop (macOSWindow) ---
+        // 31. CGEventTapCreate
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS)
+        );
+
+        // 32. CGEventTapEnable
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_BYTE)
+        );
+
+        // 33. CGEventGetIntegerValueField
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_INT)
+        );
+
+        // 34. CFMachPortCreateRunLoopSource
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)
+        );
+
+        // 35. CFRunLoopRun
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.ofVoid()
+        );
+
+        // 36. CFStringCreateWithCString (CFAllocatorRef, const char*, CFStringEncoding) -> CFStringRef
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT)
+        );
+
+        // --- macOSWindow key telemetry: CGEventTapCallback upcall ---
+        // (CGEventTapProxy, CGEventType, CGEventRef, void*) -> CGEventRef
+        RuntimeForeignAccess.registerForUpcall(
+            FunctionDescriptor.of(
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS
+            )
         );
     }
 }
