@@ -1,8 +1,10 @@
-# anti
+# anti, by Vex, truly.
 
-A zero-allocation, off-heap game engine framework for Java, by vexgraph.
+A zero-allocation, off-heap game engine framework for Java.
 
-`anti` rejects the Java heap for its core data. Primitives, matrices, collections, and network buffers live in native memory managed through the Foreign Function & Memory (FFM) API, addressed as raw 64-bit pointers with hand-written lockless free-lists and arenas. The result is a GC-pressure-free core with predictable, microsecond-level latency — Java stripped of its safety nets, rebuilt for raw performance.
+`anti` is an absolute rejection of the traditional Java heap. Primitives, matrices, collections, and network buffers live in native memory managed through the Foreign Function & Memory (FFM) API, addressed as raw 64-bit pointers with hand-written lockless free-lists and arenas. I do not use the `new` keyword for data. I do not wrap primitives in objects. I do not box or unbox. I do not allow the Garbage Collector to pause the simulation (yup).
+
+The result is a GC-pressure-free core with predictable, microsecond-level latency — Java stripped of its safety nets, rebuilt for raw performance.
 
 ## What's in this repo
 
@@ -21,6 +23,12 @@ A zero-allocation, off-heap game engine framework for Java, by vexgraph.
 * **Bit-packed type system** — 32-bit masked type IDs give polymorphic access without object headers.
 * **Raw memory access** — fields read/written through pointer offsets and atomic `VarHandle` operations.
 * **Lockless subsystems** — dedicated threads (Draw, Networking, Scripting) communicate through ABA-tagged volatile memory.
+
+## Development & Orchestration
+
+This framework is built using an unconventional agentic coding process.
+
+An agent does the typing, but the architecture is entirely mine. I dictate the boundaries, and every line it writes gets audited by me before it's let anywhere near the core. Nothing ships until it complies with my zero-allocation standards. The agent is a high-speed implementer of my architectural manifesto — and I read the diff.
 
 ## Requirements
 
