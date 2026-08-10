@@ -69,7 +69,8 @@ public final class TriangleRenderer {
         var device = Vulkan.getDevice();
         int format = Vulkan.getSwapchainFormat();
 
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        try (
+            MemoryStack stack = MemoryStack.stackPush();
             VkAttachmentDescription.Buffer attachments = VkAttachmentDescription.calloc(1, stack)
                     .format(format)
                     .samples(VK_SAMPLE_COUNT_1_BIT)
@@ -100,8 +101,8 @@ public final class TriangleRenderer {
                     .sType(VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO)
                     .pAttachments(attachments)
                     .pSubpasses(subpass)
-                    .pDependencies(dependency);
-
+                    .pDependencies(dependency)
+        ) {
             renderPass = RenderPass.create(device, createInfo);
         }
 
@@ -396,21 +397,20 @@ public final class TriangleRenderer {
 
                 VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack);
                 VkOffset2D scissorOffset = scissor.get(0).offset().set(0, 0);
-                VkExtent2D scissorExtent = scissor.get(0).extent().set(currentW, currentH)
+                VkExtent2D scissorExtent = scissor.get(0).extent().set(currentW, currentH);
+                VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack)
+                        .sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
+                org.lwjgl.vulkan.VkRenderPassBeginInfo renderBegin = org.lwjgl.vulkan.VkRenderPassBeginInfo.calloc(stack)
+                        .sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
+                        .renderPass(RenderPass.get(renderPass))
+                        .framebuffer(VKFramebuffer.get(Long.get(framebuffers, imageIndex)))
+                        .renderArea(r -> r.offset(o -> o.set(0, 0)).extent(e -> e.set(currentW, currentH)))
+                        .pClearValues(clearValues)
         ) {
             org.lwjgl.vulkan.VkCommandBuffer command = new org.lwjgl.vulkan.VkCommandBuffer(commandBuffer, Vulkan.getDevice());
-            VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
             if (vkBeginCommandBuffer(command, beginInfo) != VK_SUCCESS) {
                 throw new IllegalStateException("Failed to begin triangle command buffer.");
             }
-
-            org.lwjgl.vulkan.VkRenderPassBeginInfo renderBegin = org.lwjgl.vulkan.VkRenderPassBeginInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
-                    .renderPass(RenderPass.get(renderPass))
-                    .framebuffer(VKFramebuffer.get(Long.get(framebuffers, imageIndex)))
-                    .renderArea(r -> r.offset(o -> o.set(0, 0)).extent(e -> e.set(currentW, currentH)));
-            renderBegin.pClearValues(clearValues);
 
             vkCmdBeginRenderPass(command, renderBegin, VK_SUBPASS_CONTENTS_INLINE);
             vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(pipeline));
