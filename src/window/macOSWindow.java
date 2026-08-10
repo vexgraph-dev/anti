@@ -2,6 +2,8 @@ package window;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import annotation.PlatformExclusive;
 import annotation.Intention;
 import annotation.Citatiom;
@@ -61,6 +63,14 @@ final class macOSWindow {
     private static MethodHandle CF_RELEASE;
     private static MethodHandle CG_ASSOCIATE_MOUSE;
     private static MethodHandle CG_WARP_MOUSE_CURSOR;
+    private static MethodHandle CG_EVENT_TAP_CREATE;
+    private static MethodHandle CG_EVENT_TAP_ENABLE;
+    private static MethodHandle CG_EVENT_GET_INTEGER_VALUE_FIELD;
+    private static MethodHandle CF_MACH_PORT_CREATE_RUN_LOOP_SOURCE;
+    private static MethodHandle CF_RUN_LOOP_GET_CURRENT;
+    private static MethodHandle CF_RUN_LOOP_ADD_SOURCE;
+    private static MethodHandle CF_RUN_LOOP_RUN;
+    private static MethodHandle CF_RUN_LOOP_STOP;
     private static StructLayout CG_RECT;
     private static StructLayout CG_SIZE;
 
@@ -111,6 +121,14 @@ final class macOSWindow {
                 );
                 CG_ASSOCIATE_MOUSE = LINKER.downcallHandle(coreGraphics.find("CGAssociateMouseAndMouseCursorPosition").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.JAVA_BYTE));
                 CG_WARP_MOUSE_CURSOR = LINKER.downcallHandle(coreGraphics.find("CGWarpMouseCursorPosition").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_INT, cgPoint));
+                CG_EVENT_TAP_CREATE = LINKER.downcallHandle(coreGraphics.find("CGEventTapCreate").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+                CG_EVENT_TAP_ENABLE = LINKER.downcallHandle(coreGraphics.find("CGEventTapEnable").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_BYTE));
+                CG_EVENT_GET_INTEGER_VALUE_FIELD = LINKER.downcallHandle(coreGraphics.find("CGEventGetIntegerValueField").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+                CF_MACH_PORT_CREATE_RUN_LOOP_SOURCE = LINKER.downcallHandle(coreFoundation.find("CFMachPortCreateRunLoopSource").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+                CF_RUN_LOOP_GET_CURRENT = LINKER.downcallHandle(coreFoundation.find("CFRunLoopGetCurrent").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS));
+                CF_RUN_LOOP_ADD_SOURCE = LINKER.downcallHandle(coreFoundation.find("CFRunLoopAddSource").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+                CF_RUN_LOOP_RUN = LINKER.downcallHandle(coreFoundation.find("CFRunLoopRun").orElseThrow(), FunctionDescriptor.ofVoid());
+                CF_RUN_LOOP_STOP = LINKER.downcallHandle(coreFoundation.find("CFRunLoopStop").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
                 CF_RELEASE = LINKER.downcallHandle(coreFoundation.find("CFRelease").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
                 metalCreateSystemDefaultDevice = LINKER.downcallHandle(
                     metalLib.find("MTLCreateSystemDefaultDevice").orElseThrow(),
@@ -578,6 +596,125 @@ final class macOSWindow {
         } catch (Throwable t) {
             throw new macOSWindowException("CRITICAL: macOSWindow cursor recenter Exception", t);
         }
+    }
+
+    // ============================================================================
+    // System-wide key telemetry (CGEventTap, listen-only)
+    // Captures key presses from ANY application while the engine app is running.
+    // Requires the macOS "Input Monitoring" privacy permission (first run prompt).
+    // ============================================================================
+
+    // kCGEventTapOptionListenOnly = 1, kCGHeadInsertEventTap = 0
+    private static final int TAP_OPTION_LISTEN_ONLY = 1;
+    private static final int TAP_PLACE_HEAD = 0;
+    // kCGEventKeyDown = 10, kCGEventKeyUp = 11
+    private static final long TAP_KEY_MASK = (1L << 10) | (1L << 11);
+    // kCGKeyboardEventKeycode = 9
+    private static final int FIELD_KEYCODE = 9;
+
+    private static volatile MemorySegment keyTapPort;
+    private static volatile MemorySegment keyTapSource;
+    private static volatile MemorySegment keyTapRunLoop;
+    private static volatile Thread keyTapThread;
+    private static volatile MemorySegment keyTapStub;
+    private static volatile boolean keyTapRunning;
+
+    /**
+     * Starts the system-wide key telemetry tap. Listen-only: it observes key
+     * events from every application but never alters them. Events feed the
+     * off-heap telemetry.KeyLog. Starts a private CFRunLoop thread so Thread 0
+     * (the AppKit pump) never blocks on the tap.
+     */
+    public static void startKeyTelemetry() {
+        if (CG_EVENT_TAP_CREATE == null || keyTapRunning) return;
+        try {
+            MethodHandle callbackHandle = MethodHandles.lookup().findStatic(
+                    macOSWindow.class, "keyTapCallback",
+                    MethodType.methodType(MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class, MemorySegment.class));
+            FunctionDescriptor callbackDesc = FunctionDescriptor.of(
+                    ValueLayout.ADDRESS, // returns CGEventRef
+                    ValueLayout.ADDRESS, // CFMachPortRef proxy
+                    ValueLayout.JAVA_INT, // CGEventType
+                    ValueLayout.ADDRESS, // CGEventRef
+                    ValueLayout.ADDRESS  // void *userInfo
+            );
+            keyTapStub = LINKER.upcallStub(callbackHandle, callbackDesc, Arena.global());
+
+            MemorySegment tap = (MemorySegment) CG_EVENT_TAP_CREATE.invoke(
+                    TAP_PLACE_HEAD, TAP_PLACE_HEAD, TAP_OPTION_LISTEN_ONLY, TAP_KEY_MASK, keyTapStub, MemorySegment.NULL);
+            if (tap == null || tap.address() == 0L) {
+                System.out.println("[telemetry] CGEventTapCreate failed (check Input Monitoring permission under System Settings -> Privacy & Security -> Input Monitoring).");
+                return;
+            }
+            keyTapPort = tap;
+
+            MemorySegment source = (MemorySegment) CF_MACH_PORT_CREATE_RUN_LOOP_SOURCE.invoke(MemorySegment.NULL, tap, 0L);
+            keyTapSource = source;
+
+            // Private run loop: drains the tap without touching Thread 0.
+            keyTapThread = Thread.ofPlatform().name("Anti-KeyTap").daemon(true).start(() -> {
+                try {
+                    MemorySegment rl = (MemorySegment) CF_RUN_LOOP_GET_CURRENT.invoke();
+                    keyTapRunLoop = rl;
+                    CF_RUN_LOOP_ADD_SOURCE.invoke(rl, source, MemorySegment.NULL);
+                    CG_EVENT_TAP_ENABLE.invoke(tap, (byte) 1);
+                    CF_RUN_LOOP_RUN.invoke();
+                } catch (Throwable t) {
+                    System.out.println("[telemetry] key tap run loop failed: " + t);
+                }
+            });
+
+            keyTapRunning = true;
+            System.out.println("[telemetry] System-wide key recording active (listen-only, Input Monitoring permission). Press keys anywhere.");
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow key telemetry Exception", t);
+        }
+    }
+
+    /** Stops the system-wide key telemetry tap (called at teardown). */
+    public static void stopKeyTelemetry() {
+        if (!keyTapRunning) return;
+        try {
+            if (CG_EVENT_TAP_ENABLE != null && keyTapPort != null) {
+                CG_EVENT_TAP_ENABLE.invoke(keyTapPort, (byte) 0);
+            }
+            if (CF_RUN_LOOP_STOP != null && keyTapRunLoop != null) {
+                CF_RUN_LOOP_STOP.invoke(keyTapRunLoop);
+            }
+            if (keyTapThread != null) {
+                keyTapThread.join(500L);
+            }
+            if (CF_RELEASE != null) {
+                if (keyTapSource != null) CF_RELEASE.invoke(keyTapSource);
+                if (keyTapPort != null) CF_RELEASE.invoke(keyTapPort);
+            }
+        } catch (Throwable t) {
+            throw new macOSWindowException("CRITICAL: macOSWindow key telemetry stop Exception", t);
+        } finally {
+            keyTapRunning = false;
+            keyTapPort = null;
+            keyTapSource = null;
+            keyTapRunLoop = null;
+            keyTapThread = null;
+        }
+    }
+
+    public static boolean isKeyTelemetryActive() {
+        return keyTapRunning;
+    }
+
+    /** CGEventTap callback: fired off-thread for every matching system event. */
+    private static MemorySegment keyTapCallback(MemorySegment proxy, int type, MemorySegment event, MemorySegment userInfo) {
+        if (event == null || event.address() == 0L) return proxy;
+        try {
+            long keycode = (long) CG_EVENT_GET_INTEGER_VALUE_FIELD.invoke(event, FIELD_KEYCODE);
+            boolean down = (type == 10);
+            telemetry.KeyLog.record((int) keycode, down ? 1 : 0);
+        } catch (Throwable ignored) {
+            // Never let a tap callback exception reach the native run loop.
+        }
+        // Listen-only: return the event unchanged so other apps are unaffected.
+        return event;
     }
 
     public static void setClipboardString(String text) {
