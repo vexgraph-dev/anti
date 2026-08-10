@@ -32,6 +32,11 @@ public final class FFMRegistrationFeature implements Feature {
             ValueLayout.JAVA_DOUBLE.withName("height")
         );
 
+        MemoryLayout cgPoint = MemoryLayout.structLayout(
+            ValueLayout.JAVA_DOUBLE.withName("x"),
+            ValueLayout.JAVA_DOUBLE.withName("y")
+        );
+
         // --- nio.ForeignMemory Downcalls ---
         // malloc
         RuntimeForeignAccess.registerForDowncall(
@@ -157,6 +162,52 @@ public final class FFMRegistrationFeature implements Feature {
         // 21. MTLCreateSystemDefaultDevice
         RuntimeForeignAccess.registerForDowncall(
             FunctionDescriptor.of(ValueLayout.ADDRESS)
+        );
+
+        // --- CoreGraphics / CoreFoundation Display & Cursor Downcalls ---
+        // 22. CGMainDisplayID
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_INT)
+        );
+
+        // 23. CGDisplayCopyAllDisplayModes
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS)
+        );
+
+        // 24. CFArrayGetCount
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)
+        );
+
+        // 25. CFArrayGetValueAtIndex
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)
+        );
+
+        // 26. CGDisplayModeGetPixelWidth / CGDisplayModeGetPixelHeight
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)
+        );
+
+        // 27. CGAssociateMouseAndMouseCursorPosition
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.ofVoid(ValueLayout.JAVA_BYTE)
+        );
+
+        // 28. CGWarpMouseCursorPosition
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, cgPoint)
+        );
+
+        // 29. msgSendBoolLongRet
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)
+        );
+
+        // 30. msgSendBoolRetPtrPtr
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS)
         );
     }
 }
