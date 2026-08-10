@@ -9,14 +9,20 @@ import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkImageBlit;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
+import org.lwjgl.vulkan.VkImageSubresourceLayers;
+import org.lwjgl.vulkan.VkImageSubresourceRange;
+import org.lwjgl.vulkan.VkOffset3D;
 import org.lwjgl.vulkan.VkPresentInfoKHR;
 import org.lwjgl.vulkan.VkQueue;
 import org.lwjgl.vulkan.VkSubmitInfo;
 import org.lwjgl.vulkan.VK10;
+import nio.ForeignMemory;
 import thread.RingBuffer;
 
 import java.nio.IntBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
+
 import primitive.Long;
 
 import static org.lwjgl.vulkan.KHRSwapchain.*;
@@ -49,8 +55,42 @@ public final class Renderer {
     private static java.util.concurrent.Semaphore slotSemaphore;
     private static boolean[] droppedFrames;
 
-    private static volatile long drawCount;
-    private static volatile long presentCount;
+    // --- Off-heap telemetry/count block -------------------------------------
+    // All counters are ATOMIC RMW on off-heap memory (see ForeignMemory.getAndAddLong),
+    // never `volatile` field RMW (which is non-atomic — §14.3).
+    private static final int CTR_DRAW_COUNT = 0;
+    private static final int CTR_PRESENT_COUNT = 1;
+    private static final int CTR_DBG_ACQUIRE_NANOS = 2;
+    private static final int CTR_DBG_RELEASED_WAIT_NANOS = 3;
+    private static final int CTR_DBG_QUEUE_LOCK_NANOS = 4;
+    private static final int CTR_DBG_PRESENT_BLOCK_NANOS = 5;
+    private static final int CTR_DBG_PRESENT_NOT_READY = 6;
+    private static final int CTR_DBG_PRESENT_SUBMIT_NANOS = 7;
+    private static final int CTR_DBG_PRESENT_CALL_NANOS = 8;
+    private static final int CTR_DBG_PRESENT_THREAD_LOOPS = 9;
+    private static final int CTR_DBG_PRESENT_THREAD_PARK_MS = 10;
+    private static final int CTR_COUNT = 11;
+    private static long countersArray;
+
+    private static long ctrAddr(int ctr) {
+        return countersArray + ctr * 8L;
+    }
+
+    /** Atomic off-heap RMW add; returns the PREVIOUS value. */
+    private static long counterAdd(int ctr, long delta) {
+        return ForeignMemory.getAndAddLong(ctrAddr(ctr), delta);
+    }
+
+    private static long counterGet(int ctr) {
+        return ForeignMemory.getVolatileLong(ctrAddr(ctr));
+    }
+
+    private static void counterResetAll() {
+        for (int i = 0; i < CTR_COUNT; i++) {
+            ForeignMemory.setVolatileLong(ctrAddr(i), 0L);
+        }
+    }
+
     private static final java.util.concurrent.locks.ReentrantReadWriteLock PRODUCER_LOCK = 
             new java.util.concurrent.locks.ReentrantReadWriteLock();
 
@@ -62,16 +102,6 @@ public final class Renderer {
 
     private static volatile Thread presentThread;
     private static volatile boolean presentThreadRunning;
-
-    public static volatile long dbgAcquireNanos;
-    public static volatile long dbgReleasedWaitNanos;
-    public static volatile long dbgQueueLockNanos;
-    public static volatile long dbgPresentBlockNanos;
-    public static volatile long dbgPresentNotReady;
-    public static volatile long dbgPresentSubmitNanos;
-    public static volatile long dbgPresentCallNanos;
-    public static volatile long dbgPresentThreadLoops;
-    public static volatile long dbgPresentThreadParkMs;
 
     private Renderer() {}
 
@@ -90,6 +120,8 @@ public final class Renderer {
         completedRing = RingBuffer.instant(oop.TypeRegister.ID_LONG, 1024);
         slotSemaphore = new java.util.concurrent.Semaphore(frameCount);
         droppedFrames = new boolean[frameCount];
+        countersArray = ForeignMemory.allocateNative(CTR_COUNT * 8L);
+        counterResetAll();
 
         for (int i = 0; i < frameCount; i++) {
             CommandBuffer.set(commandBuffersArray, i, CommandBuffer.create(device, drawCommandPoolPtr));
@@ -118,25 +150,28 @@ public final class Renderer {
         if (presentThread != null && presentThread.isAlive()) return;
         presentThreadRunning = true;
         final long presentPeriod = 1_000_000_000L / PRESENT_FPS;
-        presentThread = new Thread(() -> {
+        presentThread = new Thread(() ->
+        {
             long deadline = java.lang.System.nanoTime() + presentPeriod;
-            while (presentThreadRunning && initialized) {
-                dbgPresentThreadLoops++;
+
+            while (presentThreadRunning && initialized)
+            {
+                counterAdd(CTR_DBG_PRESENT_THREAD_LOOPS, 1L);
                 long t0 = java.lang.System.nanoTime();
                 int status = presentOnce();
                 if (status == PRESENT_IDLE) {
                     // Nothing to present yet: keep the 60Hz cadence, just skip the frame.
-                    java.util.concurrent.locks.LockSupport.parkNanos(presentPeriod / 4);
+                    LockSupport.parkNanos(presentPeriod / 4);
                 } else if (status == PRESENT_RETRY) {
                     // Swapchain image not free yet: sleep most of a frame period instead
                     // of hammering vkAcquireNextImageKHR.
-                    java.util.concurrent.locks.LockSupport.parkNanos(2_000_000L);
+                    LockSupport.parkNanos(2_000_000L);
                 }
                 // Software pace to 60Hz so IMMEDIATE presents at the display cadence.
                 deadline += presentPeriod;
                 long tPark = java.lang.System.nanoTime();
                 window.Window.parkUntil(deadline);
-                dbgPresentThreadParkMs += (java.lang.System.nanoTime() - tPark) / 1_000_000L;
+                counterAdd(CTR_DBG_PRESENT_THREAD_PARK_MS, (java.lang.System.nanoTime() - tPark) / 1_000_000L);
             }
         }, "Core-Present");
         presentThread.setDaemon(true);
@@ -165,7 +200,7 @@ public final class Renderer {
             Thread.currentThread().interrupt();
             return;
         }
-        dbgAcquireNanos += java.lang.System.nanoTime() - tA0;
+        counterAdd(CTR_DBG_ACQUIRE_NANOS, java.lang.System.nanoTime() - tA0);
 
         PRODUCER_LOCK.readLock().lock();
         try {
@@ -177,7 +212,11 @@ public final class Renderer {
             long releasedF = Fence.get(Fence.get(releasedFencesArray, slot));
             long drawF = Fence.get(Fence.get(drawFencesArray, slot));
 
-            try (MemoryStack stack = MemoryStack.stackPush()) {
+            try (
+                MemoryStack stack = MemoryStack.stackPush();
+                VkSubmitInfo.Buffer sub = VkSubmitInfo.calloc(1, stack);
+                VkSubmitInfo sub0 = sub.get(0)
+            ) {
                 if (droppedFrames[slot]) {
                     vkResetFences(device, stack.longs(drawF));
                     droppedFrames[slot] = false;
@@ -186,13 +225,13 @@ public final class Renderer {
                     if (vkWaitForFences(device, stack.longs(releasedF), true, java.lang.Long.MAX_VALUE) != VK_SUCCESS) {
                         throw new IllegalStateException("produce: released fence wait failed");
                     }
-                    dbgReleasedWaitNanos += java.lang.System.nanoTime() - tR0;
+                    counterAdd(CTR_DBG_RELEASED_WAIT_NANOS, java.lang.System.nanoTime() - tR0);
                     vkResetFences(device, stack.longs(releasedF, drawF));
                 }
 
                 long tL0 = java.lang.System.nanoTime();
                 lockQueue();
-                dbgQueueLockNanos += java.lang.System.nanoTime() - tL0;
+                counterAdd(CTR_DBG_QUEUE_LOCK_NANOS, java.lang.System.nanoTime() - tL0);
                 try {
                     // Re-record the draw CB with the current animation time so the visible frame
                     // advances at the DRAW rate, proving the draw thread is really running uncapped.
@@ -201,8 +240,7 @@ public final class Renderer {
                     TriangleRenderer.recordDraw(slot, t);
 
                     VkQueue q = Vulkan.getGraphicsQueue();
-                    VkSubmitInfo.Buffer sub = VkSubmitInfo.calloc(1, stack);
-                    sub.get(0).sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
+                    sub0.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
                             .pCommandBuffers(stack.pointers(drawCb));
                     if (VK10.vkQueueSubmit(q, sub, drawF) != VK_SUCCESS) {
                         throw new IllegalStateException("produce: draw submit failed");
@@ -212,8 +250,8 @@ public final class Renderer {
                 }
 
                 RingBuffer.offer(completedRing, slot + 1L);
-                ++drawCount;
-                Log.append(LogKind.RENDER_PRODUCE, slot, drawCount);
+                long dc = counterAdd(CTR_DRAW_COUNT, 1L) + 1L;
+                Log.append(LogKind.RENDER_PRODUCE, slot, dc);
             }
         } finally {
             PRODUCER_LOCK.readLock().unlock();
@@ -242,12 +280,14 @@ public final class Renderer {
     private static int presentOnceLocked(VkDevice device) {
         long latestSlotVal = 0L;
 
-        // Drain the completed ring to the LATEST frame, but BOUND the number of drops.
-        // The ring is only guaranteed to empty when the producer is slower than present;
-        // with an uncapped draw thread the producer keeps it non-empty forever, so an
-        // unbounded while(true) here livelocks the present thread inside this loop and it
-        // never reaches the actual blit/present below. Capping the drain lets present
-        // always present the newest frame while still discarding stale in-flight frames.
+        /*
+         Drain the completed ring to the LATEST frame, but BOUND the number of drops.
+         The ring is only guaranteed to empty when the producer is slower than present;
+         with an uncapped draw thread the producer keeps it non-empty forever, so an
+         unbounded while(true) here livelocks the present thread inside this loop and it
+         never reaches the actual blit/present below. Capping the drain lets present
+         always present the newest frame while still discarding stale in-flight frames.
+        */
         int maxDrain = Math.max(1, frameCount);
         for (int drained = 0; drained < maxDrain; drained++) {
             long s = RingBuffer.poll(completedRing);
@@ -275,12 +315,18 @@ public final class Renderer {
         long releasedF = Fence.get(Fence.get(releasedFencesArray, slot));
         long imageAvailable = Semaphore.get(Semaphore.get(imageAvailableSemaphoresArray, slot));
 
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        // instantiation of the autocloseables
+        try (
+            MemoryStack stack = MemoryStack.stackPush();
+            VkSubmitInfo.Buffer submits = VkSubmitInfo.calloc(1, stack);
+            VkSubmitInfo submits0 = submits.get(0);
+            VkPresentInfoKHR presentInfo = VkPresentInfoKHR.calloc(stack)
+        ) {
             long tW0 = java.lang.System.nanoTime();
             if (vkWaitForFences(device, stack.longs(drawF), true, java.lang.Long.MAX_VALUE) != VK_SUCCESS) {
                 throw new IllegalStateException("present: draw fence wait failed");
             }
-            dbgPresentBlockNanos += java.lang.System.nanoTime() - tW0;
+            counterAdd(CTR_DBG_PRESENT_BLOCK_NANOS, java.lang.System.nanoTime() - tW0);
 
             while (!window.Window.OS_NATIVE_MUTEX.compareAndSet(false, true)) {
                 Thread.onSpinWait();
@@ -306,7 +352,7 @@ public final class Renderer {
                 if (acquireResult == VK_NOT_READY || acquireResult == VK_TIMEOUT) {
                     // No swapchain image free yet (vsync pacing). Re-offer the frame so a later
                     // presentOnce can show it; the slot stays in flight and is NOT released here.
-                    dbgPresentNotReady++;
+                    counterAdd(CTR_DBG_PRESENT_NOT_READY, 1L);
                     RingBuffer.offer(completedRing, latestSlotVal);
                     return PRESENT_RETRY;
                 }
@@ -325,15 +371,13 @@ public final class Renderer {
                 recordBlitCommandBuffer(stack, device, blitCb, slot, imgIndex);
 
                 VkQueue q = Vulkan.getPresentQueue();
-                VkSubmitInfo.Buffer submits = VkSubmitInfo.calloc(1, stack);
-                submits.get(0).sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
+                submits0.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
                         .waitSemaphoreCount(1)
                         .pWaitSemaphores(stack.longs(imageAvailable))
                         .pWaitDstStageMask(stack.ints(VK_PIPELINE_STAGE_TRANSFER_BIT))
                         .pCommandBuffers(stack.pointers(blitCb))
                         .pSignalSemaphores(stack.longs(blitFinished));
 
-                VkPresentInfoKHR presentInfo = VkPresentInfoKHR.calloc(stack);
                 presentInfo.sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
                         .pWaitSemaphores(stack.longs(blitFinished))
                         .swapchainCount(1)
@@ -347,10 +391,10 @@ public final class Renderer {
                     if (VK10.vkQueueSubmit(q, submits, releasedF) != VK_SUCCESS) {
                         throw new IllegalStateException("present: blit submit failed");
                     }
-                    dbgPresentSubmitNanos += java.lang.System.nanoTime() - tS0;
+                    counterAdd(CTR_DBG_PRESENT_SUBMIT_NANOS, java.lang.System.nanoTime() - tS0);
                     long tP0 = java.lang.System.nanoTime();
                     int pres = vkQueuePresentKHR(q, presentInfo);
-                    dbgPresentCallNanos += java.lang.System.nanoTime() - tP0;
+                    counterAdd(CTR_DBG_PRESENT_CALL_NANOS, java.lang.System.nanoTime() - tP0);
                     if (pres != VK_SUCCESS && pres != VK_SUBOPTIMAL_KHR && pres != VK_ERROR_OUT_OF_DATE_KHR) {
                         throw new IllegalStateException("present: present failed: " + pres);
                     }
@@ -359,8 +403,8 @@ public final class Renderer {
                 }
                 slotSemaphore.release();
 
-                presentCount++;
-                Log.append(LogKind.RENDER_PRESENT, slot, presentCount);
+                long pc = counterAdd(CTR_PRESENT_COUNT, 1L) + 1L;
+                Log.append(LogKind.RENDER_PRESENT, slot, pc);
                 return PRESENT_DONE;
             } finally {
                 window.Window.OS_NATIVE_MUTEX.set(false);
@@ -371,71 +415,86 @@ public final class Renderer {
     private static void recordBlitCommandBuffer(MemoryStack stack, VkDevice device, long blitCb,
                                                 int slot, int imgIndex) {
         VkCommandBuffer command = new VkCommandBuffer(blitCb, device);
-        VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack)
-                .sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
-        if (vkBeginCommandBuffer(command, beginInfo) != VK_SUCCESS) {
-            throw new IllegalStateException("Failed to begin blit command buffer.");
-        }
+        try (
+            VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
 
-        long swapchainImage = Long.get(Vulkan.getSwapchainImages(), imgIndex);
-        long offscreenImage = TriangleRenderer.getOffscreenImageHandle(slot);
-        int srcW = Vulkan.getSwapchainWidth();
-        int srcH = Vulkan.getSwapchainHeight();
-        int dstW = Vulkan.getSwapchainWidth();
-        int dstH = Vulkan.getSwapchainHeight();
+            // The image layout barriers and blit region are stack-owned buffers that
+            // implement AutoCloseable (NativeResource); they close with the try block.
+            VkImageMemoryBarrier.Buffer pre = VkImageMemoryBarrier.calloc(1, stack);
+            VkImageMemoryBarrier pre0 = pre.get(0);
+            VkImageSubresourceRange pre0Range = pre0.subresourceRange();
+            VkImageBlit.Buffer reg = VkImageBlit.calloc(1, stack);
+            VkImageBlit reg0 = reg.get(0);
+            VkImageSubresourceLayers reg0SrcSub = reg0.srcSubresource();
+            VkImageSubresourceLayers reg0DstSub = reg0.dstSubresource();
+            VkOffset3D reg0SrcOff0 = reg0.srcOffsets(0);
+            VkOffset3D reg0SrcOff1 = reg0.srcOffsets(1);
+            VkOffset3D reg0DstOff0 = reg0.dstOffsets(0);
+            VkOffset3D reg0DstOff1 = reg0.dstOffsets(1);
+            VkImageMemoryBarrier.Buffer post = VkImageMemoryBarrier.calloc(1, stack);
+            VkImageMemoryBarrier post0 = post.get(0);
+            VkImageSubresourceRange post0Range = post0.subresourceRange()
+        ) {
+            if (vkBeginCommandBuffer(command, beginInfo) != VK_SUCCESS) {
+                throw new IllegalStateException("Failed to begin blit command buffer.");
+            }
 
-        VkImageMemoryBarrier.Buffer pre = VkImageMemoryBarrier.calloc(1, stack);
-        pre.get(0).sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-                .oldLayout(VK_IMAGE_LAYOUT_UNDEFINED)
-                .newLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                .image(swapchainImage)
-                .srcAccessMask(0)
-                .dstAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT);
-        pre.get(0).subresourceRange()
-                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .baseMipLevel(0)
-                .levelCount(1)
-                .baseArrayLayer(0)
-                .layerCount(1);
-        vkCmdPipelineBarrier(command,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                0, null, null, pre);
+            long swapchainImage = Long.get(Vulkan.getSwapchainImages(), imgIndex);
+            long offscreenImage = TriangleRenderer.getOffscreenImageHandle(slot);
+            int srcW = Vulkan.getSwapchainWidth();
+            int srcH = Vulkan.getSwapchainHeight();
+            int dstW = Vulkan.getSwapchainWidth();
+            int dstH = Vulkan.getSwapchainHeight();
 
-        VkImageBlit.Buffer reg = VkImageBlit.calloc(1, stack);
-        reg.get(0).srcSubresource().set(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
-        reg.get(0).dstSubresource().set(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
-        reg.get(0).srcOffsets(0).set(0, 0, 0);
-        reg.get(0).srcOffsets(1).set(srcW, srcH, 1);
-        reg.get(0).dstOffsets(0).set(0, 0, 0);
-        reg.get(0).dstOffsets(1).set(dstW, dstH, 1);
-        vkCmdBlitImage(command,
-                offscreenImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                reg, VK_FILTER_LINEAR);
+            pre0.sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
+                    .oldLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+                    .newLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                    .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                    .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                    .image(swapchainImage)
+                    .srcAccessMask(0)
+                    .dstAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT);
+            pre0Range.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .baseMipLevel(0)
+                    .levelCount(1)
+                    .baseArrayLayer(0)
+                    .layerCount(1);
+            vkCmdPipelineBarrier(command,
+                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    0, null, null, pre);
 
-        VkImageMemoryBarrier.Buffer post = VkImageMemoryBarrier.calloc(1, stack);
-        post.get(0).sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-                .oldLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-                .newLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                .image(swapchainImage)
-                .srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
-                .dstAccessMask(0);
-        post.get(0).subresourceRange()
-                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .baseMipLevel(0)
-                .levelCount(1)
-                .baseArrayLayer(0)
-                .layerCount(1);
-        vkCmdPipelineBarrier(command,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                0, null, null, post);
+            reg0SrcSub.set(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
+            reg0DstSub.set(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
+            reg0SrcOff0.set(0, 0, 0);
+            reg0SrcOff1.set(srcW, srcH, 1);
+            reg0DstOff0.set(0, 0, 0);
+            reg0DstOff1.set(dstW, dstH, 1);
+            vkCmdBlitImage(command,
+                    offscreenImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    reg, VK_FILTER_LINEAR);
 
-        if (vkEndCommandBuffer(command) != VK_SUCCESS) {
-            throw new IllegalStateException("Failed to end blit command buffer.");
+            post0.sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
+                    .oldLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                    .newLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+                    .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                    .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                    .image(swapchainImage)
+                    .srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
+                    .dstAccessMask(0);
+            post0Range.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .baseMipLevel(0)
+                    .levelCount(1)
+                    .baseArrayLayer(0)
+                    .layerCount(1);
+            vkCmdPipelineBarrier(command,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    0, null, null, post);
+
+            if (vkEndCommandBuffer(command) != VK_SUCCESS) {
+                throw new IllegalStateException("Failed to end blit command buffer.");
+            }
         }
     }
 
@@ -468,8 +527,25 @@ public final class Renderer {
     }
 
     public static int getFrameCount() { return frameCount; }
-    public static long getDrawCount() { return drawCount; }
-    public static long getPresentCount() { return presentCount; }
+    public static long getDrawCount() { return counterGet(CTR_DRAW_COUNT); }
+    public static long getPresentCount() { return counterGet(CTR_PRESENT_COUNT); }
+
+    // 1Hz telemetry snapshot + reset, read by the draw thread's debug/FPS logging.
+    public static long getDbgAcquireNanos() { return counterGet(CTR_DBG_ACQUIRE_NANOS); }
+    public static long getDbgReleasedWaitNanos() { return counterGet(CTR_DBG_RELEASED_WAIT_NANOS); }
+    public static long getDbgQueueLockNanos() { return counterGet(CTR_DBG_QUEUE_LOCK_NANOS); }
+    public static long getDbgPresentBlockNanos() { return counterGet(CTR_DBG_PRESENT_BLOCK_NANOS); }
+    public static long getDbgPresentNotReady() { return counterGet(CTR_DBG_PRESENT_NOT_READY); }
+    public static long getDbgPresentSubmitNanos() { return counterGet(CTR_DBG_PRESENT_SUBMIT_NANOS); }
+    public static long getDbgPresentCallNanos() { return counterGet(CTR_DBG_PRESENT_CALL_NANOS); }
+    public static long getDbgPresentThreadLoops() { return counterGet(CTR_DBG_PRESENT_THREAD_LOOPS); }
+    public static long getDbgPresentThreadParkMs() { return counterGet(CTR_DBG_PRESENT_THREAD_PARK_MS); }
+
+    public static void resetDbgCounters() {
+        for (int i = CTR_DBG_ACQUIRE_NANOS; i <= CTR_DBG_PRESENT_THREAD_PARK_MS; i++) {
+            ForeignMemory.setVolatileLong(ctrAddr(i), 0L);
+        }
+    }
 
     public static void resetInFlight() {
         if (completedRing == 0L) return;
@@ -520,10 +596,12 @@ public final class Renderer {
         Semaphore.free(imageAvailableSemaphoresArray);
         Semaphore.free(blitFinishedSemaphoresArray);
         RingBuffer.free(completedRing);
+        ForeignMemory.freeNative(countersArray);
 
         commandBuffersArray = 0L;
         blitCommandBuffersArray = 0L;
         completedRing = 0L;
+        countersArray = 0L;
         frameCount = 0;
         initialized = false;
     }
