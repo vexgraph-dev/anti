@@ -402,25 +402,17 @@ public final class DrawThread {
                         System.out.println("[DEBUG] Draw=" + String.format("%.1f", drawFps)
                                 + " Present=" + String.format("%.1f", presentFps)
                                 + " iterMs=" + (totalIterNanos / 1_000_000)
-                                + " acqMs=" + (vulkan.Renderer.dbgAcquireNanos / 1_000_000)
-                                + " relWaitMs=" + (vulkan.Renderer.dbgReleasedWaitNanos / 1_000_000)
-                                + " qLockMs=" + (vulkan.Renderer.dbgQueueLockNanos / 1_000_000)
-                                + " presBlockMs=" + (vulkan.Renderer.dbgPresentBlockNanos / 1_000_000)
-                                + " presSubMs=" + (vulkan.Renderer.dbgPresentSubmitNanos / 1_000_000)
-                                + " presCallMs=" + (vulkan.Renderer.dbgPresentCallNanos / 1_000_000)
-                                + " pLoops=" + vulkan.Renderer.dbgPresentThreadLoops
-                                + " pParkMs=" + (vulkan.Renderer.dbgPresentThreadParkMs)
-                                + " notReady=" + vulkan.Renderer.dbgPresentNotReady);
+                                + " acqMs=" + (vulkan.Renderer.getDbgAcquireNanos() / 1_000_000)
+                                + " relWaitMs=" + (vulkan.Renderer.getDbgReleasedWaitNanos() / 1_000_000)
+                                + " qLockMs=" + (vulkan.Renderer.getDbgQueueLockNanos() / 1_000_000)
+                                + " presBlockMs=" + (vulkan.Renderer.getDbgPresentBlockNanos() / 1_000_000)
+                                + " presSubMs=" + (vulkan.Renderer.getDbgPresentSubmitNanos() / 1_000_000)
+                                + " presCallMs=" + (vulkan.Renderer.getDbgPresentCallNanos() / 1_000_000)
+                                + " pLoops=" + vulkan.Renderer.getDbgPresentThreadLoops()
+                                + " pParkMs=" + (vulkan.Renderer.getDbgPresentThreadParkMs())
+                                + " notReady=" + vulkan.Renderer.getDbgPresentNotReady());
                     dbgIterNanos = 0L;
-                    vulkan.Renderer.dbgAcquireNanos = 0L;
-                    vulkan.Renderer.dbgReleasedWaitNanos = 0L;
-                    vulkan.Renderer.dbgQueueLockNanos = 0L;
-                    vulkan.Renderer.dbgPresentBlockNanos = 0L;
-                    vulkan.Renderer.dbgPresentNotReady = 0L;
-                    vulkan.Renderer.dbgPresentSubmitNanos = 0L;
-                    vulkan.Renderer.dbgPresentCallNanos = 0L;
-                    vulkan.Renderer.dbgPresentThreadLoops = 0L;
-                    vulkan.Renderer.dbgPresentThreadParkMs = 0L;
+                    vulkan.Renderer.resetDbgCounters();
                     // Publish to the title mailbox; Thread 0's pump applies it (AppKit).
                     if (windowPtr != 0L) {
                         double drawDelta = (currDraw - lastDraw);
