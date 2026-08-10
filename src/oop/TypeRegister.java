@@ -131,6 +131,7 @@ public class TypeRegister
     public static final int ID_VK_IMAGE_VIEW = 0x000048; // VKImageView class // 72
     public static final int ID_VK_FRAMEBUFFER = 0x000049; // VKFramebuffer class // 73
     public static final int ID_VK_IMAGE = 0x00004B; // VKImage class // 75
+    public static final int ID_FILE = 0x00004C; // File class // 76
 
 
     // --- BUFFER CLASSES ---
