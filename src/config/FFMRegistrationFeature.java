@@ -172,24 +172,9 @@ public final class FFMRegistrationFeature implements Feature {
             FunctionDescriptor.of(ValueLayout.JAVA_INT)
         );
 
-        // 23. CGDisplayCopyAllDisplayModes
+        // 23. CGDisplayPixelsWide / CGDisplayPixelsHigh
         RuntimeForeignAccess.registerForDowncall(
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS)
-        );
-
-        // 24. CFArrayGetCount
-        RuntimeForeignAccess.registerForDowncall(
-            FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)
-        );
-
-        // 25. CFArrayGetValueAtIndex
-        RuntimeForeignAccess.registerForDowncall(
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)
-        );
-
-        // 26. CGDisplayModeGetPixelWidth / CGDisplayModeGetPixelHeight
-        RuntimeForeignAccess.registerForDowncall(
-            FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)
+            FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT)
         );
 
         // 27. CGAssociateMouseAndMouseCursorPosition
@@ -243,12 +228,61 @@ public final class FFMRegistrationFeature implements Feature {
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT)
         );
 
+        // --- net.HTTPClient (libcurl) Downcalls ---
+        // 37. curl_easy_setopt(curl*, CURLoption, ...) — pointer variant (also covers curl_easy_getinfo)
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS)
+        );
+
+        // 38. curl_easy_setopt(curl*, CURLoption, long) — long variant
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG)
+        );
+
+        // 39. curl_easy_perform(curl*)
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)
+        );
+
+        // --- system.SystemDiscovery (macOS libc / CoreGraphics) Downcalls ---
+        // 40. int sysctlbyname(const char*, void*, size_t*, void*, size_t)
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(
+                ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG
+            )
+        );
+
+        // 41. CGError CGGetActiveDisplayList(uint32_t, CGDirectDisplayID*, uint32_t*)
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS)
+        );
+
+        // 42. CGDisplayModeRef CGDisplayCopyDisplayMode(CGDirectDisplayID)
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT)
+        );
+
+        // 43. double CGDisplayModeGetRefreshRate(CGDisplayModeRef)
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_DOUBLE, ValueLayout.ADDRESS)
+        );
+
         // --- macOSWindow key telemetry: CGEventTapCallback upcall ---
         // (CGEventTapProxy, CGEventType, CGEventRef, void*) -> CGEventRef
         RuntimeForeignAccess.registerForUpcall(
             FunctionDescriptor.of(
                 ValueLayout.ADDRESS,
                 ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS
+            )
+        );
+
+        // --- net.HTTPClient: curl write callback upcall ---
+        // size_t write_callback(char* ptr, size_t size, size_t nmemb, void* userdata)
+        RuntimeForeignAccess.registerForUpcall(
+            FunctionDescriptor.of(
+                ValueLayout.JAVA_LONG,
+                ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS
             )
         );
     }
