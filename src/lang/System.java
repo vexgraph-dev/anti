@@ -54,15 +54,20 @@ public final class System {
         } catch (Throwable ignored) {}
 
         if (!oshiAvailable || totalMemory == 0L) {
+            // Non-reflective: com.sun.management.OperatingSystemMXBean directly exposes the
+            // getTotalPhysicalMemorySize/getFreePhysicalMemorySize methods the reflection
+            // block used to fish for. This is the documented GraalVM-safe replacement.
             try {
                 java.lang.management.OperatingSystemMXBean osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
-                java.lang.reflect.Method totalMemMethod = osBean.getClass().getMethod("getTotalPhysicalMemorySize");
-                java.lang.reflect.Method freeMemMethod = osBean.getClass().getMethod("getFreePhysicalMemorySize");
-                totalMemory = (long) totalMemMethod.invoke(osBean);
-                freeMemory = (long) freeMemMethod.invoke(osBean);
-            } catch (Throwable t) {
-                totalMemory = Runtime.getRuntime().maxMemory();
-                freeMemory = Runtime.getRuntime().freeMemory();
+                if (osBean instanceof com.sun.management.OperatingSystemMXBean sun) {
+                    totalMemory = sun.getTotalPhysicalMemorySize();
+                    freeMemory = sun.getFreePhysicalMemorySize();
+                } else {
+                    totalMemory = Runtime.getRuntime().maxMemory();
+                    freeMemory = Runtime.getRuntime().freeMemory();
+                }
+            } catch (Throwable e) {
+                throw new RuntimeException("System: failed to query physical memory sizes", e);
             }
         }
 
