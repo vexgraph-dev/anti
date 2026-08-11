@@ -1,6 +1,7 @@
 package vulkan;
 
 import annotation.Draft;
+import annotation.Intention;
 import io.Log;
 import io.LogKind;
 import org.lwjgl.system.MemoryStack;
@@ -18,11 +19,10 @@ import org.lwjgl.vulkan.VkSubmitInfo;
 import org.lwjgl.vulkan.VK10;
 import nio.ForeignMemory;
 import thread.RingBuffer;
+import thread.SpinLock;
 
 import java.nio.IntBuffer;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
-
 import primitive.Long;
 
 import static org.lwjgl.vulkan.KHRSwapchain.*;
@@ -39,10 +39,12 @@ public final class Renderer {
     /** Software present cadence used to pace IMMEDIATE/uncapped present modes. */
     public static final int PRESENT_FPS = 60;
 
-    private static final AtomicBoolean QUEUE_LOCK = new AtomicBoolean(true);
+    private static long queueLock; // off-heap SpinLock serializing the single GPU queue
 
     private static long commandBuffersArray;
-    private static long blitCommandBuffersArray;
+    private static long blitCommandBuffersArray; // (slot x swapchain image) grid, see rebuildBlitCommandBuffers
+    private static long blitPoolPtr;
+    private static int blitImgCount;
     private static long drawFencesArray;
     private static long releasedFencesArray;
     private static long imageAvailableSemaphoresArray;
@@ -69,7 +71,8 @@ public final class Renderer {
     private static final int CTR_DBG_PRESENT_CALL_NANOS = 8;
     private static final int CTR_DBG_PRESENT_THREAD_LOOPS = 9;
     private static final int CTR_DBG_PRESENT_THREAD_PARK_MS = 10;
-    private static final int CTR_COUNT = 11;
+    private static final int CTR_DBG_BLIT_RECORD_NANOS = 11;
+    private static final int CTR_COUNT = 12;
     private static long countersArray;
 
     private static long ctrAddr(int ctr) {
@@ -111,7 +114,7 @@ public final class Renderer {
         }
         frameCount = frameSlots;
         commandBuffersArray = CommandBuffer.allocateArray(frameCount);
-        blitCommandBuffersArray = CommandBuffer.allocateArray(frameCount);
+        blitPoolPtr = blitCommandPoolPtr;
         drawFencesArray = Fence.allocateArray(frameCount);
         releasedFencesArray = Fence.allocateArray(frameCount);
         imageAvailableSemaphoresArray = Semaphore.allocateArray(frameCount);
@@ -121,11 +124,11 @@ public final class Renderer {
         slotSemaphore = new java.util.concurrent.Semaphore(frameCount);
         droppedFrames = new boolean[frameCount];
         countersArray = ForeignMemory.allocateNative(CTR_COUNT * 8L);
+        queueLock = SpinLock.allocate();
         counterResetAll();
 
         for (int i = 0; i < frameCount; i++) {
             CommandBuffer.set(commandBuffersArray, i, CommandBuffer.create(device, drawCommandPoolPtr));
-            CommandBuffer.set(blitCommandBuffersArray, i, CommandBuffer.create(device, blitCommandPoolPtr));
 
             Fence.set(drawFencesArray, i, Fence.create(device, false));
             Fence.set(releasedFencesArray, i, Fence.create(device, true));
@@ -134,6 +137,7 @@ public final class Renderer {
             Semaphore.set(blitFinishedSemaphoresArray, i, Semaphore.create(device));
         }
         initialized = true;
+        rebuildBlitCommandBuffers(device);
         startPresentThread();
     }
 
@@ -367,8 +371,9 @@ public final class Renderer {
                 // still waits on it. (Slot-indexed semaphores break here: with 16 slots and 3
                 // images, a slot's semaphore is re-signaled before the prior present retires.)
                 long blitFinished = Semaphore.get(Semaphore.get(blitFinishedSemaphoresArray, imgIndex));
-                long blitCb = getBlitCommandBuffer(slot);
-                recordBlitCommandBuffer(stack, device, blitCb, slot, imgIndex);
+                long blitCb = getBlitCommandBuffer(slot, imgIndex);
+                long tB0 = java.lang.System.nanoTime();
+                counterAdd(CTR_DBG_BLIT_RECORD_NANOS, java.lang.System.nanoTime() - tB0);
 
                 VkQueue q = Vulkan.getPresentQueue();
                 submits0.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
@@ -507,13 +512,11 @@ public final class Renderer {
     public static void resumePresent() { PRESENT_LOCK.writeLock().unlock(); }
 
     private static void lockQueue() {
-        while (!QUEUE_LOCK.compareAndSet(true, false)) {
-            Thread.onSpinWait();
-        }
+        SpinLock.lock(queueLock);
     }
 
     private static void unlockQueue() {
-        QUEUE_LOCK.set(true);
+        SpinLock.unlock(queueLock);
     }
 
     public static long getCommandBuffer(int index) {
@@ -521,9 +524,48 @@ public final class Renderer {
         return CommandBuffer.get(cbPtr);
     }
 
-    private static long getBlitCommandBuffer(int index) {
-        long blitCbPtr = CommandBuffer.get(blitCommandBuffersArray, index);
+    private static long getBlitCommandBuffer(int slot, int imgIndex) {
+        long blitCbPtr = CommandBuffer.get(blitCommandBuffersArray, slot * blitImgCount + imgIndex);
         return CommandBuffer.get(blitCbPtr);
+    }
+
+    @Intention("The blit is (slot offscreen image -> swapchain image) with the fixed swapchain "
+            + "extent; the recorded commands change only when the swapchain is recreated, so the "
+            + "per-(slot,img) command buffers are cached and re-recorded once per resize instead of "
+            + "every present. Off the hot present path.")
+    private static void rebuildBlitCommandBuffers(VkDevice device) {
+        if (blitCommandBuffersArray != 0L) {
+            for (int i = 0; i < frameCount * blitImgCount; i++) {
+                CommandBuffer.destroy(CommandBuffer.get(blitCommandBuffersArray, i), device, blitPoolPtr);
+            }
+            CommandBuffer.free(blitCommandBuffersArray);
+            blitCommandBuffersArray = 0L;
+        }
+        int imgCount = Math.max(1, Vulkan.getSwapchainImageCount());
+        blitImgCount = imgCount;
+        blitCommandBuffersArray = CommandBuffer.allocateArray(frameCount * imgCount);
+        for (int slot = 0; slot < frameCount; slot++) {
+            for (int img = 0; img < imgCount; img++) {
+                long cbPtr = CommandBuffer.create(device, blitPoolPtr);
+                CommandBuffer.set(blitCommandBuffersArray, slot * imgCount + img, cbPtr);
+                try (MemoryStack stack = MemoryStack.stackPush()) {
+                    recordBlitCommandBuffer(stack, device, CommandBuffer.get(cbPtr), slot, img);
+                }
+            }
+        }
+    }
+
+    @Intention("Tears down the cached blit command-buffer grid. Called from destroy() and from "
+            + "rebuildBlitCommandBuffers() when the swapchain image count changes on resize.")
+    private static void destroyBlitCommandBuffers(VkDevice device) {
+        if (blitCommandBuffersArray != 0L) {
+            for (int i = 0; i < frameCount * blitImgCount; i++) {
+                CommandBuffer.destroy(CommandBuffer.get(blitCommandBuffersArray, i), device, blitPoolPtr);
+            }
+            CommandBuffer.free(blitCommandBuffersArray);
+            blitCommandBuffersArray = 0L;
+            blitImgCount = 0;
+        }
     }
 
     public static int getFrameCount() { return frameCount; }
@@ -540,9 +582,10 @@ public final class Renderer {
     public static long getDbgPresentCallNanos() { return counterGet(CTR_DBG_PRESENT_CALL_NANOS); }
     public static long getDbgPresentThreadLoops() { return counterGet(CTR_DBG_PRESENT_THREAD_LOOPS); }
     public static long getDbgPresentThreadParkMs() { return counterGet(CTR_DBG_PRESENT_THREAD_PARK_MS); }
+    public static long getDbgBlitRecordNanos() { return counterGet(CTR_DBG_BLIT_RECORD_NANOS); }
 
     public static void resetDbgCounters() {
-        for (int i = CTR_DBG_ACQUIRE_NANOS; i <= CTR_DBG_PRESENT_THREAD_PARK_MS; i++) {
+        for (int i = CTR_DBG_ACQUIRE_NANOS; i <= CTR_DBG_BLIT_RECORD_NANOS; i++) {
             ForeignMemory.setVolatileLong(ctrAddr(i), 0L);
         }
     }
@@ -573,6 +616,10 @@ public final class Renderer {
                 slotSemaphore.release();
             }
         }
+
+        // The swapchain (image handles, count, extent) and/or off-screen attachments changed,
+        // so every cached blit command buffer must be re-recorded against the new targets.
+        rebuildBlitCommandBuffers(device);
     }
 
     public static void destroy(VkDevice device, long drawCommandPoolPtr, long blitCommandPoolPtr) {
@@ -583,25 +630,26 @@ public final class Renderer {
         }
         for (int i = 0; i < frameCount; i++) {
             CommandBuffer.destroy(CommandBuffer.get(commandBuffersArray, i), device, drawCommandPoolPtr);
-            CommandBuffer.destroy(CommandBuffer.get(blitCommandBuffersArray, i), device, blitCommandPoolPtr);
             Fence.destroy(Fence.get(drawFencesArray, i), device);
             Fence.destroy(Fence.get(releasedFencesArray, i), device);
             Semaphore.destroy(Semaphore.get(imageAvailableSemaphoresArray, i), device);
             Semaphore.destroy(Semaphore.get(blitFinishedSemaphoresArray, i), device);
         }
+        destroyBlitCommandBuffers(device);
         CommandBuffer.free(commandBuffersArray);
-        CommandBuffer.free(blitCommandBuffersArray);
         Fence.free(drawFencesArray);
         Fence.free(releasedFencesArray);
         Semaphore.free(imageAvailableSemaphoresArray);
         Semaphore.free(blitFinishedSemaphoresArray);
         RingBuffer.free(completedRing);
         ForeignMemory.freeNative(countersArray);
+        SpinLock.free(queueLock);
 
         commandBuffersArray = 0L;
         blitCommandBuffersArray = 0L;
         completedRing = 0L;
         countersArray = 0L;
+        queueLock = 0L;
         frameCount = 0;
         initialized = false;
     }
