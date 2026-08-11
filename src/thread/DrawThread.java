@@ -376,7 +376,9 @@ public final class DrawThread {
                 if (cap > 0) {
                     long period = 1_000_000_000L / cap;
                     long now = java.lang.System.nanoTime();
-                    if (frameDeadline < now) frameDeadline = now;
+                    if (frameDeadline == 0L || frameDeadline + period < now) {
+                        frameDeadline = now;   // first frame, or dropped a full frame: resync anchor
+                    }
                     frameDeadline += period;
                     window.Window.parkUntil(frameDeadline);
                 }
