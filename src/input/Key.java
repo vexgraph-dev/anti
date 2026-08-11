@@ -349,21 +349,117 @@ public final class Key
     
     private static final String[] NAMES = new String[512];
     static {
+        // getDeclaredFields() probing replaced with explicit constants (documented GraalVM fix).
+        // Declared in canonical order so platform aliases never win over the real key name.
         for (int i = 0; i < 512; i++) NAMES[i] = "Unknown";
-        try {
-            for (java.lang.reflect.Field f : Key.class.getDeclaredFields()) {
-                if (java.lang.reflect.Modifier.isStatic(f.getModifiers()) && f.getType() == int.class) {
-                    if (f.getName().equals("listenerCount")) continue;
-                    int val = f.getInt(null);
-                    if (val >= 0 && val < 512) {
-                        // Prefer the first assigned name (e.g. A over MAC_COMMAND for duplicates)
-                        if (NAMES[val].equals("Unknown")) {
-                            NAMES[val] = f.getName();
-                        }
-                    }
-                }
-            }
-        } catch (Throwable ignored) {}
+        putName(SPACE, "SPACE");
+        putName(APOSTROPHE, "APOSTROPHE");
+        putName(COMMA, "COMMA");
+        putName(MINUS, "MINUS");
+        putName(PERIOD, "PERIOD");
+        putName(SLASH, "SLASH");
+        putName(NUM_0, "NUM_0");
+        putName(NUM_1, "NUM_1");
+        putName(NUM_2, "NUM_2");
+        putName(NUM_3, "NUM_3");
+        putName(NUM_4, "NUM_4");
+        putName(NUM_5, "NUM_5");
+        putName(NUM_6, "NUM_6");
+        putName(NUM_7, "NUM_7");
+        putName(NUM_8, "NUM_8");
+        putName(NUM_9, "NUM_9");
+        putName(SEMICOLON, "SEMICOLON");
+        putName(EQUAL, "EQUAL");
+        putName(A, "A");
+        putName(B, "B");
+        putName(C, "C");
+        putName(D, "D");
+        putName(E, "E");
+        putName(F, "F");
+        putName(G, "G");
+        putName(H, "H");
+        putName(I, "I");
+        putName(J, "J");
+        putName(K, "K");
+        putName(L, "L");
+        putName(M, "M");
+        putName(N, "N");
+        putName(O, "O");
+        putName(P, "P");
+        putName(Q, "Q");
+        putName(R, "R");
+        putName(S, "S");
+        putName(T, "T");
+        putName(U, "U");
+        putName(V, "V");
+        putName(W, "W");
+        putName(X, "X");
+        putName(Y, "Y");
+        putName(Z, "Z");
+        putName(LEFT_BRACKET, "LEFT_BRACKET");
+        putName(BACKSLASH, "BACKSLASH");
+        putName(RIGHT_BRACKET, "RIGHT_BRACKET");
+        putName(GRAVE_ACCENT, "GRAVE_ACCENT");
+        putName(ESCAPE, "ESCAPE");
+        putName(ENTER, "ENTER");
+        putName(TAB, "TAB");
+        putName(BACKSPACE, "BACKSPACE");
+        putName(INSERT, "INSERT");
+        putName(DELETE, "DELETE");
+        putName(RIGHT, "RIGHT");
+        putName(LEFT, "LEFT");
+        putName(DOWN, "DOWN");
+        putName(UP, "UP");
+        putName(PAGE_UP, "PAGE_UP");
+        putName(PAGE_DOWN, "PAGE_DOWN");
+        putName(HOME, "HOME");
+        putName(END, "END");
+        putName(CAPS_LOCK, "CAPS_LOCK");
+        putName(SCROLL_LOCK, "SCROLL_LOCK");
+        putName(NUM_LOCK, "NUM_LOCK");
+        putName(PRINT_SCREEN, "PRINT_SCREEN");
+        putName(PAUSE, "PAUSE");
+        putName(F1, "F1");
+        putName(F2, "F2");
+        putName(F3, "F3");
+        putName(F4, "F4");
+        putName(F5, "F5");
+        putName(F6, "F6");
+        putName(F7, "F7");
+        putName(F8, "F8");
+        putName(F9, "F9");
+        putName(F10, "F10");
+        putName(F11, "F11");
+        putName(F12, "F12");
+        putName(F13, "F13");
+        putName(F14, "F14");
+        putName(F15, "F15");
+        putName(F16, "F16");
+        putName(F17, "F17");
+        putName(F18, "F18");
+        putName(F19, "F19");
+        putName(F20, "F20");
+        putName(F21, "F21");
+        putName(F22, "F22");
+        putName(F23, "F23");
+        putName(F24, "F24");
+        putName(F25, "F25");
+        putName(LEFT_SHIFT, "LEFT_SHIFT");
+        putName(LEFT_CONTROL, "LEFT_CONTROL");
+        putName(LEFT_ALT, "LEFT_ALT");
+        putName(LEFT_SUPER, "LEFT_SUPER");
+        putName(RIGHT_SHIFT, "RIGHT_SHIFT");
+        putName(RIGHT_CONTROL, "RIGHT_CONTROL");
+        putName(RIGHT_ALT, "RIGHT_ALT");
+        putName(RIGHT_SUPER, "RIGHT_SUPER");
+        putName(MENU, "MENU");
+        putName(FN, "FN");
+    }
+
+    private static void putName(int keyCode, String name) {
+        if (keyCode >= 0 && keyCode < 512 && NAMES[keyCode].equals("Unknown")) {
+            NAMES[keyCode] = name;
+        }
     }
     
     public static String getString(int keyCode) {
