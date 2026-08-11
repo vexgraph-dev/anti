@@ -48,14 +48,23 @@ fi
 # 4. Change directory to project root so relative paths for resources (like shaders) resolve correctly
 cd "$ROOT_DIR" || exit 1
 
+# 4b. GraalVM-native readiness gate: compile the standalone analyzer and lint the
+#     engine source for §13 denylist violations + FFM descriptor gaps.
+if [ "${ANTI_SKIP_GRAAL_CHECK:-0}" != "1" ]; then
+    bash scratch/scripts/graal_check.sh --root src || {
+        echo "[run.sh] GraalVM analyzer gate FAILED (set ANTI_SKIP_GRAAL_CHECK=1 to bypass)"; exit 1;
+    }
+fi
+
 CP="out/production/anti:lib/lwjgl-release-3.4.2-custom/*:lib/oshi/*"
 
 # 5. Build the whole project fresh before running.
 #    - Skip the native-image-only FFMRegistrationFeature (needs the GraalVM hosted SDK, not
-#      available on the JVM classpath) and the nested src/api sub-repository.
+#      available on the JVM classpath), the nested src/api sub-repository, and the
+#      src/graal analyzer package (standalone tool, never shipped in the engine).
 #    - Recompile EngineTest into out/production/anti so the JVM can load it as a class.
 echo "[run.sh] Building project..."
-SOURCES=$(find src -name "*.java" -not -path "*/api/*" -not -name "FFMRegistrationFeature.java")
+SOURCES=$(find src -name "*.java" -not -path "*/api/*" -not -name "FFMRegistrationFeature.java" -not -path "*/graal/*")
 "$JAVA_HOME/bin/javac" --release 25 --enable-preview -cp "$CP" -d out/production/anti $SOURCES || {
     echo "[run.sh] BUILD FAILED"; exit 1;
 }
