@@ -55,11 +55,8 @@ final class macOSWindow {
     private static MethodHandle MSG_SEND_DOUBLE_RET;
     private static MethodHandle METAL_CREATE_SYSTEM_DEFAULT_DEVICE;
     private static MethodHandle CG_MAIN_DISPLAY_ID;
-    private static MethodHandle CG_DISPLAY_COPY_ALL_DISPLAY_MODES;
-    private static MethodHandle CF_ARRAY_GET_COUNT;
-    private static MethodHandle CF_ARRAY_GET_VALUE_AT_INDEX;
-    private static MethodHandle CG_DISPLAY_MODE_GET_PIXEL_WIDTH;
-    private static MethodHandle CG_DISPLAY_MODE_GET_PIXEL_HEIGHT;
+    private static MethodHandle CG_DISPLAY_PIXELS_WIDE;
+    private static MethodHandle CG_DISPLAY_PIXELS_HIGH;
     private static MethodHandle CF_RELEASE;
     private static MethodHandle CG_ASSOCIATE_MOUSE;
     private static MethodHandle CG_WARP_MOUSE_CURSOR;
@@ -111,11 +108,8 @@ final class macOSWindow {
                 SymbolLookup coreFoundation = SymbolLookup.libraryLookup("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", Arena.global());
 
                 CG_MAIN_DISPLAY_ID = LINKER.downcallHandle(coreGraphics.find("CGMainDisplayID").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_INT));
-                CG_DISPLAY_COPY_ALL_DISPLAY_MODES = LINKER.downcallHandle(coreGraphics.find("CGDisplayCopyAllDisplayModes").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-                CF_ARRAY_GET_COUNT = LINKER.downcallHandle(coreFoundation.find("CFArrayGetCount").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-                CF_ARRAY_GET_VALUE_AT_INDEX = LINKER.downcallHandle(coreFoundation.find("CFArrayGetValueAtIndex").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
-                CG_DISPLAY_MODE_GET_PIXEL_WIDTH = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetPixelWidth").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-                CG_DISPLAY_MODE_GET_PIXEL_HEIGHT = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetPixelHeight").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+                CG_DISPLAY_PIXELS_WIDE = LINKER.downcallHandle(coreGraphics.find("CGDisplayPixelsWide").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+                CG_DISPLAY_PIXELS_HIGH = LINKER.downcallHandle(coreGraphics.find("CGDisplayPixelsHigh").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
                 StructLayout cgPoint = MemoryLayout.structLayout(
                     ValueLayout.JAVA_DOUBLE.withName("x"),
                     ValueLayout.JAVA_DOUBLE.withName("y")
@@ -1032,31 +1026,19 @@ final class macOSWindow {
         }
     }
 
-    /** Main screen true physical hardware pixels, packed (width << 32) | height. 0 if unavailable. */
-    @annotation.Intention("Bypasses macOS scaling by directly reading hardware display modes.")
+    /** Main screen current physical hardware pixels, packed (width << 32) | height. 0 if unavailable. */
+    @annotation.Intention("Reads the display's CURRENT pixel dimensions via CGDisplayPixelsWide/High — "
+            + "NOT the maximum-capable mode. The old path enumerated every CGDisplayMode and took the max, "
+            + "which overshoots on scaled Retina panels (3274x2048 on a 2408x1506 MacBook) and bloated the "
+            + "offscreen render targets. §12.4 known bug, fixed.")
     public static long getScreenBackingSize() {
-        if (CG_MAIN_DISPLAY_ID == null) return 0L;
+        if (CG_MAIN_DISPLAY_ID == null || CG_DISPLAY_PIXELS_WIDE == null || CG_DISPLAY_PIXELS_HIGH == null) return 0L;
         try {
             int mainDisplayId = (int) CG_MAIN_DISPLAY_ID.invoke();
-            MemorySegment modesArray = (MemorySegment) CG_DISPLAY_COPY_ALL_DISPLAY_MODES.invoke(mainDisplayId, MemorySegment.NULL);
-            if (modesArray == null || modesArray.address() == 0L) return 0L;
-            
-            long count = (long) CF_ARRAY_GET_COUNT.invoke(modesArray);
-            long maxWidth = 0;
-            long maxHeight = 0;
-            
-            for (long i = 0; i < count; i++) {
-                MemorySegment mode = (MemorySegment) CF_ARRAY_GET_VALUE_AT_INDEX.invoke(modesArray, i);
-                long w = (long) CG_DISPLAY_MODE_GET_PIXEL_WIDTH.invoke(mode);
-                long h = (long) CG_DISPLAY_MODE_GET_PIXEL_HEIGHT.invoke(mode);
-                if (w > maxWidth) maxWidth = w;
-                if (h > maxHeight) maxHeight = h;
-            }
-            
-            CF_RELEASE.invoke(modesArray);
-            
-            if (maxWidth > 0 && maxHeight > 0) {
-                return (maxWidth << 32) | (maxHeight & 0xFFFFFFFFL);
+            long w = (long) CG_DISPLAY_PIXELS_WIDE.invoke(mainDisplayId);
+            long h = (long) CG_DISPLAY_PIXELS_HIGH.invoke(mainDisplayId);
+            if (w > 0 && h > 0) {
+                return (w << 32) | (h & 0xFFFFFFFFL);
             }
             return 0L;
         } catch (Throwable t) {
