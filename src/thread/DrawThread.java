@@ -410,6 +410,7 @@ public final class DrawThread {
                                 + " presCallMs=" + (vulkan.Renderer.getDbgPresentCallNanos() / 1_000_000)
                                 + " pLoops=" + vulkan.Renderer.getDbgPresentThreadLoops()
                                 + " pParkMs=" + (vulkan.Renderer.getDbgPresentThreadParkMs())
+                                + " blitRecMs=" + (vulkan.Renderer.getDbgBlitRecordNanos() / 1_000_000)
                                 + " notReady=" + vulkan.Renderer.getDbgPresentNotReady());
                     dbgIterNanos = 0L;
                     vulkan.Renderer.resetDbgCounters();
