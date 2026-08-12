@@ -351,7 +351,7 @@ public final class DrawThread {
                         lastResizeEventTime = java.lang.System.nanoTime();
                     }
                     if (pendingResizeSize != 0L
-                            && (java.lang.System.nanoTime() - lastResizeEventTime > 100_000_000L)) {
+                            && (java.lang.System.nanoTime() - lastResizeEventTime > 0L)) {
                         int w = (int) (pendingResizeSize >>> 32);
                         int h = (int) (pendingResizeSize & 0xFFFFFFFFL);
                         vulkan.TriangleRenderer.resize(w, h);
