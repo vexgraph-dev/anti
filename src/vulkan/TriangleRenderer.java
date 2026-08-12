@@ -405,7 +405,8 @@ public final class TriangleRenderer {
             VkPipelineShaderStageCreateInfo info1 = stages.get(1).sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
 
             VkPushConstantRange.Buffer pushRanges = VkPushConstantRange.malloc(1, stack);
-            VkPushConstantRange pushRange0 = pushRanges.get(0).stageFlags(VK_SHADER_STAGE_VERTEX_BIT).offset(0).size(32)
+            VkPushConstantRange pushRange0 = pushRanges.get(0).stageFlags(VK_SHADER_STAGE_VERTEX_BIT).offset(0).size(40)
+                    // rect(16) + viewport(8) + uvMin(8) + uvMax(8) = 40B
         ) {
             info0.stage(VK_SHADER_STAGE_VERTEX_BIT)
                 .module(VKShaderModule.get(imageQuadVertexShader))
@@ -555,9 +556,11 @@ public final class TriangleRenderer {
                 long imagePtr = darling.Picture.getImage(pictureNode);
                 if (imagePtr != 0L) {
                     long rect = lang.Vec4.allocate();
+                    long crop = primitive.Float.allocateArray(4);
                     try {
                         float pw = currentW, ph = currentH;
                         darling.Picture.resolve(pictureNode, 0.0f, 0.0f, pw, ph, rect);
+                        darling.Picture.getCrop(pictureNode, crop);
                         vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(imageQuadPipeline));
                         vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 VKPipelineLayout.get(imageQuadPipelineLayout), 0, stack.longs(
@@ -566,11 +569,14 @@ public final class TriangleRenderer {
                                 VK_SHADER_STAGE_VERTEX_BIT, 0, stack.floats(
                                         lang.Vec4.getX(rect), lang.Vec4.getY(rect),
                                         lang.Vec4.getZ(rect), lang.Vec4.getW(rect),
-                                        pw, ph, 0.0f, 0.0f));
+                                        pw, ph,
+                                        primitive.Float.get(crop, 0), primitive.Float.get(crop, 1),
+                                        primitive.Float.get(crop, 2), primitive.Float.get(crop, 3)));
                         vkCmdSetViewport(command, 0, vpBuffer);
                         vkCmdSetScissor(command, 0, scissor);
                         vkCmdDraw(command, 6, 1, 0, 0);
                     } finally {
+                        primitive.Float.free(crop);
                         lang.Vec4.free(rect);
                     }
                 }
