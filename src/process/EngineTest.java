@@ -46,6 +46,16 @@ public class EngineTest {
         vulkan.Vulkan.initVulkan(surfacePtr, 800, 600, bootPresentMode);
         vulkan.TriangleRenderer.init();
 
+        // @Draft texture-on-Panel demo (pending review): place a picture panel and
+        // load sunflower.png into it so texturing can be assessed in one run.
+        long picturePanel = darling.Panel.allocate();
+        darling.Container.setX(picturePanel, 100f);
+        darling.Container.setY(picturePanel, 60f);
+        darling.Panel.setSize(picturePanel, 320f, 211f);
+        vulkan.TriangleRenderer.loadPicture(
+                System.getProperty("anti.picture", "/Users/vexgraph/Downloads/sunflower.png"),
+                picturePanel, 2048);
+
         System.out.println("[Main Thread] Handing over control to the event pump...");
 
         // Boot the Core Draw Worker: it drains the input RingBuffers and owns the
