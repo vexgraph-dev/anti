@@ -37,6 +37,11 @@ public final class Panel {
     public static final int TYPE_ARRAY     = TypeRegister.PANEL_ARRAY;     // 0x20000078
     public static final int TYPE_POINTER   = TypeRegister.PANEL_POINTER;   // 0x30000078
 
+    // --- Color format: 0xRRGGBBAA (alpha in low byte) ---
+    public static final int COLOR_WHITE = 0xFFFFFFFF;
+    public static final int COLOR_BLACK = 0xFF000000;
+    public static final int COLOR_CLEAR = 0x00000000;
+
     // --- Anchor constants (3x3 grid, row*3+col) ---
     public static final int ANCHOR_TOP_LEFT      = 0;
     public static final int ANCHOR_TOP_CENTER    = 1;
@@ -66,13 +71,20 @@ public final class Panel {
     private static final int OFF_PERCENT_X  = 32;  // float
     private static final int OFF_PERCENT_Y  = 36;  // float
     private static final int OFF_Z          = 40;  // int
-    private static final int OFF_VISIBLE    = 44;  // byte
-    private static final int OFF_ENABLED    = 45;  // byte
-    private static final int OFF_DIRTY      = 46;  // byte
-    private static final int OFF_PARENT_REF_SET = 48; // long (parent-ref set ptr)
+    private static final int OFF_COLOR      = 44;  // int (0xRRGGBBAA)
+    private static final int OFF_VISIBLE    = 48;  // byte
+    private static final int OFF_ENABLED    = 49;  // byte
+    private static final int OFF_DIRTY      = 50;  // byte
+    private static final int OFF_CHILD_COUNT = 52; // int
+    private static final int OFF_FILTERS     = 56; // long (filters array ptr, @Draft)
+    private static final int OFF_PARENT_REF_SET = 64; // long (shared-slot parent-ref set ptr)
+    private static final int OFF_PARENT      = 72; // long (direct parent panel ptr, 0 = none)
+    private static final int OFF_CHILDREN    = 80; // long (primitive.Long array of child panel ptrs)
 
-    private static final long USER_STRIDE = 56L;  // bytes of user payload
-    private static final long SLOT_SIZE   = 64L;  // 8B header + 56B payload
+    private static final int DEFAULT_CHILDREN_CAPACITY = 4;
+
+    private static final long USER_STRIDE = 88L;  // bytes of user payload
+    private static final long SLOT_SIZE   = 96L;  // 8B header + 88B payload
 
     // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
     private static final int DEFAULT_CAPACITY = 1024;
@@ -176,19 +188,23 @@ public final class Panel {
     private static void initDefaults(long ptr) {
         setX(ptr, 0f);
         setY(ptr, 0f);
-        setW(ptr, 0f);
-        setH(ptr, 0f);
-        setScaleX(ptr, 1f);
-        setScaleY(ptr, 1f);
+        setWidth(ptr, 0f);
+        setHeight(ptr, 0f);
+        setScale(ptr, 1f, 1f);
         setReferenceAnchor(ptr, ANCHOR_TOP_LEFT);
         setElementAnchor(ptr, ANCHOR_TOP_LEFT);
         setPercentX(ptr, PERCENT_UNSET);
         setPercentY(ptr, PERCENT_UNSET);
         setZ(ptr, 0);
+        setBackgroundColor(ptr, COLOR_CLEAR);
         setVisible(ptr, true);
         setEnabled(ptr, true);
         clearDirty(ptr);
+        setFilters(ptr, 0L);
         setParentRefSet(ptr, 0L);
+        setParent(ptr, 0L);
+        setChildCount(ptr, 0);
+        setChildren(ptr, 0L);
     }
 
     public static void free(long ptr) {
@@ -201,6 +217,15 @@ public final class Panel {
         long base = ptr - 8L;
         ForeignMemory.setUnsafe(base, 0);
         ForeignMemory.setUnsafe(base + 4L, -1);
+
+        // Release the children array (if this panel owns one) so child panel
+        // pointers are not leaked. The children themselves are separate
+        // allocations owned by whoever allocated them — we only free the list.
+        long children = ForeignMemory.getLong(ptr + OFF_CHILDREN);
+        if (children != 0L) {
+            primitive.Long.free(children);
+            ForeignMemory.setLong(ptr + OFF_CHILDREN, 0L);
+        }
 
         while (true) {
             long oldTagged = freeHead;
@@ -248,35 +273,36 @@ public final class Panel {
 
     public static float getX(long ptr) { checkPanel(ptr); return ForeignMemory.getFloat(ptr + OFF_X); }
     public static float getY(long ptr) { checkPanel(ptr); return ForeignMemory.getFloat(ptr + OFF_Y); }
-    public static float getW(long ptr) { checkPanel(ptr); return ForeignMemory.getFloat(ptr + OFF_W); }
-    public static float getH(long ptr) { checkPanel(ptr); return ForeignMemory.getFloat(ptr + OFF_H); }
-    public static float getWidth(long ptr)  { return getW(ptr); }
-    public static float getHeight(long ptr) { return getH(ptr); }
+    public static float getWidth(long ptr) { checkPanel(ptr); return ForeignMemory.getFloat(ptr + OFF_W); }
+    public static float getHeight(long ptr) { checkPanel(ptr); return ForeignMemory.getFloat(ptr + OFF_H); }
 
     public static void setX(long ptr, float x) { checkPanel(ptr); ForeignMemory.setFloat(ptr + OFF_X, x); markDirty(ptr); }
     public static void setY(long ptr, float y) { checkPanel(ptr); ForeignMemory.setFloat(ptr + OFF_Y, y); markDirty(ptr); }
-    public static void setW(long ptr, float w) { checkPanel(ptr); ForeignMemory.setFloat(ptr + OFF_W, w); markDirty(ptr); }
-    public static void setH(long ptr, float h) { checkPanel(ptr); ForeignMemory.setFloat(ptr + OFF_H, h); markDirty(ptr); }
+    public static void setWidth(long ptr, float width) { checkPanel(ptr); ForeignMemory.setFloat(ptr + OFF_W, width); markDirty(ptr); }
+    public static void setHeight(long ptr, float height) { checkPanel(ptr); ForeignMemory.setFloat(ptr + OFF_H, height); markDirty(ptr); }
 
     public static void setPos(long ptr, float x, float y) { setX(ptr, x); setY(ptr, y); }
-    public static void setSize(long ptr, float w, float h) { setW(ptr, w); setH(ptr, h); }
+    public static void setSize(long ptr, float width, float height) { setWidth(ptr, width); setHeight(ptr, height); }
 
     // =========================================================================
     // SCALE
     // =========================================================================
 
-    public static float getScaleX(long ptr) { checkPanel(ptr); return ForeignMemory.getFloat(ptr + OFF_SCALE_X); }
-    public static float getScaleY(long ptr) { checkPanel(ptr); return ForeignMemory.getFloat(ptr + OFF_SCALE_Y); }
+    public static float getScaleWidth(long ptr) { checkPanel(ptr); return ForeignMemory.getFloat(ptr + OFF_SCALE_X); }
+    public static float getScaleHeight(long ptr) { checkPanel(ptr); return ForeignMemory.getFloat(ptr + OFF_SCALE_Y); }
 
-    public static void setScaleX(long ptr, float sx) { checkPanel(ptr); ForeignMemory.setFloat(ptr + OFF_SCALE_X, sx); markDirty(ptr); }
-    public static void setScaleY(long ptr, float sy) { checkPanel(ptr); ForeignMemory.setFloat(ptr + OFF_SCALE_Y, sy); markDirty(ptr); }
+    public static void setScaleWidth(long ptr, float scaleWidth) { checkPanel(ptr); ForeignMemory.setFloat(ptr + OFF_SCALE_X, scaleWidth); markDirty(ptr); }
+    public static void setScaleHeight(long ptr, float scaleHeight) { checkPanel(ptr); ForeignMemory.setFloat(ptr + OFF_SCALE_Y, scaleHeight); markDirty(ptr); }
 
     /** Sets both scale factors, one dirty region. */
-    public static void setScale(long ptr, float sx, float sy) { setScaleX(ptr, sx); setScaleY(ptr, sy); }
+    public static void setScale(long ptr, float scaleWidth, float scaleHeight) { setScaleWidth(ptr, scaleWidth); setScaleHeight(ptr, scaleHeight); }
 
-    /** Scaled (resolved) size. */
-    public static float getScaledW(long ptr) { checkPanel(ptr); return getW(ptr) * getScaleX(ptr); }
-    public static float getScaledH(long ptr) { checkPanel(ptr); return getH(ptr) * getScaleY(ptr); }
+    // =========================================================================
+    // BACKGROUND COLOR
+    // =========================================================================
+
+    public static int getBackgroundColor(long ptr) { checkPanel(ptr); return ForeignMemory.getInt(ptr + OFF_COLOR); }
+    public static void setBackgroundColor(long ptr, int color) { checkPanel(ptr); ForeignMemory.setInt(ptr + OFF_COLOR, color); markDirty(ptr); }
 
     // =========================================================================
     // ANCHORS
@@ -354,11 +380,132 @@ public final class Panel {
     }
 
     // =========================================================================
+    // FILTERS (render graph stage inputs — placeholder)
+    // =========================================================================
+
+    /**
+     * Filters attached to this panel, as an off-heap array of filter headers
+     * (see Phase 2/4 render graph). Placeholder @Draft slot: the type of array,
+     * element layout and allocator are not decided yet — it is stored so the
+     * panel struct is stable and existing callers keep working.
+     */
+    @Draft
+    public static long getFilters(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(ptr + OFF_FILTERS); }
+
+    @Draft
+    public static void setFilters(long ptr, long filtersPtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_FILTERS, filtersPtr); markDirty(ptr); }
+
+    // =========================================================================
     // PARENT-REF SET (shared-slot fan-out, Phase 1)
     // =========================================================================
 
     public static long getParentRefSet(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(ptr + OFF_PARENT_REF_SET); }
     public static void setParentRefSet(long ptr, long parentRefSetPtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_PARENT_REF_SET, parentRefSetPtr); }
+
+    // =========================================================================
+    // PARENT / CHILDREN
+    // =========================================================================
+
+    /**
+     * The direct parent panel pointer. 0 means this panel is a root (has no
+     * parent). Children are stored in a primitive.Long array owned by the
+     * parent; the parent slot points back via getParent().
+     */
+    public static long getParent(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(ptr + OFF_PARENT); }
+    public static void setParent(long ptr, long parentPtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_PARENT, parentPtr); markDirty(ptr); }
+
+    /** Number of direct children. */
+    public static int childCount(long ptr) { checkPanel(ptr); return ForeignMemory.getInt(ptr + OFF_CHILD_COUNT); }
+
+    private static void setChildCount(long ptr, int count) { checkPanel(ptr); ForeignMemory.setInt(ptr + OFF_CHILD_COUNT, count); }
+
+    private static long getChildren(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(ptr + OFF_CHILDREN); }
+    private static void setChildren(long ptr, long childrenPtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_CHILDREN, childrenPtr); }
+
+    /** Child panel pointer at index (0-based), or 0 if out of range. */
+    public static long getChild(long ptr, int index) {
+        checkPanel(ptr);
+        long children = getChildren(ptr);
+        if (children == 0L || index < 0 || index >= childCount(ptr)) return 0L;
+        return primitive.Long.get(children, index);
+    }
+
+    /**
+     * Attaches childPtr to this panel: sets the child's parent to this panel
+     * and appends it to this panel's children array (growing it via
+     * primitive.Long.expandArray when full). If childPtr already has a parent,
+     * it is detached from that parent first so the tree stays consistent.
+     */
+    public static void addChild(long ptr, long childPtr) {
+        checkPanel(ptr);
+        if (childPtr == 0L) throw new NullPointerException("addChild: child is NULL!");
+        checkPanel(childPtr);
+
+        if (getParent(childPtr) != 0L) {
+            removeChild(getParent(childPtr), childPtr);
+        }
+        setParent(childPtr, ptr);
+
+        int count = childCount(ptr);
+        long children = getChildren(ptr);
+        if (children == 0L) {
+            children = primitive.Long.allocateArray(DEFAULT_CHILDREN_CAPACITY);
+            setChildren(ptr, children);
+        } else if (count >= primitive.Long.length(children)) {
+            children = primitive.Long.expandArray(children, count + DEFAULT_CHILDREN_CAPACITY);
+            setChildren(ptr, children);
+        }
+        primitive.Long.set(children, count, childPtr);
+        setChildCount(ptr, count + 1);
+        markDirty(ptr);
+        markDirty(childPtr);
+    }
+
+    /** Detaches childPtr from this panel. Returns true if it was attached. */
+    public static boolean removeChild(long ptr, long childPtr) {
+        checkPanel(ptr);
+        if (childPtr == 0L) return false;
+
+        int count = childCount(ptr);
+        long children = getChildren(ptr);
+        if (children == 0L || count <= 0) return false;
+
+        int found = -1;
+        for (int i = 0; i < count; i++) {
+            if (primitive.Long.get(children, i) == childPtr) {
+                found = i;
+                break;
+            }
+        }
+        if (found < 0) return false;
+
+        for (int i = found; i < count - 1; i++) {
+            primitive.Long.set(children, i, primitive.Long.get(children, i + 1));
+        }
+        setChildCount(ptr, count - 1);
+        if (getParent(childPtr) == ptr) setParent(childPtr, 0L);
+        markDirty(ptr);
+        markDirty(childPtr);
+        return true;
+    }
+
+    /** True if childPtr is a direct child of this panel. */
+    public static boolean containsChild(long ptr, long childPtr) {
+        checkPanel(ptr);
+        int count = childCount(ptr);
+        long children = getChildren(ptr);
+        if (children == 0L) return false;
+        for (int i = 0; i < count; i++) {
+            if (primitive.Long.get(children, i) == childPtr) return true;
+        }
+        return false;
+    }
+
+    /** True if this panel has a parent (not a root). */
+    public static boolean hasParent(long ptr) { return getParent(ptr) != 0L; }
+
+    /** True if this panel has at least one child. */
+    public static boolean hasChildren(long ptr) { return childCount(ptr) > 0; }
 
     // =========================================================================
     // LAYOUT RESOLUTION
@@ -382,8 +529,8 @@ public final class Panel {
         checkPanel(ptr);
         if (outRect == 0L) throw new NullPointerException("resolve() outRect is NULL!");
 
-        float w = getW(ptr), h = getH(ptr);
-        float sx = getScaleX(ptr), sy = getScaleY(ptr);
+        float w = getWidth(ptr), h = getHeight(ptr);
+        float sx = getScaleWidth(ptr), sy = getScaleHeight(ptr);
         float sw = w * sx, sh = h * sy;
 
         int refAnchor = getReferenceAnchor(ptr);
