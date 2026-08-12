@@ -54,6 +54,7 @@ import vulkan.VKDeviceMemory;
 import vulkan.VKFramebuffer;
 import vulkan.VKImage;
 import vulkan.VKImageView;
+import vulkan.VKTexture;
 import vulkan.VKPipeline;
 import vulkan.VKPipelineLayout;
 import vulkan.VKShaderModule;
@@ -1220,6 +1221,7 @@ public class ForeignMemory {
         VKFramebuffer.freeAll();
         VKImage.freeAll();
         VKImageView.freeAll();
+        VKTexture.freeAll();
         VKPipeline.freeAll();
         VKPipelineLayout.freeAll();
         VKShaderModule.freeAll();
