@@ -59,15 +59,17 @@ public final class Panel {
     // --- Panel fields: Container layout prefix (0..47) then panel payload ---
     private static final int OFF_COLOR        = (int) Container.USER_STRIDE;      // 48  int (0xRRGGBBAA)
     private static final int OFF_FILTERS      = 56; // long (filters array ptr, @Draft)
-    private static final int OFF_PARENT_REF_SET = 64; // long (shared-slot parent-ref set ptr)
+    private static final int OFF_PARENT_REF_SET = 64; // long (struct.Set of VIEW copies of this node's shared payloads)
     private static final int OFF_PARENT       = 72; // long (direct parent panel ptr, 0 = none)
     private static final int OFF_CHILDREN     = 80; // long (primitive.Long array of child panel ptrs)
     private static final int OFF_CHILD_COUNT  = 88; // int
+    private static final int OFF_IMAGE        = 96; // long (off-heap image payload ptr — the picture, @Draft)
+    private static final int OFF_SOURCE       = 104; // long (canonical panel this copy is a VIEW of; 0 = canonical/own)
 
     private static final int DEFAULT_CHILDREN_CAPACITY = 4;
 
-    private static final long USER_STRIDE = 96L;  // bytes of user payload
-    private static final long SLOT_SIZE   = 104L; // 8B header + 96B payload
+    private static final long USER_STRIDE = 112L; // bytes of user payload
+    private static final long SLOT_SIZE   = 120L; // 8B header + 112B payload
 
     // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
     private static final int DEFAULT_CAPACITY = 1024;
@@ -176,6 +178,8 @@ public final class Panel {
         setParent(ptr, 0L);
         setChildCount(ptr, 0);
         setChildren(ptr, 0L);
+        setImage(ptr, 0L);
+        setSource(ptr, 0L);
     }
 
     public static void free(long ptr) {
@@ -184,6 +188,18 @@ public final class Panel {
 
         int type = type(ptr);
         if (type != TYPE_SINGLETON) throw new IllegalStateException("Double free or corrupt Panel pointer: 0x" + java.lang.Long.toHexString(ptr).toUpperCase());
+
+        // If this panel is a deep-copy VIEW, detach it from its source's
+        // parent-ref set so the source's shared data can outlive the view.
+        long source = getSource(ptr);
+        if (source != 0L && getParent(ptr) != 0L) {
+            removeRefSetEntry(source, getParent(ptr));
+        }
+
+        // Deleting a copy detaches only that parent's tree: unlink from the
+        // structural parent's children list (no-op for roots).
+        long parentPtr = getParent(ptr);
+        if (parentPtr != 0L) removeChild(parentPtr, ptr);
 
         long base = ptr - 8L;
         ForeignMemory.setUnsafe(base, 0);
@@ -196,6 +212,13 @@ public final class Panel {
         if (children != 0L) {
             primitive.Long.free(children);
             ForeignMemory.setLong(ptr + OFF_CHILDREN, 0L);
+        }
+
+        // Release this panel's own parent-ref set if it has one (it was a source).
+        long refSet = ForeignMemory.getLong(ptr + OFF_PARENT_REF_SET);
+        if (refSet != 0L) {
+            struct.Set.free(refSet);
+            ForeignMemory.setLong(ptr + OFF_PARENT_REF_SET, 0L);
         }
 
         while (true) {
@@ -280,9 +303,9 @@ public final class Panel {
     public static void setEnabled(long ptr, boolean enabled) { Container.setEnabled(ptr, enabled); }
 
     @Volatile
-    public static void markDirty(long ptr) { Container.markDirty(ptr); }
+    static void markDirty(long ptr) { Container.markDirty(ptr); }
 
-    public static void clearDirty(long ptr) { Container.clearDirty(ptr); }
+    static void clearDirty(long ptr) { Container.clearDirty(ptr); }
 
     public static void resolve(long ptr, float parentX, float parentY, float parentW, float parentH, long outRect) {
         Container.resolve(ptr, parentX, parentY, parentW, parentH, outRect);
@@ -305,15 +328,165 @@ public final class Panel {
 
     /**
      * Filters attached to this panel, as an off-heap array of filter headers
-     * (see Phase 2/4 render graph). Placeholder @Draft slot: the type of array,
-     * element layout and allocator are not decided yet — it is stored so the
-     * panel struct is stable and existing callers keep working.
+     * (see Phase 2/4 render graph). Read-through: a deep-copy VIEW proxies its
+     * canonical source's slot. @Draft — the element layout and allocator are
+     * not decided yet; stored so the panel struct stays stable.
      */
     @Draft
-    public static long getFilters(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(ptr + OFF_FILTERS); }
+    public static long getFilters(long ptr) {
+        checkPanel(ptr);
+        long src = getSource(ptr);
+        return (src != 0L) ? getFilters(src) : ForeignMemory.getLong(ptr + OFF_FILTERS);
+    }
 
     @Draft
-    public static void setFilters(long ptr, long filtersPtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_FILTERS, filtersPtr); markDirty(ptr); }
+    public static void setFilters(long ptr, long filtersPtr) {
+        checkPanel(ptr);
+        long src = getSource(ptr);
+        if (src != 0L) { markPayloadDirty(src); ForeignMemory.setLong(src + OFF_FILTERS, filtersPtr); return; }
+        ForeignMemory.setLong(ptr + OFF_FILTERS, filtersPtr);
+        markPayloadDirty(ptr);
+    }
+
+    // =========================================================================
+    // IMAGE (off-heap picture payload — the texturing surface)
+    // =========================================================================
+
+    /**
+     * The off-heap image payload this panel displays (the picture). A pointer
+     * to shared off-heap data (e.g. a decoded pixel buffer or VKImage header).
+     * Read-through: a deep-copy VIEW (source != 0) proxies its canonical
+     * source's slot, so every view always sees the latest shared data.
+     */
+    @Draft
+    public static long getImage(long ptr) {
+        checkPanel(ptr);
+        long src = getSource(ptr);
+        return (src != 0L) ? getImage(src) : ForeignMemory.getLong(ptr + OFF_IMAGE);
+    }
+
+    /**
+     * Write-through: setting a payload on a VIEW writes the canonical source
+     * instead (the data is shared by pointer), then fans out through the
+     * source's parent-ref set so every parent holding a copy re-renders.
+     */
+    @Draft
+    public static void setImage(long ptr, long imagePtr) {
+        checkPanel(ptr);
+        long src = getSource(ptr);
+        if (src != 0L) { markPayloadDirty(src); ForeignMemory.setLong(src + OFF_IMAGE, imagePtr); return; }
+        ForeignMemory.setLong(ptr + OFF_IMAGE, imagePtr);
+        markPayloadDirty(ptr);
+    }
+
+    // =========================================================================
+    // COPY / SOURCE (deep-copy composition model — ROADMAP decision log)
+    // =========================================================================
+
+    /** The canonical panel whose shared data this copy is a VIEW of. 0 = canonical / owns its data. */
+    public static long getSource(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(ptr + OFF_SOURCE); }
+
+    private static void setSource(long ptr, long sourcePtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_SOURCE, sourcePtr); }
+
+    /** Number of parents currently holding a view/copy of this panel's shared payloads. */
+    public static int refCount(long ptr) {
+        checkPanel(ptr);
+        long setPtr = getParentRefSet(ptr);
+        return (setPtr == 0L) ? 0 : struct.Set.size(setPtr);
+    }
+
+    /**
+     * Node composition contract (private goals/ROADMAP.md decision log):
+     * deep-copies the STRUCTURE of {@code node} under {@code parent} — each
+     * copy's rect/anchors/children are its own — but aliases the shared data
+     * payloads (filters, image) BY POINTER, so every parent holding a copy is
+     * a VIEW onto the same off-heap data. Editing a payload on the source fans
+     * out through the ref-set (see {@link #markPayloadDirty}). Returns the new
+     * copy handle. Allocates and marks dirty, 0 GC.
+     */
+    public static long add(long parent, long node) {
+        checkPanel(parent);
+        checkPanel(node);
+        if (parent == node) throw new IllegalArgumentException("add: parent == node!");
+
+        long copy = allocate();
+
+        // --- structural deep copy: layout is its own ---
+        Container.setX(copy, Container.getX(node));
+        Container.setY(copy, Container.getY(node));
+        Container.setWidth(copy, Container.getWidth(node));
+        Container.setHeight(copy, Container.getHeight(node));
+        Container.setScaleWidth(copy, Container.getScaleWidth(node));
+        Container.setScaleHeight(copy, Container.getScaleHeight(node));
+        Container.setReferenceAnchor(copy, Container.getReferenceAnchor(node));
+        Container.setElementAnchor(copy, Container.getElementAnchor(node));
+        if (Container.hasPercentX(node)) Container.setPercentX(copy, Container.getPercentX(node));
+        if (Container.hasPercentY(node)) Container.setPercentY(copy, Container.getPercentY(node));
+        Container.setZ(copy, Container.getZ(node));
+        if (!Container.isVisible(node)) Container.setVisible(copy, false);
+        if (!Container.isEnabled(node)) Container.setEnabled(copy, false);
+        setBackgroundColor(copy, getBackgroundColor(node));
+
+        // --- payload note: shared slots (filters/image) are accessed WRITE- and
+        // READ-THROUGH this copy's canonical source (getSource), so no pointer
+        // snapshot is stored per-copy — every view sees the latest shared data. ---
+        setSource(copy, node);
+
+        // --- deep-copy children ---
+        int n = childCount(node);
+        for (int i = 0; i < n; i++) {
+            add(copy, getChild(node, i));
+        }
+
+        // --- attach + register the view ---
+        addChild(parent, copy);
+        addRefSetEntry(node, parent);
+        return copy;
+    }
+
+    /** Lazily creates the parent-ref set and adds a parent holding a view of this panel. */
+    private static void addRefSetEntry(long ptr, long parentPtr) {
+        checkPanel(ptr);
+        long setPtr = getParentRefSet(ptr);
+        if (setPtr == 0L) {
+            setPtr = struct.Set.instant(TypeRegister.ID_LONG, 4);
+            setParentRefSet(ptr, setPtr);
+        }
+        struct.Set.add(setPtr, parentPtr);
+    }
+
+    /** Removes a parent from the ref-set; frees the set when it empties. */
+    private static void removeRefSetEntry(long ptr, long parentPtr) {
+        checkPanel(ptr);
+        long setPtr = getParentRefSet(ptr);
+        if (setPtr == 0L) return;
+        struct.Set.remove(setPtr, parentPtr);
+        if (struct.Set.size(setPtr) == 0) {
+            struct.Set.free(setPtr);
+            setParentRefSet(ptr, 0L);
+        }
+    }
+
+    /**
+     * Dirt marking for SHARED payloads (filters, image, future data slots):
+     * marks the source AND every parent holding a copy, so each parent's
+     * damage rect is recomputed. Structural edits stay on-slot via
+     * Container.markDirty and never fan out.
+     */
+    private static void markPayloadDirty(long ptr) {
+        Container.markDirty(ptr);
+        long setPtr = getParentRefSet(ptr);
+        if (setPtr == 0L) return;
+        long listPtr = struct.Set.toSortedList(setPtr);
+        try {
+            int n = struct.List.size(listPtr);
+            for (int i = 0; i < n; i++) {
+                Container.markDirty(struct.List.get(listPtr, i));
+            }
+        } finally {
+            struct.List.free(listPtr);
+        }
+    }
 
     // =========================================================================
     // PARENT-REF SET (shared-slot fan-out, Phase 1)
