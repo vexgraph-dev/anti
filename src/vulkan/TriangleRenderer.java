@@ -71,8 +71,7 @@ public final class TriangleRenderer {
     private static long imageQuadPipelineLayout;
     private static long imageQuadPipeline;
     private static long imageQuadSetLayout;
-    private static long pictureTexture;
-    private static long picturePanel;
+    private static long pictureNode;
 
     private TriangleRenderer() {}
 
@@ -133,21 +132,20 @@ public final class TriangleRenderer {
     }
 
     /**
-     * Loads the demo picture texture and records the image-quad pipeline so the
-     * darling.Panel can be textured. @Draft: hard-wires a single texture + panel
-     * pair to assess texturing before generic image payload wiring.
+     * Binds a darling.Picture node to render as the textured picture. The
+     * picture's rect is resolved per frame and its bound image.Image's texture
+     * is drawn into it. @Draft: still a single hard-wired slot.
      */
-    public static void loadPicture(String imagePath, long panelPtr, int maxDimension) {
+    public static void setPicture(long picturePtr) {
         if (!initialized) return;
         var device = Vulkan.getDevice();
-        picturePanel = panelPtr;
-        pictureTexture = VKTexture.create(device, Vulkan.getGraphicsQueue(),
-                Vulkan.getGraphicsQueueFamilyIndex(), imagePath, maxDimension);
+        pictureNode = picturePtr;
         imageQuadVertexShader = createShaderModule("image_quad.vert.spv");
         imageQuadFragmentShader = createShaderModule("image_quad.frag.spv");
         createImageQuadPipeline();
-        System.out.println("Picture texture loaded: " + imagePath
-                + " (" + VKTexture.getWidth(pictureTexture) + "x" + VKTexture.getHeight(pictureTexture) + ")");
+        long imagePtr = darling.Picture.getImage(pictureNode);
+        System.out.println("Picture node set: img=" + (imagePtr != 0L
+                ? (image.Image.getWidth(imagePtr) + "x" + image.Image.getHeight(imagePtr)) : "none"));
     }
 
     /** Creates off-screen color images and framebuffers the draw thread renders into. */
@@ -416,7 +414,7 @@ public final class TriangleRenderer {
                 .module(VKShaderModule.get(imageQuadFragmentShader))
                 .pName(stack.UTF8("main"));
 
-            imageQuadSetLayout = VKTexture.getDescriptorSetLayout(pictureTexture);
+            imageQuadSetLayout = image.Image.getDescriptorSetLayout(darling.Picture.getImage(pictureNode));
 
             VkPipelineVertexInputStateCreateInfo vertexInput = VkPipelineVertexInputStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
@@ -551,26 +549,30 @@ public final class TriangleRenderer {
 
             vkCmdDraw(command, 3, 1, 0, 0);
 
-            // Textured picture (@Draft pending review): draw the darling.Panel's
-            // resolved rect with the sunflower texture bound.
-            if (pictureTexture != 0L && picturePanel != 0L) {
-                long rect = lang.Vec4.allocate();
-                try {
-                    darling.Panel.resolve(picturePanel, 0.0f, 0.0f, currentW, currentH, rect);
-                    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(imageQuadPipeline));
-                    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            VKPipelineLayout.get(imageQuadPipelineLayout), 0, stack.longs(
-                                    VKTexture.getDescriptorSet(pictureTexture)), null);
-                    vkCmdPushConstants(command, VKPipelineLayout.get(imageQuadPipelineLayout),
-                            VK_SHADER_STAGE_VERTEX_BIT, 0, stack.floats(
-                                    lang.Vec4.getX(rect), lang.Vec4.getY(rect),
-                                    lang.Vec4.getZ(rect), lang.Vec4.getW(rect),
-                                    currentW, currentH, 0.0f, 0.0f));
-                    vkCmdSetViewport(command, 0, vpBuffer);
-                    vkCmdSetScissor(command, 0, scissor);
-                    vkCmdDraw(command, 6, 1, 0, 0);
-                } finally {
-                    lang.Vec4.free(rect);
+            // Textured picture (@Draft pending review): draw the darling.Picture's
+            // resolved rect (AUTO dims derive from its image) with its texture bound.
+            if (pictureNode != 0L) {
+                long imagePtr = darling.Picture.getImage(pictureNode);
+                if (imagePtr != 0L) {
+                    long rect = lang.Vec4.allocate();
+                    try {
+                        float pw = currentW, ph = currentH;
+                        darling.Picture.resolve(pictureNode, 0.0f, 0.0f, pw, ph, rect);
+                        vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(imageQuadPipeline));
+                        vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                VKPipelineLayout.get(imageQuadPipelineLayout), 0, stack.longs(
+                                        image.Image.getDescriptorSet(imagePtr)), null);
+                        vkCmdPushConstants(command, VKPipelineLayout.get(imageQuadPipelineLayout),
+                                VK_SHADER_STAGE_VERTEX_BIT, 0, stack.floats(
+                                        lang.Vec4.getX(rect), lang.Vec4.getY(rect),
+                                        lang.Vec4.getZ(rect), lang.Vec4.getW(rect),
+                                        pw, ph, 0.0f, 0.0f));
+                        vkCmdSetViewport(command, 0, vpBuffer);
+                        vkCmdSetScissor(command, 0, scissor);
+                        vkCmdDraw(command, 6, 1, 0, 0);
+                    } finally {
+                        lang.Vec4.free(rect);
+                    }
                 }
             }
 
@@ -599,7 +601,6 @@ public final class TriangleRenderer {
         if (imageQuadPipelineLayout != 0L) VKPipelineLayout.destroy(imageQuadPipelineLayout, device);
         if (imageQuadFragmentShader != 0L) VKShaderModule.destroy(imageQuadFragmentShader, device);
         if (imageQuadVertexShader != 0L) VKShaderModule.destroy(imageQuadVertexShader, device);
-        if (pictureTexture != 0L) VKTexture.destroy(pictureTexture, device);
 
         destroyOffscreenAttachments(device);
 
@@ -616,8 +617,7 @@ public final class TriangleRenderer {
         imageQuadSetLayout = 0L;
         imageQuadFragmentShader = 0L;
         imageQuadVertexShader = 0L;
-        pictureTexture = 0L;
-        picturePanel = 0L;
+        pictureNode = 0L;
         initialized = false;
     }
 }
