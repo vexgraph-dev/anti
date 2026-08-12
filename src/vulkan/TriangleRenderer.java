@@ -61,6 +61,19 @@ public final class TriangleRenderer {
     private static boolean initialized;
     private static int offscreenImageCount;
 
+    // --- TEXTURED PICTURE (@Draft, pending review) ---
+    // A second graphics pipeline renders the darling.Panel's resolved rect with
+    // the picture texture bound (set 0 = combined image sampler). A single
+    // VKTexture (sunflower.png) + a single Panel slot is hard-wired for now so
+    // texturing can be assessed before generic per-node image payload wiring.
+    private static long imageQuadVertexShader;
+    private static long imageQuadFragmentShader;
+    private static long imageQuadPipelineLayout;
+    private static long imageQuadPipeline;
+    private static long imageQuadSetLayout;
+    private static long pictureTexture;
+    private static long picturePanel;
+
     private TriangleRenderer() {}
 
     public static void init() {
@@ -117,6 +130,24 @@ public final class TriangleRenderer {
         recordCommandBuffers();
         initialized = true;
         System.out.println("Hello Triangle graphics pipeline ready.");
+    }
+
+    /**
+     * Loads the demo picture texture and records the image-quad pipeline so the
+     * darling.Panel can be textured. @Draft: hard-wires a single texture + panel
+     * pair to assess texturing before generic image payload wiring.
+     */
+    public static void loadPicture(String imagePath, long panelPtr, int maxDimension) {
+        if (!initialized) return;
+        var device = Vulkan.getDevice();
+        picturePanel = panelPtr;
+        pictureTexture = VKTexture.create(device, Vulkan.getGraphicsQueue(),
+                Vulkan.getGraphicsQueueFamilyIndex(), imagePath, maxDimension);
+        imageQuadVertexShader = createShaderModule("image_quad.vert.spv");
+        imageQuadFragmentShader = createShaderModule("image_quad.frag.spv");
+        createImageQuadPipeline();
+        System.out.println("Picture texture loaded: " + imagePath
+                + " (" + VKTexture.getWidth(pictureTexture) + "x" + VKTexture.getHeight(pictureTexture) + ")");
     }
 
     /** Creates off-screen color images and framebuffers the draw thread renders into. */
@@ -269,8 +300,7 @@ public final class TriangleRenderer {
     }
 
     @Intention("this is how we handle things with autocloseables, methinks.")
-    private static void createGraphicsPipeline() {
-        System.out.println("Creating Hello Triangle graphics pipeline...");
+    private static void createGraphicsPipeline() {        System.out.println("Creating Hello Triangle graphics pipeline...");
         try(
             MemoryStack stack = MemoryStack.stackPush();
 
@@ -361,6 +391,100 @@ public final class TriangleRenderer {
         }
     }
 
+    /**
+     * Builds the textured-picture pipeline (@Draft pending review). Bindless-ish:
+     * pipeline layout shares ONE descriptor set layout (set 0 = combined image
+     * sampler) plus a 32-byte push-constant block { rect, viewport, z, pad }.
+     */
+    @Intention("Second pipeline draws the image quad at the Panel's resolved rect.")
+    private static void createImageQuadPipeline() {
+        System.out.println("Creating Image Quad (texture) pipeline...");
+        try (
+            MemoryStack stack = MemoryStack.stackPush();
+
+            VkPipelineShaderStageCreateInfo.Buffer stages = VkPipelineShaderStageCreateInfo.calloc(2, stack);
+            VkPipelineShaderStageCreateInfo info0 = stages.get(0).sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
+            VkPipelineShaderStageCreateInfo info1 = stages.get(1).sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
+
+            VkPushConstantRange.Buffer pushRanges = VkPushConstantRange.malloc(1, stack);
+            VkPushConstantRange pushRange0 = pushRanges.get(0).stageFlags(VK_SHADER_STAGE_VERTEX_BIT).offset(0).size(32)
+        ) {
+            info0.stage(VK_SHADER_STAGE_VERTEX_BIT)
+                .module(VKShaderModule.get(imageQuadVertexShader))
+                .pName(stack.UTF8("main"));
+            info1.stage(VK_SHADER_STAGE_FRAGMENT_BIT)
+                .module(VKShaderModule.get(imageQuadFragmentShader))
+                .pName(stack.UTF8("main"));
+
+            imageQuadSetLayout = VKTexture.getDescriptorSetLayout(pictureTexture);
+
+            VkPipelineVertexInputStateCreateInfo vertexInput = VkPipelineVertexInputStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
+            VkPipelineInputAssemblyStateCreateInfo inputAssembly = VkPipelineInputAssemblyStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
+                    .topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                    .primitiveRestartEnable(false);
+
+            VkPipelineViewportStateCreateInfo viewportState = VkPipelineViewportStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
+                    .viewportCount(1)
+                    .scissorCount(1);
+            VkPipelineDynamicStateCreateInfo dynamicState = VkPipelineDynamicStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO)
+                    .pDynamicStates(stack.ints(VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR));
+
+            VkPipelineRasterizationStateCreateInfo rasterizer = VkPipelineRasterizationStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
+                    .depthClampEnable(false)
+                    .rasterizerDiscardEnable(false)
+                    .polygonMode(VK_POLYGON_MODE_FILL)
+                    .lineWidth(1.0f)
+                    .cullMode(VK_CULL_MODE_BACK_BIT)
+                    .frontFace(VK_FRONT_FACE_CLOCKWISE)
+                    .depthBiasEnable(false);
+
+            VkPipelineMultisampleStateCreateInfo multisampling = VkPipelineMultisampleStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
+                    .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
+                    .sampleShadingEnable(false);
+
+            VkPipelineColorBlendAttachmentState.Buffer colorAttachment = VkPipelineColorBlendAttachmentState.calloc(1, stack)
+                    .colorWriteMask(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT)
+                    .blendEnable(false);
+            VkPipelineColorBlendStateCreateInfo colorBlending = VkPipelineColorBlendStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
+                    .logicOpEnable(false)
+                    .logicOp(VK_LOGIC_OP_COPY)
+                    .attachmentCount(1)
+                    .pAttachments(colorAttachment)
+                    .blendConstants(stack.floats(0.0f, 0.0f, 0.0f, 0.0f));
+
+            imageQuadPipelineLayout = VKPipelineLayout.create(Vulkan.getDevice(),
+                    org.lwjgl.vulkan.VkPipelineLayoutCreateInfo.calloc(stack)
+                            .sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+                            .setLayoutCount(1)
+                            .pSetLayouts(stack.longs(imageQuadSetLayout))
+                            .pPushConstantRanges(pushRanges));
+
+            VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
+                    .pStages(stages)
+                    .pVertexInputState(vertexInput)
+                    .pInputAssemblyState(inputAssembly)
+                    .pViewportState(viewportState)
+                    .pRasterizationState(rasterizer)
+                    .pMultisampleState(multisampling)
+                    .pColorBlendState(colorBlending)
+                    .pDynamicState(dynamicState)
+                    .layout(VKPipelineLayout.get(imageQuadPipelineLayout))
+                    .renderPass(RenderPass.get(renderPass))
+                    .subpass(0);
+
+            imageQuadPipeline = VKPipeline.createGraphicsPipeline(Vulkan.getDevice(), VK_NULL_HANDLE, pipelineInfo);
+            System.out.println("Image Quad (texture) pipeline created.");
+        }
+    }
+
     private static void recordCommandBuffers() {
         for (int i = 0; i < offscreenImageCount; i++) {
             recordCommandBuffer(Renderer.getCommandBuffer(i), i, 0.0f);
@@ -426,6 +550,30 @@ public final class TriangleRenderer {
             vkCmdSetScissor(command, 0, scissor);
 
             vkCmdDraw(command, 3, 1, 0, 0);
+
+            // Textured picture (@Draft pending review): draw the darling.Panel's
+            // resolved rect with the sunflower texture bound.
+            if (pictureTexture != 0L && picturePanel != 0L) {
+                long rect = lang.Vec4.allocate();
+                try {
+                    darling.Panel.resolve(picturePanel, 0.0f, 0.0f, currentW, currentH, rect);
+                    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(imageQuadPipeline));
+                    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            VKPipelineLayout.get(imageQuadPipelineLayout), 0, stack.longs(
+                                    VKTexture.getDescriptorSet(pictureTexture)), null);
+                    vkCmdPushConstants(command, VKPipelineLayout.get(imageQuadPipelineLayout),
+                            VK_SHADER_STAGE_VERTEX_BIT, 0, stack.floats(
+                                    lang.Vec4.getX(rect), lang.Vec4.getY(rect),
+                                    lang.Vec4.getZ(rect), lang.Vec4.getW(rect),
+                                    currentW, currentH, 0.0f, 0.0f));
+                    vkCmdSetViewport(command, 0, vpBuffer);
+                    vkCmdSetScissor(command, 0, scissor);
+                    vkCmdDraw(command, 6, 1, 0, 0);
+                } finally {
+                    lang.Vec4.free(rect);
+                }
+            }
+
             vkCmdEndRenderPass(command);
 
             if (vkEndCommandBuffer(command) != VK_SUCCESS) {
@@ -447,6 +595,12 @@ public final class TriangleRenderer {
         VKShaderModule.destroy(fragmentShader, device);
         VKShaderModule.destroy(vertexShader, device);
 
+        if (imageQuadPipeline != 0L) VKPipeline.destroy(imageQuadPipeline, device);
+        if (imageQuadPipelineLayout != 0L) VKPipelineLayout.destroy(imageQuadPipelineLayout, device);
+        if (imageQuadFragmentShader != 0L) VKShaderModule.destroy(imageQuadFragmentShader, device);
+        if (imageQuadVertexShader != 0L) VKShaderModule.destroy(imageQuadVertexShader, device);
+        if (pictureTexture != 0L) VKTexture.destroy(pictureTexture, device);
+
         destroyOffscreenAttachments(device);
 
         RenderPass.destroy(renderPass, device);
@@ -457,6 +611,13 @@ public final class TriangleRenderer {
         pipelineLayout = 0L;
         fragmentShader = 0L;
         vertexShader = 0L;
+        imageQuadPipeline = 0L;
+        imageQuadPipelineLayout = 0L;
+        imageQuadSetLayout = 0L;
+        imageQuadFragmentShader = 0L;
+        imageQuadVertexShader = 0L;
+        pictureTexture = 0L;
+        picturePanel = 0L;
         initialized = false;
     }
 }
