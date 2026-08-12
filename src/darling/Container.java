@@ -4,6 +4,7 @@ import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import annotation.Volatile;
+import lang.Vec4;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
@@ -403,10 +404,7 @@ public final class Container {
         float screenX = refX + getX(ptr) - elemX;
         float screenY = refY + getY(ptr) - elemY;
 
-        ForeignMemory.setFloat(outRect, screenX);
-        ForeignMemory.setFloat(outRect + 4L, screenY);
-        ForeignMemory.setFloat(outRect + 8L, sw);
-        ForeignMemory.setFloat(outRect + 12L, sh);
+        Vec4.set(outRect, screenX, screenY, sw, sh);
     }
 
     /** Hit-test: true if point (px, py) is inside the resolved screen rect. Uses off-heap scratch, 0 GC. */
