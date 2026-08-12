@@ -73,7 +73,7 @@ final class macOSWindow {
     private static StructLayout CG_SIZE;
 
     // --- NSWindowStyleMask bits ---
-    private static final long STYLE_TITLED            = 1L << 0;
+    private static final long STYLE_TITLED            = 1L; // << 0
     private static final long STYLE_CLOSABLE          = 1L << 1;
     private static final long STYLE_MINIATURIZABLE    = 1L << 2;
     private static final long STYLE_RESIZABLE         = 1L << 3;
@@ -900,18 +900,13 @@ final class macOSWindow {
             long mask = getStyleMask(pointer);
             if ((mask & STYLE_FULL_SCREEN) != 0) return; // AppKit owns the mask in fullscreen
 
-            long next;
-            switch (mode) {
-                case UNDECORATED_BORDERLESS:
-                    next = 0L;
-                    break;
-                case UNDECORATED_NAKED:
-                    next = STYLE_TITLED | STYLE_CLOSABLE | STYLE_MINIATURIZABLE | STYLE_RESIZABLE | STYLE_FULL_SIZE_CONTENT;
-                    break;
-                default: // UNDECORATED_DECORATED
-                    next = STYLE_TITLED | STYLE_CLOSABLE | STYLE_MINIATURIZABLE | STYLE_RESIZABLE;
-                    break;
-            }
+            long next = switch(mode) {
+                case UNDECORATED_BORDERLESS -> 0L;
+                case UNDECORATED_NAKED ->
+                        STYLE_TITLED | STYLE_CLOSABLE | STYLE_MINIATURIZABLE | STYLE_RESIZABLE | STYLE_FULL_SIZE_CONTENT;
+                default -> // UNDECORATED_DECORATED
+                        STYLE_TITLED | STYLE_CLOSABLE | STYLE_MINIATURIZABLE | STYLE_RESIZABLE;
+            };
 
             MemorySegment setStyleMaskSel = getSel(arena, "setStyleMask:");
             MSG_SEND_INT.invoke(window, setStyleMaskSel, next);

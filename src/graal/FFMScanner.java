@@ -13,15 +13,15 @@ import java.util.stream.Stream;
 
 /**
  * Build-time FFM (Foreign Function & Memory) cross-reference scanner.
- *
+ * <p>
  * Extracts every {@code FunctionDescriptor.of(...)} / {@code ofVoid(...)} expression used as a
  * downcall ({@code linker.downcallHandle(...)}) or upcall ({@code linker.upcallStub(...)}) across
  * src/, canonicalizes each descriptor to a structural signature, and diffs it against the
  * descriptors registered in {@code src/config/FFMRegistrationFeature.java}.
- *
+ * <p>
  * Anything used-but-unregistered is exactly the crash-on-first-invoke class of bug the native
  * image hits, so this linter makes it a hard, greppable finding instead.
- *
+ * <p>
  * This tooling intentionally uses the heap freely; it never ships in the native binary.
  */
 public final class FFMScanner {
@@ -193,7 +193,7 @@ public final class FFMScanner {
         if (isVoid) {
             sb.append("void");
         } else {
-            sb.append(canonicalLayout(args.get(0), structs));
+            sb.append(canonicalLayout(args.getFirst(), structs));
         }
         sb.append('(');
         for (int i = isVoid ? 0 : 1; i < args.size(); i++) {
@@ -209,18 +209,18 @@ public final class FFMScanner {
         String t = WITH_NAME.matcher(expr.trim()).replaceAll("").trim();
         Matcher lm = LAYOUT_TYPE.matcher(t);
         if (lm.find()) {
-            switch (lm.group(1)) {
-                case "ADDRESS":      return "ADDRESS";
-                case "JAVA_BYTE":    return "BYTE";
-                case "JAVA_SHORT":   return "SHORT";
-                case "JAVA_CHAR":    return "CHAR";
-                case "JAVA_INT":     return "INT";
-                case "JAVA_LONG":    return "LONG";
-                case "JAVA_FLOAT":   return "FLOAT";
-                case "JAVA_DOUBLE":  return "DOUBLE";
-                case "JAVA_BOOLEAN": return "BOOL";
-                default:             return lm.group(1);
-            }
+            return switch(lm.group(1)) {
+                case "ADDRESS" -> "ADDRESS";
+                case "JAVA_BYTE" -> "BYTE";
+                case "JAVA_SHORT" -> "SHORT";
+                case "JAVA_CHAR" -> "CHAR";
+                case "JAVA_INT" -> "INT";
+                case "JAVA_LONG" -> "LONG";
+                case "JAVA_FLOAT" -> "FLOAT";
+                case "JAVA_DOUBLE" -> "DOUBLE";
+                case "JAVA_BOOLEAN" -> "BOOL";
+                default -> lm.group(1);
+            };
         }
         if (t.startsWith("MemoryLayout.structLayout(") || t.startsWith("StructLayout.structLayout(")) {
             int open = t.indexOf('(');

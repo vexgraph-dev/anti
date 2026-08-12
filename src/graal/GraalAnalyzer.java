@@ -1,35 +1,33 @@
 package graal;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /**
  * GraalAnalyzer — build-time gate for the Anti Engine's native-image rules.
- *
+ * <p>
  * Two checks run against src/ (excluding the nested api/ sub-repository):
- *
+ * <p>
  *  1. Denylist linter — flags banned patterns from the engine's §13 rules
  *     (reflection, sun.misc.Unsafe, jdk.internal, AWT/Swing, serialization,
  *     dynamic classloading, process spawning, static-final FFM handles, ...).
- *
+ * <p>
  *  2. FFM cross-reference — every {@code FunctionDescriptor.of(...)} used by a
  *     downcall/upcall is canonicalized and checked against the descriptors
  *     registered in src/config/FFMRegistrationFeature.java. Used-but-unregistered
  *     descriptors are reported; these are the exact cases that crash a native
  *     image on first invoke.
- *
+ * <p>
  * Usage:
  *   java graal.GraalAnalyzer [--root DIR] [--strict]
- *
+ * <p>
  * Exit codes: 0 = clean, 1 = findings above the severity threshold, 2 = usage error.
  */
 public final class GraalAnalyzer {

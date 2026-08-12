@@ -1224,6 +1224,9 @@ public class ForeignMemory {
         VKPipelineLayout.freeAll();
         VKShaderModule.freeAll();
 
+        darling.Container.freeAll();
+        darling.Panel.freeAll();
+
         Byte.freeAll();
         Short.freeAll();
         Int.freeAll();
