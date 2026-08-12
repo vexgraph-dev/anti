@@ -180,6 +180,7 @@ public class TypeRegister
     public static final int ID_GLOBAL = 0x000075; // Global class
     public static final int ID_QUEUE = 0x000076; // Queue class
     public static final int ID_THREAD_REGISTRY = 0x000077; // ThreadRegistry class
+    public static final int ID_PANEL = 0x000078; // darling.Panel class // 120
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
@@ -391,6 +392,11 @@ public class TypeRegister
     public static final int DRAW_THREAD_SINGLETON = FORM_SINGLETON | ID_DRAW_THREAD;
     public static final int DRAW_THREAD_ARRAY = FORM_ARRAY | ID_DRAW_THREAD;
     public static final int DRAW_THREAD_POINTER = FORM_POINTER | ID_DRAW_THREAD;
+
+    // darling.Panel class
+    public static final int PANEL_SINGLETON = FORM_SINGLETON | ID_PANEL;
+    public static final int PANEL_ARRAY = FORM_ARRAY | ID_PANEL;
+    public static final int PANEL_POINTER = FORM_POINTER | ID_PANEL;
 
 
     // --- HELPER BITWISE METHODS ---
