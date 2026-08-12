@@ -132,6 +132,7 @@ public class TypeRegister
     public static final int ID_VK_FRAMEBUFFER = 0x000049; // VKFramebuffer class // 73
     public static final int ID_VK_IMAGE = 0x00004B; // VKImage class // 75
     public static final int ID_FILE = 0x00004C; // File class // 76
+    public static final int ID_VK_TEXTURE = 0x00004E; // VKTexture class // 78
 
 
     // --- BUFFER CLASSES ---
@@ -259,6 +260,11 @@ public class TypeRegister
     public static final int VK_IMAGE_SINGLETON = FORM_SINGLETON | ID_VK_IMAGE;
     public static final int VK_IMAGE_ARRAY = FORM_ARRAY | ID_VK_IMAGE;
     public static final int VK_IMAGE_POINTER = FORM_POINTER | ID_VK_IMAGE;
+
+    // VKTexture class
+    public static final int VK_TEXTURE_SINGLETON = FORM_SINGLETON | ID_VK_TEXTURE;
+    public static final int VK_TEXTURE_ARRAY = FORM_ARRAY | ID_VK_TEXTURE;
+    public static final int VK_TEXTURE_POINTER = FORM_POINTER | ID_VK_TEXTURE;
 
     // Int class
     public static final int INT_SINGLETON = FORM_SINGLETON | ID_INT;
