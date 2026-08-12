@@ -43,10 +43,18 @@ public final class Picture {
     public static final int ANCHOR_BOTTOM_RIGHT  = Container.ANCHOR_BOTTOM_RIGHT;
 
     // --- Picture fields: Container layout prefix (0..47) then picture payload ---
-    private static final int OFF_IMAGE = (int) Container.USER_STRIDE; // 48 long (image.Image enginePtr, 0 = none)
+    private static final int OFF_IMAGE       = (int) Container.USER_STRIDE; // 48 long (image.Image enginePtr, 0 = none)
+    private static final int OFF_IMAGE_SIZE_W = 56; // float (image draw width; 0 = follow picture box)
+    private static final int OFF_IMAGE_SIZE_H = 60; // float (image draw height; 0 = follow picture box)
+    private static final int OFF_CROP_X1     = 64; // float (crop left in image pixels)
+    private static final int OFF_CROP_Y1     = 68; // float (crop top in image pixels)
+    private static final int OFF_CROP_X2     = 72; // float (crop right in image pixels)
+    private static final int OFF_CROP_Y2     = 76; // float (crop bottom in image pixels)
+    private static final int OFF_HAS_IMAGE_SIZE = 80; // byte
+    private static final int OFF_HAS_CROP    = 81; // byte
 
-    private static final long USER_STRIDE = 56L; // bytes of user payload
-    private static final long SLOT_SIZE   = 64L; // 8B header + 56B payload
+    private static final long USER_STRIDE = 88L; // bytes of user payload
+    private static final long SLOT_SIZE   = 96L; // 8B header + 88B payload
 
     // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
     private static final int DEFAULT_CAPACITY = 1024;
@@ -150,7 +158,15 @@ public final class Picture {
 
     private static void initDefaults(long ptr) {
         Container.initDefaults(ptr);
-        setImage(ptr, 0L);
+        ForeignMemory.setLong(ptr + OFF_IMAGE, 0L);
+        ForeignMemory.setFloat(ptr + OFF_IMAGE_SIZE_W, 0f);
+        ForeignMemory.setFloat(ptr + OFF_IMAGE_SIZE_H, 0f);
+        ForeignMemory.setFloat(ptr + OFF_CROP_X1, 0f);
+        ForeignMemory.setFloat(ptr + OFF_CROP_Y1, 0f);
+        ForeignMemory.setFloat(ptr + OFF_CROP_X2, 0f);
+        ForeignMemory.setFloat(ptr + OFF_CROP_Y2, 0f);
+        ForeignMemory.setByte(ptr + OFF_HAS_IMAGE_SIZE, (byte) 0);
+        ForeignMemory.setByte(ptr + OFF_HAS_CROP, (byte) 0);
     }
 
     public static void free(long ptr) {
@@ -212,6 +228,12 @@ public final class Picture {
     public static void setWidth(long ptr, float width) { Container.setWidth(ptr, width); }
     public static void setHeight(long ptr, float height) { Container.setHeight(ptr, height); }
 
+    /** Sets both the picture-box width and height. Negative AUTO (-1) is allowed on either axis. */
+    public static void setSize(long ptr, float width, float height) {
+        Container.setWidth(ptr, width);
+        Container.setHeight(ptr, height);
+    }
+
     public static void setAnchor(long ptr, int refAnchor, int elemAnchor) {
         Container.setReferenceAnchor(ptr, refAnchor);
         Container.setElementAnchor(ptr, elemAnchor);
@@ -233,6 +255,116 @@ public final class Picture {
         checkPicture(ptr);
         ForeignMemory.setLong(ptr + OFF_IMAGE, imageEnginePtr);
         Container.markDirty(ptr);
+    }
+
+    // =========================================================================
+    // IMAGE SIZE & CROP
+    // =========================================================================
+
+    /**
+     * The image's draw size inside the picture box. {@code w <= 0 || h <= 0}
+     * clears the override (the image then fills the picture's resolved size).
+     * When only one side is set, the other follows the picture box so the image
+     * is not distorted unpredictably (edge case: 0/positive-mixed is accepted,
+     * the zero side still resolves to the picture box).
+     */
+    public static void setImageSize(long ptr, float w, float h) {
+        checkPicture(ptr);
+        boolean has = (w > 0f || h > 0f);
+        ForeignMemory.setFloat(ptr + OFF_IMAGE_SIZE_W, Math.max(0f, w));
+        ForeignMemory.setFloat(ptr + OFF_IMAGE_SIZE_H, Math.max(0f, h));
+        ForeignMemory.setByte(ptr + OFF_HAS_IMAGE_SIZE, (byte) (has ? 1 : 0));
+        Container.markDirty(ptr);
+    }
+
+    public static boolean hasImageSize(long ptr) { checkPicture(ptr); return ForeignMemory.getByte(ptr + OFF_HAS_IMAGE_SIZE) != 0; }
+    public static float getImageSizeWidth(long ptr) { checkPicture(ptr); return ForeignMemory.getFloat(ptr + OFF_IMAGE_SIZE_W); }
+    public static float getImageSizeHeight(long ptr) { checkPicture(ptr); return ForeignMemory.getFloat(ptr + OFF_IMAGE_SIZE_H); }
+
+    /**
+     * Sets the image crop as two corner points in image pixels: (x1, y1) is the
+     * top-left, (x2, y2) the bottom-right, the crop being the rectangle between
+     * them. Edge cases handled at resolve time (see {@link #getCrop}):
+     *   - inverted points ([x1>x2] or [y1>y2]) are swapped to a valid rect
+     *   - out-of-image values are clamped into [0, imageWidth/Height]
+     *   - a degenerate (zero-area) or unset crop resolves to the FULL image
+     */
+    public static void setCrop(long ptr, float x1, float y1, float x2, float y2) {
+        checkPicture(ptr);
+        ForeignMemory.setFloat(ptr + OFF_CROP_X1, x1);
+        ForeignMemory.setFloat(ptr + OFF_CROP_Y1, y1);
+        ForeignMemory.setFloat(ptr + OFF_CROP_X2, x2);
+        ForeignMemory.setFloat(ptr + OFF_CROP_Y2, y2);
+        ForeignMemory.setByte(ptr + OFF_HAS_CROP, (byte) 1);
+        Container.markDirty(ptr);
+    }
+
+    public static void clearCrop(long ptr) {
+        checkPicture(ptr);
+        ForeignMemory.setByte(ptr + OFF_HAS_CROP, (byte) 0);
+        Container.markDirty(ptr);
+    }
+
+    public static boolean hasCrop(long ptr) { checkPicture(ptr); return ForeignMemory.getByte(ptr + OFF_HAS_CROP) != 0; }
+
+    /**
+     * Resolves the crop into a normalized UV rect [u1, v1, u2, v2] within the
+     * image (for the sampler). Falls back to the full image [0,0,1,1] when the
+     * crop is unset, degenerate (zero area) or the image missing. Writes 4
+     * floats into outRect (primitive.Float array of length >= 4).
+     */
+    public static void getCrop(long ptr, long outRect) {
+        checkPicture(ptr);
+        if (outRect == 0L) throw new NullPointerException("Picture.getCrop() outRect is NULL!");
+
+        if (!hasCrop(ptr)) {
+            primitive.Float.set(outRect, 0, 0f);
+            primitive.Float.set(outRect, 1, 0f);
+            primitive.Float.set(outRect, 2, 1f);
+            primitive.Float.set(outRect, 3, 1f);
+            return;
+        }
+
+        long imagePtr = getImage(ptr);
+        if (imagePtr == 0L) {
+            primitive.Float.set(outRect, 0, 0f);
+            primitive.Float.set(outRect, 1, 0f);
+            primitive.Float.set(outRect, 2, 1f);
+            primitive.Float.set(outRect, 3, 1f);
+            return;
+        }
+        float iw = image.Image.getWidth(imagePtr);
+        float ih = image.Image.getHeight(imagePtr);
+
+        float x1 = ForeignMemory.getFloat(ptr + OFF_CROP_X1);
+        float y1 = ForeignMemory.getFloat(ptr + OFF_CROP_Y1);
+        float x2 = ForeignMemory.getFloat(ptr + OFF_CROP_X2);
+        float y2 = ForeignMemory.getFloat(ptr + OFF_CROP_Y2);
+
+        // Edge case: inverted corner points -> normalize orientation.
+        if (x1 > x2) { float t = x1; x1 = x2; x2 = t; }
+        if (y1 > y2) { float t = y1; y1 = y2; y2 = t; }
+
+        // Edge case: clamp out-of-image pixels into [0, imageWidth/Height].
+        if (x1 < 0f) x1 = 0f;
+        if (y1 < 0f) y1 = 0f;
+        if (x2 > iw) x2 = iw;
+        if (y2 > ih) y2 = ih;
+
+        // Edge case: zero/negative area -> full image (never an upside-down or
+        // empty sample region).
+        if (x2 - x1 <= 0f || y2 - y1 <= 0f) {
+            primitive.Float.set(outRect, 0, 0f);
+            primitive.Float.set(outRect, 1, 0f);
+            primitive.Float.set(outRect, 2, 1f);
+            primitive.Float.set(outRect, 3, 1f);
+            return;
+        }
+
+        primitive.Float.set(outRect, 0, x1 / iw);
+        primitive.Float.set(outRect, 1, y1 / ih);
+        primitive.Float.set(outRect, 2, x2 / iw);
+        primitive.Float.set(outRect, 3, y2 / ih);
     }
 
     // =========================================================================
