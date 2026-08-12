@@ -46,15 +46,17 @@ public class EngineTest {
         vulkan.Vulkan.initVulkan(surfacePtr, 800, 600, bootPresentMode);
         vulkan.TriangleRenderer.init();
 
-        // @Draft texture-on-Panel demo (pending review): place a picture panel and
-        // load sunflower.png into it so texturing can be assessed in one run.
-        long picturePanel = darling.Panel.allocate();
-        darling.Container.setX(picturePanel, 100f);
-        darling.Container.setY(picturePanel, 60f);
-        darling.Panel.setSize(picturePanel, 320f, 211f);
-        vulkan.TriangleRenderer.loadPicture(
-                System.getProperty("anti.picture", "/Users/vexgraph/Downloads/sunflower.png"),
-                picturePanel, 2048);
+        // @Draft picture demo (pending review): Image asset + darling.Picture node.
+        // Width/height AUTO (-1) derive from the image; here width is fixed and
+        // height AUTO keeps the sunflower's aspect ratio.
+        long imagePtr = image.Image.allocate(
+                System.getProperty("anti.picture", "/Users/vexgraph/Downloads/sunflower.png"), 2048);
+        long picturePtr = darling.Picture.allocate();
+        darling.Picture.setImage(picturePtr, imagePtr);
+        darling.Picture.setWidth(picturePtr, 320f);
+        darling.Picture.setHeight(picturePtr, darling.Picture.AUTO);
+        darling.Picture.setLocation(picturePtr, 100f, 60f);
+        vulkan.TriangleRenderer.setPicture(picturePtr);
 
         System.out.println("[Main Thread] Handing over control to the event pump...");
 
