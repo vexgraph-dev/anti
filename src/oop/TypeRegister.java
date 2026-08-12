@@ -181,6 +181,7 @@ public class TypeRegister
     public static final int ID_QUEUE = 0x000076; // Queue class
     public static final int ID_THREAD_REGISTRY = 0x000077; // ThreadRegistry class
     public static final int ID_PANEL = 0x000078; // darling.Panel class // 120
+    public static final int ID_CONTAINER = 0x000079; // darling.Container class // 121
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
@@ -398,6 +399,11 @@ public class TypeRegister
     public static final int PANEL_ARRAY = FORM_ARRAY | ID_PANEL;
     public static final int PANEL_POINTER = FORM_POINTER | ID_PANEL;
 
+    // darling.Container class (immediate parent of Panel)
+    public static final int CONTAINER_SINGLETON = FORM_SINGLETON | ID_CONTAINER;
+    public static final int CONTAINER_ARRAY = FORM_ARRAY | ID_CONTAINER;
+    public static final int CONTAINER_POINTER = FORM_POINTER | ID_CONTAINER;
+
 
     // --- HELPER BITWISE METHODS ---
     public static boolean isSingleton(int typeId)
@@ -511,6 +517,9 @@ public class TypeRegister
     {
         if (classId >= 0x000050 && classId <= 0x000063)
             return ID_BUFFER;
+
+        if (classId == ID_PANEL)
+            return ID_CONTAINER;
 
         // add classes goes here...
         return classId;
