@@ -342,17 +342,18 @@ public final class Container {
     public static void setEnabled(long ptr, boolean enabled) { checkContainer(ptr); ForeignMemory.setByte(ptr + OFF_ENABLED, (byte) (enabled ? 1 : 0)); markDirty(ptr); }
 
     /**
-     * Marks the node dirty. In Phase 1 this walks the parent-ref set and fans
-     * out to every parent holding a view of this node's shared slots; for now
-     * it sets the flag that the invalidation engine polls.
+     * Marks the node dirty. This is an INTERNAL side-effect: every layout
+     * mutator below fires it automatically. Callers never assign dirtiness —
+     * the invalidation engine clears it after re-rendering the damaged region.
+     * Shared-payload edits fan out through the parent-ref set (see Panel).
      */
     @Volatile
-    public static void markDirty(long ptr) {
+    static void markDirty(long ptr) {
         checkContainer(ptr);
         ForeignMemory.setVolatileByte(ptr + OFF_DIRTY, (byte) 1);
     }
 
-    public static void clearDirty(long ptr) {
+    static void clearDirty(long ptr) {
         checkContainer(ptr);
         ForeignMemory.setVolatileByte(ptr + OFF_DIRTY, (byte) 0);
     }
