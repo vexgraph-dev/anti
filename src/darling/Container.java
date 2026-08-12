@@ -377,10 +377,17 @@ public final class Container {
      *   scale applied last, about the element anchor.
      */
     public static void resolve(long ptr, float parentX, float parentY, float parentW, float parentH, long outRect) {
+        resolveSized(ptr, getWidth(ptr), getHeight(ptr), parentX, parentY, parentW, parentH, outRect);
+    }
+
+    /**
+     * Like {@link #resolve} but with an explicit width/height, so subclasses can
+     * auto-derive their size (e.g. a Picture whose -1 dims reflect its Image).
+     */
+    static void resolveSized(long ptr, float w, float h, float parentX, float parentY, float parentW, float parentH, long outRect) {
         checkContainer(ptr);
         if (outRect == 0L) throw new NullPointerException("resolve() outRect is NULL!");
 
-        float w = getWidth(ptr), h = getHeight(ptr);
         float sx = getScaleWidth(ptr), sy = getScaleHeight(ptr);
         float sw = w * sx, sh = h * sy;
 
