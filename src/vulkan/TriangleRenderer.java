@@ -2,6 +2,8 @@ package vulkan;
 
 import annotation.Draft;
 import annotation.Intention;
+import lang.Mat4;
+import lang.Vec4;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VkAttachmentDescription;
@@ -34,6 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.LongBuffer;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -72,6 +75,10 @@ public final class TriangleRenderer {
     private static long imageQuadPipeline;
     private static long imageQuadSetLayout;
     private static long pictureNode;
+
+    // Scratch projection: the darling.Canvas ortho matrix rebuilt per draw
+    // record and pushed to the image_quad shader (pinned once, never per-frame).
+    private static long canvasProj;
 
     private TriangleRenderer() {}
 
@@ -125,6 +132,7 @@ public final class TriangleRenderer {
         commandPool = CommandPool.create(device, Vulkan.getGraphicsQueueFamilyIndex());
         blitCommandPool = CommandPool.create(device, Vulkan.getGraphicsQueueFamilyIndex());
         createOffscreenAttachments(device);
+        canvasProj = Mat4.allocate();
         Renderer.init(device, commandPool, blitCommandPool, offscreenImageCount);
         recordCommandBuffers();
         initialized = true;
@@ -392,7 +400,7 @@ public final class TriangleRenderer {
     /**
      * Builds the textured-picture pipeline (@Draft pending review). Bindless-ish:
      * pipeline layout shares ONE descriptor set layout (set 0 = combined image
-     * sampler) plus a 32-byte push-constant block { rect, viewport, z, pad }.
+     * sampler) plus a 96-byte push-constant block { proj, rect, uvMin, uvMax }.
      */
     @Intention("Second pipeline draws the image quad at the Panel's resolved rect.")
     private static void createImageQuadPipeline() {
@@ -405,8 +413,8 @@ public final class TriangleRenderer {
             VkPipelineShaderStageCreateInfo info1 = stages.get(1).sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
 
             VkPushConstantRange.Buffer pushRanges = VkPushConstantRange.malloc(1, stack);
-            VkPushConstantRange pushRange0 = pushRanges.get(0).stageFlags(VK_SHADER_STAGE_VERTEX_BIT).offset(0).size(40)
-                    // rect(16) + viewport(8) + uvMin(8) + uvMax(8) = 40B
+            VkPushConstantRange pushRange0 = pushRanges.get(0).stageFlags(VK_SHADER_STAGE_VERTEX_BIT).offset(0).size(96)
+                    // proj(64) + rect(16) + uvMin(8) + uvMax(8) = 96B
         ) {
             info0.stage(VK_SHADER_STAGE_VERTEX_BIT)
                 .module(VKShaderModule.get(imageQuadVertexShader))
@@ -552,32 +560,43 @@ public final class TriangleRenderer {
 
             // Textured picture (@Draft pending review): draw the darling.Picture's
             // resolved rect (AUTO dims derive from its image) with its texture bound.
+            // The picture resolves inside the darling.Canvas virtual space, and the
+            // canvas ortho projection is pushed so the rect is stable canvas units.
             if (pictureNode != 0L) {
                 long imagePtr = darling.Picture.getImage(pictureNode);
                 if (imagePtr != 0L) {
-                    long rect = lang.Vec4.allocate();
+                    long rect = Vec4.allocate();
                     long crop = primitive.Float.allocateArray(4);
                     try {
-                        float pw = currentW, ph = currentH;
-                        darling.Picture.resolve(pictureNode, 0.0f, 0.0f, pw, ph, rect);
+                        // Stack-owned (freed when the MemoryStack closes); not an
+                        // AutoCloseable, so it lives in the body, not the try header.
+                        FloatBuffer pushData = stack.mallocFloat(24);
+                        darling.Canvas.resolveRoot(pictureNode, currentW, currentH, rect);
                         darling.Picture.getCrop(pictureNode, crop);
                         vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(imageQuadPipeline));
                         vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 VKPipelineLayout.get(imageQuadPipelineLayout), 0, stack.longs(
                                         image.Image.getDescriptorSet(imagePtr)), null);
+                        // proj(16) + rect(4) + crop(4) = 24 floats, one push.
+                        darling.Canvas.buildProjection(canvasProj, currentW, currentH);
+                        int pc = 0;
+                        for (int i = 0; i < 16; i++) pushData.put(pc++, Mat4.getRaw(canvasProj, i));
+                        pushData.put(pc++, Vec4.getX(rect));
+                        pushData.put(pc++, Vec4.getY(rect));
+                        pushData.put(pc++, Vec4.getZ(rect));
+                        pushData.put(pc++, Vec4.getW(rect));
+                        pushData.put(pc++, primitive.Float.get(crop, 0));
+                        pushData.put(pc++, primitive.Float.get(crop, 1));
+                        pushData.put(pc++, primitive.Float.get(crop, 2));
+                        pushData.put(pc++, primitive.Float.get(crop, 3));
                         vkCmdPushConstants(command, VKPipelineLayout.get(imageQuadPipelineLayout),
-                                VK_SHADER_STAGE_VERTEX_BIT, 0, stack.floats(
-                                        lang.Vec4.getX(rect), lang.Vec4.getY(rect),
-                                        lang.Vec4.getZ(rect), lang.Vec4.getW(rect),
-                                        pw, ph,
-                                        primitive.Float.get(crop, 0), primitive.Float.get(crop, 1),
-                                        primitive.Float.get(crop, 2), primitive.Float.get(crop, 3)));
+                                VK_SHADER_STAGE_VERTEX_BIT, 0, pushData.position(0).limit(24));
                         vkCmdSetViewport(command, 0, vpBuffer);
                         vkCmdSetScissor(command, 0, scissor);
                         vkCmdDraw(command, 6, 1, 0, 0);
                     } finally {
                         primitive.Float.free(crop);
-                        lang.Vec4.free(rect);
+                        Vec4.free(rect);
                     }
                 }
             }
@@ -609,6 +628,9 @@ public final class TriangleRenderer {
         if (imageQuadVertexShader != 0L) VKShaderModule.destroy(imageQuadVertexShader, device);
 
         destroyOffscreenAttachments(device);
+
+        if (canvasProj != 0L) Mat4.free(canvasProj);
+        canvasProj = 0L;
 
         RenderPass.destroy(renderPass, device);
         renderPass = 0L;
