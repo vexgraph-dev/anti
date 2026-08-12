@@ -1228,6 +1228,8 @@ public class ForeignMemory {
 
         darling.Container.freeAll();
         darling.Panel.freeAll();
+        darling.Picture.freeAll();
+        image.Image.freeAll();
 
         Byte.freeAll();
         Short.freeAll();
