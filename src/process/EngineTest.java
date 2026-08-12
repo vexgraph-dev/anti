@@ -58,6 +58,23 @@ public class EngineTest {
         darling.Picture.setLocation(picturePtr, 100f, 60f);
         vulkan.TriangleRenderer.setPicture(picturePtr);
 
+        // Flat 2D layout space (darling.Canvas): the whole UI resolves inside a
+        // fixed virtual-resolution canvas, mapped to the window by an ortho
+        // projection. Default PIXEL mode = 1 canvas unit is 1 window px, top-left
+        // pinned, so setLocation(100, 60) is literally 100,60 window px and
+        // resizing REVEALS more canvas instead of stretching the content.
+        // Override: -Danti.canvas.w=1600 -Danti.canvas.h=900 -Danti.canvas.mode=pixel|fit|stretch
+        float canvasW = Float.parseFloat(System.getProperty("anti.canvas.w", "1600"));
+        float canvasH = Float.parseFloat(System.getProperty("anti.canvas.h", "900"));
+        darling.Canvas.setVirtualSize(canvasW, canvasH);
+        String canvasMode = System.getProperty("anti.canvas.mode", "pixel").toLowerCase();
+        switch (canvasMode) {
+            case "stretch" -> darling.Canvas.setMode(darling.Canvas.MODE_STRETCH);
+            case "fit" -> darling.Canvas.setMode(darling.Canvas.MODE_FIT);
+            default -> darling.Canvas.setMode(darling.Canvas.MODE_PIXEL);
+        }
+        System.out.println("[EngineTest] UI canvas: " + canvasW + "x" + canvasH + " mode=" + canvasMode);
+
         System.out.println("[Main Thread] Handing over control to the event pump...");
 
         // Boot the Core Draw Worker: it drains the input RingBuffers and owns the
