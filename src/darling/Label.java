@@ -1,4 +1,4 @@
-package swing;
+package darling;
 
 public class Label
 {
