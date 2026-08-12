@@ -183,6 +183,8 @@ public class TypeRegister
     public static final int ID_THREAD_REGISTRY = 0x000077; // ThreadRegistry class
     public static final int ID_PANEL = 0x000078; // darling.Panel class // 120
     public static final int ID_CONTAINER = 0x000079; // darling.Container class // 121
+    public static final int ID_PICTURE = 0x00007A; // darling.Picture class // 122
+    public static final int ID_IMAGE = 0x00007B; // image.Image class // 123
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
@@ -410,6 +412,16 @@ public class TypeRegister
     public static final int CONTAINER_ARRAY = FORM_ARRAY | ID_CONTAINER;
     public static final int CONTAINER_POINTER = FORM_POINTER | ID_CONTAINER;
 
+    // darling.Picture class (structural subclass of Container)
+    public static final int PICTURE_SINGLETON = FORM_SINGLETON | ID_PICTURE;
+    public static final int PICTURE_ARRAY = FORM_ARRAY | ID_PICTURE;
+    public static final int PICTURE_POINTER = FORM_POINTER | ID_PICTURE;
+
+    // image.Image class
+    public static final int IMAGE_SINGLETON = FORM_SINGLETON | ID_IMAGE;
+    public static final int IMAGE_ARRAY = FORM_ARRAY | ID_IMAGE;
+    public static final int IMAGE_POINTER = FORM_POINTER | ID_IMAGE;
+
 
     // --- HELPER BITWISE METHODS ---
     public static boolean isSingleton(int typeId)
@@ -525,6 +537,9 @@ public class TypeRegister
             return ID_BUFFER;
 
         if (classId == ID_PANEL)
+            return ID_CONTAINER;
+
+        if (classId == ID_PICTURE)
             return ID_CONTAINER;
 
         // add classes goes here...
