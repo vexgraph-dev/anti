@@ -536,6 +536,15 @@ public final class Window {
         return 0L;
     }
 
+    /**
+     * Thread 0 side: hard-sync resize. Blocks the calling thread until the present
+     * thread has rebuilt the swapchain to (w,h) AND presented a frame at that size,
+     * so the OS cannot update the window to the new size before our frame is ready.
+     */
+    public static void syncResize(int w, int h) {
+        vulkan.Renderer.syncResize(w, h);
+    }
+
     /** Main screen size in backing pixels, packed (width &lt;&lt; 32) | height. 0 if unavailable. */
     public static long getScreenBackingSize() {
         if (IS_MAC) return macOSWindow.getScreenBackingSize();
@@ -587,9 +596,33 @@ public final class Window {
         // This thread spins as fast as the CPU allows, shoving high-precision
         // keyboard/mouse timestamps into the lock-free input RingBuffers.
         System.out.println("[Main Thread] Event pump engaged: Thread 0 parked, woken by AppKit events.");
+        long lastContentSize = 0L; // force an initial sync: swapchain may have booted smaller than the window
+        long pumpIter = 0L;
         while (!shouldClose(pointer)) {
             applyPendingTitle(pointer); // CORE worker's FPS label -> AppKit (main thread only)
             applyPendingFullscreen(pointer); // CORE worker's fullscreen toggle -> AppKit (main thread only)
+
+            // Option 2 hard-sync resize: Thread 0 is the one returning control to the OS
+            // that actually updates the window. If the content size changed, block until
+            // the present thread has rebuilt the swapchain and presented a frame at the
+            // new size -- so the OS cannot reveal the expanded window before our frame
+            // is ready, eliminating the resize gap. (The DrawThread's own detection is
+            // intentionally left as-is; this is the authoritative main-thread gate.)
+            long contentSize = getContentSize(pointer);
+            if (pumpIter++ % 100 == 0L) {
+                System.out.println("[pump] iter=" + pumpIter + " content="
+                        + ((int) (contentSize >>> 32)) + "x" + (int) (contentSize & 0xFFFFFFFFL)
+                        + " last=" + ((int) (lastContentSize >>> 32)) + "x" + (int) (lastContentSize & 0xFFFFFFFFL));
+            }
+            if (contentSize != 0L && contentSize != lastContentSize) {
+                int cw = (int) (contentSize >>> 32);
+                int ch = (int) (contentSize & 0xFFFFFFFFL);
+                System.out.println("[pump] Thread0 detected contentSize " + cw + "x" + ch
+                        + " (last=" + ((int) (lastContentSize >>> 32)) + "x" + (int) (lastContentSize & 0xFFFFFFFFL) + ")");
+                syncResize(cw, ch);
+                lastContentSize = contentSize;
+            }
+
             waitEvents(); // bounded block: ~16ms cadence when idle, instant wake on input
         }
         System.out.println("[Main Thread] Window closed. Releasing Thread 0.");
