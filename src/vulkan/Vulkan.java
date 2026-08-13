@@ -216,11 +216,6 @@ public final class Vulkan {
         window.Window.setDisplaySyncEnabled(layerPointer, synced);
     }
 
-    /** CAMetalLayer handle for the present thread's presentsWithTransaction toggle. */
-    public static long getLayerPointer() {
-        return layerPointer;
-    }
-
     private static void initInstance(MemoryStack stack) {
         // VK_EXT_debug_utils may be advertised by the validation layer rather than
         // by the bare loader, so do not reject the layer based on global extension

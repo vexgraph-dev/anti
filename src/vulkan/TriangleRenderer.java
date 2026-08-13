@@ -528,6 +528,7 @@ public final class TriangleRenderer {
                 + lastLoggedRectRW + "," + lastLoggedRectRH + ")";
     }
 
+    @Intention("this comment is for determining the background color")
     static void recordCommandBuffer(long commandBuffer, int imageIndex, float time) {
         if (commandBuffer == VK_NULL_HANDLE) {
             throw new IllegalStateException("Triangle command buffer handle is NULL at index " + imageIndex);
@@ -549,7 +550,7 @@ public final class TriangleRenderer {
                         .float32(0, 0f)
                         .float32(1, 0f)
                         .float32(2, 0f)
-                        .float32(3, 1.0f);
+                        .float32(3, 0.0f);
 
                 // Only shade the portion of the pinned framebuffer that actually matches
                 // the current swapchain size! This prevents rendering 6M pixels for an 800x600 window.

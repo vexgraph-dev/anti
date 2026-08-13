@@ -300,13 +300,6 @@ public final class Window {
         }
     }
 
-    /** CAMetalLayer presentsWithTransaction toggle (YES only during live resize). */
-    public static void setPresentsWithTransaction(long surfacePtr, boolean enabled) {
-        if (IS_MAC) {
-            macOSWindow.setPresentsWithTransaction(surfacePtr, enabled);
-        }
-    }
-
     public static void setFullscreen(long pointer, boolean fullscreen) {
         if (IS_MAC) {
             macOSWindow.setFullscreen(pointer, fullscreen);
