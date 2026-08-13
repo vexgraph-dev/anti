@@ -312,10 +312,14 @@ public final class DrawThread {
         // then draws and presents. FIFO present mode makes vkAcquireNextImageKHR
         // sleep on the WindowServer refresh (60/120Hz) right here, never on Thread 0.
         long windowPtr = isCore(workerPtr) ? ForeignMemory.getLong(workerPtr + 24L) : 0L;
-        long lastContentSize = windowPtr != 0L ? Window.getContentSize(windowPtr) : 0L;
+        int swapW = isCore(workerPtr) ? vulkan.Vulkan.getSwapchainWidth() : 0;
+        int swapH = isCore(workerPtr) ? vulkan.Vulkan.getSwapchainHeight() : 0;
+        long lastContentSize = ((long)swapW << 32) | (swapH & 0xFFFFFFFFL);
         boolean lastFullscreen = windowPtr != 0L && Window.isFullscreen(windowPtr);
+        int basePresentMode = isCore(workerPtr) ? vulkan.Vulkan.getPresentMode() : org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_FIFO_KHR;
         long pendingResizeSize = 0L;
         long lastResizeEventTime = 0L;
+        long lastResizeNanos = 0L; // coalesce gate: at most one swapchain rebuild per ~10ms
 
         long fpsWindowStart = java.lang.System.nanoTime();
         long lastDraw = 0L, lastPresent = 0L;
@@ -346,16 +350,28 @@ public final class DrawThread {
                     }
                     long contentSize = window.Window.getContentSize(windowPtr);
                     if (contentSize != lastContentSize && contentSize != 0L) {
+                        System.out.println("[window] resize event: "
+                                + ((int) (contentSize >>> 32)) + "x" + (int) (contentSize & 0xFFFFFFFFL));
                         pendingResizeSize = contentSize;
                         lastContentSize = contentSize;
                         lastResizeEventTime = java.lang.System.nanoTime();
                     }
-                    if (pendingResizeSize != 0L
-                            && (java.lang.System.nanoTime() - lastResizeEventTime > 0L)) {
-                        int w = (int) (pendingResizeSize >>> 32);
-                        int h = (int) (pendingResizeSize & 0xFFFFFFFFL);
-                        vulkan.TriangleRenderer.resize(w, h);
-                        pendingResizeSize = 0L;
+                    // We consider it a live resize if the native window manager says so.
+                    boolean liveResize = window.Window.isLiveResize(windowPtr);
+                    vulkan.Renderer.liveResize = liveResize;
+
+                    // Rebuild the swapchain during live resize to update as fast as possible,
+                    // but coalesce rebuilds to at most once per ~10ms to avoid overwhelming
+                    // the Vulkan pipeline. The CAMetalLayer is pinned TopLeft so it doesn't stretch.
+                    if (pendingResizeSize != 0L) {
+                        long now = java.lang.System.nanoTime();
+                        if (!liveResize || now - lastResizeNanos > 10_000_000L) {
+                            int w = (int) (pendingResizeSize >>> 32);
+                            int h = (int) (pendingResizeSize & 0xFFFFFFFFL);
+                            vulkan.TriangleRenderer.resize(w, h);
+                            pendingResizeSize = 0L;
+                            lastResizeNanos = now;
+                        }
                     }
 
                     if (window.Window.shouldClose(windowPtr)) {
@@ -373,7 +389,7 @@ public final class DrawThread {
                 // present stays decoupled and only fires when a swapchain image
                 // is free, so draw:500 / present:60 is reachable on FIFO.
                 int cap = window.Window.getDrawCap(windowPtr);
-                if (cap > 0) {
+                if (cap > 0 && !vulkan.Renderer.liveResize) {
                     long period = 1_000_000_000L / cap;
                     long now = java.lang.System.nanoTime();
                     if (frameDeadline == 0L || frameDeadline + period < now) {
@@ -381,6 +397,8 @@ public final class DrawThread {
                     }
                     frameDeadline += period;
                     window.Window.parkUntil(frameDeadline);
+                } else if (vulkan.Renderer.liveResize) {
+                    frameDeadline = 0L;   // drag ended: next frame re-anchors the cap cleanly
                 }
                 long iterT0 = java.lang.System.nanoTime();
                 vulkan.Renderer.produceOnce();
@@ -420,8 +438,12 @@ public final class DrawThread {
                     if (windowPtr != 0L) {
                         double drawDelta = (currDraw - lastDraw);
                         double avgDrawMs = drawDelta > 0 ? (totalIterNanos / 1_000_000.0) / drawDelta : 0.0;
+                        long winSize = windowPtr != 0L ? window.Window.getContentSize(windowPtr) : 0L;
                         window.Window.publishTitle(String.format(
-                                "Window | Draw %.1f FPS (%.2f ms) | Present %.1f FPS", drawFps, avgDrawMs, presentFps));
+                                "Window | Draw %.1f FPS (%.2f ms) | win=%dx%d | %s",
+                                drawFps, avgDrawMs,
+                                (int) (winSize >>> 32), (int) (winSize & 0xFFFFFFFFL),
+                                vulkan.TriangleRenderer.dbgFbRect()));
                     }
                     fpsWindowStart = now;
                     lastDraw = currDraw;
