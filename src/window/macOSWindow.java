@@ -528,12 +528,11 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             // dragged. autoresizingMask=width|height sizable makes the layer follow the
             // view bounds; needsDisplayOnBoundsChange forces a redraw each resize tick;
             // allowsNextDrawableTimeout=false stops MoltenVK from getting a nil drawable.
-            // NOTE: presentsWithTransaction=true is deliberately NOT set here: it makes
+            // NOTE: presentsWithTransaction is deliberately NOT set here: it makes
             // presentDrawable: wait for the next CoreAnimation transaction commit, but our
-            // present thread parks without committing transactions when idle, so the frame
-            // would freeze until a resize forces AppKit to commit (black at startup, frozen
-            // animation idle). vkQueuePresentKHR already paces to vsync, so the sync CA
-            // would otherwise provide is redundant.
+            // present thread parks without committing transactions, so the frame freezes
+            // until a resize forces AppKit to commit. vkQueuePresentKHR already paces to
+            // vsync, so the sync CA would otherwise provide is redundant.
             // CAAutoresizingMask: kCALayerWidthSizable=2 | kCALayerHeightSizable=16.
             MSG_SEND_INT.invoke(metalLayer, getSel(arena, "setAutoresizingMask:"), 2L | 16L);
             MSG_SEND_BOOL.invoke(metalLayer, getSel(arena, "setNeedsDisplayOnBoundsChange:"), (byte)1);
@@ -560,24 +559,6 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, "setContentsGravity:"), gravityStr);
         } catch (Throwable t) {
             System.out.println("[macOSWindow] setSurfaceGravityTopLeft failed: " + t);
-        }
-    }
-
-    /**
-     * Toggles CAMetalLayer.presentsWithTransaction. YES only while the window is being
-     * live-resized: AppKit commits a CA transaction every resize tick, so the sync
-     * present lands on the resize transaction and no black flash can slip between our
-     * presents. When idle the present thread parks without committing transactions, so
-     * leaving it YES would stall presentDrawable: until the next resize -- frozen
-     * animation at startup/rest (presentsWithTransaction is default NO at creation).
-     */
-    public static void setPresentsWithTransaction(long pointer, boolean enabled) {
-        if (pointer == 0L || OBJC_GET_CLASS == null) return;
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment metalLayer = MemorySegment.ofAddress(pointer);
-            MSG_SEND_BOOL.invoke(metalLayer, getSel(arena, "setPresentsWithTransaction:"), enabled ? (byte)1 : (byte)0);
-        } catch (Throwable t) {
-            System.out.println("[macOSWindow] setPresentsWithTransaction failed: " + t);
         }
     }
 

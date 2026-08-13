@@ -240,21 +240,10 @@ public final class Renderer {
         presentThread = new Thread(() ->
         {
             long deadline = java.lang.System.nanoTime() + presentPeriod;
-            boolean pwtActive = false; // CAMetalLayer.presentsWithTransaction state
 
             while (presentThreadRunning && initialized)
             {
                 counterAdd(CTR_DBG_PRESENT_THREAD_LOOPS, 1L);
-                // presentsWithTransaction must be YES only while the OS is live-resizing
-                // (AppKit commits a CA transaction each resize tick, so the sync present
-                // cannot miss the frame); when idle our thread parks without committing
-                // transactions, so a stale YES would stall presentDrawable: -> frozen
-                // animation / black window at startup until the next resize event.
-                if (liveResize != pwtActive) {
-                    pwtActive = liveResize;
-                    if (initialized)
-                        window.Window.setPresentsWithTransaction(vulkan.Vulkan.getLayerPointer(), pwtActive);
-                }
                 long t0 = java.lang.System.nanoTime();
                 int status = presentOnce();
                 if (status == PRESENT_IDLE) {
