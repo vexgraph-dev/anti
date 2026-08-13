@@ -487,14 +487,11 @@ final class macOSWindow {
             MemorySegment gravityStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, getSel(arena, "initWithUTF8String:"), arena.allocateFrom("topLeft"));
             MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, "setContentsGravity:"), gravityStr);
 
-            // Retina: topLeft gravity alone pins content at the WRONG scale unless the
-            // layer's contentsScale matches the window's backing scale factor (drawable
-            // px must map 1:1 to screen px). Documented pairing (metal_live_resize crate).
-            double backing = (double) MSG_SEND_DOUBLE_RET.invoke(window, getSel(arena, "backingScaleFactor"));
-            if (backing > 0.0) {
-                MSG_SEND_PTR_DOUBLE.invoke(metalLayer, getSel(arena, "setContentsScale:"), backing);
-                System.out.println("[macOSWindow] contentsScale=" + backing);
-            }
+            // Retina is deliberately ignored: contentsScale=1 maps 1 drawable px to 1 point,
+            // so an 800x600 drawable fills an 800x600 window. We render at the window's actual
+            // resolution, not the 2x backing-inflated size; the display upscales if it must.
+            MSG_SEND_PTR_DOUBLE.invoke(metalLayer, getSel(arena, "setContentsScale:"), 1.0);
+            System.out.println("[macOSWindow] contentsScale=1 (retina ignored)");
 
             // Painted opaque behind the drawable so a frozen-surface window reveal during a
             // live drag clips to engine-dark instead of showing the desktop.
@@ -1090,22 +1087,20 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         }
     }
 
-    /** Content view size in backing pixels, packed as (width << 32) | height. 0 if unavailable. */
+    /** Content view size in our working pixel resolution, packed as (width << 32) | height. 0 if unavailable.
+     *  Retina scale is deliberately IGNORED: we render at the window's point size (e.g. an 800x600 window
+     *  is 800x600 actual pixels), not the 2x backing-inflated size. The layer contentsScale is 1 to match. */
     public static long getContentSize(long pointer) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return 0L;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
 
-            MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
-            double scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
-            if (scale <= 0.0) scale = 1.0;
-
             MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "contentView"));
             if (view == null || view.address() == 0L) return 0L;
 
             MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, view, getSel(arena, "frame"));
-            int w = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 16) * scale);
-            int h = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 24) * scale);
+            int w = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 16));
+            int h = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 24));
             if (w <= 0 || h <= 0) return 0L;
             return ((long) w << 32) | (h & 0xFFFFFFFFL);
         } catch (Throwable t) {
