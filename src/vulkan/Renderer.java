@@ -39,6 +39,14 @@ public final class Renderer {
     /** Software present cadence used to pace IMMEDIATE/uncapped present modes. */
     public static final int PRESENT_FPS = 60;
 
+    /**
+     * Set by the draw thread while the window size is changing (a live drag). While
+     * true, the present thread skips its software 60Hz park and fires presents as soon
+     * as a completed frame is available, so the swapchain chases the live window size
+     * instead of sampling it at the capped cadence.
+     */
+    public static volatile boolean liveResize;
+
     private static long queueLock; // off-heap SpinLock serializing the single GPU queue
 
     private static long commandBuffersArray;
@@ -74,6 +82,13 @@ public final class Renderer {
     private static final int CTR_DBG_BLIT_RECORD_NANOS = 11;
     private static final int CTR_COUNT = 12;
     private static long countersArray;
+
+    private static long garbageSemaphoresArray;
+    private static long garbageCommandBuffersArray;
+    private static long garbageFrameTagsArray;
+    private static int garbageHead = 0;
+    private static int garbageTail = 0;
+    private static final int MAX_GARBAGE = 1024;
 
     private static long ctrAddr(int ctr) {
         return countersArray + ctr * 8L;
@@ -126,6 +141,11 @@ public final class Renderer {
         countersArray = ForeignMemory.allocateNative(CTR_COUNT * 8L);
         queueLock = SpinLock.allocate();
         counterResetAll();
+        garbageSemaphoresArray = ForeignMemory.allocateNative(MAX_GARBAGE * 8L);
+        garbageCommandBuffersArray = ForeignMemory.allocateNative(MAX_GARBAGE * 8L);
+        garbageFrameTagsArray = ForeignMemory.allocateNative(MAX_GARBAGE * 8L);
+        garbageHead = 0;
+        garbageTail = 0;
 
         for (int i = 0; i < frameCount; i++) {
             CommandBuffer.set(commandBuffersArray, i, CommandBuffer.create(device, drawCommandPoolPtr));
@@ -139,6 +159,31 @@ public final class Renderer {
         initialized = true;
         rebuildBlitCommandBuffers(device);
         startPresentThread();
+    }
+
+    private static void pushGarbage(long sem, long cb, long retireTag) {
+        if ((garbageTail + 1) % MAX_GARBAGE == garbageHead) return;
+        int idx = garbageTail;
+        ForeignMemory.setVolatileLong(garbageSemaphoresArray + idx * 8L, sem);
+        ForeignMemory.setVolatileLong(garbageCommandBuffersArray + idx * 8L, cb);
+        ForeignMemory.setVolatileLong(garbageFrameTagsArray + idx * 8L, retireTag);
+        garbageTail = (garbageTail + 1) % MAX_GARBAGE;
+    }
+
+    private static void processGarbage(VkDevice device) {
+        long currentFrame = counterGet(CTR_DRAW_COUNT);
+        while (garbageHead != garbageTail) {
+            long tag = ForeignMemory.getVolatileLong(garbageFrameTagsArray + garbageHead * 8L);
+            if (currentFrame >= tag) {
+                long sem = ForeignMemory.getVolatileLong(garbageSemaphoresArray + garbageHead * 8L);
+                long cb = ForeignMemory.getVolatileLong(garbageCommandBuffersArray + garbageHead * 8L);
+                if (sem != 0L) Semaphore.destroy(sem, device);
+                if (cb != 0L) CommandBuffer.destroy(cb, device, blitPoolPtr);
+                garbageHead = (garbageHead + 1) % MAX_GARBAGE;
+            } else {
+                break;
+            }
+        }
     }
 
     /**
@@ -171,11 +216,18 @@ public final class Renderer {
                     // of hammering vkAcquireNextImageKHR.
                     LockSupport.parkNanos(2_000_000L);
                 }
-                // Software pace to 60Hz so IMMEDIATE presents at the display cadence.
-                deadline += presentPeriod;
-                long tPark = java.lang.System.nanoTime();
-                window.Window.parkUntil(deadline);
-                counterAdd(CTR_DBG_PRESENT_THREAD_PARK_MS, (java.lang.System.nanoTime() - tPark) / 1_000_000L);
+                // Software pace to the display cadence — UNLESS the user is actively
+                // dragging the window size, in which case fire presents immediately so
+                // the newest-size frame goes out the instant it is done (the OS is
+                // scaling the stale surface on every compositor tick meanwhile).
+                if (liveResize) {
+                    deadline = java.lang.System.nanoTime() + presentPeriod; // re-anchor pacing
+                } else {
+                    deadline += presentPeriod;
+                    long tPark = java.lang.System.nanoTime();
+                    window.Window.parkUntil(deadline);
+                    counterAdd(CTR_DBG_PRESENT_THREAD_PARK_MS, (java.lang.System.nanoTime() - tPark) / 1_000_000L);
+                }
             }
         }, "Core-Present");
         presentThread.setDaemon(true);
@@ -282,6 +334,7 @@ public final class Renderer {
     }
 
     private static int presentOnceLocked(VkDevice device) {
+        processGarbage(device);
         long latestSlotVal = 0L;
 
         /*
@@ -535,8 +588,9 @@ public final class Renderer {
             + "every present. Off the hot present path.")
     private static void rebuildBlitCommandBuffers(VkDevice device) {
         if (blitCommandBuffersArray != 0L) {
+            long retireTag = counterGet(CTR_DRAW_COUNT) + frameCount + 2;
             for (int i = 0; i < frameCount * blitImgCount; i++) {
-                CommandBuffer.destroy(CommandBuffer.get(blitCommandBuffersArray, i), device, blitPoolPtr);
+                pushGarbage(0L, CommandBuffer.get(blitCommandBuffersArray, i), retireTag);
             }
             CommandBuffer.free(blitCommandBuffersArray);
             blitCommandBuffersArray = 0L;
@@ -594,11 +648,12 @@ public final class Renderer {
         if (completedRing == 0L) return;
         VkDevice device = Vulkan.getDevice();
 
+        long retireTag = counterGet(CTR_DRAW_COUNT) + frameCount + 2;
         for (int i = 0; i < frameCount; i++) {
             long oldAvail = Semaphore.get(imageAvailableSemaphoresArray, i);
             long oldBlit = Semaphore.get(blitFinishedSemaphoresArray, i);
-            Semaphore.destroy(oldAvail, device);
-            Semaphore.destroy(oldBlit, device);
+            pushGarbage(oldAvail, 0L, retireTag);
+            pushGarbage(oldBlit, 0L, retireTag);
             Semaphore.set(imageAvailableSemaphoresArray, i, Semaphore.create(device));
             Semaphore.set(blitFinishedSemaphoresArray, i, Semaphore.create(device));
         }
@@ -644,6 +699,21 @@ public final class Renderer {
         RingBuffer.free(completedRing);
         ForeignMemory.freeNative(countersArray);
         SpinLock.free(queueLock);
+        if (garbageSemaphoresArray != 0L) {
+            while (garbageHead != garbageTail) {
+                long sem = ForeignMemory.getVolatileLong(garbageSemaphoresArray + garbageHead * 8L);
+                long cb = ForeignMemory.getVolatileLong(garbageCommandBuffersArray + garbageHead * 8L);
+                if (sem != 0L) Semaphore.destroy(sem, device);
+                if (cb != 0L) CommandBuffer.destroy(cb, device, blitPoolPtr);
+                garbageHead = (garbageHead + 1) % MAX_GARBAGE;
+            }
+            ForeignMemory.freeNative(garbageSemaphoresArray);
+            ForeignMemory.freeNative(garbageCommandBuffersArray);
+            ForeignMemory.freeNative(garbageFrameTagsArray);
+            garbageSemaphoresArray = 0L;
+            garbageCommandBuffersArray = 0L;
+            garbageFrameTagsArray = 0L;
+        }
 
         commandBuffersArray = 0L;
         blitCommandBuffersArray = 0L;
