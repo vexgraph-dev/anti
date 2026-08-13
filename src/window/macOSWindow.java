@@ -315,6 +315,14 @@ final class macOSWindow {
                 MemorySegment setCollectionBehaviorSel = getSel(arena, "setCollectionBehavior:");
                 MSG_SEND_INT.invoke(window, setCollectionBehaviorSel, 128L);
 
+                // macOS's live-resize "content preservation" caches the last-drawn
+                // content and SCALES it to the new window size during a drag — that
+                // whole-window magnification is exactly the "stretch" seen on pinned
+                // pixel content. Disable it: during live resize the window shows only
+                // what we actually draw (pinned/clipped), never a scaled snapshot.
+                MemorySegment setPreservesContentSel = getSel(arena, "setPreservesContentDuringLiveResize:");
+                MSG_SEND_BOOL.invoke(window, setPreservesContentSel, (byte)0);
+
                 MemorySegment centerSel = getSel(arena, "center");
                 MSG_SEND_VOID.invoke(window, centerSel);
                 
@@ -469,18 +477,129 @@ final class macOSWindow {
             MemorySegment layerAlloc = (MemorySegment) MSG_SEND_PTR.invoke(caMetalLayerClass, allocSel);
             MemorySegment metalLayer = (MemorySegment) MSG_SEND_PTR.invoke(layerAlloc, initSel);
             
-            MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
+            // Pin the layer's drawable to native size anchored top-left instead of the
+            // CAMetalLayer default (kCAGravityResizeAspect). When the window outruns our
+            // presents during a live drag, the OS would otherwise SCALE the last stale
+            // drawable to the new layer bounds — that scale is the whole-frame "stretch"
+            // seen on pixel content. TopLeft keeps every pixel where the frame drew it.
+            MemorySegment nsStringClass = getObjcClass(arena, "NSString");
+            MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, getSel(arena, "alloc"));
+            MemorySegment gravityStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, getSel(arena, "initWithUTF8String:"), arena.allocateFrom("topLeft"));
+            MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, "setContentsGravity:"), gravityStr);
+
+            // Retina: topLeft gravity alone pins content at the WRONG scale unless the
+            // layer's contentsScale matches the window's backing scale factor (drawable
+            // px must map 1:1 to screen px). Documented pairing (metal_live_resize crate).
+            double backing = (double) MSG_SEND_DOUBLE_RET.invoke(window, getSel(arena, "backingScaleFactor"));
+            if (backing > 0.0) {
+                MSG_SEND_PTR_DOUBLE.invoke(metalLayer, getSel(arena, "setContentsScale:"), backing);
+                System.out.println("[macOSWindow] contentsScale=" + backing);
+            }
+
+            // Painted opaque behind the drawable so a frozen-surface window reveal during a
+            // live drag clips to engine-dark instead of showing the desktop.
+            try {
+                MemorySegment nsColorClass = getObjcClass(arena, "NSColor");
+                MemorySegment blackColor = (MemorySegment) MSG_SEND_PTR.invoke(nsColorClass, getSel(arena, "blackColor"));
+                MemorySegment cgColor = (MemorySegment) MSG_SEND_PTR.invoke(blackColor, getSel(arena, "CGColor"));
+                MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, "setBackgroundColor:"), cgColor);
+            } catch (Throwable t) {
+                System.out.println("[macOSWindow] backing layer background color not set: " + t);
+            }
+
+MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             MSG_SEND_BOOL.invoke(view, setWantsLayerSel, (byte)1);
-            
+
             MemorySegment setLayerSel = getSel(arena, "setLayer:");
             MSG_SEND_PTR_PTR.invoke(view, setLayerSel, metalLayer);
-            
+
+            // Tell the VIEW how to place its layer while the window live-resizes. On a
+            // layer-backed view AppKit manages the layer during a drag and its default
+            // placement (ScaleAxesIndependently = 0) stretches stale frames. Forcing
+            // NSViewLayerContentsPlacementTopLeft = 11 keeps the pinned content at the
+            // top-left at native scale, never scaling it to the new bounds.
+            MemorySegment setPlacementSel = getSel(arena, "setLayerContentsPlacement:");
+            MSG_SEND_INT.invoke(view, setPlacementSel, 11L);
+
+            // glitchless-resize recipe (thume.ca / CAMetalLayer live-resize): without these
+            // the layer does not track the view during a drag, AppKit can time out a
+            // drawable acquisition, and presents race the CA transaction -- all of which
+            // manifest as a BLACK FLASH between our presents while the window is being
+            // dragged. autoresizingMask=width|height sizable makes the layer follow the
+            // view bounds; needsDisplayOnBoundsChange forces a redraw each resize tick;
+            // allowsNextDrawableTimeout=false stops MoltenVK from getting a nil drawable.
+            // NOTE: presentsWithTransaction=true is deliberately NOT set here: it makes
+            // presentDrawable: wait for the next CoreAnimation transaction commit, but our
+            // present thread parks without committing transactions when idle, so the frame
+            // would freeze until a resize forces AppKit to commit (black at startup, frozen
+            // animation idle). vkQueuePresentKHR already paces to vsync, so the sync CA
+            // would otherwise provide is redundant.
+            // CAAutoresizingMask: kCALayerWidthSizable=2 | kCALayerHeightSizable=16.
+            MSG_SEND_INT.invoke(metalLayer, getSel(arena, "setAutoresizingMask:"), 2L | 16L);
+            MSG_SEND_BOOL.invoke(metalLayer, getSel(arena, "setNeedsDisplayOnBoundsChange:"), (byte)1);
+            MSG_SEND_BOOL.invoke(metalLayer, getSel(arena, "setAllowsNextDrawableTimeout:"), (byte)0);
+
+            // NSViewLayerContentsRedrawDuringViewResize = 2: keep the view's layer being
+            // repainted on every resize tick instead of the default (never) which lets
+            // AppKit leave the layer stale/black mid-drag.
+            MSG_SEND_INT.invoke(view, getSel(arena, "setLayerContentsRedrawPolicy:"), 2L);
+
             return metalLayer.address();
         } catch (Throwable t) {
             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
         }
     }
 
+    public static void setSurfaceGravityTopLeft(long pointer) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment metalLayer = MemorySegment.ofAddress(pointer);
+            MemorySegment nsStringClass = getObjcClass(arena, "NSString");
+            MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, getSel(arena, "alloc"));
+            MemorySegment gravityStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, getSel(arena, "initWithUTF8String:"), arena.allocateFrom("topLeft"));
+            MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, "setContentsGravity:"), gravityStr);
+        } catch (Throwable t) {
+            System.out.println("[macOSWindow] setSurfaceGravityTopLeft failed: " + t);
+        }
+    }
+
+    /**
+     * Toggles CAMetalLayer.presentsWithTransaction. YES only while the window is being
+     * live-resized: AppKit commits a CA transaction every resize tick, so the sync
+     * present lands on the resize transaction and no black flash can slip between our
+     * presents. When idle the present thread parks without committing transactions, so
+     * leaving it YES would stall presentDrawable: until the next resize -- frozen
+     * animation at startup/rest (presentsWithTransaction is default NO at creation).
+     */
+    public static void setPresentsWithTransaction(long pointer, boolean enabled) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment metalLayer = MemorySegment.ofAddress(pointer);
+            MSG_SEND_BOOL.invoke(metalLayer, getSel(arena, "setPresentsWithTransaction:"), enabled ? (byte)1 : (byte)0);
+        } catch (Throwable t) {
+            System.out.println("[macOSWindow] setPresentsWithTransaction failed: " + t);
+        }
+    }
+
+    /**
+     * Syncs the CAMetalLayer drawableSize to the swapchain extent in backing pixels.
+     * MoltenVK sets it during vkCreateSwapchainKHR, but during a live drag the window
+     * keeps outrunning it; explicitly matching it right after swapchain recreation is
+     * the documented fix for black/blank frames while resizing (MoltenVK #2226).
+     */
+    public static void setDrawableSize(long pointer, int width, int height) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment metalLayer = MemorySegment.ofAddress(pointer);
+            MemorySegment size = arena.allocate(CG_SIZE);
+            size.set(ValueLayout.JAVA_DOUBLE, 0, width);
+            size.set(ValueLayout.JAVA_DOUBLE, 8, height);
+            MSG_SEND_PTR_SIZE.invoke(metalLayer, getSel(arena, "setDrawableSize:"), size);
+        } catch (Throwable t) {
+            System.out.println("[macOSWindow] setDrawableSize failed: " + t);
+        }
+    }
+    
     public static void setFullscreen(long pointer, boolean fullscreen) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
@@ -792,6 +911,18 @@ final class macOSWindow {
         }
     }
 
+    public static boolean isLiveResize(long pointer) {
+        if (pointer == 0L || OBJC_GET_CLASS == null) return false;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            MemorySegment inLiveResizeSel = getSel(arena, "inLiveResize");
+            byte inLiveResize = (byte) MSG_SEND_BOOL_RET.invoke(window, inLiveResizeSel);
+            return inLiveResize != 0;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public static boolean isFullscreen(long pointer) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return false;
         try (Arena arena = Arena.ofConfined()) {
@@ -988,26 +1119,6 @@ final class macOSWindow {
             double scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
             if (scale <= 0.0) scale = 1.0;
 
-            long nativeScreen = getScreenBackingSize();
-            if (nativeScreen != 0L) {
-                int nativeW = (int) (nativeScreen >>> 32);
-                int nativeH = (int) nativeScreen;
-                MemorySegment screen = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "screen"));
-                if (screen != null && screen.address() != 0L) {
-                    MemorySegment screenRect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, screen, getSel(arena, "frame"));
-                    double screenPtsW = screenRect.get(ValueLayout.JAVA_DOUBLE, 16);
-                    double screenPtsH = screenRect.get(ValueLayout.JAVA_DOUBLE, 24);
-                    if (screenPtsW > 0 && screenPtsH > 0) {
-                        double virtualW = screenPtsW * scale;
-                        double virtualH = screenPtsH * scale;
-                        if (virtualW > nativeW || virtualH > nativeH) {
-                            double minRatio = Math.min(nativeW / virtualW, nativeH / virtualH);
-                            scale *= minRatio;
-                        }
-                    }
-                }
-            }
-
             MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "contentView"));
             if (view == null || view.address() == 0L) return 0L;
 
@@ -1027,11 +1138,25 @@ final class macOSWindow {
             + "which overshoots on scaled Retina panels (3274x2048 on a 2408x1506 MacBook) and bloated the "
             + "offscreen render targets. §12.4 known bug, fixed.")
     public static long getScreenBackingSize() {
-        if (CG_MAIN_DISPLAY_ID == null || CG_DISPLAY_PIXELS_WIDE == null || CG_DISPLAY_PIXELS_HIGH == null) return 0L;
-        try {
-            int mainDisplayId = (int) CG_MAIN_DISPLAY_ID.invoke();
-            long w = (long) CG_DISPLAY_PIXELS_WIDE.invoke(mainDisplayId);
-            long h = (long) CG_DISPLAY_PIXELS_HIGH.invoke(mainDisplayId);
+        if (OBJC_GET_CLASS == null) return 0L;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
+            MemorySegment mainScreenSel = getSel(arena, "mainScreen");
+            MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, mainScreenSel);
+            if (mainScreen == null || mainScreen.address() == 0L) return 0L;
+            
+            MemorySegment frameSel = getSel(arena, "frame");
+            MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, frameSel);
+            double ptsW = rect.get(ValueLayout.JAVA_DOUBLE, 16);
+            double ptsH = rect.get(ValueLayout.JAVA_DOUBLE, 24);
+            
+            MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+            double scale = (double) MSG_SEND_DOUBLE_RET.invoke(mainScreen, backingScaleFactorSel);
+            if (scale <= 0.0) scale = 1.0;
+            
+            long w = Math.round(ptsW * scale);
+            long h = Math.round(ptsH * scale);
+            
             if (w > 0 && h > 0) {
                 return (w << 32) | (h & 0xFFFFFFFFL);
             }

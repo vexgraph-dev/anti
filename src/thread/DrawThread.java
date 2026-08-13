@@ -317,9 +317,6 @@ public final class DrawThread {
         long lastContentSize = ((long)swapW << 32) | (swapH & 0xFFFFFFFFL);
         boolean lastFullscreen = windowPtr != 0L && Window.isFullscreen(windowPtr);
         int basePresentMode = isCore(workerPtr) ? vulkan.Vulkan.getPresentMode() : org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_FIFO_KHR;
-        long pendingResizeSize = 0L;
-        long lastResizeEventTime = 0L;
-        long lastResizeNanos = 0L; // coalesce gate: at most one swapchain rebuild per ~10ms
 
         long fpsWindowStart = java.lang.System.nanoTime();
         long lastDraw = 0L, lastPresent = 0L;
@@ -352,22 +349,15 @@ public final class DrawThread {
                     if (contentSize != lastContentSize && contentSize != 0L) {
                         System.out.println("[window] resize event: "
                                 + ((int) (contentSize >>> 32)) + "x" + (int) (contentSize & 0xFFFFFFFFL));
-                        pendingResizeSize = contentSize;
+                        // Publish the requested size; the present thread rebuilds the
+                        // swapchain inline between presents (deferred destruction). The
+                        // draw thread never blocks on resize.
+                        vulkan.Renderer.requestResize((int) (contentSize >>> 32), (int) (contentSize & 0xFFFFFFFFL));
                         lastContentSize = contentSize;
-                        lastResizeEventTime = java.lang.System.nanoTime();
                     }
                     // We consider it a live resize if the native window manager says so.
                     boolean liveResize = window.Window.isLiveResize(windowPtr);
                     vulkan.Renderer.liveResize = liveResize;
-
-                    // Rebuild the swapchain immediately during live resize to update as fast as possible.
-                    // The CAMetalLayer is pinned TopLeft so it doesn't stretch.
-                    if (pendingResizeSize != 0L) {
-                        int w = (int) (pendingResizeSize >>> 32);
-                        int h = (int) (pendingResizeSize & 0xFFFFFFFFL);
-                        vulkan.TriangleRenderer.resize(w, h);
-                        pendingResizeSize = 0L;
-                    }
 
                     if (window.Window.shouldClose(windowPtr)) {
                         ForeignMemory.setInt(workerPtr, 0); // window gone: self-stop

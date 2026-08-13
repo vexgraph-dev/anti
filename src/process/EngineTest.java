@@ -13,7 +13,9 @@ public class EngineTest {
 
         io.LogKind.registerNames();
         System.out.println("Starting Engine Window Test...");
-        long windowPtr = Window.allocate("Engine", 800, 600);
+        int bootW = Integer.parseInt(System.getProperty("anti.w", "800"));
+        int bootH = Integer.parseInt(System.getProperty("anti.h", "600"));
+        long windowPtr = Window.allocate("Engine", bootW, bootH);
         System.out.println("Window spawned at: " + windowPtr);
         Window.setTargetFps(60);
         Window.setUndecorated(windowPtr, Window.DECORATED);
@@ -43,7 +45,7 @@ public class EngineTest {
 
 
         // Setup vulkan (which inherently spawns the DrawThread and binds to the surface)
-        vulkan.Vulkan.initVulkan(surfacePtr, 800, 600, bootPresentMode);
+        vulkan.Vulkan.initVulkan(surfacePtr, bootW, bootH, bootPresentMode);
         vulkan.TriangleRenderer.init();
 
         // @Draft picture demo (pending review): Image asset + darling.Picture node.

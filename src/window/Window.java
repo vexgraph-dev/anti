@@ -287,6 +287,26 @@ public final class Window {
     /**
      * Toggles fullscreen mode for the window.
      */
+    public static void setSurfaceGravityTopLeft(long surfacePtr) {
+        if (IS_MAC) {
+            macOSWindow.setSurfaceGravityTopLeft(surfacePtr);
+        }
+    }
+
+    /** Syncs the CAMetalLayer drawableSize to the swapchain extent (MoltenVK #2226 live-resize fix). */
+    public static void setDrawableSize(long surfacePtr, int width, int height) {
+        if (IS_MAC) {
+            macOSWindow.setDrawableSize(surfacePtr, width, height);
+        }
+    }
+
+    /** CAMetalLayer presentsWithTransaction toggle (YES only during live resize). */
+    public static void setPresentsWithTransaction(long surfacePtr, boolean enabled) {
+        if (IS_MAC) {
+            macOSWindow.setPresentsWithTransaction(surfacePtr, enabled);
+        }
+    }
+
     public static void setFullscreen(long pointer, boolean fullscreen) {
         if (IS_MAC) {
             macOSWindow.setFullscreen(pointer, fullscreen);
@@ -402,6 +422,11 @@ public final class Window {
 
     public static boolean isFullscreen(long pointer) {
         if (IS_MAC) return macOSWindow.isFullscreen(pointer);
+        return false;
+    }
+
+    public static boolean isLiveResize(long pointer) {
+        if (IS_MAC) return macOSWindow.isLiveResize(pointer);
         return false;
     }
 

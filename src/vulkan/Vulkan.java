@@ -216,6 +216,11 @@ public final class Vulkan {
         window.Window.setDisplaySyncEnabled(layerPointer, synced);
     }
 
+    /** CAMetalLayer handle for the present thread's presentsWithTransaction toggle. */
+    public static long getLayerPointer() {
+        return layerPointer;
+    }
+
     private static void initInstance(MemoryStack stack) {
         // VK_EXT_debug_utils may be advertised by the validation layer rather than
         // by the bare loader, so do not reject the layer based on global extension
@@ -544,6 +549,10 @@ public final class Vulkan {
         
         if (layerPointer != 0L) {
             window.Window.setSurfaceGravityTopLeft(layerPointer);
+            // Keep the CAMetalLayer drawableSize exactly matched to the swapchain extent
+            // after every (re)creation; a mismatch mid-drag presents a black/blank frame
+            // on macOS (MoltenVK #2226).
+            window.Window.setDrawableSize(layerPointer, width, height);
         }
 
         // The new swapchain has taken over the surface; defer destruction of the old handle.
