@@ -546,9 +546,9 @@ public final class Vulkan {
             window.Window.setSurfaceGravityTopLeft(layerPointer);
         }
 
-        // The new swapchain has taken over the surface; only now free the old handle.
+        // The new swapchain has taken over the surface; defer destruction of the old handle.
         if (oldSwapchain != VK_NULL_HANDLE) {
-            vkDestroySwapchainKHR(device, oldSwapchain, null);
+            Renderer.pushGarbageSwapchain(oldSwapchain);
         }
 
         java.nio.IntBuffer pImageCount = stack.mallocInt(1);
