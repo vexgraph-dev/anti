@@ -47,6 +47,26 @@ public final class Renderer {
      */
     public static volatile boolean liveResize;
 
+    /**
+     * Packed (w&lt;&lt;32)|h requested by the draw thread when the window content size
+     * changed; 0 = none. Written by the draw thread, consumed by the present thread
+     * at the top of presentOnceLocked, which owns the swapchain rebuild. Volatile so
+     * the write is visible without the draw thread ever blocking on swapchain work.
+     */
+    public static volatile long pendingResize;
+
+    /**
+     * Set when acquire or present returns OUT_OF_DATE/SUBOPTIMAL so the present
+     * thread rebuilds the swapchain on its next iteration instead of dropping
+     * frames against a stale chain forever (the "stuck black" bug).
+     */
+    private static volatile boolean swapchainInvalidated;
+
+    /** Publishes a swapchain resize request. The present thread performs the rebuild. */
+    public static void requestResize(int w, int h) {
+        pendingResize = ((long) w << 32) | (h & 0xFFFFFFFFL);
+    }
+
     private static long queueLock; // off-heap SpinLock serializing the single GPU queue
 
     private static long commandBuffersArray;
@@ -176,7 +196,9 @@ public final class Renderer {
     public static void pushGarbageSwapchain(long swapchain) {
         if ((garbageTail + 1) % MAX_GARBAGE == garbageHead) return;
         int idx = garbageTail;
-        long retireTag = counterGet(CTR_DRAW_COUNT) + frameCount + 2;
+        // Retire by PRESENT count: the old swapchain may still be referenced by the
+        // presentation engine, and presents complete at display rate (not draw rate).
+        long retireTag = counterGet(CTR_PRESENT_COUNT) + frameCount + 2;
         ForeignMemory.setVolatileLong(garbageSemaphoresArray + idx * 8L, 0L);
         ForeignMemory.setVolatileLong(garbageCommandBuffersArray + idx * 8L, 0L);
         ForeignMemory.setVolatileLong(garbageSwapchainsArray + idx * 8L, swapchain);
@@ -185,7 +207,7 @@ public final class Renderer {
     }
 
     private static void processGarbage(VkDevice device) {
-        long currentFrame = counterGet(CTR_DRAW_COUNT);
+        long currentFrame = counterGet(CTR_PRESENT_COUNT);
         while (garbageHead != garbageTail) {
             long tag = ForeignMemory.getVolatileLong(garbageFrameTagsArray + garbageHead * 8L);
             if (currentFrame >= tag) {
@@ -218,10 +240,21 @@ public final class Renderer {
         presentThread = new Thread(() ->
         {
             long deadline = java.lang.System.nanoTime() + presentPeriod;
+            boolean pwtActive = false; // CAMetalLayer.presentsWithTransaction state
 
             while (presentThreadRunning && initialized)
             {
                 counterAdd(CTR_DBG_PRESENT_THREAD_LOOPS, 1L);
+                // presentsWithTransaction must be YES only while the OS is live-resizing
+                // (AppKit commits a CA transaction each resize tick, so the sync present
+                // cannot miss the frame); when idle our thread parks without committing
+                // transactions, so a stale YES would stall presentDrawable: -> frozen
+                // animation / black window at startup until the next resize event.
+                if (liveResize != pwtActive) {
+                    pwtActive = liveResize;
+                    if (initialized)
+                        window.Window.setPresentsWithTransaction(vulkan.Vulkan.getLayerPointer(), pwtActive);
+                }
                 long t0 = java.lang.System.nanoTime();
                 int status = presentOnce();
                 if (status == PRESENT_IDLE) {
@@ -350,6 +383,31 @@ public final class Renderer {
     }
 
     private static int presentOnceLocked(VkDevice device) {
+        // Recreate-and-check: the present thread is the ONLY consumer of the swapchain
+        // (images, blit CBs, acquire/present semaphores), so the swapchain rebuild can
+        // happen inline here between presents with zero cross-thread coordination.
+        // Consume a draw-thread resize request and/or an OUT_OF_DATE/SUBOPTIMAL flag.
+        long resize = pendingResize;
+        boolean invalidated = swapchainInvalidated;
+        if (resize != 0L || invalidated) {
+            pendingResize = 0L;
+            swapchainInvalidated = false;
+            int w = (int) (resize >>> 32);
+            int h = (int) (resize & 0xFFFFFFFFL);
+            if (resize == 0L) {
+                // Invalidated without an explicit size: rebuild at the current extent.
+                w = Vulkan.getSwapchainWidth();
+                h = Vulkan.getSwapchainHeight();
+            }
+            if (w == Vulkan.getSwapchainWidth() && h == Vulkan.getSwapchainHeight() && !invalidated) {
+                // Size already matches: nothing to rebuild.
+                resize = 0L;
+            } else {
+                Vulkan.resizeSwapchain(w, h);
+                resetInFlight();
+            }
+        }
+
         processGarbage(device);
         long latestSlotVal = 0L;
 
@@ -420,6 +478,10 @@ public final class Renderer {
                     droppedFrames[slot] = true;
                     Log.append(LogKind.RENDER_DROPPED, slot, 1L);
                     slotSemaphore.release();
+                    // Do NOT retry this stale swapchain forever — that is the "stuck
+                    // black" bug. Flag the rebuild; the next presentOnce iteration
+                    // recreates the swapchain at the top of presentOnceLocked.
+                    swapchainInvalidated = true;
                     return PRESENT_RETRY;
                 }
                 if (acquireResult == VK_NOT_READY || acquireResult == VK_TIMEOUT) {
@@ -471,6 +533,11 @@ public final class Renderer {
                     counterAdd(CTR_DBG_PRESENT_CALL_NANOS, java.lang.System.nanoTime() - tP0);
                     if (pres != VK_SUCCESS && pres != VK_SUBOPTIMAL_KHR && pres != VK_ERROR_OUT_OF_DATE_KHR) {
                         throw new IllegalStateException("present: present failed: " + pres);
+                    }
+                    // The frame was presented, but the surface has moved on: rebuild the
+                    // swapchain on the next present iteration to stop chasing a stale chain.
+                    if (pres == VK_ERROR_OUT_OF_DATE_KHR || pres == VK_SUBOPTIMAL_KHR) {
+                        swapchainInvalidated = true;
                     }
                 } finally {
                     unlockQueue();
@@ -604,7 +671,7 @@ public final class Renderer {
             + "every present. Off the hot present path.")
     private static void rebuildBlitCommandBuffers(VkDevice device) {
         if (blitCommandBuffersArray != 0L) {
-            long retireTag = counterGet(CTR_DRAW_COUNT) + frameCount + 2;
+            long retireTag = counterGet(CTR_PRESENT_COUNT) + frameCount + 2;
             for (int i = 0; i < frameCount * blitImgCount; i++) {
                 pushGarbage(0L, CommandBuffer.get(blitCommandBuffersArray, i), retireTag);
             }
@@ -664,13 +731,22 @@ public final class Renderer {
         if (completedRing == 0L) return;
         VkDevice device = Vulkan.getDevice();
 
-        long retireTag = counterGet(CTR_DRAW_COUNT) + frameCount + 2;
+        long retireTag = counterGet(CTR_PRESENT_COUNT) + frameCount + 2;
+        // blitFinished is indexed by SWAPCHAIN IMAGE index; if a resize grew the image
+        // count past the init-time array, expand before recreating entries so the
+        // present thread never indexes out of bounds.
+        int needBlit = Math.max(frameCount, Math.max(1, Vulkan.getSwapchainImageCount()));
+        if (Semaphore.length(blitFinishedSemaphoresArray) < needBlit) {
+            blitFinishedSemaphoresArray = Semaphore.expandArray(blitFinishedSemaphoresArray, needBlit);
+        }
         for (int i = 0; i < frameCount; i++) {
             long oldAvail = Semaphore.get(imageAvailableSemaphoresArray, i);
-            long oldBlit = Semaphore.get(blitFinishedSemaphoresArray, i);
             pushGarbage(oldAvail, 0L, retireTag);
-            pushGarbage(oldBlit, 0L, retireTag);
             Semaphore.set(imageAvailableSemaphoresArray, i, Semaphore.create(device));
+        }
+        for (int i = 0; i < needBlit; i++) {
+            long oldBlit = Semaphore.get(blitFinishedSemaphoresArray, i);
+            pushGarbage(oldBlit, 0L, retireTag);
             Semaphore.set(blitFinishedSemaphoresArray, i, Semaphore.create(device));
         }
 
@@ -690,6 +766,9 @@ public final class Renderer {
             Fence.destroy(Fence.get(drawFencesArray, i), device);
             Fence.destroy(Fence.get(releasedFencesArray, i), device);
             Semaphore.destroy(Semaphore.get(imageAvailableSemaphoresArray, i), device);
+        }
+        int blitDestroyCount = Math.max(frameCount, Math.max(1, Vulkan.getSwapchainImageCount()));
+        for (int i = 0; i < blitDestroyCount; i++) {
             Semaphore.destroy(Semaphore.get(blitFinishedSemaphoresArray, i), device);
         }
         destroyBlitCommandBuffers(device);

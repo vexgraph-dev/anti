@@ -95,7 +95,7 @@ if [ "$1" == "--native" ]; then
         --initialize-at-run-time=nio.ForeignMemory \
         -H:IncludeResources='vulkan/spv/.*\.spv' \
         -Dmac.firstThread=true \
-        process.EngineTest \
+ process.EngineTest \
         AntiEngine
 
     echo "[run.sh] Build complete! Run it with: ./AntiEngine"
