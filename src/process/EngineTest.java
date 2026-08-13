@@ -46,6 +46,16 @@ public class EngineTest {
 
         // Setup vulkan (which inherently spawns the DrawThread and binds to the surface)
         vulkan.Vulkan.initVulkan(surfacePtr, bootW, bootH, bootPresentMode);
+
+        // Scene root: a darling.Scene2D whose FIXED virtual size is the offscreen
+        // render target. The present pass scales the scene into the real window, so
+        // resizing never re-creates the render target or re-renders the scene.
+        // Background color lives on the Panel payload (0xAARRGGBB) and becomes the
+        // render-pass clear color.
+        long scenePtr = darling.Scene2D.allocate();
+        darling.Scene2D.setSize(scenePtr, 800f, 600f);
+        darling.Scene2D.setBackgroundColor(scenePtr, 0xFF000000);
+        vulkan.TriangleRenderer.setScene(scenePtr);
         vulkan.TriangleRenderer.init();
 
         // @Draft picture demo (pending review): Image asset + darling.Picture node.
