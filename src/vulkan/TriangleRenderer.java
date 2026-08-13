@@ -81,6 +81,13 @@ public final class TriangleRenderer {
     // record and pushed to the image_quad shader (pinned once, never per-frame).
     private static long canvasProj;
 
+    // The active scene root (a darling.Scene / Scene2D / Scene3D node). Its
+    // virtual size drives the offscreen render target and its background color
+    // is the render-pass clear color; the present pass scales the offscreen
+    // into the real window, so scene re-rendering is decoupled from window
+    // resize. 0 = no scene set (fall back to screen backing size).
+    private static long sceneNode;
+
     private TriangleRenderer() {}
 
     public static void init() {
@@ -157,18 +164,39 @@ public final class TriangleRenderer {
                 ? (image.Image.getWidth(imagePtr) + "x" + image.Image.getHeight(imagePtr)) : "none"));
     }
 
+    /**
+     * Binds the active scene root. Its virtual size drives the offscreen render
+     * target (fixed resolution the scene renders into) and its background color
+     * is the render-pass clear color. Must be called before init() so the
+     * offscreen attachments are sized to the scene.
+     */
+    public static void setScene(long scenePtr) {
+        if (scenePtr == 0L) throw new IllegalArgumentException("Scene pointer must not be NULL");
+        sceneNode = scenePtr;
+        System.out.println("Scene node set: class=" + darling.Scene.classId(scenePtr)
+                + " virtual=" + darling.Scene.getVirtualWidth(scenePtr) + "x"
+                + darling.Scene.getVirtualHeight(scenePtr));
+    }
+
     /** Creates off-screen color images and framebuffers the draw thread renders into. */
     private static void createOffscreenAttachments(VkDevice device) {
         offscreenImageCount = Math.max(Vulkan.getSwapchainImageCount(), Renderer.MAX_FRAMES_IN_FLIGHT);
         int format = Vulkan.getSwapchainFormat();
 
-        // Render into a FIXED max-resolution buffer (the main screen in backing pixels),
-        // not the swapchain size. The present pass scales this into whatever the window
-        // currently occupies, so window/fullscreen resizes never re-create the render
-        // targets (the viewport must NOT be derived from the swapchain extent).
-        long screenSize = window.Window.getScreenBackingSize();
-        int w = (int) (screenSize >>> 32);
-        int h = (int) (screenSize & 0xFFFFFFFFL);
+        // Render into the scene's FIXED virtual resolution, not the swapchain size.
+        // The present pass scales this into whatever the window currently occupies,
+        // so window/fullscreen resizes never re-create the render targets (the
+        // viewport must NOT be derived from the swapchain extent).
+        int w;
+        int h;
+        if (sceneNode != 0L && darling.Scene.getVirtualWidth(sceneNode) > 0f) {
+            w = (int) darling.Scene.getVirtualWidth(sceneNode);
+            h = (int) darling.Scene.getVirtualHeight(sceneNode);
+        } else {
+            long screenSize = window.Window.getScreenBackingSize();
+            w = (int) (screenSize >>> 32);
+            h = (int) (screenSize & 0xFFFFFFFFL);
+        }
         if (w <= 0 || h <= 0) {
             w = Vulkan.getSwapchainWidth();
             h = Vulkan.getSwapchainHeight();
@@ -222,6 +250,18 @@ public final class TriangleRenderer {
 
     public static int getOffscreenHeight() {
         return offscreenHeight;
+    }
+
+    /** Mapping mode of the active scene node (MODE_STRETCH/FIT/PIXEL); 0 = STRETCH when no scene. */
+    public static int getSceneMode() {
+        if (sceneNode == 0L) return darling.Scene.MODE_STRETCH;
+        return darling.Scene.getMode(sceneNode);
+    }
+
+    /** Background color (0xAARRGGBB) of the active scene node; 0 = clear when no scene. */
+    public static int getSceneBackground() {
+        if (sceneNode == 0L) return 0;
+        return darling.Scene.getBackgroundColor(sceneNode);
     }
 
     /**
@@ -539,18 +579,29 @@ public final class TriangleRenderer {
         // gradient + bouncing triangle.
         float bgTime = staticBackground ? 0f : time;
 
-        int currentW = Vulkan.getSwapchainWidth();
-        int currentH = Vulkan.getSwapchainHeight();
-        
+        int currentW = offscreenWidth;
+        int currentH = offscreenHeight;
+
+        // Scene background (0xAARRGGBB from the Panel payload) becomes the clear
+        // color; the scene is the fixed-res render target, so the clear is scene
+        // size, not window size. The offscreen image is B8G8R8A8 (same as the
+        // swapchain), so clear components must be written in BGRA surface order:
+        // float32(0)=B, (1)=G, (2)=R, (3)=A.
+        int bg = sceneNode != 0L ? darling.Scene.getBackgroundColor(sceneNode) : 0;
+        float bgB = (bg & 0xFF) / 255f;
+        float bgG = ((bg >>> 8) & 0xFF) / 255f;
+        float bgR = ((bg >>> 16) & 0xFF) / 255f;
+        float bgA = ((bg >>> 24) & 0xFF) / 255f;
+
         try (
                 MemoryStack stack = MemoryStack.stackPush();
                 VkClearValue.Buffer clearValues = VkClearValue.calloc(1, stack);
                 VkClearColorValue clearColorValue0 = clearValues.get(0).color()
-                        // background color for the window (in RGBA)
-                        .float32(0, 0f)
-                        .float32(1, 0f)
-                        .float32(2, 0f)
-                        .float32(3, 0.0f);
+                        // background color for the window (in BGRA surface order)
+                        .float32(0, bgB)
+                        .float32(1, bgG)
+                        .float32(2, bgR)
+                        .float32(3, bgA);
 
                 // Only shade the portion of the pinned framebuffer that actually matches
                 // the current swapchain size! This prevents rendering 6M pixels for an 800x600 window.
