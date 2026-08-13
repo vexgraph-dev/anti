@@ -197,7 +197,7 @@ public final class Vulkan {
     /** Recreates the swapchain at a new size, keeping the current present mode. Must be called with the device idle and free attachments first. */
     public static void resizeSwapchain(int width, int height) {
         if (device == null) return;
-        vkDeviceWaitIdle(device);
+        // vkDeviceWaitIdle(device); // REMOVED FOR SEAMLESS LIVE RESIZE
         try (MemoryStack stack = MemoryStack.stackPush()) {
             if (swapchainImages != 0L) {
                 Long.free(swapchainImages);
@@ -541,6 +541,10 @@ public final class Vulkan {
             throw new RuntimeException("Failed to create Swapchain.");
         }
         swapchain = pSwapchain.get(0);
+        
+        if (layerPointer != 0L) {
+            window.Window.setSurfaceGravityTopLeft(layerPointer);
+        }
 
         // The new swapchain has taken over the surface; only now free the old handle.
         if (oldSwapchain != VK_NULL_HANDLE) {
