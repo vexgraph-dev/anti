@@ -62,6 +62,7 @@ public final class TriangleRenderer {
     private static int offscreenWidth;
     private static int offscreenHeight;
     private static boolean initialized;
+    private static final boolean staticBackground = System.getProperty("anti.static") != null;
     private static int offscreenImageCount;
 
     // --- TEXTURED PICTURE (@Draft, pending review) ---
@@ -256,7 +257,7 @@ public final class TriangleRenderer {
         Renderer.pauseProducer();
         Renderer.pausePresent();
         try {
-            vkDeviceWaitIdle(device);
+            // vkDeviceWaitIdle(device); // REMOVED FOR SEAMLESS LIVE RESIZE
             Vulkan.resizeSwapchain(width, height);
             Renderer.resetInFlight();
             System.out.println("TriangleRenderer resized to " + width + "x" + height
@@ -503,11 +504,40 @@ public final class TriangleRenderer {
         recordCommandBuffer(Renderer.getCommandBuffer(slot), slot, time);
     }
 
+    private static int lastLoggedW = -1, lastLoggedH = -1;
+    private static float lastLoggedRectX, lastLoggedRectY, lastLoggedRectRW, lastLoggedRectRH;
+
+    /** Debug: prints once whenever the framebuffer size or resolved picture rect changes. */
+    private static void logResizeIfChanged(int fbW, int fbH, long rect) {
+        float rx = Vec4.getX(rect), ry = Vec4.getY(rect), rw = Vec4.getZ(rect), rh = Vec4.getW(rect);
+        if (fbW != lastLoggedW || fbH != lastLoggedH
+                || rx != lastLoggedRectX || ry != lastLoggedRectY
+                || rw != lastLoggedRectRW || rh != lastLoggedRectRH) {
+            System.out.println("[resize] fb=" + fbW + "x" + fbH
+                    + " rect=(" + rx + "," + ry + "," + rw + "," + rh + ")");
+            lastLoggedW = fbW; lastLoggedH = fbH;
+            lastLoggedRectX = rx; lastLoggedRectY = ry;
+            lastLoggedRectRW = rw; lastLoggedRectRH = rh;
+        }
+    }
+
+    /** Debug: one-line fb size + resolved picture rect for the window-title readout. */
+    public static String dbgFbRect() {
+        return "fb=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight()
+                + " rect=(" + lastLoggedRectX + "," + lastLoggedRectY + ","
+                + lastLoggedRectRW + "," + lastLoggedRectRH + ")";
+    }
+
     static void recordCommandBuffer(long commandBuffer, int imageIndex, float time) {
         if (commandBuffer == VK_NULL_HANDLE) {
             throw new IllegalStateException("Triangle command buffer handle is NULL at index " + imageIndex);
         }
-        
+
+        // -Danti.static=1 renders a static background (time pinned to 0) so the "stretch
+        // feeling" during a drag can be A/B isolated from the demo shader's self-animating
+        // gradient + bouncing triangle.
+        float bgTime = staticBackground ? 0f : time;
+
         int currentW = Vulkan.getSwapchainWidth();
         int currentH = Vulkan.getSwapchainHeight();
         
@@ -548,7 +578,7 @@ public final class TriangleRenderer {
 
             // Push the animation time so the draw thread's per-frame re-records visibly animate.
             vkCmdPushConstants(command, VKPipelineLayout.get(pipelineLayout),
-                    VK_SHADER_STAGE_VERTEX_BIT, 0, stack.floats(time));
+                    VK_SHADER_STAGE_VERTEX_BIT, 0, stack.floats(bgTime));
 
             // setting the viewport
             vkCmdSetViewport(command, 0, vpBuffer);
@@ -572,6 +602,7 @@ public final class TriangleRenderer {
                         // AutoCloseable, so it lives in the body, not the try header.
                         FloatBuffer pushData = stack.mallocFloat(24);
                         darling.Canvas.resolveRoot(pictureNode, currentW, currentH, rect);
+                        logResizeIfChanged(currentW, currentH, rect);
                         darling.Picture.getCrop(pictureNode, crop);
                         vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(imageQuadPipeline));
                         vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
