@@ -1,0 +1,243 @@
+package darling;
+
+import annotation.Draft;
+import annotation.Intention;
+import annotation.Required;
+import nio.ForeignMemory;
+import oop.TypeRegister;
+
+import java.lang.foreign.Arena;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
+/**
+ * Off-heap scene root. Structural subclass of {@link Panel}: the layout core
+ * lives in Container, background color + the parent/child tree live in Panel,
+ * and this scene's payload begins exactly at Panel.USER_STRIDE, so any
+ * Container or Panel accessor can be called directly with a Scene pointer.
+ * See TypeRegister.getParentClass(SCENE) == PANEL.
+ *
+ * Scene adds what Panel does not own: the scene's virtual size (the fixed
+ * resolution the scene renders into, independent of the window) and the
+ * pixel/fit/stretch mapping mode. A window's swapchain follows the real window;
+ * the scene never re-renders on resize — the present pass scales the scene into
+ * whatever the window currently occupies.
+ *
+ * Scene2D/Scene3D are structural subclasses of this class and differ only by
+ * their projection semantics, never by payload.
+ */
+@Draft
+@Intention("Off-heap scene root: Panel base + virtual size + pixel/fit/stretch mapping, the fixed-res render target for the swapchain-scaled blit.")
+public final class Scene {
+
+    @Required
+    public static final int CLASS_ID = TypeRegister.ID_SCENE;
+
+    public static final int TYPE_SINGLETON = TypeRegister.SCENE_SINGLETON;
+    public static final int TYPE_ARRAY     = TypeRegister.SCENE_ARRAY;
+    public static final int TYPE_POINTER   = TypeRegister.SCENE_POINTER;
+
+    // --- Mapping modes (same semantics as Canvas) ---
+    public static final int MODE_STRETCH = 0; // whole scene -> whole window (asymmetric)
+    public static final int MODE_FIT     = 1; // uniform scale, letterboxed + centered
+    public static final int MODE_PIXEL   = 2; // 1 scene unit == 1 window px, top-left pinned
+
+    // --- Scene fields: Container prefix (0..47) + Panel payload (48..111) + scene payload ---
+    // The scene's size IS Container's w/h (setSize) — that fixed resolution is the
+    // offscreen render target. Only the mapping mode is scene-specific payload.
+    private static final int OFF_MODE = (int) Panel.USER_STRIDE; // 112 int (MODE_STRETCH/FIT/PIXEL)
+
+    static final long USER_STRIDE = 120L; // bytes of user payload
+    private static final long SLOT_SIZE   = 128L; // 8B header + 120B payload
+
+    // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
+    private static final int DEFAULT_CAPACITY = 1024;
+
+    private static final VarHandle FREE_HEAD_VH;
+    private static final VarHandle EXPANDING_VH;
+
+    private static volatile long freeHead;     // top 16 = gen tag, bottom 48 = raw ptr
+    private static volatile int expanding = 0;
+
+    private static Arena poolArena;
+    private static volatile boolean active;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            FREE_HEAD_VH = lookup.findStaticVarHandle(Scene.class, "freeHead", long.class);
+            EXPANDING_VH = lookup.findStaticVarHandle(Scene.class, "expanding", int.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+
+        poolArena = Arena.ofShared();
+        active = true;
+        expandPool();
+    }
+
+    private Scene() {}
+
+    private static void checkActive() {
+        if (!active) throw new IllegalStateException("Scene subsystem is not active!");
+    }
+
+    public static void freeAll() {
+        if (active) {
+            active = false;
+            if (poolArena != null && poolArena.scope().isAlive()) {
+                poolArena.close();
+            }
+        }
+    }
+
+    private static void expandPool() {
+        long totalBytes = DEFAULT_CAPACITY * SLOT_SIZE;
+        long baseAddress = poolArena.allocate(totalBytes, 8).address();
+
+        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
+            long currentBlock = baseAddress + (i * SLOT_SIZE);
+            long userPtr = currentBlock + 8L;
+
+            while (true) {
+                long oldTagged = freeHead;
+                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
+
+                ForeignMemory.setUnsafe(userPtr, oldRawHead);
+
+                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
+                long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
+
+                if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
+            }
+        }
+    }
+
+    // =========================================================================
+    // ALLOCATION / RECYCLING
+    // =========================================================================
+
+    /** Allocates a Scene node (dirty by default). */
+    public static long allocate() {
+        checkActive();
+
+        while (true) {
+            long oldTagged = freeHead;
+            long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
+
+            if (rawHead == 0L) {
+                if (EXPANDING_VH.compareAndSet(0, 1)) {
+                    expandPool();
+                    EXPANDING_VH.setVolatile(0);
+                } else {
+                    Thread.onSpinWait();
+                }
+                continue;
+            }
+
+            long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
+            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
+            long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
+
+            if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
+                long base = rawHead - 8L;
+                ForeignMemory.setUnsafe(base, TYPE_SINGLETON);
+                ForeignMemory.setUnsafe(base + 4L, 1);
+                ForeignMemory.setUnsafe(rawHead, 0);
+                initDefaults(rawHead);
+                return rawHead;
+            }
+        }
+    }
+
+    static void initDefaults(long ptr) {
+        Panel.initDefaults(ptr);
+        // Default PIXEL: 1 scene unit == 1 window px, top-left pinned. Resizing reveals
+        // more window (bg-clear area) instead of scaling/centering the scene.
+        ForeignMemory.setInt(ptr + OFF_MODE, MODE_PIXEL);
+    }
+
+    public static void free(long ptr) {
+        checkActive();
+        if (ptr == 0L) return;
+
+        int type = type(ptr);
+        if (type != TYPE_SINGLETON) throw new IllegalStateException("Double free or corrupt Scene pointer: 0x" + java.lang.Long.toHexString(ptr).toUpperCase());
+
+        long base = ptr - 8L;
+        ForeignMemory.setUnsafe(base, 0);
+        ForeignMemory.setUnsafe(base + 4L, -1);
+
+        while (true) {
+            long oldTagged = freeHead;
+            long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
+
+            ForeignMemory.setUnsafe(ptr, oldRawHead);
+
+            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
+            long newTagged = (nextGen << 48) | (ptr & 0x0000FFFFFFFFFFFFL);
+
+            if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
+        }
+    }
+
+    // =========================================================================
+    // ARCHITECTURAL CHECKS & METADATA
+    // =========================================================================
+
+    public static int type(long ptr) {
+        if (ptr == 0L) throw new NullPointerException("type() on NULL Scene pointer!");
+        return ForeignMemory.getUnsafeInt(ptr - 8L);
+    }
+
+    public static int length(long ptr) {
+        if (ptr == 0L) throw new NullPointerException("length() on NULL Scene pointer!");
+        return ForeignMemory.getUnsafeInt(ptr - 4L);
+    }
+
+    public static int classId() { return CLASS_ID; }
+
+    public static int classId(long ptr) { return TypeRegister.getClassId(type(ptr)); }
+
+    private static void checkScene(long ptr) {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL Scene pointer!");
+        if (!TypeRegister.isA(classId(ptr), CLASS_ID))
+            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(ptr).toUpperCase() + " is Class ID " + classId(ptr) + ", expected Scene (or subclass)");
+    }
+
+    // =========================================================================
+    // VIRTUAL SIZE & MAPPING MODE
+    // =========================================================================
+
+    // The scene's virtual size IS its Container w/h (the fixed resolution it
+    // renders into). setSize() is the only size setter a caller needs.
+
+    public static float getVirtualWidth(long ptr) { return Container.getWidth(ptr); }
+    public static float getVirtualHeight(long ptr) { return Container.getHeight(ptr); }
+
+    public static int getMode(long ptr) { checkScene(ptr); return ForeignMemory.getInt(ptr + OFF_MODE); }
+
+    public static void setMode(long ptr, int mode) {
+        checkScene(ptr);
+        if (mode < MODE_STRETCH || mode > MODE_PIXEL) throw new IllegalArgumentException("Invalid scene mode " + mode);
+        ForeignMemory.setInt(ptr + OFF_MODE, mode);
+        Panel.markDirty(ptr);
+    }
+
+    // =========================================================================
+    // LAYOUT (delegated to Container/Panel)
+    // =========================================================================
+
+    public static float getX(long ptr) { return Container.getX(ptr); }
+    public static float getY(long ptr) { return Container.getY(ptr); }
+    public static float getWidth(long ptr) { return Container.getWidth(ptr); }
+    public static float getHeight(long ptr) { return Container.getHeight(ptr); }
+
+    public static void setPos(long ptr, float x, float y) { Container.setPos(ptr, x, y); }
+    public static void setSize(long ptr, float width, float height) { Container.setSize(ptr, width, height); }
+    public static void setReferenceAnchor(long ptr, int anchor) { Container.setReferenceAnchor(ptr, anchor); }
+    public static void setElementAnchor(long ptr, int anchor) { Container.setElementAnchor(ptr, anchor); }
+
+    public static int getBackgroundColor(long ptr) { return Panel.getBackgroundColor(ptr); }
+    public static void setBackgroundColor(long ptr, int color) { Panel.setBackgroundColor(ptr, color); }
+}
