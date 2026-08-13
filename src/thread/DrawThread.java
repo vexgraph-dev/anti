@@ -349,10 +349,11 @@ public final class DrawThread {
                     if (contentSize != lastContentSize && contentSize != 0L) {
                         System.out.println("[window] resize event: "
                                 + ((int) (contentSize >>> 32)) + "x" + (int) (contentSize & 0xFFFFFFFFL));
-                        // Publish the requested size; the present thread rebuilds the
-                        // swapchain inline between presents (deferred destruction). The
-                        // draw thread never blocks on resize.
-                        vulkan.Renderer.requestResize((int) (contentSize >>> 32), (int) (contentSize & 0xFFFFFFFFL));
+                        // Option 2: Thread 0 (the event pump) owns the resize now. It
+                        // hard-syncs: publishes the size AND blocks until the present
+                        // thread has presented at that size. If this poll also published
+                        // an async request, a stale size could overwrite Thread 0's
+                        // pendingResize mid-drag and the sync ack would never match.
                         lastContentSize = contentSize;
                     }
                     // We consider it a live resize if the native window manager says so.
