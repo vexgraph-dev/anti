@@ -360,18 +360,13 @@ public final class DrawThread {
                     boolean liveResize = window.Window.isLiveResize(windowPtr);
                     vulkan.Renderer.liveResize = liveResize;
 
-                    // Rebuild the swapchain during live resize to update as fast as possible,
-                    // but coalesce rebuilds to at most once per ~10ms to avoid overwhelming
-                    // the Vulkan pipeline. The CAMetalLayer is pinned TopLeft so it doesn't stretch.
+                    // Rebuild the swapchain immediately during live resize to update as fast as possible.
+                    // The CAMetalLayer is pinned TopLeft so it doesn't stretch.
                     if (pendingResizeSize != 0L) {
-                        long now = java.lang.System.nanoTime();
-                        if (!liveResize || now - lastResizeNanos > 10_000_000L) {
-                            int w = (int) (pendingResizeSize >>> 32);
-                            int h = (int) (pendingResizeSize & 0xFFFFFFFFL);
-                            vulkan.TriangleRenderer.resize(w, h);
-                            pendingResizeSize = 0L;
-                            lastResizeNanos = now;
-                        }
+                        int w = (int) (pendingResizeSize >>> 32);
+                        int h = (int) (pendingResizeSize & 0xFFFFFFFFL);
+                        vulkan.TriangleRenderer.resize(w, h);
+                        pendingResizeSize = 0L;
                     }
 
                     if (window.Window.shouldClose(windowPtr)) {

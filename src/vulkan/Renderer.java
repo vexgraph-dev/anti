@@ -674,20 +674,6 @@ public final class Renderer {
             Semaphore.set(blitFinishedSemaphoresArray, i, Semaphore.create(device));
         }
 
-        while (completedRing != 0L) {
-            long s = RingBuffer.poll(completedRing);
-            if (s == 0L) break;
-            int dropSlot = (int) (s - 1L);
-            long dropDrawF = Fence.get(Fence.get(drawFencesArray, dropSlot));
-            try (MemoryStack stack = MemoryStack.stackPush()) {
-                if (VK10.vkWaitForFences(device, stack.longs(dropDrawF), true, java.lang.Long.MAX_VALUE) != VK_SUCCESS) {
-                    throw new IllegalStateException("resetInFlight: dropped-frame draw wait failed");
-                }
-                droppedFrames[dropSlot] = true;
-                slotSemaphore.release();
-            }
-        }
-
         // The swapchain (image handles, count, extent) and/or off-screen attachments changed,
         // so every cached blit command buffer must be re-recorded against the new targets.
         rebuildBlitCommandBuffers(device);
