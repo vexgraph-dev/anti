@@ -85,6 +85,7 @@ public final class Renderer {
 
     private static long garbageSemaphoresArray;
     private static long garbageCommandBuffersArray;
+    private static long garbageSwapchainsArray;
     private static long garbageFrameTagsArray;
     private static int garbageHead = 0;
     private static int garbageTail = 0;
@@ -143,6 +144,7 @@ public final class Renderer {
         counterResetAll();
         garbageSemaphoresArray = ForeignMemory.allocateNative(MAX_GARBAGE * 8L);
         garbageCommandBuffersArray = ForeignMemory.allocateNative(MAX_GARBAGE * 8L);
+        garbageSwapchainsArray = ForeignMemory.allocateNative(MAX_GARBAGE * 8L);
         garbageFrameTagsArray = ForeignMemory.allocateNative(MAX_GARBAGE * 8L);
         garbageHead = 0;
         garbageTail = 0;
@@ -166,6 +168,18 @@ public final class Renderer {
         int idx = garbageTail;
         ForeignMemory.setVolatileLong(garbageSemaphoresArray + idx * 8L, sem);
         ForeignMemory.setVolatileLong(garbageCommandBuffersArray + idx * 8L, cb);
+        ForeignMemory.setVolatileLong(garbageSwapchainsArray + idx * 8L, 0L);
+        ForeignMemory.setVolatileLong(garbageFrameTagsArray + idx * 8L, retireTag);
+        garbageTail = (garbageTail + 1) % MAX_GARBAGE;
+    }
+
+    public static void pushGarbageSwapchain(long swapchain) {
+        if ((garbageTail + 1) % MAX_GARBAGE == garbageHead) return;
+        int idx = garbageTail;
+        long retireTag = counterGet(CTR_DRAW_COUNT) + frameCount + 2;
+        ForeignMemory.setVolatileLong(garbageSemaphoresArray + idx * 8L, 0L);
+        ForeignMemory.setVolatileLong(garbageCommandBuffersArray + idx * 8L, 0L);
+        ForeignMemory.setVolatileLong(garbageSwapchainsArray + idx * 8L, swapchain);
         ForeignMemory.setVolatileLong(garbageFrameTagsArray + idx * 8L, retireTag);
         garbageTail = (garbageTail + 1) % MAX_GARBAGE;
     }
@@ -177,8 +191,10 @@ public final class Renderer {
             if (currentFrame >= tag) {
                 long sem = ForeignMemory.getVolatileLong(garbageSemaphoresArray + garbageHead * 8L);
                 long cb = ForeignMemory.getVolatileLong(garbageCommandBuffersArray + garbageHead * 8L);
+                long swp = ForeignMemory.getVolatileLong(garbageSwapchainsArray + garbageHead * 8L);
                 if (sem != 0L) Semaphore.destroy(sem, device);
                 if (cb != 0L) CommandBuffer.destroy(cb, device, blitPoolPtr);
+                if (swp != 0L) vkDestroySwapchainKHR(device, swp, null);
                 garbageHead = (garbageHead + 1) % MAX_GARBAGE;
             } else {
                 break;
@@ -703,15 +719,19 @@ public final class Renderer {
             while (garbageHead != garbageTail) {
                 long sem = ForeignMemory.getVolatileLong(garbageSemaphoresArray + garbageHead * 8L);
                 long cb = ForeignMemory.getVolatileLong(garbageCommandBuffersArray + garbageHead * 8L);
+                long swp = ForeignMemory.getVolatileLong(garbageSwapchainsArray + garbageHead * 8L);
                 if (sem != 0L) Semaphore.destroy(sem, device);
                 if (cb != 0L) CommandBuffer.destroy(cb, device, blitPoolPtr);
+                if (swp != 0L) vkDestroySwapchainKHR(device, swp, null);
                 garbageHead = (garbageHead + 1) % MAX_GARBAGE;
             }
             ForeignMemory.freeNative(garbageSemaphoresArray);
             ForeignMemory.freeNative(garbageCommandBuffersArray);
+            ForeignMemory.freeNative(garbageSwapchainsArray);
             ForeignMemory.freeNative(garbageFrameTagsArray);
             garbageSemaphoresArray = 0L;
             garbageCommandBuffersArray = 0L;
+            garbageSwapchainsArray = 0L;
             garbageFrameTagsArray = 0L;
         }
 
