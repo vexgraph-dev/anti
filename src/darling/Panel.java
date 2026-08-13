@@ -51,13 +51,13 @@ public final class Panel {
     // Percent sentinel: < 0 means "not set, use anchor".
     public static final float PERCENT_UNSET = Container.PERCENT_UNSET;
 
-    // --- Color format: 0xRRGGBBAA (alpha in low byte) ---
+    // --- Color format: 0xAARRGGBB (alpha in high byte) ---
     public static final int COLOR_WHITE = 0xFFFFFFFF;
     public static final int COLOR_BLACK = 0xFF000000;
     public static final int COLOR_CLEAR = 0x00000000;
 
     // --- Panel fields: Container layout prefix (0..47) then panel payload ---
-    private static final int OFF_COLOR        = (int) Container.USER_STRIDE;      // 48  int (0xRRGGBBAA)
+    private static final int OFF_COLOR        = (int) Container.USER_STRIDE;      // 48  int (0xAARRGGBB)
     private static final int OFF_FILTERS      = 56; // long (filters array ptr, @Draft)
     private static final int OFF_PARENT_REF_SET = 64; // long (struct.Set of VIEW copies of this node's shared payloads)
     private static final int OFF_PARENT       = 72; // long (direct parent panel ptr, 0 = none)
@@ -68,7 +68,7 @@ public final class Panel {
 
     private static final int DEFAULT_CHILDREN_CAPACITY = 4;
 
-    private static final long USER_STRIDE = 112L; // bytes of user payload
+    static final long USER_STRIDE = 112L; // bytes of user payload
     private static final long SLOT_SIZE   = 120L; // 8B header + 112B payload
 
     // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
@@ -170,7 +170,7 @@ public final class Panel {
         }
     }
 
-    private static void initDefaults(long ptr) {
+    static void initDefaults(long ptr) {
         Container.initDefaults(ptr);
         setBackgroundColor(ptr, COLOR_CLEAR);
         setFilters(ptr, 0L);
@@ -254,7 +254,8 @@ public final class Panel {
 
     private static void checkPanel(long ptr) {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL Panel pointer!");
-        if (classId(ptr) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(ptr).toUpperCase() + " is Class ID " + classId(ptr) + ", expected Panel");
+        if (!TypeRegister.isA(classId(ptr), CLASS_ID))
+            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(ptr).toUpperCase() + " is Class ID " + classId(ptr) + ", expected Panel (or subclass)");
     }
 
     // =========================================================================
