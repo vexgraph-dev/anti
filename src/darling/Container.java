@@ -244,7 +244,7 @@ public final class Container {
     private static void checkContainer(long ptr) {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL Container pointer!");
         int cls = classId(ptr);
-        if (cls != CLASS_ID && TypeRegister.getParentClass(cls) != CLASS_ID)
+        if (!TypeRegister.isA(cls, CLASS_ID))
             throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(ptr).toUpperCase() + " is Class ID " + cls + ", not a Container (or subclass)");
     }
 
