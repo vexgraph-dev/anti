@@ -185,6 +185,9 @@ public class TypeRegister
     public static final int ID_CONTAINER = 0x000079; // darling.Container class // 121
     public static final int ID_PICTURE = 0x00007A; // darling.Picture class // 122
     public static final int ID_IMAGE = 0x00007B; // image.Image class // 123
+    public static final int ID_SCENE = 0x00007C; // darling.Scene class
+    public static final int ID_SCENE2D = 0x00007D; // darling.Scene2D class
+    public static final int ID_SCENE3D = 0x00007E; // darling.Scene3D class
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
@@ -422,6 +425,21 @@ public class TypeRegister
     public static final int IMAGE_ARRAY = FORM_ARRAY | ID_IMAGE;
     public static final int IMAGE_POINTER = FORM_POINTER | ID_IMAGE;
 
+    // darling.Scene class (structural subclass of Panel)
+    public static final int SCENE_SINGLETON = FORM_SINGLETON | ID_SCENE;
+    public static final int SCENE_ARRAY = FORM_ARRAY | ID_SCENE;
+    public static final int SCENE_POINTER = FORM_POINTER | ID_SCENE;
+
+    // darling.Scene2D class (structural subclass of Scene)
+    public static final int SCENE2D_SINGLETON = FORM_SINGLETON | ID_SCENE2D;
+    public static final int SCENE2D_ARRAY = FORM_ARRAY | ID_SCENE2D;
+    public static final int SCENE2D_POINTER = FORM_POINTER | ID_SCENE2D;
+
+    // darling.Scene3D class (structural subclass of Scene)
+    public static final int SCENE3D_SINGLETON = FORM_SINGLETON | ID_SCENE3D;
+    public static final int SCENE3D_ARRAY = FORM_ARRAY | ID_SCENE3D;
+    public static final int SCENE3D_POINTER = FORM_POINTER | ID_SCENE3D;
+
 
     // --- HELPER BITWISE METHODS ---
     public static boolean isSingleton(int typeId)
@@ -542,8 +560,30 @@ public class TypeRegister
         if (classId == ID_PICTURE)
             return ID_CONTAINER;
 
+        if (classId == ID_SCENE)
+            return ID_PANEL;
+
+        if (classId == ID_SCENE2D)
+            return ID_SCENE;
+
+        if (classId == ID_SCENE3D)
+            return ID_SCENE;
+
         // add classes goes here...
         return classId;
+    }
+
+    /** True if {@code classId} is {@code ancestorId} or any descendant of it (walks the parent chain). */
+    public static boolean isA(int classId, int ancestorId)
+    {
+        int current = classId;
+        while (current != ancestorId)
+        {
+            int parent = getParentClass(current);
+            if (parent == current) return false; // reached a root with no parent
+            current = parent;
+        }
+        return true;
     }
 
     // AccumuluationBuffer class
