@@ -7,6 +7,7 @@ import io.LogKind;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
+import org.lwjgl.vulkan.VkClearColorValue;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkImageBlit;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
@@ -62,9 +63,81 @@ public final class Renderer {
      */
     private static volatile boolean swapchainInvalidated;
 
+    /**
+     * Coalesced resize target while the user is actively dragging the window
+     * (liveResize=true). The present thread holds off rebuilding the swapchain until
+     * the drag settles so the persistent scene keeps presenting into the stale extent
+     * (the layer clips/scales it top-left) instead of blanking mid-drag. -1 = none.
+     */
+    private static volatile int deferredResizeW = -1;
+    private static volatile int deferredResizeH = -1;
+
     /** Publishes a swapchain resize request. The present thread performs the rebuild. */
     public static void requestResize(int w, int h) {
         pendingResize = ((long) w << 32) | (h & 0xFFFFFFFFL);
+    }
+
+    // ---- Option 2: hard-sync resize ----
+    // The OS updates the window on Thread 0. To prevent the gap between the OS
+    // resizing the window and our present reaching the new size, Thread 0 must NOT
+    // return control to the OS until a frame at the new size has been presented.
+    // Generation counters: Thread 0 bumps REQUESTED and blocks; the present thread
+    // bumps DONE after a successful present lands at the requested extent. Acking is
+    // gated on the swapchain actually matching the request so a stale in-flight
+    // present at the old size cannot satisfy the latch.
+
+    /** Set by Thread 0 to the size it wants presented before the OS may proceed. */
+    private static volatile int syncResizeRequestedGen;
+    private static volatile int syncResizeW;
+    private static volatile int syncResizeH;
+
+    /** Bumped by the present thread once a present lands at the requested extent. */
+    private static volatile int syncResizeDoneGen;
+
+    /**
+     * Hard-sync resize (Thread 0): publish the request, then block until the present
+     * thread has rebuilt the swapchain to (w,h) AND presented a frame at that size.
+     * This forces the OS to wait for Vulkan before it updates the screen, so the
+     * "expanded window vs stale frame" gap can never be drawn. Returns immediately if
+     * a timeout is hit (defensive), degrading to the async resize path.
+     */
+    public static void syncResize(int w, int h) {
+        // Match the present thread's floor: never resize below the scene resolution.
+        int minW = Math.max(1, TriangleRenderer.getOffscreenWidth());
+        int minH = Math.max(1, TriangleRenderer.getOffscreenHeight());
+        if (w < minW) w = minW;
+        if (h < minH) h = minH;
+        int gen = syncResizeRequestedGen + 1;
+        syncResizeW = w;
+        syncResizeH = h;
+        syncResizeRequestedGen = gen;
+        pendingResize = ((long) w << 32) | (h & 0xFFFFFFFFL);
+        System.out.println("[syncResize] request gen=" + gen + " size=" + w + "x" + h
+                + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+        if (liveResize) {
+            // Mid-drag: don't hold Thread 0. The present thread defers the rebuild
+            // until the drag settles and keeps presenting the persistent scene.
+            return;
+        }
+        long deadline = java.lang.System.nanoTime() + 500_000_000L; // 500ms safety
+        while (syncResizeDoneGen < gen && java.lang.System.nanoTime() < deadline) {
+            LockSupport.parkNanos(50_000L);
+        }
+        if (syncResizeDoneGen < gen) {
+            System.out.println("[syncResize] TIMEOUT waiting for present at " + w + "x" + h);
+        } else {
+            System.out.println("[syncResize] acked gen=" + gen + " at " + w + "x" + h);
+        }
+    }
+
+    /** Present thread: ack a hard-sync resize once a present lands at the requested size. */
+    private static void ackSyncResize() {
+        int gen = syncResizeRequestedGen;
+        if (gen > syncResizeDoneGen
+                && Vulkan.getSwapchainWidth() == syncResizeW
+                && Vulkan.getSwapchainHeight() == syncResizeH) {
+            syncResizeDoneGen = gen;
+        }
     }
 
     private static long queueLock; // off-heap SpinLock serializing the single GPU queue
@@ -378,7 +451,8 @@ public final class Renderer {
         // Consume a draw-thread resize request and/or an OUT_OF_DATE/SUBOPTIMAL flag.
         long resize = pendingResize;
         boolean invalidated = swapchainInvalidated;
-        if (resize != 0L || invalidated) {
+        boolean dragEnded = !liveResize && deferredResizeW >= 0;
+        if (resize != 0L || invalidated || dragEnded) {
             pendingResize = 0L;
             swapchainInvalidated = false;
             int w = (int) (resize >>> 32);
@@ -388,12 +462,53 @@ public final class Renderer {
                 w = Vulkan.getSwapchainWidth();
                 h = Vulkan.getSwapchainHeight();
             }
-            if (w == Vulkan.getSwapchainWidth() && h == Vulkan.getSwapchainHeight() && !invalidated) {
-                // Size already matches: nothing to rebuild.
-                resize = 0L;
+            // Never shrink the swapchain below the scene's fixed resolution: when the
+            // window is smaller than the scene, keep the swapchain at scene size and
+            // let the layer clip top-left. Expanding back up to scene size then reveals
+            // the scene immediately with NO rebuild (and no black gap) mid-drag.
+            int minW = Math.max(1, TriangleRenderer.getOffscreenWidth());
+            int minH = Math.max(1, TriangleRenderer.getOffscreenHeight());
+            if (w < minW) w = minW;
+            if (h < minH) h = minH;
+            if (liveResize) {
+                // Active drag: DO NOT tear down the swapchain. Keep presenting the
+                // persistent scene into the current extent (the layer clips/scales it
+                // top-left) and coalesce to the latest requested size; the rebuild
+                // happens once the drag settles. Rebuilding here is what blanks the
+                // window mid-drag.
+                if (resize != 0L) {
+                    deferredResizeW = w;
+                    deferredResizeH = h;
+                }
+                System.out.println("[resizeBlock] deferred=" + deferredResizeW + "x" + deferredResizeH
+                        + " (live drag) currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+            } else if (dragEnded) {
+                // Drag settled: rebuild once, at the latest coalesced size (a fresh
+                // request wins — both reflect the final window size).
+                if (resize == 0L) {
+                    w = deferredResizeW;
+                    h = deferredResizeH;
+                }
+                deferredResizeW = -1;
+                deferredResizeH = -1;
+                System.out.println("[resizeBlock] resize=" + w + "x" + h + " invalidated=" + invalidated
+                        + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+                if (w != Vulkan.getSwapchainWidth() || h != Vulkan.getSwapchainHeight() || invalidated) {
+                    Vulkan.resizeSwapchain(w, h);
+                    resetInFlight();
+                }
             } else {
-                Vulkan.resizeSwapchain(w, h);
-                resetInFlight();
+                System.out.println("[resizeBlock] resize=" + w + "x" + h + " invalidated=" + invalidated
+                        + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+                if (w == Vulkan.getSwapchainWidth() && h == Vulkan.getSwapchainHeight()) {
+                    // Size already matches: nothing to rebuild. (A same-size
+                    // OUT_OF_DATE just means the layer is clipping a swapchain larger
+                    // than the window — keep presenting it instead of rebuild-looping.)
+                    resize = 0L;
+                } else {
+                    Vulkan.resizeSwapchain(w, h);
+                    resetInFlight();
+                }
             }
         }
 
@@ -467,6 +582,12 @@ public final class Renderer {
                     droppedFrames[slot] = true;
                     Log.append(LogKind.RENDER_DROPPED, slot, 1L);
                     slotSemaphore.release();
+                    if (liveResize) {
+                        // Mid-drag: keep the stale swapchain alive and keep trying so
+                        // the persistent scene stays visible; the resize block at the
+                        // top of presentOnceLocked has coalesced the final size.
+                        return PRESENT_RETRY;
+                    }
                     // Do NOT retry this stale swapchain forever — that is the "stuck
                     // black" bug. Flag the rebuild; the next presentOnce iteration
                     // recreates the swapchain at the top of presentOnceLocked.
@@ -526,7 +647,12 @@ public final class Renderer {
                     // The frame was presented, but the surface has moved on: rebuild the
                     // swapchain on the next present iteration to stop chasing a stale chain.
                     if (pres == VK_ERROR_OUT_OF_DATE_KHR || pres == VK_SUBOPTIMAL_KHR) {
-                        swapchainInvalidated = true;
+                        // The frame WAS presented; rebuild the swapchain next iteration
+                        // — unless we're mid-drag, where rebuilding blanks the window
+                        // and the top-of-loop resize block handles the settled size.
+                        if (!liveResize) {
+                            swapchainInvalidated = true;
+                        }
                     }
                 } finally {
                     unlockQueue();
@@ -535,6 +661,7 @@ public final class Renderer {
 
                 long pc = counterAdd(CTR_PRESENT_COUNT, 1L) + 1L;
                 Log.append(LogKind.RENDER_PRESENT, slot, pc);
+                ackSyncResize();
                 return PRESENT_DONE;
             } finally {
                 window.Window.OS_NATIVE_MUTEX.set(false);
@@ -572,10 +699,35 @@ public final class Renderer {
 
             long swapchainImage = Long.get(Vulkan.getSwapchainImages(), imgIndex);
             long offscreenImage = TriangleRenderer.getOffscreenImageHandle(slot);
-            int srcW = Vulkan.getSwapchainWidth();
-            int srcH = Vulkan.getSwapchainHeight();
+            // Source is the scene's fixed virtual size (the offscreen render target);
+            // dest is the live window/swapchain extent. The blit maps scene -> window
+            // per the scene's mapping mode so the content never distorts.
+            int srcW = TriangleRenderer.getOffscreenWidth();
+            int srcH = TriangleRenderer.getOffscreenHeight();
             int dstW = Vulkan.getSwapchainWidth();
             int dstH = Vulkan.getSwapchainHeight();
+            int mode = TriangleRenderer.getSceneMode();
+            int bg = TriangleRenderer.getSceneBackground();
+
+            // src/dst blit regions (src full scene, dst computed by mode).
+            int sx0 = 0, sy0 = 0, sx1 = srcW, sy1 = srcH;
+            int dx0 = 0, dy0 = 0, dx1 = dstW, dy1 = dstH;
+            if (mode == darling.Scene.MODE_FIT) {
+                float scale = Math.min((float) dstW / srcW, (float) dstH / srcH);
+                int outW = Math.round(srcW * scale);
+                int outH = Math.round(srcH * scale);
+                dx0 = (dstW - outW) / 2;
+                dy0 = (dstH - outH) / 2;
+                dx1 = dx0 + outW;
+                dy1 = dy0 + outH;
+            } else if (mode == darling.Scene.MODE_PIXEL) {
+                // 1 scene unit == 1 window px, top-left pinned: blit the window-sized
+                // region of the scene (clamped), revealing more scene on resize.
+                sx1 = Math.min(srcW, dstW);
+                sy1 = Math.min(srcH, dstH);
+                dx1 = sx1;
+                dy1 = sy1;
+            }
 
             pre0.sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
                     .oldLayout(VK_IMAGE_LAYOUT_UNDEFINED)
@@ -594,12 +746,30 @@ public final class Renderer {
                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
                     0, null, null, pre);
 
+            // Fill the whole swapchain image with the scene background first so any
+            // area not covered by the mode-mapped blit (FIT letterbox, PIXEL reveal)
+            // shows the scene's clear color instead of stale/garbage pixels.
+            if (bg != 0) {
+                try (VkClearColorValue clearColor = VkClearColorValue.calloc(stack);
+                     VkImageSubresourceRange range = VkImageSubresourceRange.calloc(stack)) {
+                    // 0xAARRGGBB on the B8G8R8A8 swapchain => BGRA surface order.
+                    clearColor.float32(0, (bg & 0xFF) / 255f)
+                            .float32(1, ((bg >>> 8) & 0xFF) / 255f)
+                            .float32(2, ((bg >>> 16) & 0xFF) / 255f)
+                            .float32(3, ((bg >>> 24) & 0xFF) / 255f);
+                    range.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                            .baseMipLevel(0).levelCount(1)
+                            .baseArrayLayer(0).layerCount(1);
+                    vkCmdClearColorImage(command, swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, clearColor, range);
+                }
+            }
+
             reg0SrcSub.set(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
             reg0DstSub.set(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
-            reg0SrcOff0.set(0, 0, 0);
-            reg0SrcOff1.set(srcW, srcH, 1);
-            reg0DstOff0.set(0, 0, 0);
-            reg0DstOff1.set(dstW, dstH, 1);
+            reg0SrcOff0.set(sx0, sy0, 0);
+            reg0SrcOff1.set(sx1, sy1, 1);
+            reg0DstOff0.set(dx0, dy0, 0);
+            reg0DstOff1.set(dx1, dy1, 1);
             vkCmdBlitImage(command,
                     offscreenImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
