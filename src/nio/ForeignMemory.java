@@ -34,6 +34,7 @@ import spatial.GridArray;
 import spatial.CircularArray;
 import thread.RingBuffer;
 import thread.DrawThread;
+import thread.EventThread;
 import thread.NetworkingThread;
 import thread.ConsoleThread;
 import thread.ScriptingThread;
@@ -1199,6 +1200,7 @@ public class ForeignMemory {
         // Stop/join worker threads first: their teardown drains RingBuffer/Map/Array
         // which are freed below.
         DrawThread.freeAllSystem();
+        EventThread.freeAllSystem();
         NetworkingThread.freeAllSystem();
         ConsoleThread.freeAllSystem();
         ScriptingThread.freeAllSystem();
