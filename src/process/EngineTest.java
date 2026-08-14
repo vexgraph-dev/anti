@@ -70,22 +70,23 @@ public class EngineTest {
         darling.Picture.setLocation(picturePtr, 100f, 60f);
         vulkan.TriangleRenderer.setPicture(picturePtr);
 
-        // Nested clipping test panels:
-        // Parent: (100, 100) at (500, 60), Dark Slate background (0xFF1E293B), clipChildren = true
-        // Child:  (200, 200) at (50, 50), Emerald Green background (0xFF10B981) overflowing parent
-        long rootPanel = darling.Panel.allocate();
-        darling.Container.setPos(rootPanel, 500f, 60f);
-        darling.Container.setSize(rootPanel, 100f, 100f);
-        darling.Panel.setBackgroundColor(rootPanel, 0xFF1E293B);
-        darling.Container.setClipChildren(rootPanel, true);
+        // Test UI Panel setup:
+        // panel1 (parent): 200x200, location (30, 30), anchor MIDDLE_CENTER, transparent-ish background (alpha=100)
+        long panel1 = darling.Panel.allocate();
+        darling.Panel.setSize(panel1, 200f, 200f);
+        darling.Panel.setLocation(panel1, 30f, 30f);
+        darling.Panel.setAnchor(panel1, darling.Panel.ANCHOR_MIDDLE_CENTER);
+        darling.Panel.setBackgroundColor(panel1, 30, 41, 59, 100);
+        darling.Panel.setClipChildren(panel1, true);
 
-        long childPanel = darling.Panel.allocate();
-        darling.Container.setPos(childPanel, 50f, 50f);
-        darling.Container.setSize(childPanel, 200f, 200f);
-        darling.Panel.setBackgroundColor(childPanel, 0xFF10B981);
+        // panel2 (child): 200x200, location (100, 100), full opaque background (alpha=255)
+        long panel2 = darling.Panel.allocate();
+        darling.Panel.setSize(panel2, 200f, 200f);
+        darling.Panel.setLocation(panel2, 100f, 100f);
+        darling.Panel.setBackgroundColor(panel2, 16, 185, 129, 255);
 
-        darling.Panel.add(rootPanel, childPanel);
-        vulkan.TriangleRenderer.setRootUi(rootPanel);
+        darling.Panel.add(panel1, panel2);
+        vulkan.TriangleRenderer.setRootUi(panel1);
 
         // Flat 2D layout space (darling.Canvas): the whole UI resolves inside a
         // fixed virtual-resolution canvas, mapped to the window by an ortho
