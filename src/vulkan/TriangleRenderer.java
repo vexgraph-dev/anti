@@ -638,6 +638,9 @@ public final class TriangleRenderer {
                 throw new IllegalStateException("Failed to begin triangle command buffer.");
             }
 
+            float dpi = boundWindowPtr != 0L ? (float) window.Window.getBackingScaleFactor(boundWindowPtr) : 1.0f;
+            darling.Canvas.setDpiScale(dpi);
+
             // Resolve 3D scene container bounds inside the Canvas
             float scene3Dx = 0f;
             float scene3Dy = 0f;
@@ -649,10 +652,10 @@ public final class TriangleRenderer {
                 long rect3D = Vec4.allocate();
                 try {
                     darling.Canvas.resolveRoot(activeScene, currentW, currentH, rect3D);
-                    scene3Dx = Vec4.getX(rect3D);
-                    scene3Dy = Vec4.getY(rect3D);
-                    scene3Dw = Vec4.getZ(rect3D);
-                    scene3Dh = Vec4.getW(rect3D);
+                    scene3Dx = Vec4.getX(rect3D) * dpi;
+                    scene3Dy = Vec4.getY(rect3D) * dpi;
+                    scene3Dw = Vec4.getZ(rect3D) * dpi;
+                    scene3Dh = Vec4.getW(rect3D) * dpi;
                 } finally {
                     Vec4.free(rect3D);
                 }
