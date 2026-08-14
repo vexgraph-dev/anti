@@ -32,29 +32,40 @@ public final class Picture {
     public static final float AUTO = -1.0f;
 
     // --- Anchor constants (forwarded from Container) ---
-    public static final int ANCHOR_TOP_LEFT      = Container.ANCHOR_TOP_LEFT;
-    public static final int ANCHOR_TOP_CENTER    = Container.ANCHOR_TOP_CENTER;
-    public static final int ANCHOR_TOP_RIGHT     = Container.ANCHOR_TOP_RIGHT;
-    public static final int ANCHOR_MIDDLE_LEFT   = Container.ANCHOR_MIDDLE_LEFT;
-    public static final int ANCHOR_MIDDLE_CENTER = Container.ANCHOR_MIDDLE_CENTER;
-    public static final int ANCHOR_MIDDLE_RIGHT  = Container.ANCHOR_MIDDLE_RIGHT;
-    public static final int ANCHOR_BOTTOM_LEFT   = Container.ANCHOR_BOTTOM_LEFT;
-    public static final int ANCHOR_BOTTOM_CENTER = Container.ANCHOR_BOTTOM_CENTER;
-    public static final int ANCHOR_BOTTOM_RIGHT  = Container.ANCHOR_BOTTOM_RIGHT;
+    public static final int PARENT_ANCHOR_TOP_LEFT      = Container.PARENT_ANCHOR_TOP_LEFT;
+    public static final int PARENT_ANCHOR_TOP_CENTER    = Container.PARENT_ANCHOR_TOP_CENTER;
+    public static final int PARENT_ANCHOR_TOP_RIGHT     = Container.PARENT_ANCHOR_TOP_RIGHT;
+    public static final int PARENT_ANCHOR_MIDDLE_LEFT   = Container.PARENT_ANCHOR_MIDDLE_LEFT;
+    public static final int PARENT_ANCHOR_MIDDLE_CENTER = Container.PARENT_ANCHOR_MIDDLE_CENTER;
+    public static final int PARENT_ANCHOR_MIDDLE_RIGHT  = Container.PARENT_ANCHOR_MIDDLE_RIGHT;
+    public static final int PARENT_ANCHOR_BOTTOM_LEFT   = Container.PARENT_ANCHOR_BOTTOM_LEFT;
+    public static final int PARENT_ANCHOR_BOTTOM_CENTER = Container.PARENT_ANCHOR_BOTTOM_CENTER;
+    public static final int PARENT_ANCHOR_BOTTOM_RIGHT  = Container.PARENT_ANCHOR_BOTTOM_RIGHT;
 
-    // --- Picture fields: Container layout prefix (0..47) then picture payload ---
-    private static final int OFF_IMAGE       = (int) Container.USER_STRIDE; // 48 long (image.Image enginePtr, 0 = none)
-    private static final int OFF_IMAGE_SIZE_W = 56; // float (image draw width; 0 = follow picture box)
-    private static final int OFF_IMAGE_SIZE_H = 60; // float (image draw height; 0 = follow picture box)
-    private static final int OFF_CROP_X1     = 64; // float (crop left in image pixels)
-    private static final int OFF_CROP_Y1     = 68; // float (crop top in image pixels)
-    private static final int OFF_CROP_X2     = 72; // float (crop right in image pixels)
-    private static final int OFF_CROP_Y2     = 76; // float (crop bottom in image pixels)
-    private static final int OFF_HAS_IMAGE_SIZE = 80; // byte
-    private static final int OFF_HAS_CROP    = 81; // byte
+    public static final int SELF_ANCHOR_TOP_LEFT     = Container.SELF_ANCHOR_TOP_LEFT;
+    public static final int SELF_ANCHOR_TOP_RIGHT    = Container.SELF_ANCHOR_TOP_RIGHT;
+    public static final int SELF_ANCHOR_BOTTOM_LEFT  = Container.SELF_ANCHOR_BOTTOM_LEFT;
+    public static final int SELF_ANCHOR_BOTTOM_RIGHT = Container.SELF_ANCHOR_BOTTOM_RIGHT;
 
-    private static final long USER_STRIDE = 88L; // bytes of user payload
-    private static final long SLOT_SIZE   = 96L; // 8B header + 88B payload
+    public static final int PIVOT_REFERENCE_TOP_LEFT     = Container.PIVOT_REFERENCE_TOP_LEFT;
+    public static final int PIVOT_REFERENCE_TOP_RIGHT    = Container.PIVOT_REFERENCE_TOP_RIGHT;
+    public static final int PIVOT_REFERENCE_BOTTOM_LEFT  = Container.PIVOT_REFERENCE_BOTTOM_LEFT;
+    public static final int PIVOT_REFERENCE_BOTTOM_RIGHT = Container.PIVOT_REFERENCE_BOTTOM_RIGHT;
+    public static final int PIVOT_REFERENCE_CENTER       = Container.PIVOT_REFERENCE_CENTER;
+
+    // --- Picture fields: Container layout prefix (0..55) then picture payload ---
+    private static final int OFF_IMAGE       = (int) Container.USER_STRIDE; // 56 long (image.Image enginePtr, 0 = none)
+    private static final int OFF_IMAGE_SIZE_W = 64; // float (image draw width; 0 = follow picture box)
+    private static final int OFF_IMAGE_SIZE_H = 68; // float (image draw height; 0 = follow picture box)
+    private static final int OFF_CROP_X1     = 72; // float (crop left in image pixels)
+    private static final int OFF_CROP_Y1     = 76; // float (crop top in image pixels)
+    private static final int OFF_CROP_X2     = 80; // float (crop right in image pixels)
+    private static final int OFF_CROP_Y2     = 84; // float (crop bottom in image pixels)
+    private static final int OFF_HAS_IMAGE_SIZE = 88; // byte
+    private static final int OFF_HAS_CROP    = 89; // byte
+
+    private static final long USER_STRIDE = 96L; // bytes of user payload
+    private static final long SLOT_SIZE   = 104L; // 8B header + 96B payload
 
     // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
     private static final int DEFAULT_CAPACITY = 1024;
@@ -234,24 +245,24 @@ public final class Picture {
         Container.setHeight(ptr, height);
     }
 
-    public static int getAnchor(long ptr) { return Container.getAnchor(ptr); }
-    public static void setAnchor(long ptr, int anchor) { Container.setAnchor(ptr, anchor); }
-    public static int getReferenceAnchor(long ptr) { return Container.getReferenceAnchor(ptr); }
-    public static void setReferenceAnchor(long ptr, int anchor) { Container.setReferenceAnchor(ptr, anchor); }
+    public static int getParentAnchor(long ptr) { return Container.getParentAnchor(ptr); }
+    public static void setParentAnchor(long ptr, int parentAnchor) { Container.setParentAnchor(ptr, parentAnchor); }
 
-    public static int getElementAnchor(long ptr) { return Container.getElementAnchor(ptr); }
-    public static void setElementAnchor(long ptr, int anchor) { Container.setElementAnchor(ptr, anchor); }
+    public static int getSelfAnchor(long ptr) { return Container.getSelfAnchor(ptr); }
+    public static void setSelfAnchor(long ptr, int selfAnchor) { Container.setSelfAnchor(ptr, selfAnchor); }
 
-    public static int getPointReference(long ptr) { return Container.getPointReference(ptr); }
-    public static void setPointReference(long ptr, int pointRef) { Container.setPointReference(ptr, pointRef); }
+    public static int getPivotReference(long ptr) { return Container.getPivotReference(ptr); }
+    public static void setPivotReference(long ptr, int pivotReference) { Container.setPivotReference(ptr, pivotReference); }
 
-    public static void setAnchor(long ptr, int refAnchor, int elemAnchor) {
-        Container.setAnchor(ptr, refAnchor, elemAnchor);
+    public static void setParentAnchor(long ptr, int parentAnchor, int selfAnchor) {
+        Container.setParentAnchor(ptr, parentAnchor, selfAnchor);
     }
 
-    public static void setAnchor(long ptr, int refAnchor, int elemAnchor, int pointRef) {
-        Container.setAnchor(ptr, refAnchor, elemAnchor, pointRef);
+    public static void setParentAnchor(long ptr, int parentAnchor, int selfAnchor, int pivotReference) {
+        Container.setParentAnchor(ptr, parentAnchor, selfAnchor, pivotReference);
     }
+
+    public static void setCenter(long ptr) { Container.setCenter(ptr); }
 
     public static void setZ(long ptr, int z) { Container.setZ(ptr, z); }
 

@@ -901,7 +901,11 @@ public final class TriangleRenderer {
                                 VKPipelineLayout.get(imageQuadPipelineLayout), 0, stack.longs(
                                         image.Image.getDescriptorSet(imagePtr)), null);
                         // proj(16) + rect(4) + crop(4) = 24 floats, one push.
-                        darling.Canvas.buildProjection(canvasProj, currentW, currentH);
+                        // Projection spans the ACTUAL render target (the fixed offscreen
+                        // framebuffer), so canvas units map 1:1 to framebuffer pixels:
+                        // c -> c*dpi. The live window size is only the snip window on top
+                        // of it, so the picture never re-scales when the window resizes.
+                        darling.Canvas.buildProjection(canvasProj, offscreenWidth, offscreenHeight);
                         int pc = 0;
                         for (int i = 0; i < 16; i++) pushData.put(pc++, Mat4.getRaw(canvasProj, i));
                         pushData.put(pc++, Vec4.getX(rect));
@@ -926,7 +930,11 @@ public final class TriangleRenderer {
 
             // Render UI container tree (sceneNode children and rootUiNode)
             if (sceneNode != 0L || rootUiNode != 0L) {
-                darling.Canvas.buildProjection(canvasProj, currentW, currentH);
+                // Projection spans the offscreen render target (1:1 canvas px = c*dpi),
+                // while nodes resolve against the live visible canvas (currentW/dpi).
+                // This is what makes anchored panels track the window edge on resize
+                // without the whole UI re-scaling.
+                darling.Canvas.buildProjection(canvasProj, offscreenWidth, offscreenHeight);
                 FloatBuffer panelPushData = stack.mallocFloat(28);
                 VkRect2D.Buffer panelScissor = VkRect2D.calloc(1, stack);
 

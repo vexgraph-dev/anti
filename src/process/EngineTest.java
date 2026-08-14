@@ -66,13 +66,17 @@ public class EngineTest {
         vulkan.TriangleRenderer.setWindow(windowPtr);
 
         // Test UI Panel setup:
-        // panel1 (parent): 200x200, 30px margin from top-right corner of the window
+        // panel1 (parent): 200x200, location (30,30). The two anchors are modular:
+        //   SELF anchor (default TOP_LEFT) = INITIAL POSITION only -> sits at the
+        //     top-left corner, 30px margins, always fully visible.
+        //   PARENT anchor BOTTOM_RIGHT = RESIZE TRACKING only -> when the window is
+        //     resized at the bottom-right, panel1 moves by exactly that delta.
         long panel1 = Panel.allocate();
         Panel.setSize(panel1, 200f, 200f);
         Panel.setLocation(panel1, 30f, 30f);
-        Panel.setElementAnchor(panel1, Panel.ELEM_ANCHOR_TOP_RIGHT);
-        Panel.setPointReference(panel1, Panel.POINT_TOP_RIGHT);
-        Panel.setBackgroundColor(panel1, 30, 41, 59, 230);
+        Panel.setParentAnchor(panel1, Panel.PARENT_ANCHOR_BOTTOM_RIGHT);
+        Panel.setSelfAnchor(panel1, Panel.SELF_ANCHOR_BOTTOM_LEFT);
+        Panel.setBackgroundColor(panel1, 30, 41, 59, 200);
         Panel.setClipChildren(panel1, true);
 
         // panel2 (child): 200x200, location (100, 100), full opaque background (alpha=255)

@@ -45,10 +45,10 @@ public final class Scene {
     // --- Scene fields: Container prefix (0..47) + Panel payload (48..111) + scene payload ---
     // The scene's size IS Container's w/h (setSize) — that fixed resolution is the
     // offscreen render target. Only the mapping mode is scene-specific payload.
-    private static final int OFF_MODE = (int) Panel.USER_STRIDE; // 112 int (MODE_STRETCH/FIT/PIXEL)
+    private static final int OFF_MODE = (int) Panel.USER_STRIDE; // 120 int (MODE_STRETCH/FIT/PIXEL)
 
-    static final long USER_STRIDE = 120L; // bytes of user payload
-    private static final long SLOT_SIZE   = 128L; // 8B header + 120B payload
+    static final long USER_STRIDE = 128L; // bytes of user payload
+    private static final long SLOT_SIZE   = 136L; // 8B header + 128B payload
 
     // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
     private static final int DEFAULT_CAPACITY = 1024;
@@ -236,16 +236,18 @@ public final class Scene {
     public static void setPos(long ptr, float x, float y) { Container.setPos(ptr, x, y); }
     public static void setSize(long ptr, float width, float height) { Container.setSize(ptr, width, height); }
 
-    public static int getAnchor(long ptr) { return Container.getAnchor(ptr); }
-    public static void setAnchor(long ptr, int anchor) { Container.setAnchor(ptr, anchor); }
-    public static int getReferenceAnchor(long ptr) { return Container.getReferenceAnchor(ptr); }
-    public static void setReferenceAnchor(long ptr, int anchor) { Container.setReferenceAnchor(ptr, anchor); }
+    public static int getParentAnchor(long ptr) { return Container.getParentAnchor(ptr); }
+    public static void setParentAnchor(long ptr, int parentAnchor) { Container.setParentAnchor(ptr, parentAnchor); }
 
-    public static int getElementAnchor(long ptr) { return Container.getElementAnchor(ptr); }
-    public static void setElementAnchor(long ptr, int anchor) { Container.setElementAnchor(ptr, anchor); }
+    public static int getSelfAnchor(long ptr) { return Container.getSelfAnchor(ptr); }
+    public static void setSelfAnchor(long ptr, int selfAnchor) { Container.setSelfAnchor(ptr, selfAnchor); }
 
-    public static int getPointReference(long ptr) { return Container.getPointReference(ptr); }
-    public static void setPointReference(long ptr, int pointRef) { Container.setPointReference(ptr, pointRef); }
+    public static int getPivotReference(long ptr) { return Container.getPivotReference(ptr); }
+    public static void setPivotReference(long ptr, int pivotReference) { Container.setPivotReference(ptr, pivotReference); }
+
+    public static void setParentAnchor(long ptr, int parentAnchor, int selfAnchor, int pivotReference) { Container.setParentAnchor(ptr, parentAnchor, selfAnchor, pivotReference); }
+
+    public static void setCenter(long ptr) { Container.setCenter(ptr); }
 
     public static int getBackgroundColor(long ptr) { return Panel.getBackgroundColor(ptr); }
     public static void setBackgroundColor(long ptr, int color) { Panel.setBackgroundColor(ptr, color); }
