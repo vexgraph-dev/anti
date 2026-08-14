@@ -522,25 +522,16 @@ public final class Container {
         float anchorShiftY = 0f;
 
         if (anchor != ANCHOR_TOP_LEFT) {
-            float baseW = parentW;
-            float baseH = parentH;
-            float vw = darling.Canvas.getVirtualWidth();
-            float vh = darling.Canvas.getVirtualHeight();
-            if (vw > 0f) baseW = vw;
-            if (vh > 0f) baseH = vh;
-
-            float deltaW = parentW - baseW;
-            float deltaH = parentH - baseH;
-
+            // Shift proportional to actual parent dimension
             switch (anchor) {
-                case ANCHOR_TOP_CENTER    -> { anchorShiftX = deltaW * 0.5f; anchorShiftY = 0f; }
-                case ANCHOR_TOP_RIGHT     -> { anchorShiftX = deltaW;        anchorShiftY = 0f; }
-                case ANCHOR_MIDDLE_LEFT   -> { anchorShiftX = 0f;            anchorShiftY = deltaH * 0.5f; }
-                case ANCHOR_MIDDLE_CENTER -> { anchorShiftX = deltaW * 0.5f; anchorShiftY = deltaH * 0.5f; }
-                case ANCHOR_MIDDLE_RIGHT  -> { anchorShiftX = deltaW;        anchorShiftY = deltaH * 0.5f; }
-                case ANCHOR_BOTTOM_LEFT   -> { anchorShiftX = 0f;            anchorShiftY = deltaH; }
-                case ANCHOR_BOTTOM_CENTER -> { anchorShiftX = deltaW * 0.5f; anchorShiftY = deltaH; }
-                case ANCHOR_BOTTOM_RIGHT  -> { anchorShiftX = deltaW;        anchorShiftY = deltaH; }
+                case ANCHOR_TOP_CENTER    -> { anchorShiftX = parentW * 0.5f; anchorShiftY = 0f; }
+                case ANCHOR_TOP_RIGHT     -> { anchorShiftX = parentW;        anchorShiftY = 0f; }
+                case ANCHOR_MIDDLE_LEFT   -> { anchorShiftX = 0f;            anchorShiftY = parentH * 0.5f; }
+                case ANCHOR_MIDDLE_CENTER -> { anchorShiftX = parentW * 0.5f; anchorShiftY = parentH * 0.5f; }
+                case ANCHOR_MIDDLE_RIGHT  -> { anchorShiftX = parentW;        anchorShiftY = parentH * 0.5f; }
+                case ANCHOR_BOTTOM_LEFT   -> { anchorShiftX = 0f;            anchorShiftY = parentH; }
+                case ANCHOR_BOTTOM_CENTER -> { anchorShiftX = parentW * 0.5f; anchorShiftY = parentH; }
+                case ANCHOR_BOTTOM_RIGHT  -> { anchorShiftX = parentW;        anchorShiftY = parentH; }
                 default                   -> { anchorShiftX = 0f;            anchorShiftY = 0f; }
             }
         }
