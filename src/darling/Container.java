@@ -417,12 +417,12 @@ public final class Container {
      * Shared-payload edits fan out through the parent-ref set (see Panel).
      */
     @Volatile
-    static void markDirty(long ptr) {
+    public static void markDirty(long ptr) {
         checkContainer(ptr);
         ForeignMemory.setVolatileByte(ptr + OFF_DIRTY, (byte) 1);
     }
 
-    static void clearDirty(long ptr) {
+    public static void clearDirty(long ptr) {
         checkContainer(ptr);
         ForeignMemory.setVolatileByte(ptr + OFF_DIRTY, (byte) 0);
     }
