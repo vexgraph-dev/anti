@@ -42,7 +42,7 @@ public final class Container {
     public static final int TYPE_ARRAY     = TypeRegister.CONTAINER_ARRAY;     // 0x20000079
     public static final int TYPE_POINTER   = TypeRegister.CONTAINER_POINTER;   // 0x30000079
 
-    // --- Anchor constants (3x3 grid, row*3+col) ---
+    // --- Anchor constants (3x3 grid, row*3+col) - where element attaches on parent resize ---
     public static final int ANCHOR_TOP_LEFT      = 0;
     public static final int ANCHOR_TOP_CENTER    = 1;
     public static final int ANCHOR_TOP_RIGHT     = 2;
@@ -52,6 +52,28 @@ public final class Container {
     public static final int ANCHOR_BOTTOM_LEFT   = 6;
     public static final int ANCHOR_BOTTOM_CENTER = 7;
     public static final int ANCHOR_BOTTOM_RIGHT  = 8;
+
+    // --- Location Reference constants (inward-offset measurement corner) ---
+    public static final int LOC_TOP_LEFT      = 0;
+    public static final int LOC_TOP_CENTER    = 1;
+    public static final int LOC_TOP_RIGHT     = 2;
+    public static final int LOC_MIDDLE_LEFT   = 3;
+    public static final int LOC_MIDDLE_CENTER = 4;
+    public static final int LOC_MIDDLE_RIGHT  = 5;
+    public static final int LOC_BOTTOM_LEFT   = 6;
+    public static final int LOC_BOTTOM_CENTER = 7;
+    public static final int LOC_BOTTOM_RIGHT  = 8;
+
+    // --- Point Reference constants (element pivot / anchor point on element itself) ---
+    public static final int POINT_TOP_LEFT      = 0;
+    public static final int POINT_TOP_CENTER    = 1;
+    public static final int POINT_TOP_RIGHT     = 2;
+    public static final int POINT_MIDDLE_LEFT   = 3;
+    public static final int POINT_MIDDLE_CENTER = 4;
+    public static final int POINT_MIDDLE_RIGHT  = 5;
+    public static final int POINT_BOTTOM_LEFT   = 6;
+    public static final int POINT_BOTTOM_CENTER = 7;
+    public static final int POINT_BOTTOM_RIGHT  = 8;
 
     public static final int ANCHOR_MIN = ANCHOR_TOP_LEFT;
     public static final int ANCHOR_MAX = ANCHOR_BOTTOM_RIGHT;
@@ -286,36 +308,73 @@ public final class Container {
     public static void setScale(long ptr, float scaleWidth, float scaleHeight) { setScaleWidth(ptr, scaleWidth); setScaleHeight(ptr, scaleHeight); }
 
     // =========================================================================
-    // ANCHORS
+    // ANCHORS, LOCATION REFERENCE & POINT REFERENCE
     // =========================================================================
 
-    public static int getReferenceAnchor(long ptr) { checkContainer(ptr); return ForeignMemory.getInt(ptr + OFF_REF_ANCHOR); }
-    public static int getElementAnchor(long ptr)   { checkContainer(ptr); return ForeignMemory.getInt(ptr + OFF_ELEM_ANCHOR); }
-
-    public static void setReferenceAnchor(long ptr, int anchor) {
+    /**
+     * Anchor: which corner or side of the parent container this element attaches
+     * to when the parent / window resizes (0..8, e.g. ANCHOR_TOP_RIGHT moves right with right edge).
+     */
+    public static int getAnchor(long ptr) {
         checkContainer(ptr);
-        checkAnchor(anchor);
-        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, anchor);
-        markDirty(ptr);
+        return ForeignMemory.getInt(ptr + OFF_REF_ANCHOR) & 0xFF;
     }
 
-    public static void setElementAnchor(long ptr, int anchor) {
+    /**
+     * Location Reference: which corner of the parent the (x, y) offset is measured
+     * from, where positive values naturally move inward (e.g. LOC_BOTTOM_RIGHT with
+     * x=30, y=30 means 30px from the right edge, 30px from the bottom edge).
+     */
+    public static int getLocationReference(long ptr) {
         checkContainer(ptr);
-        checkAnchor(anchor);
-        ForeignMemory.setInt(ptr + OFF_ELEM_ANCHOR, anchor);
-        markDirty(ptr);
+        int raw = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
+        int loc = (raw >>> 8) & 0xFF;
+        return (loc == 0) ? (raw & 0xFF) : (loc - 1);
     }
 
-    /** Sets both anchors (reference + element) to the same anchor. */
+    /**
+     * Point Reference (Element Pivot): which point on the element itself aligns
+     * with the resolved anchor coordinate (0..8, e.g. POINT_TOP_LEFT, POINT_MIDDLE_CENTER).
+     */
+    public static int getPointReference(long ptr) {
+        checkContainer(ptr);
+        return ForeignMemory.getInt(ptr + OFF_ELEM_ANCHOR);
+    }
+
     public static void setAnchor(long ptr, int anchor) {
-        setReferenceAnchor(ptr, anchor);
-        setElementAnchor(ptr, anchor);
+        checkContainer(ptr);
+        checkAnchor(anchor);
+        int old = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
+        int loc = (old >>> 8) & 0xFF;
+        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, (loc << 8) | (anchor & 0xFF));
+        setPointReference(ptr, anchor);
+        markDirty(ptr);
     }
 
-    /** Sets both anchors (reference + element). */
+    public static void setLocationReference(long ptr, int locRef) {
+        checkContainer(ptr);
+        checkAnchor(locRef);
+        int old = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
+        int anchor = old & 0xFF;
+        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, ((locRef + 1) << 8) | anchor);
+        markDirty(ptr);
+    }
+
+    public static void setPointReference(long ptr, int pointRef) {
+        checkContainer(ptr);
+        checkAnchor(pointRef);
+        ForeignMemory.setInt(ptr + OFF_ELEM_ANCHOR, pointRef);
+        markDirty(ptr);
+    }
+
+    // Compatibility aliases:
+    public static int getReferenceAnchor(long ptr) { return getAnchor(ptr); }
+    public static int getElementAnchor(long ptr)   { return getPointReference(ptr); }
+    public static void setReferenceAnchor(long ptr, int anchor) { setAnchor(ptr, anchor); }
+    public static void setElementAnchor(long ptr, int anchor)   { setPointReference(ptr, anchor); }
     public static void setAnchor(long ptr, int referenceAnchor, int elementAnchor) {
-        setReferenceAnchor(ptr, referenceAnchor);
-        setElementAnchor(ptr, elementAnchor);
+        setAnchor(ptr, referenceAnchor);
+        setPointReference(ptr, elementAnchor);
     }
 
     // =========================================================================
@@ -345,7 +404,7 @@ public final class Container {
 
     public static boolean isVisible(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(ptr + OFF_VISIBLE) != 0; }
     public static boolean isEnabled(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(ptr + OFF_ENABLED) != 0; }
-    public static boolean isDirty(long ptr)    { checkContainer(ptr); return ForeignMemory.getByte(ptr + OFF_DIRTY) != 0; }
+    public static boolean isDirty(long ptr)    { return ForeignMemory.getByte(ptr + OFF_DIRTY) != 0; }
     public static boolean isClipChildren(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(ptr + OFF_CLIPPING) != 0; }
 
     public static void setVisible(long ptr, boolean visible) { checkContainer(ptr); ForeignMemory.setByte(ptr + OFF_VISIBLE, (byte) (visible ? 1 : 0)); markDirty(ptr); }
@@ -380,12 +439,9 @@ public final class Container {
      * [screenX, screenY, screenW, screenH].
      *
      * Math:
-     *   refPoint (on parent)  = referenceAnchor point + x/y layout offsets
-     *     - anchor row/col -> (col * parentW)/2, (row * parentH)/2
-     *     - percentX/Y override the anchor when >= 0
-     *   element offset       = elementAnchor point of the SCALED node
-     *   screenTopLeft        = refPoint + offsets - elementOffset
-     *   scale applied last, about the element anchor.
+     *   1. Anchor base point on parent (anchor corner / side / center).
+     *   2. Location offset applied with inward direction based on LocationReference.
+     *   3. Point reference offset (element pivot) aligned to the target coordinate.
      */
     public static void resolve(long ptr, float parentX, float parentY, float parentW, float parentH, long outRect) {
         resolveSized(ptr, getWidth(ptr), getHeight(ptr), parentX, parentY, parentW, parentH, outRect);
@@ -402,26 +458,36 @@ public final class Container {
         float sx = getScaleWidth(ptr), sy = getScaleHeight(ptr);
         float sw = w * sx, sh = h * sy;
 
-        int refAnchor = getReferenceAnchor(ptr);
-        int refRow = refAnchor / 3;
-        int refCol = refAnchor % 3;
+        int anchor = getAnchor(ptr);
+        int anchorRow = anchor / 3;
+        int anchorCol = anchor % 3;
 
-        float refX = parentX + (refCol * parentW) / 2f;
-        float refY = parentY + (refRow * parentH) / 2f;
+        float anchorX = parentX + (anchorCol * parentW) / 2f;
+        float anchorY = parentY + (anchorRow * parentH) / 2f;
 
-        if (hasPercentX(ptr)) refX = parentX + getPercentX(ptr) * parentW;
-        if (hasPercentY(ptr)) refY = parentY + getPercentY(ptr) * parentH;
+        if (hasPercentX(ptr)) anchorX = parentX + getPercentX(ptr) * parentW;
+        if (hasPercentY(ptr)) anchorY = parentY + getPercentY(ptr) * parentH;
 
-        int elemAnchor = getElementAnchor(ptr);
-        int elemRow = elemAnchor / 3;
-        int elemCol = elemAnchor % 3;
+        int locRef = getLocationReference(ptr);
+        int locRow = locRef / 3;
+        int locCol = locRef % 3;
 
-        // element anchor point of the SCALED node; scale pivots here
-        float elemX = (elemCol * sw) / 2f;
-        float elemY = (elemRow * sh) / 2f;
+        // Inward direction: Col 2 (Right) moves left (-1), Row 2 (Bottom) moves up (-1)
+        float dirX = (locCol == 2) ? -1.0f : 1.0f;
+        float dirY = (locRow == 2) ? -1.0f : 1.0f;
 
-        float screenX = refX + getX(ptr) - elemX;
-        float screenY = refY + getY(ptr) - elemY;
+        float targetX = anchorX + getX(ptr) * dirX;
+        float targetY = anchorY + getY(ptr) * dirY;
+
+        int pointRef = getPointReference(ptr);
+        int elemRow = pointRef / 3;
+        int elemCol = pointRef % 3;
+
+        float elemOffsetX = (elemCol * sw) / 2f;
+        float elemOffsetY = (elemRow * sh) / 2f;
+
+        float screenX = targetX - elemOffsetX;
+        float screenY = targetY - elemOffsetY;
 
         Vec4.set(outRect, screenX, screenY, sw, sh);
     }
