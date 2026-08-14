@@ -48,15 +48,13 @@ public class EngineTest {
         // Setup vulkan (which inherently spawns the DrawThread and binds to the surface)
         vulkan.Vulkan.initVulkan(surfacePtr, bootW, bootH, bootPresentMode);
 
-        // Scene root: a darling.Scene2D whose FIXED virtual size is the offscreen
-        // render target. The present pass scales the scene into the real window, so
-        // resizing never re-creates the render target or re-renders the scene.
-        // Background color lives on the Panel payload (0xAARRGGBB) and becomes the
-        // render-pass clear color.
-        long scenePtr = darling.Scene2D.allocate();
-        darling.Scene2D.setSize(scenePtr, 800f, 600f);
-        darling.Scene2D.setBackgroundColor(scenePtr, 0xFF000000);
-        vulkan.TriangleRenderer.setScene(scenePtr);
+        // 3D Scene container: an off-heap Scene3D node positioned in the canvas.
+        // The 3D render pipeline renders into this container's bounds (anchored top-left).
+        long scene3DPtr = darling.Scene3D.allocate();
+        darling.Scene3D.setPos(scene3DPtr, 0f, 0f);
+        darling.Scene3D.setSize(scene3DPtr, 800f, 600f);
+        darling.Scene3D.setBackgroundColor(scene3DPtr, 0xFF141414);
+        vulkan.TriangleRenderer.setScene3D(scene3DPtr);
         vulkan.TriangleRenderer.setWindow(windowPtr);
         vulkan.TriangleRenderer.init();
 
