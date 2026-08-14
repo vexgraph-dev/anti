@@ -268,6 +268,21 @@ public final class FFMRegistrationFeature implements Feature {
             FunctionDescriptor.of(ValueLayout.JAVA_DOUBLE, ValueLayout.ADDRESS)
         );
 
+        // 44. long (CFArrayGetCount / CGDisplayModeGetPixelWidth / Height)
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)
+        );
+
+        // 45. CGDisplayCopyAllDisplayModes(uint32_t, CFDictionaryRef)
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS)
+        );
+
+        // 46. CFArrayGetValueAtIndex(CFArrayRef, CFIndex)
+        RuntimeForeignAccess.registerForDowncall(
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)
+        );
+
         // --- macOSWindow key telemetry: CGEventTapCallback upcall ---
         // (CGEventTapProxy, CGEventType, CGEventRef, void*) -> CGEventRef
         RuntimeForeignAccess.registerForUpcall(
