@@ -11,6 +11,7 @@ import org.lwjgl.vulkan.VkClearColorValue;
 import org.lwjgl.vulkan.VkClearValue;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkAttachmentReference;
+import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
@@ -90,6 +91,12 @@ public final class TriangleRenderer {
     private static long scene3DNode;
     private static long boundWindowPtr;
 
+    private static long darlingPanelVertexShader;
+    private static long darlingPanelFragmentShader;
+    private static long darlingPanelPipelineLayout;
+    private static long darlingPanelPipeline;
+    private static long rootUiNode;
+
     public static void setWindow(long window) {
         boundWindowPtr = window;
     }
@@ -100,6 +107,14 @@ public final class TriangleRenderer {
 
     public static long getScene3D() {
         return scene3DNode;
+    }
+
+    public static void setRootUi(long rootPtr) {
+        rootUiNode = rootPtr;
+    }
+
+    public static long getRootUi() {
+        return rootUiNode;
     }
 
     private TriangleRenderer() {}
@@ -150,6 +165,10 @@ public final class TriangleRenderer {
         vertexShader = createShaderModule("hello_triangle.vert.spv");
         fragmentShader = createShaderModule("hello_triangle.frag.spv");
         createGraphicsPipeline();
+
+        darlingPanelVertexShader = createShaderModule("darling_panel_vert.spv");
+        darlingPanelFragmentShader = createShaderModule("darling_panel_frag.spv");
+        createDarlingPanelPipeline();
 
         commandPool = CommandPool.create(device, Vulkan.getGraphicsQueueFamilyIndex());
         blitCommandPool = CommandPool.create(device, Vulkan.getGraphicsQueueFamilyIndex());
@@ -541,6 +560,180 @@ public final class TriangleRenderer {
         }
     }
 
+    private static void createDarlingPanelPipeline() {
+        if (darlingPanelPipeline != 0L) return;
+        try (
+            MemoryStack stack = MemoryStack.stackPush();
+
+            VkPipelineShaderStageCreateInfo.Buffer stages = VkPipelineShaderStageCreateInfo.calloc(2, stack);
+            VkPipelineShaderStageCreateInfo info0 = stages.get(0).sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
+            VkPipelineShaderStageCreateInfo info1 = stages.get(1).sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
+
+            VkPushConstantRange.Buffer pushRanges = VkPushConstantRange.malloc(1, stack);
+            VkPushConstantRange pushRange0 = pushRanges.get(0)
+                    .stageFlags(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
+                    .offset(0).size(112)
+                    // proj(64) + rect(16) + color(16) + style(16) = 112B
+        ) {
+            info0.stage(VK_SHADER_STAGE_VERTEX_BIT)
+                .module(VKShaderModule.get(darlingPanelVertexShader))
+                .pName(stack.UTF8("main"));
+            info1.stage(VK_SHADER_STAGE_FRAGMENT_BIT)
+                .module(VKShaderModule.get(darlingPanelFragmentShader))
+                .pName(stack.UTF8("main"));
+
+            VkPipelineVertexInputStateCreateInfo vertexInput = VkPipelineVertexInputStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
+            VkPipelineInputAssemblyStateCreateInfo inputAssembly = VkPipelineInputAssemblyStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
+                    .topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                    .primitiveRestartEnable(false);
+
+            VkPipelineViewportStateCreateInfo viewportState = VkPipelineViewportStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
+                    .viewportCount(1)
+                    .scissorCount(1);
+            VkPipelineDynamicStateCreateInfo dynamicState = VkPipelineDynamicStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO)
+                    .pDynamicStates(stack.ints(VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR));
+
+            VkPipelineRasterizationStateCreateInfo rasterizer = VkPipelineRasterizationStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
+                    .depthClampEnable(false)
+                    .rasterizerDiscardEnable(false)
+                    .polygonMode(VK_POLYGON_MODE_FILL)
+                    .lineWidth(1.0f)
+                    .cullMode(VK_CULL_MODE_NONE)
+                    .frontFace(VK_FRONT_FACE_CLOCKWISE)
+                    .depthBiasEnable(false);
+
+            VkPipelineMultisampleStateCreateInfo multisampling = VkPipelineMultisampleStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
+                    .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
+                    .sampleShadingEnable(false);
+
+            VkPipelineColorBlendAttachmentState.Buffer colorAttachment = VkPipelineColorBlendAttachmentState.calloc(1, stack)
+                    .colorWriteMask(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT)
+                    .blendEnable(true)
+                    .srcColorBlendFactor(VK_BLEND_FACTOR_SRC_ALPHA)
+                    .dstColorBlendFactor(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+                    .colorBlendOp(VK_BLEND_OP_ADD)
+                    .srcAlphaBlendFactor(VK_BLEND_FACTOR_ONE)
+                    .dstAlphaBlendFactor(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+                    .alphaBlendOp(VK_BLEND_OP_ADD);
+
+            VkPipelineColorBlendStateCreateInfo colorBlending = VkPipelineColorBlendStateCreateInfo.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
+                    .logicOpEnable(false)
+                    .logicOp(VK_LOGIC_OP_COPY)
+                    .attachmentCount(1)
+                    .pAttachments(colorAttachment)
+                    .blendConstants(stack.floats(0.0f, 0.0f, 0.0f, 0.0f));
+
+            darlingPanelPipelineLayout = VKPipelineLayout.create(Vulkan.getDevice(),
+                    org.lwjgl.vulkan.VkPipelineLayoutCreateInfo.calloc(stack)
+                            .sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+                            .pPushConstantRanges(pushRanges));
+
+            VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack)
+                    .sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
+                    .pStages(stages)
+                    .pVertexInputState(vertexInput)
+                    .pInputAssemblyState(inputAssembly)
+                    .pViewportState(viewportState)
+                    .pRasterizationState(rasterizer)
+                    .pMultisampleState(multisampling)
+                    .pColorBlendState(colorBlending)
+                    .pDynamicState(dynamicState)
+                    .layout(VKPipelineLayout.get(darlingPanelPipelineLayout))
+                    .renderPass(RenderPass.get(renderPass))
+                    .subpass(0);
+
+            darlingPanelPipeline = VKPipeline.createGraphicsPipeline(Vulkan.getDevice(), VK_NULL_HANDLE, pipelineInfo);
+            System.out.println("Darling Panel pipeline created.");
+        }
+    }
+
+    private static void renderContainerTree(VkCommandBuffer command, MemoryStack stack,
+                                           long nodePtr, float parentX, float parentY,
+                                           float parentW, float parentH,
+                                           int clipX, int clipY, int clipW, int clipH,
+                                           FloatBuffer pushData, VkRect2D.Buffer scissorBuf) {
+        if (nodePtr == 0L || !darling.Container.isVisible(nodePtr)) return;
+
+        long rect = Vec4.allocate();
+        try {
+            if (parentW <= 0f) {
+                darling.Canvas.resolveRoot(nodePtr, offscreenWidth, offscreenHeight, rect);
+            } else {
+                darling.Container.resolve(nodePtr, parentX, parentY, parentW, parentH, rect);
+            }
+
+            float rx = Vec4.getX(rect);
+            float ry = Vec4.getY(rect);
+            float rw = Vec4.getZ(rect);
+            float rh = Vec4.getW(rect);
+
+            float dpi = darling.Canvas.getDpiScale();
+            int sx = (int) Math.round(rx * dpi);
+            int sy = (int) Math.round(ry * dpi);
+            int sw = (int) Math.round(rw * dpi);
+            int sh = (int) Math.round(rh * dpi);
+
+            int curClipX0 = Math.max(clipX, sx);
+            int curClipY0 = Math.max(clipY, sy);
+            int curClipX1 = Math.min(clipX + clipW, sx + sw);
+            int curClipY1 = Math.min(clipY + clipH, sy + sh);
+            int childClipW = Math.max(0, curClipX1 - curClipX0);
+            int childClipH = Math.max(0, curClipY1 - curClipY0);
+
+            int cls = darling.Container.classId(nodePtr);
+            if (oop.TypeRegister.isA(cls, darling.Panel.CLASS_ID)) {
+                int color = darling.Panel.getBackgroundColor(nodePtr);
+                int alpha = (color >>> 24) & 0xFF;
+                if (alpha > 0) {
+                    float a = alpha / 255.0f;
+                    float r = ((color >>> 16) & 0xFF) / 255.0f;
+                    float g = ((color >>> 8) & 0xFF) / 255.0f;
+                    float b = (color & 0xFF) / 255.0f;
+
+                    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(darlingPanelPipeline));
+
+                    scissorBuf.get(0).offset().set(clipX, clipY);
+                    scissorBuf.get(0).extent().set(clipW, clipH);
+                    vkCmdSetScissor(command, 0, scissorBuf);
+
+                    pushData.position(0);
+                    for (int i = 0; i < 16; i++) pushData.put(Mat4.getRaw(canvasProj, i));
+                    pushData.put(rx).put(ry).put(rw).put(rh);
+                    pushData.put(r).put(g).put(b).put(a);
+                    pushData.put(0.0f).put(0.0f).put(0.0f).put(0.0f);
+                    pushData.position(0).limit(28);
+
+                    vkCmdPushConstants(command, VKPipelineLayout.get(darlingPanelPipelineLayout),
+                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, pushData);
+
+                    vkCmdDraw(command, 6, 1, 0, 0);
+                }
+
+                boolean clipChildren = darling.Container.isClipChildren(nodePtr);
+                int nextClipX = clipChildren ? curClipX0 : clipX;
+                int nextClipY = clipChildren ? curClipY0 : clipY;
+                int nextClipW = clipChildren ? childClipW : clipW;
+                int nextClipH = clipChildren ? childClipH : clipH;
+
+                int n = darling.Panel.childCount(nodePtr);
+                for (int i = 0; i < n; i++) {
+                    long childPtr = darling.Panel.getChild(nodePtr, i);
+                    renderContainerTree(command, stack, childPtr, rx, ry, rw, rh,
+                            nextClipX, nextClipY, nextClipW, nextClipH, pushData, scissorBuf);
+                }
+            }
+        } finally {
+            Vec4.free(rect);
+        }
+    }
+
     private static void recordCommandBuffers() {
         for (int i = 0; i < offscreenImageCount; i++) {
             recordCommandBuffer(Renderer.getCommandBuffer(i), i, 0.0f);
@@ -724,6 +917,26 @@ public final class TriangleRenderer {
                 }
             }
 
+            // Render UI container tree (sceneNode children and rootUiNode)
+            if (sceneNode != 0L || rootUiNode != 0L) {
+                darling.Canvas.buildProjection(canvasProj, offscreenWidth, offscreenHeight);
+                FloatBuffer panelPushData = stack.mallocFloat(28);
+                VkRect2D.Buffer panelScissor = VkRect2D.calloc(1, stack);
+
+                if (sceneNode != 0L && oop.TypeRegister.isA(darling.Container.classId(sceneNode), darling.Panel.CLASS_ID)) {
+                    int childCount = darling.Panel.childCount(sceneNode);
+                    for (int i = 0; i < childCount; i++) {
+                        long childPtr = darling.Panel.getChild(sceneNode, i);
+                        renderContainerTree(command, stack, childPtr, 0f, 0f, offscreenWidth, offscreenHeight,
+                                0, 0, offscreenWidth, offscreenHeight, panelPushData, panelScissor);
+                    }
+                }
+                if (rootUiNode != 0L) {
+                    renderContainerTree(command, stack, rootUiNode, 0f, 0f, offscreenWidth, offscreenHeight,
+                            0, 0, offscreenWidth, offscreenHeight, panelPushData, panelScissor);
+                }
+            }
+
             vkCmdEndRenderPass(command);
 
             if (vkEndCommandBuffer(command) != VK_SUCCESS) {
@@ -750,6 +963,11 @@ public final class TriangleRenderer {
         if (imageQuadFragmentShader != 0L) VKShaderModule.destroy(imageQuadFragmentShader, device);
         if (imageQuadVertexShader != 0L) VKShaderModule.destroy(imageQuadVertexShader, device);
 
+        if (darlingPanelPipeline != 0L) VKPipeline.destroy(darlingPanelPipeline, device);
+        if (darlingPanelPipelineLayout != 0L) VKPipelineLayout.destroy(darlingPanelPipelineLayout, device);
+        if (darlingPanelFragmentShader != 0L) VKShaderModule.destroy(darlingPanelFragmentShader, device);
+        if (darlingPanelVertexShader != 0L) VKShaderModule.destroy(darlingPanelVertexShader, device);
+
         destroyOffscreenAttachments(device);
 
         if (canvasProj != 0L) Mat4.free(canvasProj);
@@ -768,7 +986,12 @@ public final class TriangleRenderer {
         imageQuadSetLayout = 0L;
         imageQuadFragmentShader = 0L;
         imageQuadVertexShader = 0L;
+        darlingPanelPipeline = 0L;
+        darlingPanelPipelineLayout = 0L;
+        darlingPanelFragmentShader = 0L;
+        darlingPanelVertexShader = 0L;
         pictureNode = 0L;
+        rootUiNode = 0L;
         initialized = false;
     }
 }
