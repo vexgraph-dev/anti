@@ -18,6 +18,7 @@ ROOT_DIR="$SCRIPT_DIR"
 if [ -z "$JAVA_HOME" ]; then
     for candidate in \
         "$HOME/Library/Java/JavaVirtualMachines"/graalvm-jdk-25/Contents/Home \
+        /Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home \
         /Library/Java/JavaVirtualMachines/graalvm-jdk-25/Contents/Home; do
         if [ -x "$candidate/bin/java" ]; then
             JAVA_HOME="$candidate"
