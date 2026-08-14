@@ -7,7 +7,6 @@ import annotation.Unsafe;
 import annotation.Volatile;
 import nio.ForeignMemory;
 import oop.TypeRegister;
-import org.lwjgl.PointerBuffer;
 import org.lwjgl.stb.STBImage;
 import org.lwjgl.stb.STBImageResize;
 import org.lwjgl.system.MemoryStack;
