@@ -4,6 +4,7 @@ import annotation.Draft;
 import annotation.Required;
 import annotation.Unsafe;
 import annotation.Volatile;
+import image.Image;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
@@ -142,8 +143,7 @@ public final class VKImage {
 
     /** Raw VkImage handle held by this engine pointer. */
     public static long getImage(long enginePtr) {
-        long struct = ForeignMemory.getLong(enginePtr);
-        return struct == 0L ? 0L : ForeignMemory.getLong(struct);
+        return Image.getTexture(enginePtr);
     }
 
     /** Engine pointer (VKDeviceMemory) bound to this image's backing memory. */
