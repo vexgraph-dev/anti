@@ -282,11 +282,17 @@ public final class Panel {
     public static void setScaleHeight(long ptr, float scaleHeight) { Container.setScaleHeight(ptr, scaleHeight); }
     public static void setScale(long ptr, float scaleWidth, float scaleHeight) { Container.setScale(ptr, scaleWidth, scaleHeight); }
 
+    public static int getAnchor(long ptr) { return Container.getAnchor(ptr); }
+    public static int getLocationReference(long ptr) { return Container.getLocationReference(ptr); }
+    public static int getPointReference(long ptr) { return Container.getPointReference(ptr); }
+    public static void setAnchor(long ptr, int anchor) { Container.setAnchor(ptr, anchor); }
+    public static void setLocationReference(long ptr, int locRef) { Container.setLocationReference(ptr, locRef); }
+    public static void setPointReference(long ptr, int pointRef) { Container.setPointReference(ptr, pointRef); }
+
     public static int getReferenceAnchor(long ptr) { return Container.getReferenceAnchor(ptr); }
     public static int getElementAnchor(long ptr)   { return Container.getElementAnchor(ptr); }
     public static void setReferenceAnchor(long ptr, int anchor) { Container.setReferenceAnchor(ptr, anchor); }
     public static void setElementAnchor(long ptr, int anchor) { Container.setElementAnchor(ptr, anchor); }
-    public static void setAnchor(long ptr, int anchor) { Container.setAnchor(ptr, anchor); }
     public static void setAnchor(long ptr, int referenceAnchor, int elementAnchor) { Container.setAnchor(ptr, referenceAnchor, elementAnchor); }
 
     public static float getPercentX(long ptr) { return Container.getPercentX(ptr); }
@@ -426,8 +432,9 @@ public final class Panel {
         Container.setHeight(copy, Container.getHeight(node));
         Container.setScaleWidth(copy, Container.getScaleWidth(node));
         Container.setScaleHeight(copy, Container.getScaleHeight(node));
-        Container.setReferenceAnchor(copy, Container.getReferenceAnchor(node));
-        Container.setElementAnchor(copy, Container.getElementAnchor(node));
+        Container.setAnchor(copy, Container.getAnchor(node));
+        Container.setLocationReference(copy, Container.getLocationReference(node));
+        Container.setPointReference(copy, Container.getPointReference(node));
         if (Container.hasPercentX(node)) Container.setPercentX(copy, Container.getPercentX(node));
         if (Container.hasPercentY(node)) Container.setPercentY(copy, Container.getPercentY(node));
         Container.setZ(copy, Container.getZ(node));
