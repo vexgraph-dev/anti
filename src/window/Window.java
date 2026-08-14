@@ -318,6 +318,14 @@ public final class Window {
         return MACOS_POINT_RES;
     }
 
+    /** Queries the backing scale factor (e.g. 2.0 on Retina in MACOS_RETINA_RES, 1.0 in MACOS_POINT_RES). */
+    public static double getBackingScaleFactor(long pointer) {
+        if (IS_MAC) {
+            return macOSWindow.getBackingScaleFactor(pointer);
+        }
+        return 1.0;
+    }
+
     public static void setFullscreen(long pointer, boolean fullscreen) {
         if (IS_MAC) {
             macOSWindow.setFullscreen(pointer, fullscreen);
