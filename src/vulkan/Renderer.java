@@ -709,9 +709,12 @@ public final class Renderer {
             int mode = TriangleRenderer.getSceneMode();
             int bg = TriangleRenderer.getSceneBackground();
 
-            // src/dst blit regions (src full scene, dst computed by mode).
-            int sx0 = 0, sy0 = 0, sx1 = srcW, sy1 = srcH;
-            int dx0 = 0, dy0 = 0, dx1 = dstW, dy1 = dstH;
+            // 1:1 pixel snip from the persistent master screen buffer into the swapchain
+            int snipW = Math.min(srcW, dstW);
+            int snipH = Math.min(srcH, dstH);
+
+            int sx0 = 0, sy0 = 0, sx1 = snipW, sy1 = snipH;
+            int dx0 = 0, dy0 = 0, dx1 = snipW, dy1 = snipH;
             if (mode == darling.Scene.MODE_FIT) {
                 float scale = Math.min((float) dstW / srcW, (float) dstH / srcH);
                 int outW = Math.round(srcW * scale);
@@ -720,13 +723,6 @@ public final class Renderer {
                 dy0 = (dstH - outH) / 2;
                 dx1 = dx0 + outW;
                 dy1 = dy0 + outH;
-            } else if (mode == darling.Scene.MODE_PIXEL) {
-                // 1 scene unit == 1 window px, top-left pinned: blit the window-sized
-                // region of the scene (clamped), revealing more scene on resize.
-                sx1 = Math.min(srcW, dstW);
-                sy1 = Math.min(srcH, dstH);
-                dx1 = sx1;
-                dy1 = sy1;
             }
 
             pre0.sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
