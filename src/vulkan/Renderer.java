@@ -112,8 +112,10 @@ public final class Renderer {
         syncResizeH = h;
         syncResizeRequestedGen = gen;
         pendingResize = ((long) w << 32) | (h & 0xFFFFFFFFL);
-        System.out.println("[syncResize] request gen=" + gen + " size=" + w + "x" + h
-                + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+        if (System.getProperty("anti.debug.resize") != null) {
+            System.out.println("[syncResize] request gen=" + gen + " size=" + w + "x" + h
+                    + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+        }
         if (liveResize) {
             // Mid-drag: don't hold Thread 0. The present thread defers the rebuild
             // until the drag settles and keeps presenting the persistent scene.
@@ -123,10 +125,12 @@ public final class Renderer {
         while (syncResizeDoneGen < gen && java.lang.System.nanoTime() < deadline) {
             LockSupport.parkNanos(50_000L);
         }
-        if (syncResizeDoneGen < gen) {
-            System.out.println("[syncResize] TIMEOUT waiting for present at " + w + "x" + h);
-        } else {
-            System.out.println("[syncResize] acked gen=" + gen + " at " + w + "x" + h);
+        if (System.getProperty("anti.debug.resize") != null) {
+            if (syncResizeDoneGen < gen) {
+                System.out.println("[syncResize] TIMEOUT waiting for present at " + w + "x" + h);
+            } else {
+                System.out.println("[syncResize] acked gen=" + gen + " at " + w + "x" + h);
+            }
         }
     }
 
@@ -471,40 +475,37 @@ public final class Renderer {
             if (w < minW) w = minW;
             if (h < minH) h = minH;
             if (liveResize) {
-                // Active drag: DO NOT tear down the swapchain. Keep presenting the
-                // persistent scene into the current extent (the layer clips/scales it
-                // top-left) and coalesce to the latest requested size; the rebuild
-                // happens once the drag settles. Rebuilding here is what blanks the
-                // window mid-drag.
                 if (resize != 0L) {
                     deferredResizeW = w;
                     deferredResizeH = h;
                 }
-                System.out.println("[resizeBlock] deferred=" + deferredResizeW + "x" + deferredResizeH
-                        + " (live drag) currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+                if (System.getProperty("anti.debug.resize") != null) {
+                    System.out.println("[resizeBlock] deferred=" + deferredResizeW + "x" + deferredResizeH
+                            + " (live drag) currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+                }
             } else if (dragEnded) {
-                // Drag settled: rebuild once, at the latest coalesced size (a fresh
-                // request wins — both reflect the final window size).
                 if (resize == 0L) {
                     w = deferredResizeW;
                     h = deferredResizeH;
                 }
                 deferredResizeW = -1;
                 deferredResizeH = -1;
-                System.out.println("[resizeBlock] resize=" + w + "x" + h + " invalidated=" + invalidated
-                        + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+                if (System.getProperty("anti.debug.resize") != null) {
+                    System.out.println("[resizeBlock] resize=" + w + "x" + h + " invalidated=" + invalidated
+                            + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+                }
                 if (w != Vulkan.getSwapchainWidth() || h != Vulkan.getSwapchainHeight() || invalidated) {
                     Vulkan.resizeSwapchain(w, h);
                     resetInFlight();
                 }
             } else {
-                System.out.println("[resizeBlock] resize=" + w + "x" + h + " invalidated=" + invalidated
-                        + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+                if (System.getProperty("anti.debug.resize") != null) {
+                    System.out.println("[resizeBlock] resize=" + w + "x" + h + " invalidated=" + invalidated
+                            + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+                }
                 if (w == Vulkan.getSwapchainWidth() && h == Vulkan.getSwapchainHeight()) {
-                    // Size already matches: nothing to rebuild. (A same-size
-                    // OUT_OF_DATE just means the layer is clipping a swapchain larger
-                    // than the window — keep presenting it instead of rebuild-looping.)
                     resize = 0L;
+                    swapchainInvalidated = false;
                 } else {
                     Vulkan.resizeSwapchain(w, h);
                     resetInFlight();
@@ -515,42 +516,28 @@ public final class Renderer {
         processGarbage(device);
         long latestSlotVal = 0L;
 
-        /*
-         Drain the completed ring to the LATEST frame, but BOUND the number of drops.
-         The ring is only guaranteed to empty when the producer is slower than present;
-         with an uncapped draw thread the producer keeps it non-empty forever, so an
-         unbounded while(true) here livelocks the present thread inside this loop and it
-         never reaches the actual blit/present below. Capping the drain lets present
-         always present the newest frame while still discarding stale in-flight frames.
-        */
-        int maxDrain = Math.max(1, frameCount);
-        for (int drained = 0; drained < maxDrain; drained++) {
-            long s = RingBuffer.poll(completedRing);
-            if (s == 0L) break;
+        int readyCount = RingBuffer.size(completedRing);
+        for (int i = 0; i < readyCount; i++) {
+            long slotVal = RingBuffer.poll(completedRing);
+            if (slotVal == 0L) break;
             if (latestSlotVal != 0L) {
-                int dropSlot = (int) (latestSlotVal - 1L);
-                long dropDrawF = Fence.get(Fence.get(drawFencesArray, dropSlot));
-
-                try (MemoryStack stack = MemoryStack.stackPush()) {
-                    // CONSUMER strictly waits on drawF, but NEVER resets it!
-                    if (VK10.vkWaitForFences(device, stack.longs(dropDrawF), true, java.lang.Long.MAX_VALUE) != VK_SUCCESS) {
-                        throw new IllegalStateException("present: dropped-frame draw wait failed");
-                    }
-                    droppedFrames[dropSlot] = true;
-                    Log.append(LogKind.RENDER_DROPPED, dropSlot, 0L);
-                    slotSemaphore.release();
-                }
+                int oldSlot = (int) (latestSlotVal - 1L);
+                droppedFrames[oldSlot] = true;
+                Log.append(LogKind.RENDER_DROPPED, oldSlot, 1L);
+                slotSemaphore.release();
             }
-            latestSlotVal = s;
+            latestSlotVal = slotVal;
         }
-        if (latestSlotVal == 0L) return PRESENT_IDLE;
+
+        if (latestSlotVal == 0L) {
+            return PRESENT_IDLE;
+        }
 
         int slot = (int) (latestSlotVal - 1L);
         long drawF = Fence.get(Fence.get(drawFencesArray, slot));
         long releasedF = Fence.get(Fence.get(releasedFencesArray, slot));
         long imageAvailable = Semaphore.get(Semaphore.get(imageAvailableSemaphoresArray, slot));
 
-        // instantiation of the autocloseables
         try (
             MemoryStack stack = MemoryStack.stackPush();
             VkSubmitInfo.Buffer submits = VkSubmitInfo.calloc(1, stack);
@@ -570,11 +557,6 @@ public final class Renderer {
                 IntBuffer imageIndex = stack.mallocInt(1);
                 long swapchain = Vulkan.getSwapchain();
 
-                // BLOCKING acquire (up to ~one frame period): the present thread parks here
-                // waiting for a swapchain image to be freed at vsync, WITHOUT holding the queue
-                // lock. This is what keeps the queue lock hold time tiny so the producer can
-                // keep submitting draws while the present thread waits for the display.
-                // In FIFO the swapchain only frees an image at the display refresh.
                 int acquireResult = vkAcquireNextImageKHR(device, swapchain, 33_000_000L,
                         imageAvailable, VK_NULL_HANDLE, imageIndex);
 
@@ -583,20 +565,12 @@ public final class Renderer {
                     Log.append(LogKind.RENDER_DROPPED, slot, 1L);
                     slotSemaphore.release();
                     if (liveResize) {
-                        // Mid-drag: keep the stale swapchain alive and keep trying so
-                        // the persistent scene stays visible; the resize block at the
-                        // top of presentOnceLocked has coalesced the final size.
                         return PRESENT_RETRY;
                     }
-                    // Do NOT retry this stale swapchain forever — that is the "stuck
-                    // black" bug. Flag the rebuild; the next presentOnce iteration
-                    // recreates the swapchain at the top of presentOnceLocked.
                     swapchainInvalidated = true;
                     return PRESENT_RETRY;
                 }
                 if (acquireResult == VK_NOT_READY || acquireResult == VK_TIMEOUT) {
-                    // No swapchain image free yet (vsync pacing). Re-offer the frame so a later
-                    // presentOnce can show it; the slot stays in flight and is NOT released here.
                     counterAdd(CTR_DBG_PRESENT_NOT_READY, 1L);
                     RingBuffer.offer(completedRing, latestSlotVal);
                     return PRESENT_RETRY;
@@ -606,14 +580,10 @@ public final class Renderer {
                 }
 
                 int imgIndex = imageIndex.get(0);
-                // Index the blit/present signal semaphore by SWAPCHAIN IMAGE index, not slot.
-                // The swapchain only returns image N for re-acquire after its previous present
-                // completes, so blitFinished[imgIndex] can never be re-signaled while a present
-                // still waits on it. (Slot-indexed semaphores break here: with 16 slots and 3
-                // images, a slot's semaphore is re-signaled before the prior present retires.)
                 long blitFinished = Semaphore.get(Semaphore.get(blitFinishedSemaphoresArray, imgIndex));
                 long blitCb = getBlitCommandBuffer(slot, imgIndex);
                 long tB0 = java.lang.System.nanoTime();
+                recordBlitCommandBuffer(stack, device, blitCb, slot, imgIndex);
                 counterAdd(CTR_DBG_BLIT_RECORD_NANOS, java.lang.System.nanoTime() - tB0);
 
                 VkQueue q = Vulkan.getPresentQueue();
@@ -633,7 +603,6 @@ public final class Renderer {
                 lockQueue();
                 try {
                     long tS0 = java.lang.System.nanoTime();
-                    // Pass releasedF here so the Producer slot is unlocked the exact moment the blit finishes!
                     if (VK10.vkQueueSubmit(q, submits, releasedF) != VK_SUCCESS) {
                         throw new IllegalStateException("present: blit submit failed");
                     }
@@ -644,12 +613,7 @@ public final class Renderer {
                     if (pres != VK_SUCCESS && pres != VK_SUBOPTIMAL_KHR && pres != VK_ERROR_OUT_OF_DATE_KHR) {
                         throw new IllegalStateException("present: present failed: " + pres);
                     }
-                    // The frame was presented, but the surface has moved on: rebuild the
-                    // swapchain on the next present iteration to stop chasing a stale chain.
-                    if (pres == VK_ERROR_OUT_OF_DATE_KHR || pres == VK_SUBOPTIMAL_KHR) {
-                        // The frame WAS presented; rebuild the swapchain next iteration
-                        // — unless we're mid-drag, where rebuilding blanks the window
-                        // and the top-of-loop resize block handles the settled size.
+                    if (pres == VK_ERROR_OUT_OF_DATE_KHR) {
                         if (!liveResize) {
                             swapchainInvalidated = true;
                         }
