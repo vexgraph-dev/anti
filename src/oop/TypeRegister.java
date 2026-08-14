@@ -189,6 +189,7 @@ public class TypeRegister
     public static final int ID_SCENE2D = 0x00007D; // darling.Scene2D class
     public static final int ID_SCENE3D = 0x00007E; // darling.Scene3D class
     public static final int ID_EVENT_THREAD = 0x00007F; // thread.EventThread class // 127
+    public static final int ID_UI_THREAD    = 0x000080; // thread.UIThread class // 128
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
@@ -721,5 +722,10 @@ public class TypeRegister
     public static final int EVENT_THREAD_SINGLETON = FORM_SINGLETON | ID_EVENT_THREAD;
     public static final int EVENT_THREAD_ARRAY = FORM_ARRAY | ID_EVENT_THREAD;
     public static final int EVENT_THREAD_POINTER = FORM_POINTER | ID_EVENT_THREAD;
+
+    // UIThread class
+    public static final int UI_THREAD_SINGLETON = FORM_SINGLETON | ID_UI_THREAD;
+    public static final int UI_THREAD_ARRAY = FORM_ARRAY | ID_UI_THREAD;
+    public static final int UI_THREAD_POINTER = FORM_POINTER | ID_UI_THREAD;
 
 }
