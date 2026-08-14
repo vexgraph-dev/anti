@@ -35,6 +35,7 @@ public final class Panel {
     public static final int TYPE_POINTER   = TypeRegister.PANEL_POINTER;   // 0x30000078
 
     // --- Anchor constants (forwarded from Container) ---
+    // --- 1. Anchor constants (forwarded from Container) ---
     public static final int ANCHOR_TOP_LEFT      = Container.ANCHOR_TOP_LEFT;
     public static final int ANCHOR_TOP_CENTER    = Container.ANCHOR_TOP_CENTER;
     public static final int ANCHOR_TOP_RIGHT     = Container.ANCHOR_TOP_RIGHT;
@@ -45,7 +46,28 @@ public final class Panel {
     public static final int ANCHOR_BOTTOM_CENTER = Container.ANCHOR_BOTTOM_CENTER;
     public static final int ANCHOR_BOTTOM_RIGHT  = Container.ANCHOR_BOTTOM_RIGHT;
 
-    // --- Location Reference constants (forwarded from Container) ---
+    // --- 2. Element Anchor constants (forwarded from Container) ---
+    public static final int ELEM_ANCHOR_TOP_LEFT      = Container.ELEM_ANCHOR_TOP_LEFT;
+    public static final int ELEM_ANCHOR_TOP_CENTER    = Container.ELEM_ANCHOR_TOP_CENTER;
+    public static final int ELEM_ANCHOR_TOP_RIGHT     = Container.ELEM_ANCHOR_TOP_RIGHT;
+    public static final int ELEM_ANCHOR_MIDDLE_LEFT   = Container.ELEM_ANCHOR_MIDDLE_LEFT;
+    public static final int ELEM_ANCHOR_MIDDLE_CENTER = Container.ELEM_ANCHOR_MIDDLE_CENTER;
+    public static final int ELEM_ANCHOR_MIDDLE_RIGHT  = Container.ELEM_ANCHOR_MIDDLE_RIGHT;
+    public static final int ELEM_ANCHOR_BOTTOM_LEFT   = Container.ELEM_ANCHOR_BOTTOM_LEFT;
+    public static final int ELEM_ANCHOR_BOTTOM_CENTER = Container.ELEM_ANCHOR_BOTTOM_CENTER;
+    public static final int ELEM_ANCHOR_BOTTOM_RIGHT  = Container.ELEM_ANCHOR_BOTTOM_RIGHT;
+
+    public static final int ELEMENT_ANCHOR_TOP_LEFT      = Container.ELEMENT_ANCHOR_TOP_LEFT;
+    public static final int ELEMENT_ANCHOR_TOP_CENTER    = Container.ELEMENT_ANCHOR_TOP_CENTER;
+    public static final int ELEMENT_ANCHOR_TOP_RIGHT     = Container.ELEMENT_ANCHOR_TOP_RIGHT;
+    public static final int ELEMENT_ANCHOR_MIDDLE_LEFT   = Container.ELEMENT_ANCHOR_MIDDLE_LEFT;
+    public static final int ELEMENT_ANCHOR_MIDDLE_CENTER = Container.ELEMENT_ANCHOR_MIDDLE_CENTER;
+    public static final int ELEMENT_ANCHOR_MIDDLE_RIGHT  = Container.ELEMENT_ANCHOR_MIDDLE_RIGHT;
+    public static final int ELEMENT_ANCHOR_BOTTOM_LEFT   = Container.ELEMENT_ANCHOR_BOTTOM_LEFT;
+    public static final int ELEMENT_ANCHOR_BOTTOM_CENTER = Container.ELEMENT_ANCHOR_BOTTOM_CENTER;
+    public static final int ELEMENT_ANCHOR_BOTTOM_RIGHT  = Container.ELEMENT_ANCHOR_BOTTOM_RIGHT;
+
+    // Location Reference backward-compatibility aliases:
     public static final int LOC_TOP_LEFT      = Container.LOC_TOP_LEFT;
     public static final int LOC_TOP_CENTER    = Container.LOC_TOP_CENTER;
     public static final int LOC_TOP_RIGHT     = Container.LOC_TOP_RIGHT;
@@ -56,7 +78,7 @@ public final class Panel {
     public static final int LOC_BOTTOM_CENTER = Container.LOC_BOTTOM_CENTER;
     public static final int LOC_BOTTOM_RIGHT  = Container.LOC_BOTTOM_RIGHT;
 
-    // --- Point Reference constants (forwarded from Container) ---
+    // --- 3. Point Reference constants (forwarded from Container) ---
     public static final int POINT_TOP_LEFT      = Container.POINT_TOP_LEFT;
     public static final int POINT_TOP_CENTER    = Container.POINT_TOP_CENTER;
     public static final int POINT_TOP_RIGHT     = Container.POINT_TOP_RIGHT;
@@ -66,6 +88,16 @@ public final class Panel {
     public static final int POINT_BOTTOM_LEFT   = Container.POINT_BOTTOM_LEFT;
     public static final int POINT_BOTTOM_CENTER = Container.POINT_BOTTOM_CENTER;
     public static final int POINT_BOTTOM_RIGHT  = Container.POINT_BOTTOM_RIGHT;
+
+    public static final int POINT_REF_TOP_LEFT      = Container.POINT_REF_TOP_LEFT;
+    public static final int POINT_REF_TOP_CENTER    = Container.POINT_REF_TOP_CENTER;
+    public static final int POINT_REF_TOP_RIGHT     = Container.POINT_REF_TOP_RIGHT;
+    public static final int POINT_REF_MIDDLE_LEFT   = Container.POINT_REF_MIDDLE_LEFT;
+    public static final int POINT_REF_MIDDLE_CENTER = Container.POINT_REF_MIDDLE_CENTER;
+    public static final int POINT_REF_MIDDLE_RIGHT  = Container.POINT_REF_MIDDLE_RIGHT;
+    public static final int POINT_REF_BOTTOM_LEFT   = Container.POINT_REF_BOTTOM_LEFT;
+    public static final int POINT_REF_BOTTOM_CENTER = Container.POINT_REF_BOTTOM_CENTER;
+    public static final int POINT_REF_BOTTOM_RIGHT  = Container.POINT_REF_BOTTOM_RIGHT;
 
     public static final int ANCHOR_MIN = Container.ANCHOR_MIN;
     public static final int ANCHOR_MAX = Container.ANCHOR_MAX;
@@ -304,18 +336,33 @@ public final class Panel {
     public static void setScaleHeight(long ptr, float scaleHeight) { Container.setScaleHeight(ptr, scaleHeight); }
     public static void setScale(long ptr, float scaleWidth, float scaleHeight) { Container.setScale(ptr, scaleWidth, scaleHeight); }
 
+    // =========================================================================
+    // 1. ANCHOR (Resize-Only Sticky / WinForms Delta Tracking)
+    // =========================================================================
     public static int getAnchor(long ptr) { return Container.getAnchor(ptr); }
-    public static int getLocationReference(long ptr) { return Container.getLocationReference(ptr); }
-    public static int getPointReference(long ptr) { return Container.getPointReference(ptr); }
     public static void setAnchor(long ptr, int anchor) { Container.setAnchor(ptr, anchor); }
-    public static void setLocationReference(long ptr, int locRef) { Container.setLocationReference(ptr, locRef); }
-    public static void setPointReference(long ptr, int pointRef) { Container.setPointReference(ptr, pointRef); }
-
     public static int getReferenceAnchor(long ptr) { return Container.getReferenceAnchor(ptr); }
-    public static int getElementAnchor(long ptr)   { return Container.getElementAnchor(ptr); }
     public static void setReferenceAnchor(long ptr, int anchor) { Container.setReferenceAnchor(ptr, anchor); }
+
+    // =========================================================================
+    // 2. ELEMENT ANCHOR (Margin Measurement Corner Switch)
+    // =========================================================================
+    public static int getElementAnchor(long ptr) { return Container.getElementAnchor(ptr); }
     public static void setElementAnchor(long ptr, int anchor) { Container.setElementAnchor(ptr, anchor); }
-    public static void setAnchor(long ptr, int referenceAnchor, int elementAnchor) { Container.setAnchor(ptr, referenceAnchor, elementAnchor); }
+    public static int getLocationReference(long ptr) { return Container.getLocationReference(ptr); }
+    public static void setLocationReference(long ptr, int locRef) { Container.setLocationReference(ptr, locRef); }
+
+    // =========================================================================
+    // 3. POINT REFERENCE (Element Pivot Corner)
+    // =========================================================================
+    public static int getPointReference(long ptr) { return Container.getPointReference(ptr); }
+    public static void setPointReference(long ptr, int pointRef) { Container.setPointReference(ptr, pointRef); }
+    public static int getPointRef(long ptr) { return Container.getPointRef(ptr); }
+    public static void setPointRef(long ptr, int pointRef) { Container.setPointRef(ptr, pointRef); }
+
+    // Combined convenience setters:
+    public static void setAnchor(long ptr, int anchor, int elementAnchor) { Container.setAnchor(ptr, anchor, elementAnchor); }
+    public static void setAnchor(long ptr, int anchor, int elementAnchor, int pointRef) { Container.setAnchor(ptr, anchor, elementAnchor, pointRef); }
 
     public static float getPercentX(long ptr) { return Container.getPercentX(ptr); }
     public static float getPercentY(long ptr) { return Container.getPercentY(ptr); }
@@ -455,7 +502,7 @@ public final class Panel {
         Container.setScaleWidth(copy, Container.getScaleWidth(node));
         Container.setScaleHeight(copy, Container.getScaleHeight(node));
         Container.setAnchor(copy, Container.getAnchor(node));
-        Container.setLocationReference(copy, Container.getLocationReference(node));
+        Container.setElementAnchor(copy, Container.getElementAnchor(node));
         Container.setPointReference(copy, Container.getPointReference(node));
         if (Container.hasPercentX(node)) Container.setPercentX(copy, Container.getPercentX(node));
         if (Container.hasPercentY(node)) Container.setPercentY(copy, Container.getPercentY(node));
