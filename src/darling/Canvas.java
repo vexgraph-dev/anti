@@ -104,17 +104,14 @@ public final class Canvas {
                 oy = (fbH - vh * s) / 2f;
             }
             default -> { // MODE_PIXEL
-                scaleX = 1f;
-                scaleY = 1f;
-                ox = 0f;
-                oy = 0f;
+                float canvasW = (dpiScale > 0f) ? (fbW / dpiScale) : fbW;
+                float canvasH = (dpiScale > 0f) ? (fbH / dpiScale) : fbH;
+                Float.set(outRect, 0, 0f);
+                Float.set(outRect, 1, 0f);
+                Float.set(outRect, 2, canvasW);
+                Float.set(outRect, 3, canvasH);
             }
         }
-
-        Float.set(outRect, 0, ox);
-        Float.set(outRect, 1, oy);
-        Float.set(outRect, 2, vw * scaleX);
-        Float.set(outRect, 3, vh * scaleY);
     }
 
     /**
@@ -174,22 +171,20 @@ public final class Canvas {
         if (nodePtr == 0L) throw new NullPointerException("Canvas.resolveRoot() node is NULL!");
         if (outRect == 0L) throw new NullPointerException("Canvas.resolveRoot() outRect is NULL!");
 
-        long visible = Float.allocateArray(4);
-        try {
-            visibleRect(fbW, fbH, visible);
-            float cx = Float.get(visible, 0);
-            float cy = Float.get(visible, 1);
-            float cw = Float.get(visible, 2);
-            float ch = Float.get(visible, 3);
+        float cw, ch;
+        if (mode == MODE_PIXEL) {
+            cw = (dpiScale > 0f) ? (fbW / dpiScale) : fbW;
+            ch = (dpiScale > 0f) ? (fbH / dpiScale) : fbH;
+        } else {
+            cw = resolveSize(virtualWidth, fbW);
+            ch = resolveSize(virtualHeight, fbH);
+        }
 
-            int cls = Container.classId(nodePtr);
-            if (cls == Picture.CLASS_ID) {
-                Picture.resolve(nodePtr, cx, cy, cw, ch, outRect);
-            } else {
-                Container.resolve(nodePtr, cx, cy, cw, ch, outRect);
-            }
-        } finally {
-            Float.free(visible);
+        int cls = Container.classId(nodePtr);
+        if (cls == Picture.CLASS_ID) {
+            Picture.resolve(nodePtr, 0f, 0f, cw, ch, outRect);
+        } else {
+            Container.resolve(nodePtr, 0f, 0f, cw, ch, outRect);
         }
     }
 
