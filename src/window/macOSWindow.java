@@ -597,6 +597,31 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         return resolutionType;
     }
 
+    public static double getBackingScaleFactor(long pointer) {
+        if (resolutionType == RESOLUTION_POINT) return 1.0;
+        if (pointer == 0L || OBJC_GET_CLASS == null) {
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
+                MemorySegment mainScreenSel = getSel(arena, "mainScreen");
+                MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, mainScreenSel);
+                if (mainScreen == null || mainScreen.address() == 0L) return 1.0;
+                MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+                double scale = (double) MSG_SEND_DOUBLE_RET.invoke(mainScreen, backingScaleFactorSel);
+                return scale > 0.0 ? scale : 1.0;
+            } catch (Throwable t) {
+                return 1.0;
+            }
+        }
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+            double scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
+            return scale > 0.0 ? scale : 1.0;
+        } catch (Throwable t) {
+            return 1.0;
+        }
+    }
+
     /**
      * Syncs the CAMetalLayer drawableSize to the swapchain extent in backing pixels.
      * MoltenVK sets it during vkCreateSwapchainKHR, but during a live drag the window
