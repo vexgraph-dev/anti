@@ -42,7 +42,7 @@ public final class Container {
     public static final int TYPE_ARRAY     = TypeRegister.CONTAINER_ARRAY;     // 0x20000079
     public static final int TYPE_POINTER   = TypeRegister.CONTAINER_POINTER;   // 0x30000079
 
-    // --- Anchor constants (3x3 grid, row*3+col) - where element attaches on parent resize ---
+    // --- 1. Anchor constants (3x3 grid, row*3+col) - WinForms-style sticky resize behavior ---
     public static final int ANCHOR_TOP_LEFT      = 0;
     public static final int ANCHOR_TOP_CENTER    = 1;
     public static final int ANCHOR_TOP_RIGHT     = 2;
@@ -53,18 +53,40 @@ public final class Container {
     public static final int ANCHOR_BOTTOM_CENTER = 7;
     public static final int ANCHOR_BOTTOM_RIGHT  = 8;
 
-    // --- Location Reference constants (inward-offset measurement corner) ---
-    public static final int LOC_TOP_LEFT      = 0;
-    public static final int LOC_TOP_CENTER    = 1;
-    public static final int LOC_TOP_RIGHT     = 2;
-    public static final int LOC_MIDDLE_LEFT   = 3;
-    public static final int LOC_MIDDLE_CENTER = 4;
-    public static final int LOC_MIDDLE_RIGHT  = 5;
-    public static final int LOC_BOTTOM_LEFT   = 6;
-    public static final int LOC_BOTTOM_CENTER = 7;
-    public static final int LOC_BOTTOM_RIGHT  = 8;
+    // --- 2. Element Anchor constants (margin measurement corner switch) ---
+    public static final int ELEM_ANCHOR_TOP_LEFT      = 0;
+    public static final int ELEM_ANCHOR_TOP_CENTER    = 1;
+    public static final int ELEM_ANCHOR_TOP_RIGHT     = 2;
+    public static final int ELEM_ANCHOR_MIDDLE_LEFT   = 3;
+    public static final int ELEM_ANCHOR_MIDDLE_CENTER = 4;
+    public static final int ELEM_ANCHOR_MIDDLE_RIGHT  = 5;
+    public static final int ELEM_ANCHOR_BOTTOM_LEFT   = 6;
+    public static final int ELEM_ANCHOR_BOTTOM_CENTER = 7;
+    public static final int ELEM_ANCHOR_BOTTOM_RIGHT  = 8;
 
-    // --- Point Reference constants (element pivot / anchor point on element itself) ---
+    // Element Anchor full-name aliases:
+    public static final int ELEMENT_ANCHOR_TOP_LEFT      = ELEM_ANCHOR_TOP_LEFT;
+    public static final int ELEMENT_ANCHOR_TOP_CENTER    = ELEM_ANCHOR_TOP_CENTER;
+    public static final int ELEMENT_ANCHOR_TOP_RIGHT     = ELEM_ANCHOR_TOP_RIGHT;
+    public static final int ELEMENT_ANCHOR_MIDDLE_LEFT   = ELEM_ANCHOR_MIDDLE_LEFT;
+    public static final int ELEMENT_ANCHOR_MIDDLE_CENTER = ELEM_ANCHOR_MIDDLE_CENTER;
+    public static final int ELEMENT_ANCHOR_MIDDLE_RIGHT  = ELEM_ANCHOR_MIDDLE_RIGHT;
+    public static final int ELEMENT_ANCHOR_BOTTOM_LEFT   = ELEM_ANCHOR_BOTTOM_LEFT;
+    public static final int ELEMENT_ANCHOR_BOTTOM_CENTER = ELEM_ANCHOR_BOTTOM_CENTER;
+    public static final int ELEMENT_ANCHOR_BOTTOM_RIGHT  = ELEM_ANCHOR_BOTTOM_RIGHT;
+
+    // Location Reference backward-compatibility aliases:
+    public static final int LOC_TOP_LEFT      = ELEM_ANCHOR_TOP_LEFT;
+    public static final int LOC_TOP_CENTER    = ELEM_ANCHOR_TOP_CENTER;
+    public static final int LOC_TOP_RIGHT     = ELEM_ANCHOR_TOP_RIGHT;
+    public static final int LOC_MIDDLE_LEFT   = ELEM_ANCHOR_MIDDLE_LEFT;
+    public static final int LOC_MIDDLE_CENTER = ELEM_ANCHOR_MIDDLE_CENTER;
+    public static final int LOC_MIDDLE_RIGHT  = ELEM_ANCHOR_MIDDLE_RIGHT;
+    public static final int LOC_BOTTOM_LEFT   = ELEM_ANCHOR_BOTTOM_LEFT;
+    public static final int LOC_BOTTOM_CENTER = ELEM_ANCHOR_BOTTOM_CENTER;
+    public static final int LOC_BOTTOM_RIGHT  = ELEM_ANCHOR_BOTTOM_RIGHT;
+
+    // --- 3. Point Reference constants (element pivot / alignment point on element itself) ---
     public static final int POINT_TOP_LEFT      = 0;
     public static final int POINT_TOP_CENTER    = 1;
     public static final int POINT_TOP_RIGHT     = 2;
@@ -74,6 +96,16 @@ public final class Container {
     public static final int POINT_BOTTOM_LEFT   = 6;
     public static final int POINT_BOTTOM_CENTER = 7;
     public static final int POINT_BOTTOM_RIGHT  = 8;
+
+    public static final int POINT_REF_TOP_LEFT      = POINT_TOP_LEFT;
+    public static final int POINT_REF_TOP_CENTER    = POINT_TOP_CENTER;
+    public static final int POINT_REF_TOP_RIGHT     = POINT_TOP_RIGHT;
+    public static final int POINT_REF_MIDDLE_LEFT   = POINT_MIDDLE_LEFT;
+    public static final int POINT_REF_MIDDLE_CENTER = POINT_MIDDLE_CENTER;
+    public static final int POINT_REF_MIDDLE_RIGHT  = POINT_MIDDLE_RIGHT;
+    public static final int POINT_REF_BOTTOM_LEFT   = POINT_BOTTOM_LEFT;
+    public static final int POINT_REF_BOTTOM_CENTER = POINT_BOTTOM_CENTER;
+    public static final int POINT_REF_BOTTOM_RIGHT  = POINT_BOTTOM_RIGHT;
 
     public static final int ANCHOR_MIN = ANCHOR_TOP_LEFT;
     public static final int ANCHOR_MAX = ANCHOR_BOTTOM_RIGHT;
@@ -88,8 +120,9 @@ public final class Container {
     static final int OFF_H          = 12;  // float
     static final int OFF_SCALE_X    = 16;  // float
     static final int OFF_SCALE_Y    = 20;  // float
-    static final int OFF_REF_ANCHOR = 24;  // int
-    static final int OFF_ELEM_ANCHOR = 28; // int
+    static final int OFF_REF_ANCHOR = 24;  // int (byte 0: anchor, byte 1: elementAnchor)
+    static final int OFF_POINT_REF  = 28;  // int (pointReference)
+    static final int OFF_ELEM_ANCHOR = OFF_POINT_REF; // legacy alias
     static final int OFF_PERCENT_X  = 32;  // float
     static final int OFF_PERCENT_Y  = 36;  // float
     static final int OFF_Z          = 40;  // int
@@ -208,8 +241,9 @@ public final class Container {
         setWidth(ptr, 0f);
         setHeight(ptr, 0f);
         setScale(ptr, 1f, 1f);
-        setReferenceAnchor(ptr, ANCHOR_TOP_LEFT);
-        setElementAnchor(ptr, ANCHOR_TOP_LEFT);
+        setAnchor(ptr, ANCHOR_TOP_LEFT);
+        setElementAnchor(ptr, ELEM_ANCHOR_TOP_LEFT);
+        setPointReference(ptr, POINT_TOP_LEFT);
         setPercentX(ptr, PERCENT_UNSET);
         setPercentY(ptr, PERCENT_UNSET);
         setZ(ptr, 0);
@@ -308,72 +342,95 @@ public final class Container {
     public static void setScale(long ptr, float scaleWidth, float scaleHeight) { setScaleWidth(ptr, scaleWidth); setScaleHeight(ptr, scaleHeight); }
 
     // =========================================================================
-    // ANCHORS, LOCATION REFERENCE & POINT REFERENCE
+    // 1. ANCHOR (Resize-Only Sticky / WinForms Delta Tracking)
     // =========================================================================
 
     /**
-     * Anchor: which corner or side of the parent container this element attaches
-     * to when the parent / window resizes (0..8, e.g. ANCHOR_TOP_RIGHT moves right with right edge).
+     * Anchor: tracks parent resize delta so the element sticks to the specified
+     * side/corner when the parent container or window expands or shrinks (0..8,
+     * e.g. ANCHOR_BOTTOM_RIGHT moves with bottom-right on resize).
      */
     public static int getAnchor(long ptr) {
         checkContainer(ptr);
         return ForeignMemory.getInt(ptr + OFF_REF_ANCHOR) & 0xFF;
     }
 
-    /**
-     * Location Reference: which corner of the parent the (x, y) offset is measured
-     * from, where positive values naturally move inward (e.g. LOC_BOTTOM_RIGHT with
-     * x=30, y=30 means 30px from the right edge, 30px from the bottom edge).
-     */
-    public static int getLocationReference(long ptr) {
-        checkContainer(ptr);
-        int raw = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
-        int loc = (raw >>> 8) & 0xFF;
-        return (loc == 0) ? LOC_TOP_LEFT : (loc - 1);
-    }
-
-    /**
-     * Point Reference (Element Pivot): which point on the element itself aligns
-     * with the resolved anchor coordinate (0..8, e.g. POINT_TOP_LEFT, POINT_MIDDLE_CENTER).
-     */
-    public static int getPointReference(long ptr) {
-        checkContainer(ptr);
-        return ForeignMemory.getInt(ptr + OFF_ELEM_ANCHOR);
-    }
-
     public static void setAnchor(long ptr, int anchor) {
         checkContainer(ptr);
         checkAnchor(anchor);
         int old = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
-        int loc = (old >>> 8) & 0xFF;
-        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, (loc << 8) | (anchor & 0xFF));
+        int elemAnchor = (old >>> 8) & 0xFF;
+        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, (elemAnchor << 8) | (anchor & 0xFF));
         markDirty(ptr);
     }
 
-    public static void setLocationReference(long ptr, int locRef) {
+    public static int getReferenceAnchor(long ptr) { return getAnchor(ptr); }
+    public static void setReferenceAnchor(long ptr, int anchor) { setAnchor(ptr, anchor); }
+
+    // =========================================================================
+    // 2. ELEMENT ANCHOR (Margin Measurement Corner Switch)
+    // =========================================================================
+
+    /**
+     * Element Anchor: defines which corner of the parent the (x, y) coordinates
+     * are measured from, switching the origin and inward direction (0..8, e.g.
+     * ELEM_ANCHOR_BOTTOM_RIGHT with x=30, y=30 places the element 30px from the
+     * parent's right edge and 30px from the bottom edge).
+     */
+    public static int getElementAnchor(long ptr) {
         checkContainer(ptr);
-        checkAnchor(locRef);
+        int raw = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
+        int elemAnchor = (raw >>> 8) & 0xFF;
+        return (elemAnchor == 0) ? ELEM_ANCHOR_TOP_LEFT : (elemAnchor - 1);
+    }
+
+    public static void setElementAnchor(long ptr, int elemAnchor) {
+        checkContainer(ptr);
+        checkAnchor(elemAnchor);
         int old = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
         int anchor = old & 0xFF;
-        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, ((locRef + 1) << 8) | anchor);
+        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, ((elemAnchor + 1) << 8) | anchor);
         markDirty(ptr);
+    }
+
+    // Location Reference compatibility aliases:
+    public static int getLocationReference(long ptr) { return getElementAnchor(ptr); }
+    public static void setLocationReference(long ptr, int locRef) { setElementAnchor(ptr, locRef); }
+
+    // =========================================================================
+    // 3. POINT REFERENCE (Element Pivot Corner)
+    // =========================================================================
+
+    /**
+     * Point Reference (Element Pivot): defines which point/corner on the element
+     * itself aligns with the target coordinate (0..8, e.g. POINT_TOP_LEFT aligns
+     * the element's top-left corner, POINT_MIDDLE_CENTER aligns the center).
+     */
+    public static int getPointReference(long ptr) {
+        checkContainer(ptr);
+        return ForeignMemory.getInt(ptr + OFF_POINT_REF);
     }
 
     public static void setPointReference(long ptr, int pointRef) {
         checkContainer(ptr);
         checkAnchor(pointRef);
-        ForeignMemory.setInt(ptr + OFF_ELEM_ANCHOR, pointRef);
+        ForeignMemory.setInt(ptr + OFF_POINT_REF, pointRef);
         markDirty(ptr);
     }
 
-    // Compatibility aliases:
-    public static int getReferenceAnchor(long ptr) { return getAnchor(ptr); }
-    public static int getElementAnchor(long ptr)   { return getPointReference(ptr); }
-    public static void setReferenceAnchor(long ptr, int anchor) { setAnchor(ptr, anchor); }
-    public static void setElementAnchor(long ptr, int anchor)   { setPointReference(ptr, anchor); }
-    public static void setAnchor(long ptr, int referenceAnchor, int elementAnchor) {
-        setAnchor(ptr, referenceAnchor);
-        setPointReference(ptr, elementAnchor);
+    public static int getPointRef(long ptr) { return getPointReference(ptr); }
+    public static void setPointRef(long ptr, int pointRef) { setPointReference(ptr, pointRef); }
+
+    // Combined convenience setters:
+    public static void setAnchor(long ptr, int anchor, int elementAnchor) {
+        setAnchor(ptr, anchor);
+        setElementAnchor(ptr, elementAnchor);
+    }
+
+    public static void setAnchor(long ptr, int anchor, int elementAnchor, int pointRef) {
+        setAnchor(ptr, anchor);
+        setElementAnchor(ptr, elementAnchor);
+        setPointReference(ptr, pointRef);
     }
 
     // =========================================================================
@@ -438,9 +495,9 @@ public final class Container {
      * [screenX, screenY, screenW, screenH].
      *
      * Math:
-     *   1. Anchor base point on parent (anchor corner / side / center).
-     *   2. Location offset applied with inward direction based on LocationReference.
-     *   3. Point reference offset (element pivot) aligned to the target coordinate.
+     *   1. Element Anchor: switches margin measurement origin on parent (inward direction).
+     *   2. Anchor: WinForms-style resize delta tracking on expansion.
+     *   3. Point Reference: aligns element pivot point to target coordinate.
      */
     public static void resolve(long ptr, float parentX, float parentY, float parentW, float parentH, long outRect) {
         resolveSized(ptr, getWidth(ptr), getHeight(ptr), parentX, parentY, parentW, parentH, outRect);
@@ -457,20 +514,19 @@ public final class Container {
         float sx = getScaleWidth(ptr), sy = getScaleHeight(ptr);
         float sw = w * sx, sh = h * sy;
 
-        float baseW = parentW;
-        float baseH = parentH;
-        float vw = darling.Canvas.getVirtualWidth();
-        float vh = darling.Canvas.getVirtualHeight();
-        if (vw > 0f && (parentW >= vw || Math.abs(parentW - vw) < parentW * 0.5f)) {
-            baseW = vw;
-        }
-        if (vh > 0f && (parentH >= vh || Math.abs(parentH - vh) < parentH * 0.5f)) {
-            baseH = vh;
-        }
+        // 1. Element Anchor (Margin measurement corner switch)
+        int elemAnchor = getElementAnchor(ptr);
+        int elemRow = elemAnchor / 3;
+        int elemCol = elemAnchor % 3;
 
-        float deltaW = parentW - baseW;
-        float deltaH = parentH - baseH;
+        // Inward direction: Col 2 (Right) moves left (-1), Row 2 (Bottom) moves up (-1)
+        float dirX = (elemCol == 2) ? -1.0f : 1.0f;
+        float dirY = (elemRow == 2) ? -1.0f : 1.0f;
 
+        float elemOriginX = (elemCol == 2) ? parentW : (elemCol == 1 ? parentW / 2f : 0f);
+        float elemOriginY = (elemRow == 2) ? parentH : (elemRow == 1 ? parentH / 2f : 0f);
+
+        // 2. Anchor (Resize-only WinForms delta tracking)
         int anchor = getAnchor(ptr);
         int anchorRow = anchor / 3;
         int anchorCol = anchor % 3;
@@ -478,25 +534,24 @@ public final class Container {
         float anchorFactorX = anchorCol / 2.0f; // 0.0, 0.5, 1.0
         float anchorFactorY = anchorRow / 2.0f; // 0.0, 0.5, 1.0
 
-        int locRef = getLocationReference(ptr);
-        int locRow = locRef / 3;
-        int locCol = locRef % 3;
+        float baseW = parentW;
+        float baseH = parentH;
+        float vw = darling.Canvas.getVirtualWidth();
+        float vh = darling.Canvas.getVirtualHeight();
+        if (vw > 0f) baseW = vw;
+        if (vh > 0f) baseH = vh;
 
-        // Inward direction: Col 2 (Right) moves left (-1), Row 2 (Bottom) moves up (-1)
-        float dirX = (locCol == 2) ? -1.0f : 1.0f;
-        float dirY = (locRow == 2) ? -1.0f : 1.0f;
-
-        float locOriginX = (locCol == 2) ? parentW : (locCol == 1 ? parentW / 2f : 0f);
-        float locOriginY = (locRow == 2) ? parentH : (locRow == 1 ? parentH / 2f : 0f);
+        float deltaW = parentW - baseW;
+        float deltaH = parentH - baseH;
 
         float targetX;
         float targetY;
-        if (locCol != 0 || locRow != 0) {
-            // Location Reference is explicitly non-top-left (e.g. LOC_BOTTOM_RIGHT inward margin)
-            targetX = parentX + locOriginX + getX(ptr) * dirX;
-            targetY = parentY + locOriginY + getY(ptr) * dirY;
+        if (elemCol != 0 || elemRow != 0) {
+            // Element Anchor is explicitly switched to another corner/side (e.g. ELEM_ANCHOR_BOTTOM_RIGHT inward margin)
+            targetX = parentX + elemOriginX + getX(ptr) * dirX;
+            targetY = parentY + elemOriginY + getY(ptr) * dirY;
         } else {
-            // Default position at (x, y) with anchor resize delta tracking
+            // Default top-left margin with WinForms-style resize delta tracking
             targetX = parentX + getX(ptr) + (deltaW * anchorFactorX);
             targetY = parentY + getY(ptr) + (deltaH * anchorFactorY);
         }
@@ -504,12 +559,13 @@ public final class Container {
         if (hasPercentX(ptr)) targetX = parentX + getPercentX(ptr) * parentW;
         if (hasPercentY(ptr)) targetY = parentY + getPercentY(ptr) * parentH;
 
+        // 3. Point Reference (Element Pivot)
         int pointRef = getPointReference(ptr);
-        int elemRow = pointRef / 3;
-        int elemCol = pointRef % 3;
+        int pointRow = pointRef / 3;
+        int pointCol = pointRef % 3;
 
-        float elemOffsetX = (elemCol * sw) / 2f;
-        float elemOffsetY = (elemRow * sh) / 2f;
+        float elemOffsetX = (pointCol * sw) / 2f;
+        float elemOffsetY = (pointRow * sh) / 2f;
 
         float screenX = targetX - elemOffsetX;
         float screenY = targetY - elemOffsetY;
