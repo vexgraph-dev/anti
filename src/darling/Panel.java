@@ -45,6 +45,28 @@ public final class Panel {
     public static final int ANCHOR_BOTTOM_CENTER = Container.ANCHOR_BOTTOM_CENTER;
     public static final int ANCHOR_BOTTOM_RIGHT  = Container.ANCHOR_BOTTOM_RIGHT;
 
+    // --- Location Reference constants (forwarded from Container) ---
+    public static final int LOC_TOP_LEFT      = Container.LOC_TOP_LEFT;
+    public static final int LOC_TOP_CENTER    = Container.LOC_TOP_CENTER;
+    public static final int LOC_TOP_RIGHT     = Container.LOC_TOP_RIGHT;
+    public static final int LOC_MIDDLE_LEFT   = Container.LOC_MIDDLE_LEFT;
+    public static final int LOC_MIDDLE_CENTER = Container.LOC_MIDDLE_CENTER;
+    public static final int LOC_MIDDLE_RIGHT  = Container.LOC_MIDDLE_RIGHT;
+    public static final int LOC_BOTTOM_LEFT   = Container.LOC_BOTTOM_LEFT;
+    public static final int LOC_BOTTOM_CENTER = Container.LOC_BOTTOM_CENTER;
+    public static final int LOC_BOTTOM_RIGHT  = Container.LOC_BOTTOM_RIGHT;
+
+    // --- Point Reference constants (forwarded from Container) ---
+    public static final int POINT_TOP_LEFT      = Container.POINT_TOP_LEFT;
+    public static final int POINT_TOP_CENTER    = Container.POINT_TOP_CENTER;
+    public static final int POINT_TOP_RIGHT     = Container.POINT_TOP_RIGHT;
+    public static final int POINT_MIDDLE_LEFT   = Container.POINT_MIDDLE_LEFT;
+    public static final int POINT_MIDDLE_CENTER = Container.POINT_MIDDLE_CENTER;
+    public static final int POINT_MIDDLE_RIGHT  = Container.POINT_MIDDLE_RIGHT;
+    public static final int POINT_BOTTOM_LEFT   = Container.POINT_BOTTOM_LEFT;
+    public static final int POINT_BOTTOM_CENTER = Container.POINT_BOTTOM_CENTER;
+    public static final int POINT_BOTTOM_RIGHT  = Container.POINT_BOTTOM_RIGHT;
+
     public static final int ANCHOR_MIN = Container.ANCHOR_MIN;
     public static final int ANCHOR_MAX = Container.ANCHOR_MAX;
 
