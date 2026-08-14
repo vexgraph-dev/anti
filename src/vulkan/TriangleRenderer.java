@@ -664,8 +664,9 @@ public final class TriangleRenderer {
 
         long rect = Vec4.allocate();
         try {
-            if (parentW <= 0f) {
-                darling.Canvas.resolveRoot(nodePtr, offscreenWidth, offscreenHeight, rect);
+            int cls = darling.Container.classId(nodePtr);
+            if (cls == darling.Picture.CLASS_ID) {
+                darling.Picture.resolve(nodePtr, parentX, parentY, parentW, parentH, rect);
             } else {
                 darling.Container.resolve(nodePtr, parentX, parentY, parentW, parentH, rect);
             }
@@ -688,7 +689,6 @@ public final class TriangleRenderer {
             int childClipW = Math.max(0, curClipX1 - curClipX0);
             int childClipH = Math.max(0, curClipY1 - curClipY0);
 
-            int cls = darling.Container.classId(nodePtr);
             if (oop.TypeRegister.isA(cls, darling.Panel.CLASS_ID)) {
                 int color = darling.Panel.getBackgroundColor(nodePtr);
                 int alpha = (color >>> 24) & 0xFF;
@@ -930,16 +930,19 @@ public final class TriangleRenderer {
                 FloatBuffer panelPushData = stack.mallocFloat(28);
                 VkRect2D.Buffer panelScissor = VkRect2D.calloc(1, stack);
 
+                float winW = (dpi > 0f) ? (offscreenWidth / dpi) : offscreenWidth;
+                float winH = (dpi > 0f) ? (offscreenHeight / dpi) : offscreenHeight;
+
                 if (sceneNode != 0L && oop.TypeRegister.isA(darling.Container.classId(sceneNode), darling.Panel.CLASS_ID)) {
                     int childCount = darling.Panel.childCount(sceneNode);
                     for (int i = 0; i < childCount; i++) {
                         long childPtr = darling.Panel.getChild(sceneNode, i);
-                        renderContainerTree(command, stack, childPtr, 0f, 0f, 0f, 0f,
+                        renderContainerTree(command, stack, childPtr, 0f, 0f, winW, winH,
                                 0, 0, offscreenWidth, offscreenHeight, panelPushData, panelScissor, vpBuffer);
                     }
                 }
                 if (rootUiNode != 0L) {
-                    renderContainerTree(command, stack, rootUiNode, 0f, 0f, 0f, 0f,
+                    renderContainerTree(command, stack, rootUiNode, 0f, 0f, winW, winH,
                             0, 0, offscreenWidth, offscreenHeight, panelPushData, panelScissor, vpBuffer);
                 }
             }
