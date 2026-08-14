@@ -85,6 +85,12 @@ final class macOSWindow {
     public static final int UNDECORATED_BORDERLESS = 1; // True borderless: no title bar, no traffic lights
     public static final int UNDECORATED_NAKED      = 2; // Hidden title bar, traffic lights retained
 
+    /** Resolution modes: POINT (1:1 logical) vs RETINA (backing scale factor native crispness). */
+    public static final int RESOLUTION_POINT  = 0;
+    public static final int RESOLUTION_RETINA = 1;
+
+    private static volatile int resolutionType = RESOLUTION_RETINA;
+
     // Translation map for macOS virtual key codes -> cross-platform Key constants
     private static final int[] MAC_KEY_MAP = new int[128];
 
@@ -487,11 +493,16 @@ final class macOSWindow {
             MemorySegment gravityStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, getSel(arena, "initWithUTF8String:"), arena.allocateFrom("topLeft"));
             MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, "setContentsGravity:"), gravityStr);
 
-            // Retina is deliberately ignored: contentsScale=1 maps 1 drawable px to 1 point,
-            // so an 800x600 drawable fills an 800x600 window. We render at the window's actual
-            // resolution, not the 2x backing-inflated size; the display upscales if it must.
-            MSG_SEND_PTR_DOUBLE.invoke(metalLayer, getSel(arena, "setContentsScale:"), 1.0);
-            System.out.println("[macOSWindow] contentsScale=1 (retina ignored)");
+            // Resolution scaling: RETINA uses native hardware backingScaleFactor for crispness;
+            // POINT forces 1.0 (1 drawable px = 1 point).
+            double scale = 1.0;
+            if (resolutionType == RESOLUTION_RETINA) {
+                MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+                scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
+                if (scale <= 0.0) scale = 1.0;
+            }
+            MSG_SEND_PTR_DOUBLE.invoke(metalLayer, getSel(arena, "setContentsScale:"), scale);
+            System.out.println("[macOSWindow] contentsScale=" + scale + " (" + (resolutionType == RESOLUTION_RETINA ? "retina native" : "point 1:1") + ")");
 
             // Painted opaque behind the drawable so a frozen-surface window reveal during a
             // live drag clips to engine-dark instead of showing the desktop.
@@ -557,6 +568,33 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         } catch (Throwable t) {
             System.out.println("[macOSWindow] setSurfaceGravityTopLeft failed: " + t);
         }
+    }
+
+    public static void setResolutionType(long pointer, int type) {
+        resolutionType = type;
+        if (pointer == 0L || OBJC_GET_CLASS == null) return;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment window = MemorySegment.ofAddress(pointer);
+            MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "contentView"));
+            if (view == null || view.address() == 0L) return;
+            MemorySegment layer = (MemorySegment) MSG_SEND_PTR.invoke(view, getSel(arena, "layer"));
+            if (layer != null && layer.address() != 0L) {
+                double scale = 1.0;
+                if (resolutionType == RESOLUTION_RETINA) {
+                    MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+                    scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
+                    if (scale <= 0.0) scale = 1.0;
+                }
+                MSG_SEND_PTR_DOUBLE.invoke(layer, getSel(arena, "setContentsScale:"), scale);
+                System.out.println("[macOSWindow] setResolutionType: " + (type == RESOLUTION_RETINA ? "RETINA" : "POINT") + " (scale=" + scale + ")");
+            }
+        } catch (Throwable t) {
+            System.out.println("[macOSWindow] setResolutionType failed: " + t);
+        }
+    }
+
+    public static int getResolutionType(long pointer) {
+        return resolutionType;
     }
 
     /**
@@ -1087,9 +1125,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         }
     }
 
-    /** Content view size in our working pixel resolution, packed as (width << 32) | height. 0 if unavailable.
-     *  Retina scale is deliberately IGNORED: we render at the window's point size (e.g. an 800x600 window
-     *  is 800x600 actual pixels), not the 2x backing-inflated size. The layer contentsScale is 1 to match. */
+    /** Content view size in working backing pixels, packed as (width << 32) | height. 0 if unavailable. */
     public static long getContentSize(long pointer) {
         if (pointer == 0L || OBJC_GET_CLASS == null) return 0L;
         try (Arena arena = Arena.ofConfined()) {
@@ -1099,8 +1135,18 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             if (view == null || view.address() == 0L) return 0L;
 
             MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, view, getSel(arena, "frame"));
-            int w = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 16));
-            int h = (int) Math.round(rect.get(ValueLayout.JAVA_DOUBLE, 24));
+            double ptsW = rect.get(ValueLayout.JAVA_DOUBLE, 16);
+            double ptsH = rect.get(ValueLayout.JAVA_DOUBLE, 24);
+
+            double scale = 1.0;
+            if (resolutionType == RESOLUTION_RETINA) {
+                MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+                scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
+                if (scale <= 0.0) scale = 1.0;
+            }
+
+            int w = (int) Math.round(ptsW * scale);
+            int h = (int) Math.round(ptsH * scale);
             if (w <= 0 || h <= 0) return 0L;
             return ((long) w << 32) | (h & 0xFFFFFFFFL);
         } catch (Throwable t) {
@@ -1108,7 +1154,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         }
     }
 
-    /** Main screen current physical hardware pixels, packed (width << 32) | height. 0 if unavailable. */
+    /** Main screen current resolution in backing pixels, packed (width << 32) | height. 0 if unavailable. */
     @annotation.Intention("Reads the display's CURRENT pixel dimensions via CGDisplayPixelsWide/High — "
             + "NOT the maximum-capable mode. The old path enumerated every CGDisplayMode and took the max, "
             + "which overshoots on scaled Retina panels (3274x2048 on a 2408x1506 MacBook) and bloated the "
@@ -1126,9 +1172,12 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             double ptsW = rect.get(ValueLayout.JAVA_DOUBLE, 16);
             double ptsH = rect.get(ValueLayout.JAVA_DOUBLE, 24);
             
-            MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
-            double scale = (double) MSG_SEND_DOUBLE_RET.invoke(mainScreen, backingScaleFactorSel);
-            if (scale <= 0.0) scale = 1.0;
+            double scale = 1.0;
+            if (resolutionType == RESOLUTION_RETINA) {
+                MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+                scale = (double) MSG_SEND_DOUBLE_RET.invoke(mainScreen, backingScaleFactorSel);
+                if (scale <= 0.0) scale = 1.0;
+            }
             
             long w = Math.round(ptsW * scale);
             long h = Math.round(ptsH * scale);
