@@ -1,5 +1,6 @@
 package process;
 
+import darling.Panel;
 import nio.ForeignMemory;
 import window.Window;
 
@@ -76,20 +77,21 @@ public class EngineTest {
 
         // Test UI Panel setup:
         // panel1 (parent): 200x200, location (30, 30), anchor MIDDLE_CENTER, transparent-ish background (alpha=100)
-        long panel1 = darling.Panel.allocate();
-        darling.Panel.setSize(panel1, 200f, 200f);
-        darling.Panel.setLocation(panel1, 30f, 30f);
-        darling.Panel.setAnchor(panel1, darling.Panel.ANCHOR_MIDDLE_CENTER);
-        darling.Panel.setBackgroundColor(panel1, 30, 41, 59, 100);
-        darling.Panel.setClipChildren(panel1, true);
+        long panel1 = Panel.allocate();
+        Panel.setSize(panel1, 200f, 200f);
+        Panel.setLocation(panel1, 30f, 30f);
+        Panel.setAnchor(panel1, Panel.ANCHOR_MIDDLE_CENTER);
+        Panel.setPointReference(panel1, Panel.POINT_TOP_LEFT);
+        Panel.setBackgroundColor(panel1, 30, 41, 59, 100);
+        Panel.setClipChildren(panel1, true);
 
         // panel2 (child): 200x200, location (100, 100), full opaque background (alpha=255)
-        long panel2 = darling.Panel.allocate();
-        darling.Panel.setSize(panel2, 200f, 200f);
-        darling.Panel.setLocation(panel2, 100f, 100f);
-        darling.Panel.setBackgroundColor(panel2, 16, 185, 129, 255);
+        long panel2 = Panel.allocate();
+        Panel.setSize(panel2, 200f, 200f);
+        Panel.setLocation(panel2, 100f, 100f);
+        Panel.setBackgroundColor(panel2, 16, 185, 129, 255);
 
-        darling.Panel.add(panel1, panel2);
+        Panel.add(panel1, panel2);
         vulkan.TriangleRenderer.setRootUi(panel1);
 
         vulkan.TriangleRenderer.init();
