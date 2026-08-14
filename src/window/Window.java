@@ -51,6 +51,10 @@ public final class Window {
     public static final int BORDERLESS  = 1;
     public static final int NAKED       = 2;
 
+    /** Resolution modes for macOS window backing surfaces. */
+    public static final int MACOS_POINT_RES  = 0;
+    public static final int MACOS_RETINA_RES = 1;
+
     /** Effective FPS cap, recomputed every iteration on the Main Thread (AppKit must stay on the Main Thread). */
     private static volatile int EFFECTIVE_FPS;
 
@@ -298,6 +302,20 @@ public final class Window {
         if (IS_MAC) {
             macOSWindow.setDrawableSize(surfacePtr, width, height);
         }
+    }
+
+    /** Sets the resolution backing mode (MACOS_POINT_RES vs MACOS_RETINA_RES). */
+    public static void setResolutionType(long pointer, int resolutionType) {
+        if (IS_MAC) {
+            macOSWindow.setResolutionType(pointer, resolutionType);
+        }
+    }
+
+    public static int getResolutionType(long pointer) {
+        if (IS_MAC) {
+            return macOSWindow.getResolutionType(pointer);
+        }
+        return MACOS_POINT_RES;
     }
 
     public static void setFullscreen(long pointer, boolean fullscreen) {
