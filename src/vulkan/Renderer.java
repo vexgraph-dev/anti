@@ -504,7 +504,6 @@ public final class Renderer {
                             + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
                 }
                 if (w == Vulkan.getSwapchainWidth() && h == Vulkan.getSwapchainHeight()) {
-                    resize = 0L;
                     swapchainInvalidated = false;
                 } else {
                     Vulkan.resizeSwapchain(w, h);
@@ -901,7 +900,11 @@ public final class Renderer {
                 long swp = ForeignMemory.getVolatileLong(garbageSwapchainsArray + garbageHead * 8L);
                 if (sem != 0L) Semaphore.destroy(sem, device);
                 if (cb != 0L) CommandBuffer.destroy(cb, device, blitPoolPtr);
-                if (swp != 0L) vkDestroySwapchainKHR(device, swp, null);
+
+                if (swp != 0L) {
+                    assert device != null;
+                    vkDestroySwapchainKHR(device, swp, null);
+                }
                 garbageHead = (garbageHead + 1) % MAX_GARBAGE;
             }
             ForeignMemory.freeNative(garbageSemaphoresArray);
