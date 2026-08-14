@@ -87,10 +87,19 @@ public final class TriangleRenderer {
     // into the real window, so scene re-rendering is decoupled from window
     // resize. 0 = no scene set (fall back to screen backing size).
     private static long sceneNode;
+    private static long scene3DNode;
     private static long boundWindowPtr;
 
     public static void setWindow(long window) {
         boundWindowPtr = window;
+    }
+
+    public static void setScene3D(long scene3DPtr) {
+        scene3DNode = scene3DPtr;
+    }
+
+    public static long getScene3D() {
+        return scene3DNode;
     }
 
     private TriangleRenderer() {}
@@ -178,6 +187,9 @@ public final class TriangleRenderer {
     public static void setScene(long scenePtr) {
         if (scenePtr == 0L) throw new IllegalArgumentException("Scene pointer must not be NULL");
         sceneNode = scenePtr;
+        if (darling.Scene.classId(scenePtr) == darling.Scene3D.CLASS_ID) {
+            scene3DNode = scenePtr;
+        }
         System.out.println("Scene node set: class=" + darling.Scene.classId(scenePtr)
                 + " virtual=" + darling.Scene.getVirtualWidth(scenePtr) + "x"
                 + darling.Scene.getVirtualHeight(scenePtr));
@@ -626,6 +638,35 @@ public final class TriangleRenderer {
                 throw new IllegalStateException("Failed to begin triangle command buffer.");
             }
 
+            // Resolve 3D scene container bounds inside the Canvas
+            float scene3Dx = 0f;
+            float scene3Dy = 0f;
+            float scene3Dw = currentW;
+            float scene3Dh = currentH;
+
+            long activeScene = scene3DNode != 0L ? scene3DNode : sceneNode;
+            if (activeScene != 0L) {
+                long rect3D = Vec4.allocate();
+                try {
+                    darling.Canvas.resolveRoot(activeScene, currentW, currentH, rect3D);
+                    scene3Dx = Vec4.getX(rect3D);
+                    scene3Dy = Vec4.getY(rect3D);
+                    scene3Dw = Vec4.getZ(rect3D);
+                    scene3Dh = Vec4.getW(rect3D);
+                } finally {
+                    Vec4.free(rect3D);
+                }
+            }
+            if (scene3Dw <= 0f) scene3Dw = currentW;
+            if (scene3Dh <= 0f) scene3Dh = currentH;
+
+            VkViewport.Buffer vpBuffer3D = VkViewport.calloc(1, stack);
+            vpBuffer3D.get(0).set(scene3Dx, scene3Dy, scene3Dw, scene3Dh, 0.0f, 1.0f);
+
+            VkRect2D.Buffer scissor3D = VkRect2D.calloc(1, stack);
+            scissor3D.get(0).offset().set((int) Math.max(0, scene3Dx), (int) Math.max(0, scene3Dy));
+            scissor3D.get(0).extent().set((int) Math.min(currentW, scene3Dw), (int) Math.min(currentH, scene3Dh));
+
             vkCmdBeginRenderPass(command, renderBegin, VK_SUBPASS_CONTENTS_INLINE);
             vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(pipeline));
 
@@ -633,11 +674,9 @@ public final class TriangleRenderer {
             vkCmdPushConstants(command, VKPipelineLayout.get(pipelineLayout),
                     VK_SHADER_STAGE_VERTEX_BIT, 0, stack.floats(bgTime));
 
-            // setting the viewport
-            vkCmdSetViewport(command, 0, vpBuffer);
-
-            // setting the scissor
-            vkCmdSetScissor(command, 0, scissor);
+            // Setting the 3D scene container viewport and scissor (anchored inside the 2D canvas)
+            vkCmdSetViewport(command, 0, vpBuffer3D);
+            vkCmdSetScissor(command, 0, scissor3D);
 
             vkCmdDraw(command, 3, 1, 0, 0);
 
