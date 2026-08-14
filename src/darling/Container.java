@@ -329,7 +329,7 @@ public final class Container {
         checkContainer(ptr);
         int raw = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
         int loc = (raw >>> 8) & 0xFF;
-        return (loc == 0) ? (raw & 0xFF) : (loc - 1);
+        return (loc == 0) ? LOC_TOP_LEFT : (loc - 1);
     }
 
     /**
@@ -347,7 +347,6 @@ public final class Container {
         int old = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
         int loc = (old >>> 8) & 0xFF;
         ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, (loc << 8) | (anchor & 0xFF));
-        setPointReference(ptr, anchor);
         markDirty(ptr);
     }
 
@@ -458,15 +457,26 @@ public final class Container {
         float sx = getScaleWidth(ptr), sy = getScaleHeight(ptr);
         float sw = w * sx, sh = h * sy;
 
+        float baseW = parentW;
+        float baseH = parentH;
+        float vw = darling.Canvas.getVirtualWidth();
+        float vh = darling.Canvas.getVirtualHeight();
+        if (vw > 0f && (parentW >= vw || Math.abs(parentW - vw) < parentW * 0.5f)) {
+            baseW = vw;
+        }
+        if (vh > 0f && (parentH >= vh || Math.abs(parentH - vh) < parentH * 0.5f)) {
+            baseH = vh;
+        }
+
+        float deltaW = parentW - baseW;
+        float deltaH = parentH - baseH;
+
         int anchor = getAnchor(ptr);
         int anchorRow = anchor / 3;
         int anchorCol = anchor % 3;
 
-        float anchorX = parentX + (anchorCol * parentW) / 2f;
-        float anchorY = parentY + (anchorRow * parentH) / 2f;
-
-        if (hasPercentX(ptr)) anchorX = parentX + getPercentX(ptr) * parentW;
-        if (hasPercentY(ptr)) anchorY = parentY + getPercentY(ptr) * parentH;
+        float anchorFactorX = anchorCol / 2.0f; // 0.0, 0.5, 1.0
+        float anchorFactorY = anchorRow / 2.0f; // 0.0, 0.5, 1.0
 
         int locRef = getLocationReference(ptr);
         int locRow = locRef / 3;
@@ -476,8 +486,23 @@ public final class Container {
         float dirX = (locCol == 2) ? -1.0f : 1.0f;
         float dirY = (locRow == 2) ? -1.0f : 1.0f;
 
-        float targetX = anchorX + getX(ptr) * dirX;
-        float targetY = anchorY + getY(ptr) * dirY;
+        float locOriginX = (locCol == 2) ? parentW : (locCol == 1 ? parentW / 2f : 0f);
+        float locOriginY = (locRow == 2) ? parentH : (locRow == 1 ? parentH / 2f : 0f);
+
+        float targetX;
+        float targetY;
+        if (locCol != 0 || locRow != 0) {
+            // Location Reference is explicitly non-top-left (e.g. LOC_BOTTOM_RIGHT inward margin)
+            targetX = parentX + locOriginX + getX(ptr) * dirX;
+            targetY = parentY + locOriginY + getY(ptr) * dirY;
+        } else {
+            // Default position at (x, y) with anchor resize delta tracking
+            targetX = parentX + getX(ptr) + (deltaW * anchorFactorX);
+            targetY = parentY + getY(ptr) + (deltaH * anchorFactorY);
+        }
+
+        if (hasPercentX(ptr)) targetX = parentX + getPercentX(ptr) * parentW;
+        if (hasPercentY(ptr)) targetY = parentY + getPercentY(ptr) * parentH;
 
         int pointRef = getPointReference(ptr);
         int elemRow = pointRef / 3;
