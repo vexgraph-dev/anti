@@ -193,6 +193,47 @@ public final class Canvas {
         }
     }
 
+    /**
+     * Maps window-space mouse coordinates (top-left units) into canvas virtual units.
+     * Writes [canvasX, canvasY] into outPoint (primitive.Float array >= 2).
+     * Returns true if (winX, winY) is within the canvas visible bounds.
+     */
+    public static boolean windowToCanvas(float winX, float winY, float fbW, float fbH, long outPoint) {
+        if (outPoint == 0L) return false;
+        float vw = resolveSize(virtualWidth, fbW);
+        float vh = resolveSize(virtualHeight, fbH);
+
+        float scaleX, scaleY, ox, oy;
+        switch (mode) {
+            case MODE_STRETCH -> {
+                scaleX = fbW / vw;
+                scaleY = fbH / vh;
+                ox = 0f;
+                oy = 0f;
+            }
+            case MODE_FIT -> {
+                float s = Math.min(fbW / vw, fbH / vh);
+                scaleX = s;
+                scaleY = s;
+                ox = (fbW - vw * s) / 2f;
+                oy = (fbH - vh * s) / 2f;
+            }
+            default -> { // MODE_PIXEL
+                scaleX = 1f;
+                scaleY = 1f;
+                ox = 0f;
+                oy = 0f;
+            }
+        }
+
+        float canvasX = (winX - ox) / scaleX;
+        float canvasY = (winY - oy) / scaleY;
+        Float.set(outPoint, 0, canvasX);
+        Float.set(outPoint, 1, canvasY);
+
+        return canvasX >= 0f && canvasX < vw && canvasY >= 0f && canvasY < vh;
+    }
+
     private static float resolveSize(float virtual, float fb) {
         if (virtual <= 0f) return fb;
         return virtual;
