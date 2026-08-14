@@ -635,16 +635,13 @@ public final class Window {
             // is ready, eliminating the resize gap. (The DrawThread's own detection is
             // intentionally left as-is; this is the authoritative main-thread gate.)
             long contentSize = getContentSize(pointer);
-            if (pumpIter++ % 100 == 0L) {
-                System.out.println("[pump] iter=" + pumpIter + " content="
-                        + ((int) (contentSize >>> 32)) + "x" + (int) (contentSize & 0xFFFFFFFFL)
-                        + " last=" + ((int) (lastContentSize >>> 32)) + "x" + (int) (lastContentSize & 0xFFFFFFFFL));
-            }
             if (contentSize != 0L && contentSize != lastContentSize) {
                 int cw = (int) (contentSize >>> 32);
                 int ch = (int) (contentSize & 0xFFFFFFFFL);
-                System.out.println("[pump] Thread0 detected contentSize " + cw + "x" + ch
-                        + " (last=" + ((int) (lastContentSize >>> 32)) + "x" + (int) (lastContentSize & 0xFFFFFFFFL) + ")");
+                if (System.getProperty("anti.debug.resize") != null) {
+                    System.out.println("[pump] Thread0 detected contentSize " + cw + "x" + ch
+                            + " (last=" + ((int) (lastContentSize >>> 32)) + "x" + (int) (lastContentSize & 0xFFFFFFFFL) + ")");
+                }
                 syncResize(cw, ch);
                 lastContentSize = contentSize;
             }
