@@ -74,6 +74,7 @@ public final class Container {
     static final int OFF_VISIBLE    = 44;  // byte
     static final int OFF_ENABLED    = 45;  // byte
     static final int OFF_DIRTY      = 46;  // byte
+    static final int OFF_CLIPPING   = 47;  // byte (1 = clip children to my bounds, 0 = overflow)
 
     static final long USER_STRIDE = 48L; // bytes of user payload
     static final long SLOT_SIZE   = 56L; // 8B header + 48B payload
@@ -192,6 +193,7 @@ public final class Container {
         setZ(ptr, 0);
         setVisible(ptr, true);
         setEnabled(ptr, true);
+        setClipChildren(ptr, false);
         clearDirty(ptr);
     }
 
@@ -337,9 +339,11 @@ public final class Container {
     public static boolean isVisible(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(ptr + OFF_VISIBLE) != 0; }
     public static boolean isEnabled(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(ptr + OFF_ENABLED) != 0; }
     public static boolean isDirty(long ptr)    { checkContainer(ptr); return ForeignMemory.getByte(ptr + OFF_DIRTY) != 0; }
+    public static boolean isClipChildren(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(ptr + OFF_CLIPPING) != 0; }
 
     public static void setVisible(long ptr, boolean visible) { checkContainer(ptr); ForeignMemory.setByte(ptr + OFF_VISIBLE, (byte) (visible ? 1 : 0)); markDirty(ptr); }
     public static void setEnabled(long ptr, boolean enabled) { checkContainer(ptr); ForeignMemory.setByte(ptr + OFF_ENABLED, (byte) (enabled ? 1 : 0)); markDirty(ptr); }
+    public static void setClipChildren(long ptr, boolean clip) { checkContainer(ptr); ForeignMemory.setByte(ptr + OFF_CLIPPING, (byte) (clip ? 1 : 0)); markDirty(ptr); }
 
     /**
      * Marks the node dirty. This is an INTERNAL side-effect: every layout
