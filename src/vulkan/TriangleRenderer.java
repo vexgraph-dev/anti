@@ -653,7 +653,7 @@ public final class TriangleRenderer {
             if (activeScene != 0L) {
                 long rect3D = Vec4.allocate();
                 try {
-                    darling.Canvas.resolveRoot(activeScene, currentW, currentH, rect3D);
+                    darling.Canvas.resolveRoot(activeScene, offscreenWidth, offscreenHeight, rect3D);
                     scene3Dx = Vec4.getX(rect3D) * dpi;
                     scene3Dy = Vec4.getY(rect3D) * dpi;
                     scene3Dw = Vec4.getZ(rect3D) * dpi;
@@ -662,15 +662,15 @@ public final class TriangleRenderer {
                     Vec4.free(rect3D);
                 }
             }
-            if (scene3Dw <= 0f) scene3Dw = currentW;
-            if (scene3Dh <= 0f) scene3Dh = currentH;
+            if (scene3Dw <= 0f) scene3Dw = offscreenWidth;
+            if (scene3Dh <= 0f) scene3Dh = offscreenHeight;
 
             VkViewport.Buffer vpBuffer3D = VkViewport.calloc(1, stack);
             vpBuffer3D.get(0).set(scene3Dx, scene3Dy, scene3Dw, scene3Dh, 0.0f, 1.0f);
 
             VkRect2D.Buffer scissor3D = VkRect2D.calloc(1, stack);
             scissor3D.get(0).offset().set((int) Math.max(0, scene3Dx), (int) Math.max(0, scene3Dy));
-            scissor3D.get(0).extent().set((int) Math.min(currentW, scene3Dw), (int) Math.min(currentH, scene3Dh));
+            scissor3D.get(0).extent().set((int) Math.min(offscreenWidth, scene3Dw), (int) Math.min(offscreenHeight, scene3Dh));
 
             vkCmdBeginRenderPass(command, renderBegin, VK_SUBPASS_CONTENTS_INLINE);
             vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(pipeline));
@@ -685,28 +685,23 @@ public final class TriangleRenderer {
 
             vkCmdDraw(command, 3, 1, 0, 0);
 
-            // Textured picture (@Draft pending review): draw the darling.Picture's
-            // resolved rect (AUTO dims derive from its image) with its texture bound.
-            // The picture resolves inside the darling.Canvas virtual space, and the
-            // canvas ortho projection is pushed so the rect is stable canvas units.
+            // Textured picture: draw the darling.Picture's resolved rect inside the master canvas
             if (pictureNode != 0L) {
                 long imagePtr = darling.Picture.getImage(pictureNode);
                 if (imagePtr != 0L) {
                     long rect = Vec4.allocate();
                     long crop = primitive.Float.allocateArray(4);
                     try {
-                        // Stack-owned (freed when the MemoryStack closes); not an
-                        // AutoCloseable, so it lives in the body, not the try header.
                         FloatBuffer pushData = stack.mallocFloat(24);
-                        darling.Canvas.resolveRoot(pictureNode, currentW, currentH, rect);
-                        logResizeIfChanged(currentW, currentH, rect);
+                        darling.Canvas.resolveRoot(pictureNode, offscreenWidth, offscreenHeight, rect);
+                        logResizeIfChanged(offscreenWidth, offscreenHeight, rect);
                         darling.Picture.getCrop(pictureNode, crop);
                         vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(imageQuadPipeline));
                         vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 VKPipelineLayout.get(imageQuadPipelineLayout), 0, stack.longs(
                                         image.Image.getDescriptorSet(imagePtr)), null);
                         // proj(16) + rect(4) + crop(4) = 24 floats, one push.
-                        darling.Canvas.buildProjection(canvasProj, currentW, currentH);
+                        darling.Canvas.buildProjection(canvasProj, offscreenWidth, offscreenHeight);
                         int pc = 0;
                         for (int i = 0; i < 16; i++) pushData.put(pc++, Mat4.getRaw(canvasProj, i));
                         pushData.put(pc++, Vec4.getX(rect));
