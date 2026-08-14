@@ -300,8 +300,10 @@ public final class Panel {
     public static boolean isVisible(long ptr) { return Container.isVisible(ptr); }
     public static boolean isEnabled(long ptr) { return Container.isEnabled(ptr); }
     public static boolean isDirty(long ptr)    { return Container.isDirty(ptr); }
+    public static boolean isClipChildren(long ptr) { return Container.isClipChildren(ptr); }
     public static void setVisible(long ptr, boolean visible) { Container.setVisible(ptr, visible); }
     public static void setEnabled(long ptr, boolean enabled) { Container.setEnabled(ptr, enabled); }
+    public static void setClipChildren(long ptr, boolean clip) { Container.setClipChildren(ptr, clip); }
 
     @Volatile
     static void markDirty(long ptr) { Container.markDirty(ptr); }
@@ -426,6 +428,7 @@ public final class Panel {
         Container.setZ(copy, Container.getZ(node));
         if (!Container.isVisible(node)) Container.setVisible(copy, false);
         if (!Container.isEnabled(node)) Container.setEnabled(copy, false);
+        if (Container.isClipChildren(node)) Container.setClipChildren(copy, true);
         setBackgroundColor(copy, getBackgroundColor(node));
 
         // --- payload note: shared slots (filters/image) are accessed WRITE- and
