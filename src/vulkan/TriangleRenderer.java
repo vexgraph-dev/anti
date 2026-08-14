@@ -87,6 +87,11 @@ public final class TriangleRenderer {
     // into the real window, so scene re-rendering is decoupled from window
     // resize. 0 = no scene set (fall back to screen backing size).
     private static long sceneNode;
+    private static long boundWindowPtr;
+
+    public static void setWindow(long window) {
+        boundWindowPtr = window;
+    }
 
     private TriangleRenderer() {}
 
@@ -183,20 +188,11 @@ public final class TriangleRenderer {
         offscreenImageCount = Math.max(Vulkan.getSwapchainImageCount(), Renderer.MAX_FRAMES_IN_FLIGHT);
         int format = Vulkan.getSwapchainFormat();
 
-        // Render into the scene's FIXED virtual resolution, not the swapchain size.
-        // The present pass scales this into whatever the window currently occupies,
-        // so window/fullscreen resizes never re-create the render targets (the
-        // viewport must NOT be derived from the swapchain extent).
-        int w;
-        int h;
-        if (sceneNode != 0L && darling.Scene.getVirtualWidth(sceneNode) > 0f) {
-            w = (int) darling.Scene.getVirtualWidth(sceneNode);
-            h = (int) darling.Scene.getVirtualHeight(sceneNode);
-        } else {
-            long screenSize = window.Window.getScreenBackingSize();
-            w = (int) (screenSize >>> 32);
-            h = (int) (screenSize & 0xFFFFFFFFL);
-        }
+        // Offscreen render targets pinned at max screen backing resolution, so
+        // live resizing and window changes never reallocate GPU attachments or framebuffers.
+        long screenSize = window.Window.getScreenBackingSize();
+        int w = (int) (screenSize >>> 32);
+        int h = (int) (screenSize & 0xFFFFFFFFL);
         if (w <= 0 || h <= 0) {
             w = Vulkan.getSwapchainWidth();
             h = Vulkan.getSwapchainHeight();
@@ -579,8 +575,13 @@ public final class TriangleRenderer {
         // gradient + bouncing triangle.
         float bgTime = staticBackground ? 0f : time;
 
-        int currentW = offscreenWidth;
-        int currentH = offscreenHeight;
+        long contentSize = boundWindowPtr != 0L ? window.Window.getContentSize(boundWindowPtr) : 0L;
+        int rawW = contentSize != 0L ? (int) (contentSize >>> 32) : offscreenWidth;
+        int rawH = contentSize != 0L ? (int) (contentSize & 0xFFFFFFFFL) : offscreenHeight;
+        if (rawW <= 0) rawW = offscreenWidth;
+        if (rawH <= 0) rawH = offscreenHeight;
+        final int currentW = Math.min(rawW, offscreenWidth);
+        final int currentH = Math.min(rawH, offscreenHeight);
 
         // Scene background (0xAARRGGBB from the Panel payload) becomes the clear
         // color; the scene is the fixed-res render target, so the clear is scene
