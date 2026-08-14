@@ -61,7 +61,14 @@ public final class Vulkan {
             initInstance(stack);
             initSurface(stack, caMetalLayer);
             initDevice(stack);
-            initSwapchain(stack, windowWidth, windowHeight, presentModePreference);
+
+            long screenSize = window.Window.getScreenBackingSize();
+            int maxW = (int) (screenSize >>> 32);
+            int maxH = (int) (screenSize & 0xFFFFFFFFL);
+            int swapW = maxW > 0 ? Math.max(windowWidth, maxW) : windowWidth;
+            int swapH = maxH > 0 ? Math.max(windowHeight, maxH) : windowHeight;
+
+            initSwapchain(stack, swapW, swapH, presentModePreference);
         } catch (RuntimeException e) {
             shutdown();
             throw e;
