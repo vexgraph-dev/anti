@@ -89,8 +89,10 @@ public class EngineTest {
 
         System.out.println("[Main Thread] Handing over control to the event pump...");
 
-        // Boot the Core Draw Worker: it drains the input RingBuffers and owns the
-        // render loop (produceOnce + presentOnce), paced by the FIFO swapchain.
+        // Boot the Event Dispatcher Worker: owns Key, Mouse, Touch event dispatching and UI logic
+        thread.EventThread.start();
+
+        // Boot the Core Draw Worker: owns pure GPU command buffer recording (produceOnce)
         long coreDrawWorker = thread.DrawThread.getCoreWorker();
         thread.DrawThread.bindWindow(coreDrawWorker, windowPtr);
         thread.DrawThread.run(coreDrawWorker);
