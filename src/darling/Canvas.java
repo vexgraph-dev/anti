@@ -44,8 +44,18 @@ public final class Canvas {
     private static volatile float virtualWidth  = FOLLOW_FRAMEBUFFER;
     private static volatile float virtualHeight = FOLLOW_FRAMEBUFFER;
     private static volatile int   mode          = MODE_PIXEL;
+    private static volatile float dpiScale      = 1.0f;
 
     private Canvas() {}
+
+    /** Sets the DPI scaling factor (e.g. 2.0 on Retina, 1.0 for standard DPI). */
+    public static void setDpiScale(float scale) {
+        dpiScale = scale > 0f ? scale : 1.0f;
+    }
+
+    public static float getDpiScale() {
+        return dpiScale;
+    }
 
     /**
      * Sets the virtual resolution the UI is authored against. Width or height
@@ -94,8 +104,8 @@ public final class Canvas {
                 oy = (fbH - vh * s) / 2f;
             }
             default -> { // MODE_PIXEL
-                scaleX = 1f;
-                scaleY = 1f;
+                scaleX = dpiScale;
+                scaleY = dpiScale;
                 ox = 0f;
                 oy = 0f;
             }
@@ -137,8 +147,8 @@ public final class Canvas {
                 oy = (fbH - vh * s) / 2f;
             }
             default -> { // MODE_PIXEL
-                scaleX = 1f;
-                scaleY = 1f;
+                scaleX = dpiScale;
+                scaleY = dpiScale;
                 ox = 0f;
                 oy = 0f;
             }
