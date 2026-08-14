@@ -658,7 +658,8 @@ public final class TriangleRenderer {
                                            long nodePtr, float parentX, float parentY,
                                            float parentW, float parentH,
                                            int clipX, int clipY, int clipW, int clipH,
-                                           FloatBuffer pushData, VkRect2D.Buffer scissorBuf) {
+                                           FloatBuffer pushData, VkRect2D.Buffer scissorBuf,
+                                           VkViewport.Buffer vpBuffer) {
         if (nodePtr == 0L || !darling.Container.isVisible(nodePtr)) return;
 
         long rect = Vec4.allocate();
@@ -698,9 +699,15 @@ public final class TriangleRenderer {
                     float b = (color & 0xFF) / 255.0f;
 
                     vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipeline.get(darlingPanelPipeline));
+                    vkCmdSetViewport(command, 0, vpBuffer);
 
-                    scissorBuf.get(0).offset().set(clipX, clipY);
-                    scissorBuf.get(0).extent().set(clipW, clipH);
+                    int finalClipX = Math.max(0, Math.min(offscreenWidth, clipX));
+                    int finalClipY = Math.max(0, Math.min(offscreenHeight, clipY));
+                    int finalClipW = Math.max(0, Math.min(offscreenWidth - finalClipX, clipW));
+                    int finalClipH = Math.max(0, Math.min(offscreenHeight - finalClipY, clipH));
+
+                    scissorBuf.get(0).offset().set(finalClipX, finalClipY);
+                    scissorBuf.get(0).extent().set(finalClipW, finalClipH);
                     vkCmdSetScissor(command, 0, scissorBuf);
 
                     pushData.position(0);
@@ -726,7 +733,7 @@ public final class TriangleRenderer {
                 for (int i = 0; i < n; i++) {
                     long childPtr = darling.Panel.getChild(nodePtr, i);
                     renderContainerTree(command, stack, childPtr, rx, ry, rw, rh,
-                            nextClipX, nextClipY, nextClipW, nextClipH, pushData, scissorBuf);
+                            nextClipX, nextClipY, nextClipW, nextClipH, pushData, scissorBuf, vpBuffer);
                 }
             }
         } finally {
@@ -927,13 +934,13 @@ public final class TriangleRenderer {
                     int childCount = darling.Panel.childCount(sceneNode);
                     for (int i = 0; i < childCount; i++) {
                         long childPtr = darling.Panel.getChild(sceneNode, i);
-                        renderContainerTree(command, stack, childPtr, 0f, 0f, offscreenWidth, offscreenHeight,
-                                0, 0, offscreenWidth, offscreenHeight, panelPushData, panelScissor);
+                        renderContainerTree(command, stack, childPtr, 0f, 0f, 0f, 0f,
+                                0, 0, offscreenWidth, offscreenHeight, panelPushData, panelScissor, vpBuffer);
                     }
                 }
                 if (rootUiNode != 0L) {
-                    renderContainerTree(command, stack, rootUiNode, 0f, 0f, offscreenWidth, offscreenHeight,
-                            0, 0, offscreenWidth, offscreenHeight, panelPushData, panelScissor);
+                    renderContainerTree(command, stack, rootUiNode, 0f, 0f, 0f, 0f,
+                            0, 0, offscreenWidth, offscreenHeight, panelPushData, panelScissor, vpBuffer);
                 }
             }
 
