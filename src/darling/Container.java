@@ -494,10 +494,10 @@ public final class Container {
      * Writes 4 floats into outRect (primitive.Float array of length >= 4):
      * [screenX, screenY, screenW, screenH].
      *
-     * Math:
-     *   1. Element Anchor: switches margin measurement origin on parent (inward direction).
-     *   2. Anchor: WinForms-style resize delta tracking on expansion.
-     *   3. Point Reference: aligns element pivot point to target coordinate.
+     * Math (Three Distinct Operations):
+     *   1. Anchor: WinForms-style resize delta switch on parent dimension changes.
+     *   2. Element Anchor: Margin measurement corner switch (origin + inward direction).
+     *   3. Point Reference: Element pivot offset switch (aligns corner/center).
      */
     public static void resolve(long ptr, float parentX, float parentY, float parentW, float parentH, long outRect) {
         resolveSized(ptr, getWidth(ptr), getHeight(ptr), parentX, parentY, parentW, parentH, outRect);
@@ -514,61 +514,106 @@ public final class Container {
         float sx = getScaleWidth(ptr), sy = getScaleHeight(ptr);
         float sw = w * sx, sh = h * sy;
 
-        // 1. Element Anchor (Margin measurement corner switch)
-        int elemAnchor = getElementAnchor(ptr);
-        int elemRow = elemAnchor / 3;
-        int elemCol = elemAnchor % 3;
-
-        // Inward direction: Col 2 (Right) moves left (-1), Row 2 (Bottom) moves up (-1)
-        float dirX = (elemCol == 2) ? -1.0f : 1.0f;
-        float dirY = (elemRow == 2) ? -1.0f : 1.0f;
-
-        float elemOriginX = (elemCol == 2) ? parentW : (elemCol == 1 ? parentW / 2f : 0f);
-        float elemOriginY = (elemRow == 2) ? parentH : (elemRow == 1 ? parentH / 2f : 0f);
-
-        // 2. Anchor (Resize-only WinForms delta tracking)
+        // ---------------------------------------------------------------------
+        // 1. ANCHOR: Resize-Only Sticky Delta (WinForms Style)
+        // ---------------------------------------------------------------------
         int anchor = getAnchor(ptr);
-        int anchorRow = anchor / 3;
-        int anchorCol = anchor % 3;
+        float anchorShiftX = 0f;
+        float anchorShiftY = 0f;
 
-        float anchorFactorX = anchorCol / 2.0f; // 0.0, 0.5, 1.0
-        float anchorFactorY = anchorRow / 2.0f; // 0.0, 0.5, 1.0
+        if (anchor != ANCHOR_TOP_LEFT) {
+            float baseW = parentW;
+            float baseH = parentH;
+            float vw = darling.Canvas.getVirtualWidth();
+            float vh = darling.Canvas.getVirtualHeight();
+            if (vw > 0f) baseW = vw;
+            if (vh > 0f) baseH = vh;
 
-        float baseW = parentW;
-        float baseH = parentH;
-        float vw = darling.Canvas.getVirtualWidth();
-        float vh = darling.Canvas.getVirtualHeight();
-        if (vw > 0f) baseW = vw;
-        if (vh > 0f) baseH = vh;
+            float deltaW = parentW - baseW;
+            float deltaH = parentH - baseH;
 
-        float deltaW = parentW - baseW;
-        float deltaH = parentH - baseH;
-
-        float targetX;
-        float targetY;
-        if (elemCol != 0 || elemRow != 0) {
-            // Element Anchor is explicitly switched to another corner/side (e.g. ELEM_ANCHOR_BOTTOM_RIGHT inward margin)
-            targetX = parentX + elemOriginX + getX(ptr) * dirX;
-            targetY = parentY + elemOriginY + getY(ptr) * dirY;
-        } else {
-            // Default top-left margin with WinForms-style resize delta tracking
-            targetX = parentX + getX(ptr) + (deltaW * anchorFactorX);
-            targetY = parentY + getY(ptr) + (deltaH * anchorFactorY);
+            switch (anchor) {
+                case ANCHOR_TOP_CENTER    -> { anchorShiftX = deltaW * 0.5f; anchorShiftY = 0f; }
+                case ANCHOR_TOP_RIGHT     -> { anchorShiftX = deltaW;        anchorShiftY = 0f; }
+                case ANCHOR_MIDDLE_LEFT   -> { anchorShiftX = 0f;            anchorShiftY = deltaH * 0.5f; }
+                case ANCHOR_MIDDLE_CENTER -> { anchorShiftX = deltaW * 0.5f; anchorShiftY = deltaH * 0.5f; }
+                case ANCHOR_MIDDLE_RIGHT  -> { anchorShiftX = deltaW;        anchorShiftY = deltaH * 0.5f; }
+                case ANCHOR_BOTTOM_LEFT   -> { anchorShiftX = 0f;            anchorShiftY = deltaH; }
+                case ANCHOR_BOTTOM_CENTER -> { anchorShiftX = deltaW * 0.5f; anchorShiftY = deltaH; }
+                case ANCHOR_BOTTOM_RIGHT  -> { anchorShiftX = deltaW;        anchorShiftY = deltaH; }
+                default                   -> { anchorShiftX = 0f;            anchorShiftY = 0f; }
+            }
         }
+
+        // ---------------------------------------------------------------------
+        // 2. ELEMENT ANCHOR: Margin Measurement Corner Switch
+        // ---------------------------------------------------------------------
+        int elemAnchor = getElementAnchor(ptr);
+        float originX, originY, dirX, dirY;
+        switch (elemAnchor) {
+            case ELEM_ANCHOR_TOP_CENTER -> {
+                originX = parentW / 2f; originY = 0f;
+                dirX = 1f;             dirY = 1f;
+            }
+            case ELEM_ANCHOR_TOP_RIGHT -> {
+                originX = parentW;      originY = 0f;
+                dirX = -1f;            dirY = 1f;
+            }
+            case ELEM_ANCHOR_MIDDLE_LEFT -> {
+                originX = 0f;           originY = parentH / 2f;
+                dirX = 1f;             dirY = 1f;
+            }
+            case ELEM_ANCHOR_MIDDLE_CENTER -> {
+                originX = parentW / 2f; originY = parentH / 2f;
+                dirX = 1f;             dirY = 1f;
+            }
+            case ELEM_ANCHOR_MIDDLE_RIGHT -> {
+                originX = parentW;      originY = parentH / 2f;
+                dirX = -1f;            dirY = 1f;
+            }
+            case ELEM_ANCHOR_BOTTOM_LEFT -> {
+                originX = 0f;           originY = parentH;
+                dirX = 1f;             dirY = -1f;
+            }
+            case ELEM_ANCHOR_BOTTOM_CENTER -> {
+                originX = parentW / 2f; originY = parentH;
+                dirX = 1f;             dirY = -1f;
+            }
+            case ELEM_ANCHOR_BOTTOM_RIGHT -> {
+                originX = parentW;      originY = parentH;
+                dirX = -1f;            dirY = -1f;
+            }
+            default -> { // ELEM_ANCHOR_TOP_LEFT
+                originX = 0f;           originY = 0f;
+                dirX = 1f;             dirY = 1f;
+            }
+        }
+
+        float targetX = parentX + originX + (getX(ptr) * dirX) + anchorShiftX;
+        float targetY = parentY + originY + (getY(ptr) * dirY) + anchorShiftY;
 
         if (hasPercentX(ptr)) targetX = parentX + getPercentX(ptr) * parentW;
         if (hasPercentY(ptr)) targetY = parentY + getPercentY(ptr) * parentH;
 
-        // 3. Point Reference (Element Pivot)
+        // ---------------------------------------------------------------------
+        // 3. POINT REFERENCE: Element Pivot Offset
+        // ---------------------------------------------------------------------
         int pointRef = getPointReference(ptr);
-        int pointRow = pointRef / 3;
-        int pointCol = pointRef % 3;
+        float pivotOffsetX, pivotOffsetY;
+        switch (pointRef) {
+            case POINT_TOP_CENTER    -> { pivotOffsetX = sw / 2f;   pivotOffsetY = 0f; }
+            case POINT_TOP_RIGHT     -> { pivotOffsetX = sw;        pivotOffsetY = 0f; }
+            case POINT_MIDDLE_LEFT   -> { pivotOffsetX = 0f;        pivotOffsetY = sh / 2f; }
+            case POINT_MIDDLE_CENTER -> { pivotOffsetX = sw / 2f;   pivotOffsetY = sh / 2f; }
+            case POINT_MIDDLE_RIGHT  -> { pivotOffsetX = sw;        pivotOffsetY = sh / 2f; }
+            case POINT_BOTTOM_LEFT   -> { pivotOffsetX = 0f;        pivotOffsetY = sh; }
+            case POINT_BOTTOM_CENTER -> { pivotOffsetX = sw / 2f;   pivotOffsetY = sh; }
+            case POINT_BOTTOM_RIGHT  -> { pivotOffsetX = sw;        pivotOffsetY = sh; }
+            default                  -> { pivotOffsetX = 0f;        pivotOffsetY = 0f; } // POINT_TOP_LEFT
+        }
 
-        float elemOffsetX = (pointCol * sw) / 2f;
-        float elemOffsetY = (pointRow * sh) / 2f;
-
-        float screenX = targetX - elemOffsetX;
-        float screenY = targetY - elemOffsetY;
+        float screenX = targetX - pivotOffsetX;
+        float screenY = targetY - pivotOffsetY;
 
         Vec4.set(outRect, screenX, screenY, sw, sh);
     }
