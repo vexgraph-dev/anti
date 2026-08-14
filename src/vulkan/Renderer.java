@@ -742,22 +742,17 @@ public final class Renderer {
                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
                     0, null, null, pre);
 
-            // Fill the whole swapchain image with the scene background first so any
-            // area not covered by the mode-mapped blit (FIT letterbox, PIXEL reveal)
-            // shows the scene's clear color instead of stale/garbage pixels.
-            if (bg != 0) {
-                try (VkClearColorValue clearColor = VkClearColorValue.calloc(stack);
-                     VkImageSubresourceRange range = VkImageSubresourceRange.calloc(stack)) {
-                    // 0xAARRGGBB on the B8G8R8A8 swapchain => BGRA surface order.
-                    clearColor.float32(0, (bg & 0xFF) / 255f)
-                            .float32(1, ((bg >>> 8) & 0xFF) / 255f)
-                            .float32(2, ((bg >>> 16) & 0xFF) / 255f)
-                            .float32(3, ((bg >>> 24) & 0xFF) / 255f);
-                    range.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                            .baseMipLevel(0).levelCount(1)
-                            .baseArrayLayer(0).layerCount(1);
-                    vkCmdClearColorImage(command, swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, clearColor, range);
-                }
+            // Fill the whole swapchain image with solid black first
+            try (VkClearColorValue clearColor = VkClearColorValue.calloc(stack);
+                 VkImageSubresourceRange range = VkImageSubresourceRange.calloc(stack)) {
+                clearColor.float32(0, 0f)
+                        .float32(1, 0f)
+                        .float32(2, 0f)
+                        .float32(3, 1f);
+                range.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .baseMipLevel(0).levelCount(1)
+                        .baseArrayLayer(0).layerCount(1);
+                vkCmdClearColorImage(command, swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, clearColor, range);
             }
 
             reg0SrcSub.set(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
