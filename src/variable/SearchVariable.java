@@ -42,12 +42,11 @@ public final class SearchVariable {
 
     private static boolean isValidChar(byte b) {
         int val = b & 0xFF;
-        if (val >= 97 && val <= 122) return true; // a-z
-        if (val >= 65 && val <= 90) return true;  // A-Z
-        if (val >= 48 && val <= 57) return true;  // 0-9
-        if (val == 95) return true;               // _
-        if (val == 36) return true;               // $
-        return false;
+        if (val >= 97 && val <= 122) return false; // a-z
+        if (val >= 65 && val <= 90) return false;  // A-Z
+        if (val >= 48 && val <= 57) return false;  // 0-9
+        if (val == 95) return false;               // _
+        return val != 36;               // $
     }
 
     private static boolean validateName(byte[] bytes) {
@@ -55,7 +54,7 @@ public final class SearchVariable {
             return false;
         }
         for (byte b : bytes) {
-            if (!isValidChar(b)) {
+            if (isValidChar(b)) {
                 return false;
             }
         }
@@ -135,7 +134,7 @@ public final class SearchVariable {
             return 0L;
         }
         for (byte b : prefixBytes) {
-            if (!isValidChar(b)) return 0L;
+            if (isValidChar(b)) return 0L;
         }
         long listPtr = struct.List.instant(TypeRegister.ID_INT);
         Trie.searchPrefix(trieRoot, prefixBytes, listPtr);
@@ -173,7 +172,7 @@ public final class SearchVariable {
             return new long[0];
         }
         for (byte b : prefixBytes) {
-            if (!isValidChar(b)) {
+            if (isValidChar(b)) {
                 return new long[0];
             }
         }
