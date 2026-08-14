@@ -104,8 +104,8 @@ public final class Canvas {
                 oy = (fbH - vh * s) / 2f;
             }
             default -> { // MODE_PIXEL
-                scaleX = dpiScale;
-                scaleY = dpiScale;
+                scaleX = 1f;
+                scaleY = 1f;
                 ox = 0f;
                 oy = 0f;
             }
