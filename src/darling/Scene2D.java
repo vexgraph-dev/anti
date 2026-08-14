@@ -194,8 +194,17 @@ public final class Scene2D {
 
     public static void setPos(long ptr, float x, float y) { Scene.setPos(ptr, x, y); }
     public static void setSize(long ptr, float width, float height) { Scene.setSize(ptr, width, height); }
+
+    public static int getAnchor(long ptr) { return Scene.getAnchor(ptr); }
+    public static void setAnchor(long ptr, int anchor) { Scene.setAnchor(ptr, anchor); }
+    public static int getReferenceAnchor(long ptr) { return Scene.getReferenceAnchor(ptr); }
     public static void setReferenceAnchor(long ptr, int anchor) { Scene.setReferenceAnchor(ptr, anchor); }
+
+    public static int getElementAnchor(long ptr) { return Scene.getElementAnchor(ptr); }
     public static void setElementAnchor(long ptr, int anchor) { Scene.setElementAnchor(ptr, anchor); }
+
+    public static int getPointReference(long ptr) { return Scene.getPointReference(ptr); }
+    public static void setPointReference(long ptr, int pointRef) { Scene.setPointReference(ptr, pointRef); }
 
     public static int getBackgroundColor(long ptr) { return Scene.getBackgroundColor(ptr); }
     public static void setBackgroundColor(long ptr, int color) { Scene.setBackgroundColor(ptr, color); }
