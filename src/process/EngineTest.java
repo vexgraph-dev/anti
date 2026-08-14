@@ -16,6 +16,7 @@ public class EngineTest {
         int bootW = Integer.parseInt(System.getProperty("anti.w", "800"));
         int bootH = Integer.parseInt(System.getProperty("anti.h", "600"));
         long windowPtr = Window.allocate("Engine", bootW, bootH);
+        Window.setResolutionType(windowPtr, Window.MACOS_RETINA_RES);
         System.out.println("Window spawned at: " + windowPtr);
         Window.setTargetFps(60);
         Window.setUndecorated(windowPtr, Window.DECORATED);
@@ -56,6 +57,7 @@ public class EngineTest {
         darling.Scene2D.setSize(scenePtr, 800f, 600f);
         darling.Scene2D.setBackgroundColor(scenePtr, 0xFF000000);
         vulkan.TriangleRenderer.setScene(scenePtr);
+        vulkan.TriangleRenderer.setWindow(windowPtr);
         vulkan.TriangleRenderer.init();
 
         // @Draft picture demo (pending review): Image asset + darling.Picture node.
