@@ -605,32 +605,34 @@ public final class TriangleRenderer {
         float bgG = ((bg >>> 8) & 0xFF) / 255f;
         float bgR = ((bg >>> 16) & 0xFF) / 255f;
         float bgA = ((bg >>> 24) & 0xFF) / 255f;
+        if (bg == 0) {
+            bgA = 1.0f; // opaque solid black
+        }
 
         try (
                 MemoryStack stack = MemoryStack.stackPush();
                 VkClearValue.Buffer clearValues = VkClearValue.calloc(1, stack);
                 VkClearColorValue clearColorValue0 = clearValues.get(0).color()
-                        // background color for the window (in BGRA surface order)
+                        // background clear color (BGRA surface order)
                         .float32(0, bgB)
                         .float32(1, bgG)
                         .float32(2, bgR)
                         .float32(3, bgA);
 
-                // Only shade the portion of the pinned framebuffer that actually matches
-                // the current swapchain size! This prevents rendering 6M pixels for an 800x600 window.
+                // Viewport and scissor covering the master screen buffer
                 VkViewport.Buffer vpBuffer = VkViewport.calloc(1, stack);
-                VkViewport _viewport = vpBuffer.get(0).set(0.0f, 0.0f, currentW, currentH, 0.0f, 1.0f);
+                VkViewport _viewport = vpBuffer.get(0).set(0.0f, 0.0f, offscreenWidth, offscreenHeight, 0.0f, 1.0f);
 
                 VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack);
                 VkOffset2D scissorOffset = scissor.get(0).offset().set(0, 0);
-                VkExtent2D scissorExtent = scissor.get(0).extent().set(currentW, currentH);
+                VkExtent2D scissorExtent = scissor.get(0).extent().set(offscreenWidth, offscreenHeight);
                 VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack)
                         .sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
                 org.lwjgl.vulkan.VkRenderPassBeginInfo renderBegin = org.lwjgl.vulkan.VkRenderPassBeginInfo.calloc(stack)
                         .sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
                         .renderPass(RenderPass.get(renderPass))
                         .framebuffer(VKFramebuffer.get(Long.get(framebuffers, imageIndex)))
-                        .renderArea(r -> r.offset(o -> o.set(0, 0)).extent(e -> e.set(currentW, currentH)))
+                        .renderArea(r -> r.offset(o -> o.set(0, 0)).extent(e -> e.set(offscreenWidth, offscreenHeight)))
                         .pClearValues(clearValues)
         ) {
             org.lwjgl.vulkan.VkCommandBuffer command = new org.lwjgl.vulkan.VkCommandBuffer(commandBuffer, Vulkan.getDevice());
