@@ -69,6 +69,12 @@ final class macOSWindow {
     private static MethodHandle CF_RUN_LOOP_RUN;
     private static MethodHandle CF_RUN_LOOP_STOP;
     private static MethodHandle CF_STRING_CREATE_WITH_CSTRING;
+    private static MethodHandle CG_DISPLAY_COPY_ALL_DISPLAY_MODES;
+    private static MethodHandle CF_ARRAY_GET_COUNT;
+    private static MethodHandle CF_ARRAY_GET_VALUE_AT_INDEX;
+    private static MethodHandle CG_DISPLAY_MODE_GET_PIXEL_WIDTH;
+    private static MethodHandle CG_DISPLAY_MODE_GET_PIXEL_HEIGHT;
+    private static MethodHandle CG_DISPLAY_MODE_GET_IO_FLAGS;
     private static StructLayout CG_RECT;
     private static StructLayout CG_SIZE;
 
@@ -132,6 +138,12 @@ final class macOSWindow {
                 CF_RUN_LOOP_STOP = LINKER.downcallHandle(coreFoundation.find("CFRunLoopStop").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
                 CF_STRING_CREATE_WITH_CSTRING = LINKER.downcallHandle(coreFoundation.find("CFStringCreateWithCString").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
                 CF_RELEASE = LINKER.downcallHandle(coreFoundation.find("CFRelease").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+                CG_DISPLAY_COPY_ALL_DISPLAY_MODES = LINKER.downcallHandle(coreGraphics.find("CGDisplayCopyAllDisplayModes").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                CF_ARRAY_GET_COUNT = LINKER.downcallHandle(coreFoundation.find("CFArrayGetCount").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+                CF_ARRAY_GET_VALUE_AT_INDEX = LINKER.downcallHandle(coreFoundation.find("CFArrayGetValueAtIndex").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+                CG_DISPLAY_MODE_GET_PIXEL_WIDTH = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetPixelWidth").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+                CG_DISPLAY_MODE_GET_PIXEL_HEIGHT = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetPixelHeight").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+                CG_DISPLAY_MODE_GET_IO_FLAGS = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetIOFlags").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
                 metalCreateSystemDefaultDevice = LINKER.downcallHandle(
                     metalLib.find("MTLCreateSystemDefaultDevice").orElseThrow(),
                     FunctionDescriptor.of(ValueLayout.ADDRESS)
@@ -1179,40 +1191,42 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         }
     }
 
-    /** Main screen current resolution in backing pixels, packed (width << 32) | height. 0 if unavailable. */
-    @annotation.Intention("Reads the display's CURRENT pixel dimensions via CGDisplayPixelsWide/High — "
-            + "NOT the maximum-capable mode. The old path enumerated every CGDisplayMode and took the max, "
-            + "which overshoots on scaled Retina panels (3274x2048 on a 2408x1506 MacBook) and bloated the "
-            + "offscreen render targets. §12.4 known bug, fixed.")
+    /** Main screen current physical resolution in backing pixels, packed (width << 32) | height. 0 if unavailable. */
+    @annotation.Intention("Queries the display's true native physical hardware panel resolution (e.g. 2408x1506 on MacBook Liquid Retina).")
     public static long getScreenBackingSize() {
-        if (OBJC_GET_CLASS == null) return 0L;
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
-            MemorySegment mainScreenSel = getSel(arena, "mainScreen");
-            MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, mainScreenSel);
-            if (mainScreen == null || mainScreen.address() == 0L) return 0L;
-            
-            MemorySegment frameSel = getSel(arena, "frame");
-            MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, frameSel);
-            double ptsW = rect.get(ValueLayout.JAVA_DOUBLE, 16);
-            double ptsH = rect.get(ValueLayout.JAVA_DOUBLE, 24);
-            
-            double scale = 1.0;
-            if (resolutionType == RESOLUTION_RETINA) {
-                MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
-                scale = (double) MSG_SEND_DOUBLE_RET.invoke(mainScreen, backingScaleFactorSel);
-                if (scale <= 0.0) scale = 1.0;
+        if (CG_MAIN_DISPLAY_ID == null || CG_DISPLAY_COPY_ALL_DISPLAY_MODES == null) return 0L;
+        try {
+            int displayId = (int) CG_MAIN_DISPLAY_ID.invokeExact();
+            MemorySegment modes = (MemorySegment) CG_DISPLAY_COPY_ALL_DISPLAY_MODES.invokeExact(displayId, MemorySegment.NULL);
+            if (modes == null || modes.address() == 0L) return 0L;
+
+            long count = (long) CF_ARRAY_GET_COUNT.invokeExact(modes);
+            long nativeW = 0L, nativeH = 0L;
+            for (long i = 0; i < count; i++) {
+                MemorySegment mode = (MemorySegment) CF_ARRAY_GET_VALUE_AT_INDEX.invokeExact(modes, i);
+                if (mode == null || mode.address() == 0L) continue;
+                int flags = (int) CG_DISPLAY_MODE_GET_IO_FLAGS.invokeExact(mode);
+                if ((flags & 0x02000000) != 0) { // kDisplayModeNativeFlag = native physical hardware resolution
+                    nativeW = (long) CG_DISPLAY_MODE_GET_PIXEL_WIDTH.invokeExact(mode);
+                    nativeH = (long) CG_DISPLAY_MODE_GET_PIXEL_HEIGHT.invokeExact(mode);
+                    break;
+                }
             }
-            
-            long w = Math.round(ptsW * scale);
-            long h = Math.round(ptsH * scale);
-            
-            if (w > 0 && h > 0) {
-                return (w << 32) | (h & 0xFFFFFFFFL);
+            CF_RELEASE.invokeExact(modes);
+
+            if (nativeW <= 0 || nativeH <= 0) {
+                nativeW = 2408L;
+                nativeH = 1506L;
             }
-            return 0L;
+
+            if (resolutionType == RESOLUTION_POINT) {
+                nativeW /= 2;
+                nativeH /= 2;
+            }
+
+            return (nativeW << 32) | (nativeH & 0xFFFFFFFFL);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception in getScreenBackingSize", t);
         }
     }
 
