@@ -462,7 +462,6 @@ public final class DrawThread {
             long workerPtr = Array.get(keysPtr, i);
             if (isCore(workerPtr)) continue; // CORE's own queue is its engine loop
             int role = getRole(workerPtr);
-            if (role == ROLE_UI) continue; // UI is unused for now: keeper handle only
             long queuePtr = getQueue(workerPtr);
             while (queuePtr != 0L && !RingBuffer.isEmpty(queuePtr)) {
                 long taskPtr = RingBuffer.poll(queuePtr);
