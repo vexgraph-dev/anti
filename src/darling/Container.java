@@ -42,73 +42,40 @@ public final class Container {
     public static final int TYPE_ARRAY     = TypeRegister.CONTAINER_ARRAY;     // 0x20000079
     public static final int TYPE_POINTER   = TypeRegister.CONTAINER_POINTER;   // 0x30000079
 
-    // --- 1. Anchor constants (3x3 grid, row*3+col) - WinForms-style sticky resize behavior ---
-    public static final int ANCHOR_TOP_LEFT      = 0;
-    public static final int ANCHOR_TOP_CENTER    = 1;
-    public static final int ANCHOR_TOP_RIGHT     = 2;
-    public static final int ANCHOR_MIDDLE_LEFT   = 3;
-    public static final int ANCHOR_MIDDLE_CENTER = 4;
-    public static final int ANCHOR_MIDDLE_RIGHT  = 5;
-    public static final int ANCHOR_BOTTOM_LEFT   = 6;
-    public static final int ANCHOR_BOTTOM_CENTER = 7;
-    public static final int ANCHOR_BOTTOM_RIGHT  = 8;
+    // --- 1. Parent Anchor constants (3x3 grid, row*3+col): where on the PARENT the
+    //        element is pinned. The element tracks that side/corner live on resize. ---
+    public static final int PARENT_ANCHOR_TOP_LEFT      = 0;
+    public static final int PARENT_ANCHOR_TOP_CENTER    = 1;
+    public static final int PARENT_ANCHOR_TOP_RIGHT     = 2;
+    public static final int PARENT_ANCHOR_MIDDLE_LEFT   = 3;
+    public static final int PARENT_ANCHOR_MIDDLE_CENTER = 4;
+    public static final int PARENT_ANCHOR_MIDDLE_RIGHT  = 5;
+    public static final int PARENT_ANCHOR_BOTTOM_LEFT   = 6;
+    public static final int PARENT_ANCHOR_BOTTOM_CENTER = 7;
+    public static final int PARENT_ANCHOR_BOTTOM_RIGHT  = 8;
 
-    // --- 2. Element Anchor constants (margin measurement corner switch) ---
-    public static final int ELEM_ANCHOR_TOP_LEFT      = 0;
-    public static final int ELEM_ANCHOR_TOP_CENTER    = 1;
-    public static final int ELEM_ANCHOR_TOP_RIGHT     = 2;
-    public static final int ELEM_ANCHOR_MIDDLE_LEFT   = 3;
-    public static final int ELEM_ANCHOR_MIDDLE_CENTER = 4;
-    public static final int ELEM_ANCHOR_MIDDLE_RIGHT  = 5;
-    public static final int ELEM_ANCHOR_BOTTOM_LEFT   = 6;
-    public static final int ELEM_ANCHOR_BOTTOM_CENTER = 7;
-    public static final int ELEM_ANCHOR_BOTTOM_RIGHT  = 8;
+    public static final int PARENT_ANCHOR_MIN = PARENT_ANCHOR_TOP_LEFT;
+    public static final int PARENT_ANCHOR_MAX = PARENT_ANCHOR_BOTTOM_RIGHT;
 
-    // Element Anchor full-name aliases:
-    public static final int ELEMENT_ANCHOR_TOP_LEFT      = ELEM_ANCHOR_TOP_LEFT;
-    public static final int ELEMENT_ANCHOR_TOP_CENTER    = ELEM_ANCHOR_TOP_CENTER;
-    public static final int ELEMENT_ANCHOR_TOP_RIGHT     = ELEM_ANCHOR_TOP_RIGHT;
-    public static final int ELEMENT_ANCHOR_MIDDLE_LEFT   = ELEM_ANCHOR_MIDDLE_LEFT;
-    public static final int ELEMENT_ANCHOR_MIDDLE_CENTER = ELEM_ANCHOR_MIDDLE_CENTER;
-    public static final int ELEMENT_ANCHOR_MIDDLE_RIGHT  = ELEM_ANCHOR_MIDDLE_RIGHT;
-    public static final int ELEMENT_ANCHOR_BOTTOM_LEFT   = ELEM_ANCHOR_BOTTOM_LEFT;
-    public static final int ELEMENT_ANCHOR_BOTTOM_CENTER = ELEM_ANCHOR_BOTTOM_CENTER;
-    public static final int ELEMENT_ANCHOR_BOTTOM_RIGHT  = ELEM_ANCHOR_BOTTOM_RIGHT;
+    // --- 2. Self Anchor constants: which point OF THE PANEL sits at the parent reference point. ---
+    public static final int SELF_ANCHOR_TOP_LEFT     = 0;
+    public static final int SELF_ANCHOR_TOP_RIGHT    = 1;
+    public static final int SELF_ANCHOR_BOTTOM_LEFT  = 2;
+    public static final int SELF_ANCHOR_BOTTOM_RIGHT = 3;
 
-    // Location Reference backward-compatibility aliases:
-    public static final int LOC_TOP_LEFT      = ELEM_ANCHOR_TOP_LEFT;
-    public static final int LOC_TOP_CENTER    = ELEM_ANCHOR_TOP_CENTER;
-    public static final int LOC_TOP_RIGHT     = ELEM_ANCHOR_TOP_RIGHT;
-    public static final int LOC_MIDDLE_LEFT   = ELEM_ANCHOR_MIDDLE_LEFT;
-    public static final int LOC_MIDDLE_CENTER = ELEM_ANCHOR_MIDDLE_CENTER;
-    public static final int LOC_MIDDLE_RIGHT  = ELEM_ANCHOR_MIDDLE_RIGHT;
-    public static final int LOC_BOTTOM_LEFT   = ELEM_ANCHOR_BOTTOM_LEFT;
-    public static final int LOC_BOTTOM_CENTER = ELEM_ANCHOR_BOTTOM_CENTER;
-    public static final int LOC_BOTTOM_RIGHT  = ELEM_ANCHOR_BOTTOM_RIGHT;
+    public static final int SELF_ANCHOR_MIN = SELF_ANCHOR_TOP_LEFT;
+    public static final int SELF_ANCHOR_MAX = SELF_ANCHOR_BOTTOM_RIGHT;
 
-    // --- 3. Point Reference constants (element pivot / alignment point on element itself) ---
-    public static final int POINT_TOP_LEFT      = 0;
-    public static final int POINT_TOP_CENTER    = 1;
-    public static final int POINT_TOP_RIGHT     = 2;
-    public static final int POINT_MIDDLE_LEFT   = 3;
-    public static final int POINT_MIDDLE_CENTER = 4;
-    public static final int POINT_MIDDLE_RIGHT  = 5;
-    public static final int POINT_BOTTOM_LEFT   = 6;
-    public static final int POINT_BOTTOM_CENTER = 7;
-    public static final int POINT_BOTTOM_RIGHT  = 8;
+    // --- 3. Pivot Reference constants: the element's source-of-truth pivot point used for
+    //        placement (setLocation places this point) and rotation. ---
+    public static final int PIVOT_REFERENCE_TOP_LEFT      = 0;
+    public static final int PIVOT_REFERENCE_TOP_RIGHT     = 1;
+    public static final int PIVOT_REFERENCE_BOTTOM_LEFT   = 2;
+    public static final int PIVOT_REFERENCE_BOTTOM_RIGHT  = 3;
+    public static final int PIVOT_REFERENCE_CENTER        = 4;
 
-    public static final int POINT_REF_TOP_LEFT      = POINT_TOP_LEFT;
-    public static final int POINT_REF_TOP_CENTER    = POINT_TOP_CENTER;
-    public static final int POINT_REF_TOP_RIGHT     = POINT_TOP_RIGHT;
-    public static final int POINT_REF_MIDDLE_LEFT   = POINT_MIDDLE_LEFT;
-    public static final int POINT_REF_MIDDLE_CENTER = POINT_MIDDLE_CENTER;
-    public static final int POINT_REF_MIDDLE_RIGHT  = POINT_MIDDLE_RIGHT;
-    public static final int POINT_REF_BOTTOM_LEFT   = POINT_BOTTOM_LEFT;
-    public static final int POINT_REF_BOTTOM_CENTER = POINT_BOTTOM_CENTER;
-    public static final int POINT_REF_BOTTOM_RIGHT  = POINT_BOTTOM_RIGHT;
-
-    public static final int ANCHOR_MIN = ANCHOR_TOP_LEFT;
-    public static final int ANCHOR_MAX = ANCHOR_BOTTOM_RIGHT;
+    public static final int PIVOT_REFERENCE_MIN = PIVOT_REFERENCE_TOP_LEFT;
+    public static final int PIVOT_REFERENCE_MAX = PIVOT_REFERENCE_CENTER;
 
     // Percent sentinel: < 0 means "not set, use anchor".
     public static final float PERCENT_UNSET = -1.0f;
@@ -120,9 +87,8 @@ public final class Container {
     static final int OFF_H          = 12;  // float
     static final int OFF_SCALE_X    = 16;  // float
     static final int OFF_SCALE_Y    = 20;  // float
-    static final int OFF_REF_ANCHOR = 24;  // int (byte 0: anchor, byte 1: elementAnchor)
-    static final int OFF_POINT_REF  = 28;  // int (pointReference)
-    static final int OFF_ELEM_ANCHOR = OFF_POINT_REF; // legacy alias
+    static final int OFF_REF_ANCHOR = 24;  // int (byte 0: parentAnchor, byte 1: selfAnchor)
+    static final int OFF_PIVOT_REF  = 28;  // int (pivotReference)
     static final int OFF_PERCENT_X  = 32;  // float
     static final int OFF_PERCENT_Y  = 36;  // float
     static final int OFF_Z          = 40;  // int
@@ -130,9 +96,11 @@ public final class Container {
     static final int OFF_ENABLED    = 45;  // byte
     static final int OFF_DIRTY      = 46;  // byte
     static final int OFF_CLIPPING   = 47;  // byte (1 = clip children to my bounds, 0 = overflow)
+    static final int OFF_BASE_W     = 48;  // float (parent size at last layout; resize-delta reference)
+    static final int OFF_BASE_H     = 52;  // float
 
-    static final long USER_STRIDE = 48L; // bytes of user payload
-    static final long SLOT_SIZE   = 56L; // 8B header + 48B payload
+    static final long USER_STRIDE = 56L; // bytes of user payload
+    static final long SLOT_SIZE   = 64L; // 8B header + 56B payload
 
     // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
     private static final int DEFAULT_CAPACITY = 1024;
@@ -241,15 +209,18 @@ public final class Container {
         setWidth(ptr, 0f);
         setHeight(ptr, 0f);
         setScale(ptr, 1f, 1f);
-        setAnchor(ptr, ANCHOR_TOP_LEFT);
-        setElementAnchor(ptr, ELEM_ANCHOR_TOP_LEFT);
-        setPointReference(ptr, POINT_TOP_LEFT);
+        setParentAnchor(ptr, PARENT_ANCHOR_TOP_LEFT);
+        // selfAnchor deliberately LEFT UNSET (raw byte 0) so it defaults to TOP_LEFT;
+        // setSelfAnchor() opts in. Only ever affects the initial position, never resize.
+        setPivotReference(ptr, PIVOT_REFERENCE_TOP_LEFT);
         setPercentX(ptr, PERCENT_UNSET);
         setPercentY(ptr, PERCENT_UNSET);
         setZ(ptr, 0);
         setVisible(ptr, true);
         setEnabled(ptr, true);
         setClipChildren(ptr, false);
+        setBaseWidth(ptr, 0f); // unset -> first resolve captures the layout reference size
+        setBaseHeight(ptr, 0f);
         clearDirty(ptr);
     }
 
@@ -306,8 +277,16 @@ public final class Container {
             throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(ptr).toUpperCase() + " is Class ID " + cls + ", not a Container (or subclass)");
     }
 
-    private static void checkAnchor(int anchor) {
-        if (anchor < ANCHOR_MIN || anchor > ANCHOR_MAX) throw new IllegalArgumentException("Invalid anchor " + anchor + " (must be 0-8)");
+    private static void checkParentAnchor(int anchor) {
+        if (anchor < PARENT_ANCHOR_MIN || anchor > PARENT_ANCHOR_MAX) throw new IllegalArgumentException("Invalid parent anchor " + anchor + " (must be 0-8)");
+    }
+
+    private static void checkSelfAnchor(int anchor) {
+        if (anchor < SELF_ANCHOR_MIN || anchor > SELF_ANCHOR_MAX) throw new IllegalArgumentException("Invalid self anchor " + anchor + " (must be 0-3)");
+    }
+
+    private static void checkPivotReference(int pivot) {
+        if (pivot < PIVOT_REFERENCE_MIN || pivot > PIVOT_REFERENCE_MAX) throw new IllegalArgumentException("Invalid pivot reference " + pivot + " (must be 0-4)");
     }
 
     // =========================================================================
@@ -342,95 +321,111 @@ public final class Container {
     public static void setScale(long ptr, float scaleWidth, float scaleHeight) { setScaleWidth(ptr, scaleWidth); setScaleHeight(ptr, scaleHeight); }
 
     // =========================================================================
-    // 1. ANCHOR (Resize-Only Sticky / WinForms Delta Tracking)
+    // RESIZE-DELTA REFERENCE (the parent size at which the element was last laid out)
+    // =========================================================================
+
+    static float getBaseWidth(long ptr)  { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_BASE_W); }
+    static float getBaseHeight(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_BASE_H); }
+
+    private static void setBaseWidth(long ptr, float baseWidth)  { ForeignMemory.setFloat(ptr + OFF_BASE_W, baseWidth); }
+    private static void setBaseHeight(long ptr, float baseHeight) { ForeignMemory.setFloat(ptr + OFF_BASE_H, baseHeight); }
+
+    // =========================================================================
+    // 1. PARENT ANCHOR (Where on the parent the element is pinned, 3x3 grid)
     // =========================================================================
 
     /**
-     * Anchor: tracks parent resize delta so the element sticks to the specified
-     * side/corner when the parent container or window expands or shrinks (0..8,
-     * e.g. ANCHOR_BOTTOM_RIGHT moves with bottom-right on resize).
+     * Parent Anchor: which side/corner of the parent the element tracks DURING RESIZE
+     * (0..8). Used only for resize-delta tracking: when the parent changes size, the
+     * element moves by the movement of this anchor point since its last layout
+     * (e.g. PARENT_ANCHOR_BOTTOM_RIGHT makes the element follow the bottom-right
+     * corner's delta exactly). It has NO effect on the element's resting position.
      */
-    public static int getAnchor(long ptr) {
+    public static int getParentAnchor(long ptr) {
         checkContainer(ptr);
         return ForeignMemory.getInt(ptr + OFF_REF_ANCHOR) & 0xFF;
     }
 
-    public static void setAnchor(long ptr, int anchor) {
+    public static void setParentAnchor(long ptr, int parentAnchor) {
         checkContainer(ptr);
-        checkAnchor(anchor);
+        checkParentAnchor(parentAnchor);
         int old = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
-        int elemAnchor = (old >>> 8) & 0xFF;
-        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, (elemAnchor << 8) | (anchor & 0xFF));
+        int selfAnchor = (old >>> 8) & 0xFF;
+        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, (selfAnchor << 8) | (parentAnchor & 0xFF));
         markDirty(ptr);
     }
 
-    public static int getReferenceAnchor(long ptr) { return getAnchor(ptr); }
-    public static void setReferenceAnchor(long ptr, int anchor) { setAnchor(ptr, anchor); }
-
     // =========================================================================
-    // 2. ELEMENT ANCHOR (Margin Measurement Corner Switch)
+    // 2. SELF ANCHOR (Which point of the panel sits at the parent reference point)
     // =========================================================================
 
     /**
-     * Element Anchor: defines which corner of the parent the (x, y) coordinates
-     * are measured from, switching the origin and inward direction (0..8, e.g.
-     * ELEM_ANCHOR_BOTTOM_RIGHT with x=30, y=30 places the element 30px from the
-     * parent's right edge and 30px from the bottom edge).
+     * Self Anchor: which corner of the parent the location is a margin from (0..3).
+     * Determines ONLY the element's initial/resting position, margin-wise, always
+     * keeping the element fully visible (e.g. SELF_ANCHOR_BOTTOM_RIGHT + (30,30) puts
+     * the element 30px in from the parent's bottom-right corner). Never affects resize.
      */
-    public static int getElementAnchor(long ptr) {
+    public static int getSelfAnchor(long ptr) {
         checkContainer(ptr);
         int raw = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
-        int elemAnchor = (raw >>> 8) & 0xFF;
-        return (elemAnchor == 0) ? ELEM_ANCHOR_TOP_LEFT : (elemAnchor - 1);
+        int selfAnchor = (raw >>> 8) & 0xFF;
+        return (selfAnchor == 0) ? SELF_ANCHOR_TOP_LEFT : (selfAnchor - 1);
     }
 
-    public static void setElementAnchor(long ptr, int elemAnchor) {
+    public static void setSelfAnchor(long ptr, int selfAnchor) {
         checkContainer(ptr);
-        checkAnchor(elemAnchor);
+        checkSelfAnchor(selfAnchor);
         int old = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
-        int anchor = old & 0xFF;
-        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, ((elemAnchor + 1) << 8) | anchor);
+        int parentAnchor = old & 0xFF;
+        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, ((selfAnchor + 1) << 8) | parentAnchor);
         markDirty(ptr);
     }
 
-    // Location Reference compatibility aliases:
-    public static int getLocationReference(long ptr) { return getElementAnchor(ptr); }
-    public static void setLocationReference(long ptr, int locRef) { setElementAnchor(ptr, locRef); }
-
     // =========================================================================
-    // 3. POINT REFERENCE (Element Pivot Corner)
+    // 3. PIVOT REFERENCE (The element's source-of-truth pivot point)
     // =========================================================================
 
     /**
-     * Point Reference (Element Pivot): defines which point/corner on the element
-     * itself aligns with the target coordinate (0..8, e.g. POINT_TOP_LEFT aligns
-     * the element's top-left corner, POINT_MIDDLE_CENTER aligns the center).
+     * Pivot Reference: the element's source-of-truth pivot point (0..4, 4 corners
+     * + center). setLocation places this point at the location; rotation pivots
+     * around it. TOP_LEFT is the default (like a window whose source of truth is
+     * its top-left corner).
      */
-    public static int getPointReference(long ptr) {
+    public static int getPivotReference(long ptr) {
         checkContainer(ptr);
-        return ForeignMemory.getInt(ptr + OFF_POINT_REF);
+        return ForeignMemory.getInt(ptr + OFF_PIVOT_REF);
     }
 
-    public static void setPointReference(long ptr, int pointRef) {
+    public static void setPivotReference(long ptr, int pivotReference) {
         checkContainer(ptr);
-        checkAnchor(pointRef);
-        ForeignMemory.setInt(ptr + OFF_POINT_REF, pointRef);
+        checkPivotReference(pivotReference);
+        ForeignMemory.setInt(ptr + OFF_PIVOT_REF, pivotReference);
         markDirty(ptr);
     }
 
-    public static int getPointRef(long ptr) { return getPointReference(ptr); }
-    public static void setPointRef(long ptr, int pointRef) { setPointReference(ptr, pointRef); }
-
     // Combined convenience setters:
-    public static void setAnchor(long ptr, int anchor, int elementAnchor) {
-        setAnchor(ptr, anchor);
-        setElementAnchor(ptr, elementAnchor);
+    public static void setParentAnchor(long ptr, int parentAnchor, int selfAnchor) {
+        setParentAnchor(ptr, parentAnchor);
+        setSelfAnchor(ptr, selfAnchor);
     }
 
-    public static void setAnchor(long ptr, int anchor, int elementAnchor, int pointRef) {
-        setAnchor(ptr, anchor);
-        setElementAnchor(ptr, elementAnchor);
-        setPointReference(ptr, pointRef);
+    public static void setParentAnchor(long ptr, int parentAnchor, int selfAnchor, int pivotReference) {
+        setParentAnchor(ptr, parentAnchor);
+        setSelfAnchor(ptr, selfAnchor);
+        setPivotReference(ptr, pivotReference);
+    }
+
+    /**
+     * Centers the element on its parent regardless of the current pivot reference
+     * or self anchor: resets the self anchor to TOP_LEFT, pivots on CENTER, and
+     * places it at 50% / 50% of the parent.
+     */
+    public static void setCenter(long ptr) {
+        checkContainer(ptr);
+        setSelfAnchor(ptr, SELF_ANCHOR_TOP_LEFT);
+        setPivotReference(ptr, PIVOT_REFERENCE_CENTER);
+        setPercentX(ptr, 0.5f);
+        setPercentY(ptr, 0.5f);
     }
 
     // =========================================================================
@@ -495,9 +490,9 @@ public final class Container {
      * [screenX, screenY, screenW, screenH].
      *
      * Math (Three Distinct Operations):
-     *   1. Anchor: WinForms-style resize delta switch on parent dimension changes.
-     *   2. Element Anchor: Margin measurement corner switch (origin + inward direction).
-     *   3. Point Reference: Element pivot offset switch (aligns corner/center).
+     *   1. Parent Anchor: reference point on the parent (origin + inward direction).
+     *   2. Self Anchor: which corner of the panel sits at the reference point.
+     *   3. Pivot Reference: source-of-truth pivot of the element (placement + rotation).
      */
     public static void resolve(long ptr, float parentX, float parentY, float parentW, float parentH, long outRect) {
         resolveSized(ptr, getWidth(ptr), getHeight(ptr), parentX, parentY, parentW, parentH, outRect);
@@ -515,105 +510,81 @@ public final class Container {
         float sw = w * sx, sh = h * sy;
 
         // ---------------------------------------------------------------------
-        // 1. ANCHOR: Resize-Only Sticky Delta (WinForms Style)
+        // 0. RESIZE-DELTA REFERENCE: the parent size at which the element was last
+        //    laid out. Refreshed on first resolve and whenever the layout is dirty
+        //    (location/size/anchors changed), so the parent-anchor delta below is
+        //    always measured from a known resting state.
         // ---------------------------------------------------------------------
-        int anchor = getAnchor(ptr);
-        float anchorShiftX = 0f;
-        float anchorShiftY = 0f;
+        float baseW = getBaseWidth(ptr);
+        float baseH = getBaseHeight(ptr);
+        if (isDirty(ptr) || baseW <= 0f || baseH <= 0f) {
+            baseW = parentW;
+            baseH = parentH;
+            setBaseWidth(ptr, baseW);
+            setBaseHeight(ptr, baseH);
+            clearDirty(ptr);
+        }
 
-        if (anchor != ANCHOR_TOP_LEFT) {
-            float baseW = parentW;
-            float baseH = parentH;
-            float vw = darling.Canvas.getVirtualWidth();
-            float vh = darling.Canvas.getVirtualHeight();
-            if (vw > 0f) baseW = vw;
-            if (vh > 0f) baseH = vh;
+        float x = getX(ptr), y = getY(ptr);
 
-            float deltaW = parentW - baseW;
-            float deltaH = parentH - baseH;
-
-            switch (anchor) {
-                case ANCHOR_TOP_CENTER    -> { anchorShiftX = deltaW * 0.5f; anchorShiftY = 0f; }
-                case ANCHOR_TOP_RIGHT     -> { anchorShiftX = deltaW;        anchorShiftY = 0f; }
-                case ANCHOR_MIDDLE_LEFT   -> { anchorShiftX = 0f;            anchorShiftY = deltaH * 0.5f; }
-                case ANCHOR_MIDDLE_CENTER -> { anchorShiftX = deltaW * 0.5f; anchorShiftY = deltaH * 0.5f; }
-                case ANCHOR_MIDDLE_RIGHT  -> { anchorShiftX = deltaW;        anchorShiftY = deltaH * 0.5f; }
-                case ANCHOR_BOTTOM_LEFT   -> { anchorShiftX = 0f;            anchorShiftY = deltaH; }
-                case ANCHOR_BOTTOM_CENTER -> { anchorShiftX = deltaW * 0.5f; anchorShiftY = deltaH; }
-                case ANCHOR_BOTTOM_RIGHT  -> { anchorShiftX = deltaW;        anchorShiftY = deltaH; }
-                default                   -> { anchorShiftX = 0f;            anchorShiftY = 0f; }
-            }
+        // ---------------------------------------------------------------------
+        // 1. SELF ANCHOR: INITIAL POSITION ONLY. Which corner of the parent the
+        //    location is a margin from, measured against the base size. The element
+        //    is always placed fully inside that corner (margin-wise).
+        // ---------------------------------------------------------------------
+        float selfX, selfY;
+        switch (getSelfAnchor(ptr)) {
+            case SELF_ANCHOR_TOP_RIGHT    -> { selfX = baseW - sw - x; selfY = y; }
+            case SELF_ANCHOR_BOTTOM_LEFT  -> { selfX = x;              selfY = baseH - sh - y; }
+            case SELF_ANCHOR_BOTTOM_RIGHT -> { selfX = baseW - sw - x; selfY = baseH - sh - y; }
+            default                       -> { selfX = x;              selfY = y; } // SELF_ANCHOR_TOP_LEFT
         }
 
         // ---------------------------------------------------------------------
-        // 2. ELEMENT ANCHOR: Margin Measurement Corner Switch
+        // 2. PARENT ANCHOR: RESIZE TRACKING ONLY. How far the parent-anchor point
+        //    has moved since the base layout; the element follows that delta exactly
+        //    (e.g. BOTTOM_RIGHT moves it by the window's full bottom-right delta).
         // ---------------------------------------------------------------------
-        int elemAnchor = getElementAnchor(ptr);
-        float originX, originY, dirX, dirY;
-        switch (elemAnchor) {
-            case ELEM_ANCHOR_TOP_CENTER -> {
-                originX = parentW / 2f; originY = 0f;
-                dirX = 1f;             dirY = 1f;
-            }
-            case ELEM_ANCHOR_TOP_RIGHT -> {
-                originX = parentW;      originY = 0f;
-                dirX = -1f;            dirY = 1f;
-            }
-            case ELEM_ANCHOR_MIDDLE_LEFT -> {
-                originX = 0f;           originY = parentH / 2f;
-                dirX = 1f;             dirY = 1f;
-            }
-            case ELEM_ANCHOR_MIDDLE_CENTER -> {
-                originX = parentW / 2f; originY = parentH / 2f;
-                dirX = 1f;             dirY = 1f;
-            }
-            case ELEM_ANCHOR_MIDDLE_RIGHT -> {
-                originX = parentW;      originY = parentH / 2f;
-                dirX = -1f;            dirY = 1f;
-            }
-            case ELEM_ANCHOR_BOTTOM_LEFT -> {
-                originX = 0f;           originY = parentH;
-                dirX = 1f;             dirY = -1f;
-            }
-            case ELEM_ANCHOR_BOTTOM_CENTER -> {
-                originX = parentW / 2f; originY = parentH;
-                dirX = 1f;             dirY = -1f;
-            }
-            case ELEM_ANCHOR_BOTTOM_RIGHT -> {
-                originX = parentW;      originY = parentH;
-                dirX = -1f;            dirY = -1f;
-            }
-            default -> { // ELEM_ANCHOR_TOP_LEFT
-                originX = 0f;           originY = 0f;
-                dirX = 1f;             dirY = 1f;
-            }
+        float dW = parentW - baseW;
+        float dH = parentH - baseH;
+        float dx, dy;
+        switch (getParentAnchor(ptr)) {
+            case PARENT_ANCHOR_TOP_CENTER    -> { dx = dW / 2f; dy = 0f; }
+            case PARENT_ANCHOR_TOP_RIGHT     -> { dx = dW;      dy = 0f; }
+            case PARENT_ANCHOR_MIDDLE_LEFT   -> { dx = 0f;      dy = dH / 2f; }
+            case PARENT_ANCHOR_MIDDLE_CENTER -> { dx = dW / 2f; dy = dH / 2f; }
+            case PARENT_ANCHOR_MIDDLE_RIGHT  -> { dx = dW;      dy = dH / 2f; }
+            case PARENT_ANCHOR_BOTTOM_LEFT   -> { dx = 0f;      dy = dH; }
+            case PARENT_ANCHOR_BOTTOM_CENTER -> { dx = dW / 2f; dy = dH; }
+            case PARENT_ANCHOR_BOTTOM_RIGHT  -> { dx = dW;      dy = dH; }
+            default                          -> { dx = 0f;      dy = 0f; } // TOP_LEFT
         }
 
-        float targetX = parentX + originX + (getX(ptr) * dirX) + anchorShiftX;
-        float targetY = parentY + originY + (getY(ptr) * dirY) + anchorShiftY;
-
-        if (hasPercentX(ptr)) targetX = parentX + getPercentX(ptr) * parentW;
-        if (hasPercentY(ptr)) targetY = parentY + getPercentY(ptr) * parentH;
+        float screenX = selfX + dx + parentX;
+        float screenY = selfY + dy + parentY;
 
         // ---------------------------------------------------------------------
-        // 3. POINT REFERENCE: Element Pivot Offset
+        // 3. PERCENT overrides placement (still resolves against the live parent size).
         // ---------------------------------------------------------------------
-        int pointRef = getPointReference(ptr);
-        float pivotOffsetX, pivotOffsetY;
-        switch (pointRef) {
-            case POINT_TOP_CENTER    -> { pivotOffsetX = sw / 2f;   pivotOffsetY = 0f; }
-            case POINT_TOP_RIGHT     -> { pivotOffsetX = sw;        pivotOffsetY = 0f; }
-            case POINT_MIDDLE_LEFT   -> { pivotOffsetX = 0f;        pivotOffsetY = sh / 2f; }
-            case POINT_MIDDLE_CENTER -> { pivotOffsetX = sw / 2f;   pivotOffsetY = sh / 2f; }
-            case POINT_MIDDLE_RIGHT  -> { pivotOffsetX = sw;        pivotOffsetY = sh / 2f; }
-            case POINT_BOTTOM_LEFT   -> { pivotOffsetX = 0f;        pivotOffsetY = sh; }
-            case POINT_BOTTOM_CENTER -> { pivotOffsetX = sw / 2f;   pivotOffsetY = sh; }
-            case POINT_BOTTOM_RIGHT  -> { pivotOffsetX = sw;        pivotOffsetY = sh; }
-            default                  -> { pivotOffsetX = 0f;        pivotOffsetY = 0f; } // POINT_TOP_LEFT
+        if (hasPercentX(ptr)) screenX = parentX + getPercentX(ptr) * parentW;
+        if (hasPercentY(ptr)) screenY = parentY + getPercentY(ptr) * parentH;
+
+        // ---------------------------------------------------------------------
+        // 4. PIVOT REFERENCE: source-of-truth pivot of the element. Shifts so the
+        //    pivot point lands at the target (default TOP_LEFT = no shift).
+        // ---------------------------------------------------------------------
+        int pivotRef = getPivotReference(ptr);
+        float pivotOffX, pivotOffY;
+        switch (pivotRef) {
+            case PIVOT_REFERENCE_TOP_RIGHT    -> { pivotOffX = sw;      pivotOffY = 0f; }
+            case PIVOT_REFERENCE_BOTTOM_LEFT  -> { pivotOffX = 0f;      pivotOffY = sh; }
+            case PIVOT_REFERENCE_BOTTOM_RIGHT -> { pivotOffX = sw;      pivotOffY = sh; }
+            case PIVOT_REFERENCE_CENTER       -> { pivotOffX = sw / 2f; pivotOffY = sh / 2f; }
+            default                           -> { pivotOffX = 0f;      pivotOffY = 0f; } // PIVOT_REFERENCE_TOP_LEFT
         }
 
-        float screenX = targetX - pivotOffsetX;
-        float screenY = targetY - pivotOffsetY;
+        screenX -= pivotOffX;
+        screenY -= pivotOffY;
 
         Vec4.set(outRect, screenX, screenY, sw, sh);
     }
