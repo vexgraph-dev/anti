@@ -383,8 +383,7 @@ public final class VKImageView {
     }
 
     public static void set(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        ForeignMemory.setLong(pointer, value);
+        Fence.set(pointer, value);
     }
 
     public static void set(long pointer, int index, long value) { 
@@ -394,24 +393,20 @@ public final class VKImageView {
 
     @Volatile
     public static long getVolatile(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        return ForeignMemory.getVolatileLong(pointer);
+        return Fence.getVolatile(pointer);
     }
 
     @Volatile
     public static void setVolatile(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        ForeignMemory.setVolatileLong(pointer, value);
+        Fence.setVolatile(pointer, value);
     }
 
     public static boolean compareAndSet(long pointer, long expected, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        return ForeignMemory.compareAndSetLong(pointer, expected, value);
+        return Fence.compareAndSet(pointer, expected, value);
     }
 
     public static long getAndSet(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        return ForeignMemory.getAndSetLong(pointer, value);
+        return Fence.getAndSet(pointer, value);
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
