@@ -70,6 +70,23 @@ public class EngineTest {
         darling.Picture.setLocation(picturePtr, 100f, 60f);
         vulkan.TriangleRenderer.setPicture(picturePtr);
 
+        // Nested clipping test panels:
+        // Parent: (100, 100) at (500, 60), Dark Slate background (0xFF1E293B), clipChildren = true
+        // Child:  (200, 200) at (50, 50), Emerald Green background (0xFF10B981) overflowing parent
+        long rootPanel = darling.Panel.allocate();
+        darling.Container.setPos(rootPanel, 500f, 60f);
+        darling.Container.setSize(rootPanel, 100f, 100f);
+        darling.Panel.setBackgroundColor(rootPanel, 0xFF1E293B);
+        darling.Container.setClipChildren(rootPanel, true);
+
+        long childPanel = darling.Panel.allocate();
+        darling.Container.setPos(childPanel, 50f, 50f);
+        darling.Container.setSize(childPanel, 200f, 200f);
+        darling.Panel.setBackgroundColor(childPanel, 0xFF10B981);
+
+        darling.Panel.add(rootPanel, childPanel);
+        vulkan.TriangleRenderer.setRootUi(rootPanel);
+
         // Flat 2D layout space (darling.Canvas): the whole UI resolves inside a
         // fixed virtual-resolution canvas, mapped to the window by an ortho
         // projection. Default PIXEL mode = 1 canvas unit is 1 window px, top-left
