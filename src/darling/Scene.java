@@ -235,8 +235,17 @@ public final class Scene {
 
     public static void setPos(long ptr, float x, float y) { Container.setPos(ptr, x, y); }
     public static void setSize(long ptr, float width, float height) { Container.setSize(ptr, width, height); }
+
+    public static int getAnchor(long ptr) { return Container.getAnchor(ptr); }
+    public static void setAnchor(long ptr, int anchor) { Container.setAnchor(ptr, anchor); }
+    public static int getReferenceAnchor(long ptr) { return Container.getReferenceAnchor(ptr); }
     public static void setReferenceAnchor(long ptr, int anchor) { Container.setReferenceAnchor(ptr, anchor); }
+
+    public static int getElementAnchor(long ptr) { return Container.getElementAnchor(ptr); }
     public static void setElementAnchor(long ptr, int anchor) { Container.setElementAnchor(ptr, anchor); }
+
+    public static int getPointReference(long ptr) { return Container.getPointReference(ptr); }
+    public static void setPointReference(long ptr, int pointRef) { Container.setPointReference(ptr, pointRef); }
 
     public static int getBackgroundColor(long ptr) { return Panel.getBackgroundColor(ptr); }
     public static void setBackgroundColor(long ptr, int color) { Panel.setBackgroundColor(ptr, color); }
