@@ -269,6 +269,7 @@ public final class Container {
     public static void setHeight(long ptr, float height) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_H, height); markDirty(ptr); }
 
     public static void setPos(long ptr, float x, float y) { setX(ptr, x); setY(ptr, y); }
+    public static void setLocation(long ptr, float x, float y) { setX(ptr, x); setY(ptr, y); }
     public static void setSize(long ptr, float width, float height) { setWidth(ptr, width); setHeight(ptr, height); }
 
     // =========================================================================
@@ -303,6 +304,12 @@ public final class Container {
         checkAnchor(anchor);
         ForeignMemory.setInt(ptr + OFF_ELEM_ANCHOR, anchor);
         markDirty(ptr);
+    }
+
+    /** Sets both anchors (reference + element) to the same anchor. */
+    public static void setAnchor(long ptr, int anchor) {
+        setReferenceAnchor(ptr, anchor);
+        setElementAnchor(ptr, anchor);
     }
 
     /** Sets both anchors (reference + element). */
