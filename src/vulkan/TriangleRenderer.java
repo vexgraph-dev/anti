@@ -230,6 +230,9 @@ public final class TriangleRenderer {
         }
         offscreenWidth = w;
         offscreenHeight = h;
+        System.out.println("[offscreen] target=" + w + "x" + h
+                + " swapchain=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight()
+                + " dpi=" + (boundWindowPtr != 0L ? (float) window.Window.getBackingScaleFactor(boundWindowPtr) : 1.0f));
 
         offscreenImages = Long.allocateArray(offscreenImageCount);
         framebuffers = Long.allocateArray(offscreenImageCount);
@@ -658,6 +661,7 @@ public final class TriangleRenderer {
                                            long nodePtr, float parentX, float parentY,
                                            float parentW, float parentH,
                                            int clipX, int clipY, int clipW, int clipH,
+                                           long projMat, float dpi,
                                            FloatBuffer pushData, VkRect2D.Buffer scissorBuf,
                                            VkViewport.Buffer vpBuffer) {
         if (nodePtr == 0L || !darling.Container.isVisible(nodePtr)) return;
@@ -676,7 +680,6 @@ public final class TriangleRenderer {
             float rw = Vec4.getZ(rect);
             float rh = Vec4.getW(rect);
 
-            float dpi = darling.Canvas.getDpiScale();
             int sx = (int) Math.round(rx * dpi);
             int sy = (int) Math.round(ry * dpi);
             int sw = (int) Math.round(rw * dpi);
@@ -711,7 +714,7 @@ public final class TriangleRenderer {
                     vkCmdSetScissor(command, 0, scissorBuf);
 
                     pushData.position(0);
-                    for (int i = 0; i < 16; i++) pushData.put(Mat4.getRaw(canvasProj, i));
+                    for (int i = 0; i < 16; i++) pushData.put(Mat4.getRaw(projMat, i));
                     pushData.put(rx).put(ry).put(rw).put(rh);
                     pushData.put(r).put(g).put(b).put(a);
                     pushData.put(0.0f).put(0.0f).put(0.0f).put(0.0f);
@@ -733,7 +736,8 @@ public final class TriangleRenderer {
                 for (int i = 0; i < n; i++) {
                     long childPtr = darling.Panel.getChild(nodePtr, i);
                     renderContainerTree(command, stack, childPtr, rx, ry, rw, rh,
-                            nextClipX, nextClipY, nextClipW, nextClipH, pushData, scissorBuf, vpBuffer);
+                            nextClipX, nextClipY, nextClipW, nextClipH,
+                            projMat, dpi, pushData, scissorBuf, vpBuffer);
                 }
             }
         } finally {
@@ -928,12 +932,15 @@ public final class TriangleRenderer {
                 }
             }
 
-            // Render UI container tree (sceneNode children and rootUiNode)
+            // Render UI container tree (sceneNode children and rootUiNode) into the
+            // SAME master offscreen buffer as the 3D scene and picture — one unified
+            // single-pass target (offscreenWidth x offscreenHeight).
+            // and scene all share the single stable canvasProj and never skew. The
+            // projection spans the fixed offscreen buffer; nodes resolve against the
+            // live visible canvas (currentW/dpi), which the draw thread re-records
+            // every frame, so anchored panels track the window edge without any
+            // present-time second pass.
             if (sceneNode != 0L || rootUiNode != 0L) {
-                // Projection spans the offscreen render target (1:1 canvas px = c*dpi),
-                // while nodes resolve against the live visible canvas (currentW/dpi).
-                // This is what makes anchored panels track the window edge on resize
-                // without the whole UI re-scaling.
                 darling.Canvas.buildProjection(canvasProj, offscreenWidth, offscreenHeight);
                 FloatBuffer panelPushData = stack.mallocFloat(28);
                 VkRect2D.Buffer panelScissor = VkRect2D.calloc(1, stack);
@@ -941,20 +948,45 @@ public final class TriangleRenderer {
                 float winW = (dpi > 0f) ? (currentW / dpi) : currentW;
                 float winH = (dpi > 0f) ? (currentH / dpi) : currentH;
 
+                if (System.getProperty("anti.debug.panel") != null) {
+                    long dbgRect = Vec4.allocate();
+                    try {
+                        long node = rootUiNode != 0L ? rootUiNode : sceneNode;
+                        darling.Container.resolve(node, 0f, 0f, winW, winH, dbgRect);
+                        float rx = Vec4.getX(dbgRect), ry = Vec4.getY(dbgRect);
+                        float rw = Vec4.getZ(dbgRect), rh = Vec4.getW(dbgRect);
+                        System.out.println("[panel] win=" + currentW + "x" + currentH
+                                + " canvas=" + winW + "x" + winH
+                                + " rect(canvas)=(" + rx + "," + ry + "," + rw + "," + rh + ")"
+                                + " rect(px)=(" + (int) Math.round(rx * dpi) + "," + (int) Math.round(ry * dpi) + ","
+                                + (int) Math.round(rw * dpi) + "," + (int) Math.round(rh * dpi) + ")"
+                                + " offscreen=" + offscreenWidth + "x" + offscreenHeight);
+                    } finally {
+                        Vec4.free(dbgRect);
+                    }
+                }
+
                 if (sceneNode != 0L && oop.TypeRegister.isA(darling.Container.classId(sceneNode), darling.Panel.CLASS_ID)) {
                     int childCount = darling.Panel.childCount(sceneNode);
                     for (int i = 0; i < childCount; i++) {
                         long childPtr = darling.Panel.getChild(sceneNode, i);
+                        // Clip to the FULL master offscreen, not the live window: a
+                        // top-left panel must be fully painted into the master buffer
+                        // even where the current window crop doesn't reach, so expanding
+                        // the window reveals already-painted pixels instantly (no
+                        // paint-to-catch-up gap). Layout still resolves against the live
+                        // window (winW/winH) so anchored panels track the edge.
                         renderContainerTree(command, stack, childPtr, 0f, 0f, winW, winH,
-                                0, 0, currentW, currentH, panelPushData, panelScissor, vpBuffer);
+                                0, 0, offscreenWidth, offscreenHeight,
+                                canvasProj, dpi, panelPushData, panelScissor, vpBuffer);
                     }
                 }
                 if (rootUiNode != 0L) {
                     renderContainerTree(command, stack, rootUiNode, 0f, 0f, winW, winH,
-                            0, 0, currentW, currentH, panelPushData, panelScissor, vpBuffer);
+                            0, 0, offscreenWidth, offscreenHeight,
+                            canvasProj, dpi, panelPushData, panelScissor, vpBuffer);
                 }
             }
-
             vkCmdEndRenderPass(command);
 
             if (vkEndCommandBuffer(command) != VK_SUCCESS) {

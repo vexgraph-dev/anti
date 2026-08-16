@@ -298,10 +298,10 @@ public final class Container {
     public static float getWidth(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_W); }
     public static float getHeight(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_H); }
 
-    public static void setX(long ptr, float x) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_X, x); markDirty(ptr); }
-    public static void setY(long ptr, float y) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_Y, y); markDirty(ptr); }
-    public static void setWidth(long ptr, float width) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_W, width); markDirty(ptr); }
-    public static void setHeight(long ptr, float height) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_H, height); markDirty(ptr); }
+    public static void setX(long ptr, float x) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_X, x); markDirty(ptr); invalidateBase(ptr); }
+    public static void setY(long ptr, float y) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_Y, y); markDirty(ptr); invalidateBase(ptr); }
+    public static void setWidth(long ptr, float width) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_W, width); markDirty(ptr); invalidateBase(ptr); }
+    public static void setHeight(long ptr, float height) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_H, height); markDirty(ptr); invalidateBase(ptr); }
 
     public static void setPos(long ptr, float x, float y) { setX(ptr, x); setY(ptr, y); }
     public static void setLocation(long ptr, float x, float y) { setX(ptr, x); setY(ptr, y); }
@@ -314,8 +314,8 @@ public final class Container {
     public static float getScaleWidth(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_SCALE_X); }
     public static float getScaleHeight(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_SCALE_Y); }
 
-    public static void setScaleWidth(long ptr, float scaleWidth) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_SCALE_X, scaleWidth); markDirty(ptr); }
-    public static void setScaleHeight(long ptr, float scaleHeight) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_SCALE_Y, scaleHeight); markDirty(ptr); }
+    public static void setScaleWidth(long ptr, float scaleWidth) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_SCALE_X, scaleWidth); markDirty(ptr); invalidateBase(ptr); }
+    public static void setScaleHeight(long ptr, float scaleHeight) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_SCALE_Y, scaleHeight); markDirty(ptr); invalidateBase(ptr); }
 
     /** Sets both scale factors, one dirty region. */
     public static void setScale(long ptr, float scaleWidth, float scaleHeight) { setScaleWidth(ptr, scaleWidth); setScaleHeight(ptr, scaleHeight); }
@@ -329,6 +329,18 @@ public final class Container {
 
     private static void setBaseWidth(long ptr, float baseWidth)  { ForeignMemory.setFloat(ptr + OFF_BASE_W, baseWidth); }
     private static void setBaseHeight(long ptr, float baseHeight) { ForeignMemory.setFloat(ptr + OFF_BASE_H, baseHeight); }
+
+    /**
+     * Forces the next resolveSized to re-capture the resize-delta reference at the
+     * current parent size. Called only by explicit layout modifications (location,
+     * size, scale, anchors); state-only mutators (hover, color, visibility) keep the
+     * existing base so anchored panels never jump mid-resize.
+     */
+    static void invalidateBase(long ptr) {
+        checkContainer(ptr);
+        setBaseWidth(ptr, 0f);
+        setBaseHeight(ptr, 0f);
+    }
 
     // =========================================================================
     // 1. PARENT ANCHOR (Where on the parent the element is pinned, 3x3 grid)
@@ -353,6 +365,7 @@ public final class Container {
         int selfAnchor = (old >>> 8) & 0xFF;
         ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, (selfAnchor << 8) | (parentAnchor & 0xFF));
         markDirty(ptr);
+        invalidateBase(ptr);
     }
 
     // =========================================================================
@@ -379,6 +392,7 @@ public final class Container {
         int parentAnchor = old & 0xFF;
         ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, ((selfAnchor + 1) << 8) | parentAnchor);
         markDirty(ptr);
+        invalidateBase(ptr);
     }
 
     // =========================================================================
@@ -401,6 +415,7 @@ public final class Container {
         checkPivotReference(pivotReference);
         ForeignMemory.setInt(ptr + OFF_PIVOT_REF, pivotReference);
         markDirty(ptr);
+        invalidateBase(ptr);
     }
 
     // Combined convenience setters:
@@ -517,13 +532,17 @@ public final class Container {
         // ---------------------------------------------------------------------
         float baseW = getBaseWidth(ptr);
         float baseH = getBaseHeight(ptr);
-        if (isDirty(ptr) || baseW <= 0f || baseH <= 0f) {
+        if (baseW <= 0f || baseH <= 0f) {
+            // Base captured once at first layout (or after an explicit layout
+            // modification — see invalidateBase). Generic dirty marks (hover, color,
+            // visibility) must NOT reset it: re-capturing mid-resize would collapse
+            // dW/dH to zero and make anchored panels jump to the current parent size.
             baseW = parentW;
             baseH = parentH;
             setBaseWidth(ptr, baseW);
             setBaseHeight(ptr, baseH);
-            clearDirty(ptr);
         }
+        clearDirty(ptr);
 
         float x = getX(ptr), y = getY(ptr);
 
