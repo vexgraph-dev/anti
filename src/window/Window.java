@@ -583,9 +583,9 @@ public final class Window {
         else if (IS_LINUX) linuxWindow.pollEvents();
     }
 
-    public static void waitEvents() {
+    public static void waitEvents(long pointer) {
         if (IS_MAC)
-            macOSWindow.waitEvents();
+            macOSWindow.waitEvents(pointer);
         else if (IS_WIN) {
             windowsWindow.pollEvents();
             parkNanos(16_000_000L); // Fallback timeout polling
@@ -646,7 +646,7 @@ public final class Window {
                 lastContentSize = contentSize;
             }
 
-            waitEvents(); // bounded block: ~16ms cadence when idle, instant wake on input
+            waitEvents(pointer); // bounded block: ~16ms cadence when idle, instant wake on input
         }
         System.out.println("[Main Thread] Window closed. Releasing Thread 0.");
     }

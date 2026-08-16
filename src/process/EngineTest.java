@@ -72,7 +72,7 @@ public class EngineTest {
         //   PARENT anchor BOTTOM_RIGHT = RESIZE TRACKING only -> when the window is
         //     resized at the bottom-right, panel1 moves by exactly that delta.
         long panel1 = Panel.allocate();
-        Panel.setSize(panel1, 200f, 200f);
+        Panel.setSize(panel1, 600f, 600f);
         Panel.setLocation(panel1, 30f, 30f);
         Panel.setParentAnchor(panel1, Panel.PARENT_ANCHOR_BOTTOM_RIGHT);
         Panel.setSelfAnchor(panel1, Panel.SELF_ANCHOR_TOP_LEFT);

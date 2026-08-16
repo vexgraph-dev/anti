@@ -69,12 +69,6 @@ final class macOSWindow {
     private static MethodHandle CF_RUN_LOOP_RUN;
     private static MethodHandle CF_RUN_LOOP_STOP;
     private static MethodHandle CF_STRING_CREATE_WITH_CSTRING;
-    private static MethodHandle CG_DISPLAY_COPY_ALL_DISPLAY_MODES;
-    private static MethodHandle CF_ARRAY_GET_COUNT;
-    private static MethodHandle CF_ARRAY_GET_VALUE_AT_INDEX;
-    private static MethodHandle CG_DISPLAY_MODE_GET_PIXEL_WIDTH;
-    private static MethodHandle CG_DISPLAY_MODE_GET_PIXEL_HEIGHT;
-    private static MethodHandle CG_DISPLAY_MODE_GET_IO_FLAGS;
     private static StructLayout CG_RECT;
     private static StructLayout CG_SIZE;
 
@@ -138,12 +132,6 @@ final class macOSWindow {
                 CF_RUN_LOOP_STOP = LINKER.downcallHandle(coreFoundation.find("CFRunLoopStop").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
                 CF_STRING_CREATE_WITH_CSTRING = LINKER.downcallHandle(coreFoundation.find("CFStringCreateWithCString").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
                 CF_RELEASE = LINKER.downcallHandle(coreFoundation.find("CFRelease").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
-                CG_DISPLAY_COPY_ALL_DISPLAY_MODES = LINKER.downcallHandle(coreGraphics.find("CGDisplayCopyAllDisplayModes").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-                CF_ARRAY_GET_COUNT = LINKER.downcallHandle(coreFoundation.find("CFArrayGetCount").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-                CF_ARRAY_GET_VALUE_AT_INDEX = LINKER.downcallHandle(coreFoundation.find("CFArrayGetValueAtIndex").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
-                CG_DISPLAY_MODE_GET_PIXEL_WIDTH = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetPixelWidth").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-                CG_DISPLAY_MODE_GET_PIXEL_HEIGHT = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetPixelHeight").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-                CG_DISPLAY_MODE_GET_IO_FLAGS = LINKER.downcallHandle(coreGraphics.find("CGDisplayModeGetIOFlags").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
                 metalCreateSystemDefaultDevice = LINKER.downcallHandle(
                     metalLib.find("MTLCreateSystemDefaultDevice").orElseThrow(),
                     FunctionDescriptor.of(ValueLayout.ADDRESS)
@@ -1192,39 +1180,46 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
     }
 
     /** Main screen current physical resolution in backing pixels, packed (width << 32) | height. 0 if unavailable. */
-    @annotation.Intention("Queries the display's true native physical hardware panel resolution (e.g. 2408x1506 on MacBook Liquid Retina).")
+    @annotation.Intention("Queries the display's true native physical hardware panel resolution from the machine (CoreGraphics current display mode), never a hardcoded value.")
     public static long getScreenBackingSize() {
-        if (CG_MAIN_DISPLAY_ID == null || CG_DISPLAY_COPY_ALL_DISPLAY_MODES == null) return 0L;
+        if (CG_MAIN_DISPLAY_ID == null || CG_DISPLAY_PIXELS_WIDE == null || CG_DISPLAY_PIXELS_HIGH == null) return 0L;
+        double bsf = 0.0;
         try {
             int displayId = (int) CG_MAIN_DISPLAY_ID.invokeExact();
-            MemorySegment modes = (MemorySegment) CG_DISPLAY_COPY_ALL_DISPLAY_MODES.invokeExact(displayId, MemorySegment.NULL);
-            if (modes == null || modes.address() == 0L) return 0L;
+            long w = (long) CG_DISPLAY_PIXELS_WIDE.invokeExact(displayId);
+            long h = (long) CG_DISPLAY_PIXELS_HIGH.invokeExact(displayId);
 
-            long count = (long) CF_ARRAY_GET_COUNT.invokeExact(modes);
-            long nativeW = 0L, nativeH = 0L;
-            for (long i = 0; i < count; i++) {
-                MemorySegment mode = (MemorySegment) CF_ARRAY_GET_VALUE_AT_INDEX.invokeExact(modes, i);
-                if (mode == null || mode.address() == 0L) continue;
-                int flags = (int) CG_DISPLAY_MODE_GET_IO_FLAGS.invokeExact(mode);
-                if ((flags & 0x02000000) != 0) { // kDisplayModeNativeFlag = native physical hardware resolution
-                    nativeW = (long) CG_DISPLAY_MODE_GET_PIXEL_WIDTH.invokeExact(mode);
-                    nativeH = (long) CG_DISPLAY_MODE_GET_PIXEL_HEIGHT.invokeExact(mode);
-                    break;
+            // The window server caps a window at the screen frame; on some (virtualized)
+            // environments CoreGraphics and AppKit disagree on the display size, so pin
+            // the buffer to the LARGER of the two machine sources to guarantee the
+            // offscreen never falls below what the window can actually be resized to.
+            if (OBJC_GET_CLASS != null) {
+                try (Arena arena = Arena.ofConfined()) {
+                    MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
+                    MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, getSel(arena, "mainScreen"));
+                    if (mainScreen != null && mainScreen.address() != 0L) {
+                        MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, getSel(arena, "frame"));
+                        double fw = rect.get(ValueLayout.JAVA_DOUBLE, 16);
+                        double fh = rect.get(ValueLayout.JAVA_DOUBLE, 24);
+                        double frameBsf = (double) MSG_SEND_DOUBLE_RET.invoke(mainScreen, getSel(arena, "backingScaleFactor"));
+                        if (frameBsf > 0.0) bsf = frameBsf;
+                        if (w < Math.round(fw * frameBsf)) w = Math.round(fw * frameBsf);
+                        if (h < Math.round(fh * frameBsf)) h = Math.round(fh * frameBsf);
+                    }
                 }
             }
-            CF_RELEASE.invokeExact(modes);
-
-            if (nativeW <= 0 || nativeH <= 0) {
-                nativeW = 2408L;
-                nativeH = 1506L;
-            }
-
+            if (w <= 0 || h <= 0) return 0L;
             if (resolutionType == RESOLUTION_POINT) {
-                nativeW /= 2;
-                nativeH /= 2;
+                double div = bsf > 0.0 ? bsf : 2.0;
+                w = Math.round(w / div);
+                h = Math.round(h / div);
             }
-
-            return (nativeW << 32) | (nativeH & 0xFFFFFFFFL);
+            if (System.getProperty("anti.debug.resize") != null) {
+                System.out.println("[screen] backing=" + w + "x" + h + " (displayPixels="
+                        + (long) CG_DISPLAY_PIXELS_WIDE.invokeExact(displayId) + "x"
+                        + (long) CG_DISPLAY_PIXELS_HIGH.invokeExact(displayId) + " bsf=" + bsf + ")");
+            }
+            return (w << 32) | (h & 0xFFFFFFFFL);
         } catch (Throwable t) {
             throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception in getScreenBackingSize", t);
         }
@@ -1245,7 +1240,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         }
     }
 
-    public static void waitEvents() {
+    public static void waitEvents(long pointer) {
         if (OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment nsAppClass = getObjcClass(arena, "NSApplication");
@@ -1257,10 +1252,19 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             MemorySegment initWithUTF8StringSel = getSel(arena, "initWithUTF8String:");
             
             MemorySegment modeAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, allocSel);
-            MemorySegment runLoopMode = (MemorySegment) MSG_SEND_PTR_PTR.invoke(modeAlloc, initWithUTF8StringSel, arena.allocateFrom("kCFRunLoopDefaultMode"));
+            // During a live drag AppKit enters modal event tracking
+            // (NSEventTrackingRunLoopMode) and default-mode polling starves the
+            // drag events. kCFRunLoopCommonModes cannot be passed to
+            // nextEventMatchingMask:inMode: (it is a pseudo-mode, not a runnable
+            // one — CFRunLoopRunSpecific rejects it), so poll the tracking mode
+            // while live-resizing instead.
+            boolean live = isLiveResize(pointer);
+            MemorySegment runLoopMode = (MemorySegment) MSG_SEND_PTR_PTR.invoke(modeAlloc, initWithUTF8StringSel, arena.allocateFrom(live ? "NSEventTrackingRunLoopMode" : "kCFRunLoopDefaultMode"));
 
             MemorySegment nsDateClass = getObjcClass(arena, "NSDate");
             MemorySegment dateWithTimeIntervalSel = getSel(arena, "dateWithTimeIntervalSinceNow:");
+            MemorySegment distantPastSel = getSel(arena, "distantPast");
+            MemorySegment distantPast = (MemorySegment) MSG_SEND_PTR.invoke(nsDateClass, distantPastSel);
 
             MemorySegment nextEventSel = getSel(arena, "nextEventMatchingMask:untilDate:inMode:dequeue:");
             MemorySegment sendEventSel = getSel(arena, "sendEvent:");
@@ -1294,7 +1298,11 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             long NSAnyEventMask = -1L;
 
             while (true) {
-                MemorySegment timeout = (MemorySegment) MSG_SEND_PTR_DOUBLE.invoke(nsDateClass, dateWithTimeIntervalSel, IDLE_EVENT_TIMEOUT_SECONDS);
+                // Live drag: poll immediately (distantPast) so layout keeps pace
+                // with the display refresh instead of parking on the idle timeout.
+                MemorySegment timeout = live
+                        ? distantPast
+                        : (MemorySegment) MSG_SEND_PTR_DOUBLE.invoke(nsDateClass, dateWithTimeIntervalSel, IDLE_EVENT_TIMEOUT_SECONDS);
 
                 MemorySegment event = (MemorySegment) MSG_SEND_NEXT_EVENT.invoke(app, nextEventSel, NSAnyEventMask, timeout, runLoopMode, (byte)1);
                 if (event.address() == 0L) {

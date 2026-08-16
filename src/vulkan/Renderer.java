@@ -729,6 +729,9 @@ public final class Renderer {
                     swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     reg, VK_FILTER_LINEAR);
 
+            // The master offscreen buffer holds the ENTIRE frame (3D scene, picture,
+            // and UI panels) rendered in one pass — the present pass only blits the
+            // visible region and hands the image to the present queue.
             post0.sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
                     .oldLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
                     .newLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)

@@ -551,7 +551,7 @@ public final class Panel {
      * parent; the parent slot points back via getParent().
      */
     public static long getParent(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(ptr + OFF_PARENT); }
-    public static void setParent(long ptr, long parentPtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_PARENT, parentPtr); markDirty(ptr); }
+    public static void setParent(long ptr, long parentPtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_PARENT, parentPtr); markDirty(ptr); Container.invalidateBase(ptr); }
 
     /** Number of direct children. */
     public static int childCount(long ptr) { checkPanel(ptr); return ForeignMemory.getInt(ptr + OFF_CHILD_COUNT); }
