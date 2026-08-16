@@ -38,7 +38,8 @@ public final class Stride {
             case TypeRegister.ID_LONG,      
                  TypeRegister.ID_DOUBLE,    
                  TypeRegister.ID_STRING,     
-                 TypeRegister.ID_INT_FLOAT     -> 8;
+                 TypeRegister.ID_INT_FLOAT,
+                 TypeRegister.ID_ARGUMENTS     -> 8;
             case TypeRegister.ID_INT_DOUBLE,
                  TypeRegister.ID_LONG_FLOAT,
                  TypeRegister.ID_LONG_DOUBLE   -> 16;

@@ -75,7 +75,7 @@ public class EngineTest {
         Panel.setSize(panel1, 200f, 200f);
         Panel.setLocation(panel1, 30f, 30f);
         Panel.setParentAnchor(panel1, Panel.PARENT_ANCHOR_BOTTOM_RIGHT);
-        Panel.setSelfAnchor(panel1, Panel.SELF_ANCHOR_BOTTOM_LEFT);
+        Panel.setSelfAnchor(panel1, Panel.SELF_ANCHOR_TOP_LEFT);
         Panel.setBackgroundColor(panel1, 30, 41, 59, 200);
         Panel.setClipChildren(panel1, true);
 
