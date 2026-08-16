@@ -3,6 +3,14 @@
 *.iml
 out/
 
+### Eclipse ###
+.classpath
+.project
+.settings/
+
+### LWJGL local cache ###
+.lwjgl/
+
 ### macOS ###
 .DS_Store
 
