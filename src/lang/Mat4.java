@@ -365,7 +365,7 @@ public final class Mat4
             sb.append("  [");
             for (int c = 0; c < 4; c++)
             {
-                sb.append(String.format("%8.4f", get(ptr, r, c)));
+                sb.append(get(ptr, r, c));
                 if (c < 3) sb.append(", ");
             }
             sb.append("]\n");
