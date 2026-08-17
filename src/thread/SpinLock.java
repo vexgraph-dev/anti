@@ -8,12 +8,8 @@ import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.lang.invoke.VarHandle;
-
 /**
- * Off-heap Atomic Spinlock based on FFM MemorySegment CAS updates.
+ * Off-heap Atomic Spinlock based on FFM Memory CAS updates.
  */
 @Draft
 @Intention("Ultra-low-latency spinlock acting directly on memory address flags to coordinate multi-threaded access without thread parking.")
@@ -24,9 +20,6 @@ public final class SpinLock {
     public static final int CLASS_ID = TypeRegister.ID_SPIN_LOCK;
 
     public static final int TYPE_SPIN_LOCK = TypeRegister.FORM_SINGLETON | CLASS_ID; // 0xAA000019
-
-    private static final VarHandle INT_VH = ValueLayout.JAVA_INT.varHandle();
-    private static final MemorySegment GLOBAL_MEMORY = MemorySegment.ofAddress(0).reinterpret(Long.MAX_VALUE);
 
     private SpinLock() {}
 
@@ -64,7 +57,7 @@ public final class SpinLock {
     public static void lock(long lockPtr) {
         if (lockPtr == 0L) throw new NullPointerException("Locking NULL spinlock pointer!");
         int ticket = ticket(Thread.currentThread().threadId());
-        while (!(boolean) INT_VH.compareAndSet(GLOBAL_MEMORY, lockPtr, 0, ticket)) {
+        while (!ForeignMemory.compareAndSetInt(lockPtr, 0, ticket)) {
             Thread.onSpinWait();
         }
     }
@@ -72,7 +65,7 @@ public final class SpinLock {
     // try to acquire lock immediately, returns true if successful
     public static boolean tryLock(long lockPtr) {
         if (lockPtr == 0L) throw new NullPointerException("Locking NULL spinlock pointer!");
-        return (boolean) INT_VH.compareAndSet(GLOBAL_MEMORY, lockPtr, 0, ticket(Thread.currentThread().threadId()));
+        return ForeignMemory.compareAndSetInt(lockPtr, 0, ticket(Thread.currentThread().threadId()));
     }
 
     // try to acquire lock within timeoutNanos; returns false on timeout, never spins forever
@@ -90,17 +83,17 @@ public final class SpinLock {
     public static void unlock(long lockPtr) {
         if (lockPtr == 0L) throw new NullPointerException("Unlocking NULL spinlock pointer!");
         long owner = Thread.currentThread().threadId();
-        int held = (int) INT_VH.getVolatile(GLOBAL_MEMORY, lockPtr);
+        int held = ForeignMemory.getVolatileInt(lockPtr);
         if (held != 0 && ownerOf(held) != owner) {
             throw new IllegalStateException("SpinLock unlock by non-owning thread 0x" + Long.toHexString(owner));
         }
-        INT_VH.setVolatile(GLOBAL_MEMORY, lockPtr, 0);
+        ForeignMemory.setVolatileInt(lockPtr, 0);
     }
 
     // check if lock is currently held
     public static boolean isLocked(long lockPtr) {
         if (lockPtr == 0L) return false;
-        return (int) INT_VH.getVolatile(GLOBAL_MEMORY, lockPtr) != 0;
+        return ForeignMemory.getVolatileInt(lockPtr) != 0;
     }
 
     public static int classId() {
