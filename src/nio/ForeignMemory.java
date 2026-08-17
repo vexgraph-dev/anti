@@ -575,6 +575,12 @@ public class ForeignMemory {
         return (int) INT_VH.getAndSet(GLOBAL_MEMORY, address, value);
     }
 
+    @Volatile
+    public static int getAndAddInt(long address, int delta) {
+        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        return (int) INT_VH.getAndAdd(GLOBAL_MEMORY, address, delta);
+    }
+
     public static boolean compareAndSetLong(long address, long expected, long value) {
         if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         return (boolean) LONG_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
