@@ -7,10 +7,6 @@ import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.lang.invoke.VarHandle;
-
 @Draft
 @Intention("[purpose]")
 public class Global
@@ -18,9 +14,6 @@ public class Global
     @Required
     public static final int CLASS_ID = TypeRegister.ID_GLOBAL;
     public static final int TYPE_SINGLETON = TypeRegister.FORM_SINGLETON | TypeRegister.MOD_GLOBAL | CLASS_ID;
-
-    private static final VarHandle LONG_VH = ValueLayout.JAVA_LONG.varHandle();
-    private static final MemorySegment GLOBAL_MEMORY = MemorySegment.ofAddress(0).reinterpret(Long.MAX_VALUE);
 
     // [purpose]
     // the purpose of the global variable is that the gloabel variable will be used to make
@@ -52,22 +45,21 @@ public class Global
     public static long get(long ptr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ptr);
+        return ForeignMemory.getVolatileLong(ptr);
     }
 
     public static void set(long ptr, long value)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        LONG_VH.setVolatile(GLOBAL_MEMORY, ptr, value);
+        ForeignMemory.setVolatileLong(ptr, value);
     }
 
     public static boolean compareAndSet(long ptr, long expected, long value)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return (boolean) LONG_VH.compareAndSet(GLOBAL_MEMORY, ptr, expected, value);
+        return ForeignMemory.compareAndSetLong(ptr, expected, value);
     }
 
     @Intention("[purpose] line [n]")
     private Global() {}
 }
-
