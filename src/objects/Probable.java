@@ -5,7 +5,6 @@ import annotation.Intention;
 import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
-import time.DateTime;
 
 @Draft
 @Intention("[definition]")
@@ -51,13 +50,13 @@ public class Probable
 
     public static void free(long ptr)
     {
-        Object.free(ptr);
+        if (ptr == 0L) return;
+        ForeignMemory.freeNative(ptr - 8L);
     }
 
     public static long getObject(long ptr)
     {
-        if (ptr == 0L)
-            throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         return ForeignMemory.getLong(ptr);
     }
 
