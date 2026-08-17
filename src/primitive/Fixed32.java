@@ -4,12 +4,10 @@ import annotation.Unsafe;
 import annotation.Volatile;
 
 import annotation.Required;
+import bit.Bit32;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
-import java.lang.foreign.Arena;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 
 public final class Fixed32 {
 
@@ -20,79 +18,6 @@ public final class Fixed32 {
     public static final int TYPE_ARRAY     = TypeRegister.FIXED32_ARRAY;     // 0xBB00002A
     public static final int TYPE_MATRIX    = TypeRegister.FIXED32_POINTER;   // 0xCC00002A
 
-    private static final int DEFAULT_CAPACITY = 1024;
-
-    // Memory Block Sizes (Including 8-byte headers: 4B typeId + 4B length)
-    private static final long SINGLETON_SLOT_SIZE = 16L; // 8B header + 4B data + 4B padding
-    private static final long POOLED_ARRAY_SIZE = 8L + (DEFAULT_CAPACITY * 4L);  // 4104 Bytes
-    private static final long POOLED_MATRIX_SIZE = 8L + (DEFAULT_CAPACITY * 8L); // 8200 Bytes
-
-    private static final VarHandle SINGLETON_FREE_HEAD_VH;
-    private static final VarHandle ARRAY_FREE_HEAD_VH;
-    private static final VarHandle MATRIX_FREE_HEAD_VH;
-
-    private static final VarHandle SINGLETON_EXPANDING_VH;
-    private static final VarHandle ARRAY_EXPANDING_VH;
-    private static final VarHandle MATRIX_EXPANDING_VH;
-
-    private static volatile int singletonExpanding = 0;
-    private static volatile int arrayExpanding = 0;
-    private static volatile int matrixExpanding = 0;
-
-    private static Arena poolArena;
-    private static volatile boolean active;
-
-    private static long CACHE_ARENA_BASE;
-
-    // Top 16 bits = 16-bit Generation Tag, Bottom 48 bits = Raw Memory Pointer
-    private static volatile long singletonFreeHead;
-    private static volatile long arrayFreeHead;
-    private static volatile long matrixFreeHead;
-
-    static {
-        try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            SINGLETON_FREE_HEAD_VH = lookup.findStaticVarHandle(Fixed32.class, "singletonFreeHead", long.class);
-            ARRAY_FREE_HEAD_VH = lookup.findStaticVarHandle(Fixed32.class, "arrayFreeHead", long.class);
-            MATRIX_FREE_HEAD_VH = lookup.findStaticVarHandle(Fixed32.class, "matrixFreeHead", long.class);
-
-            SINGLETON_EXPANDING_VH = lookup.findStaticVarHandle(Fixed32.class, "singletonExpanding", int.class);
-            ARRAY_EXPANDING_VH = lookup.findStaticVarHandle(Fixed32.class, "arrayExpanding", int.class);
-            MATRIX_EXPANDING_VH = lookup.findStaticVarHandle(Fixed32.class, "matrixExpanding", int.class);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-
-        poolArena = Arena.ofShared();
-        active = true;
-
-        CACHE_ARENA_BASE = ForeignMemory.allocateNative(256L * 256L);
-        ForeignMemory.setMemory(CACHE_ARENA_BASE, 256L * 256L, (byte) 0);
-
-        expandSingletonPool();
-        expandArrayPool();
-        expandMatrixPool();
-    }
-
-    private Fixed32() {}
-
-    private static void checkActive() {
-        if (!active) throw new IllegalStateException("Fixed32 subsystem is not active!");
-    }
-
-    public static void freeAll() {
-        if (active) {
-            active = false;
-            if (poolArena != null && poolArena.scope().isAlive()) {
-                poolArena.close();
-            }
-            if (CACHE_ARENA_BASE != 0L) {
-                ForeignMemory.freeNative(CACHE_ARENA_BASE);
-                CACHE_ARENA_BASE = 0L;
-            }
-        }
-    }
-
     // --- CONVERSION METHODS ---
     public static int floatToFixed32(float val) {
         return Math.round(val * 65536.0f);
@@ -102,320 +27,33 @@ public final class Fixed32 {
         return val / 65536.0f;
     }
 
-    // --- POOL EXPANSIONS ---
-    private static void expandSingletonPool() {
-        long totalBytes = DEFAULT_CAPACITY * SINGLETON_SLOT_SIZE;
-        long baseAddress = poolArena.allocate(totalBytes, 8).address();
+    // =========================================================
+    // ALLOCATION — DELEGATED TO THE BIT-WIDTH POOL (bit.Bit32)
+    // =========================================================
 
-        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
-            long currentBlock = baseAddress + (i * SINGLETON_SLOT_SIZE);
-            long userPtr = currentBlock + 8L;
-
-            while (true) {
-                long oldTagged = singletonFreeHead;
-                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.set(userPtr, oldRawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
-
-                if (SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        }
+    public static void freeAll()
+    {
+        Bit32.freeAll();
     }
 
-    private static void expandArrayPool() {
-        long totalBytes = DEFAULT_CAPACITY * POOLED_ARRAY_SIZE;
-        long baseAddress = poolArena.allocate(totalBytes, 8).address();
-
-        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
-            long currentBlock = baseAddress + (i * POOLED_ARRAY_SIZE);
-            long userPtr = currentBlock + 8L;
-
-            while (true) {
-                long oldTagged = arrayFreeHead;
-                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.set(userPtr, oldRawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
-
-                if (ARRAY_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        }
+    public static long allocateSingleton()
+    {
+        return Bit32.allocateSingleton(TYPE_SINGLETON);
     }
 
-    private static void expandMatrixPool() {
-        long totalBytes = DEFAULT_CAPACITY * POOLED_MATRIX_SIZE;
-        long baseAddress = poolArena.allocate(totalBytes, 8).address();
-
-        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
-            long currentBlock = baseAddress + (i * POOLED_MATRIX_SIZE);
-            long userPtr = currentBlock + 8L;
-
-            while (true) {
-                long oldTagged = matrixFreeHead;
-                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.set(userPtr, oldRawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
-
-                if (MATRIX_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        }
+    public static long allocateArray(int length)
+    {
+        return Bit32.allocateArray(TYPE_ARRAY, length);
     }
 
-    // --- ALLOCATION LAYER ---
-    public static long allocateSingleton() {
-        checkActive();
-        int tid = thread.ThreadRegistry.getThreadIndex();
-        long slotBase = CACHE_ARENA_BASE + (tid * 256L);
-        long countSingletonAddr = slotBase;
-        int count = ForeignMemory.getUnsafeInt(countSingletonAddr);
-        if (count > 0) {
-            int newCount = count - 1;
-            ForeignMemory.set(countSingletonAddr, newCount);
-            long dataAddr = slotBase + 32L + (newCount * 8L);
-            long ptr = ForeignMemory.getUnsafeLong(dataAddr);
-            long base = ptr - 8L;
-            ForeignMemory.set(base, TYPE_SINGLETON);
-            ForeignMemory.set(base + 4L, 1);
-            ForeignMemory.set(ptr, 0);
-            return ptr;
-        }
-        while (true) {
-            long oldTagged = singletonFreeHead;
-            long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-            if (rawHead == 0L) {
-                if (SINGLETON_EXPANDING_VH.compareAndSet(0, 1)) {
-                    expandSingletonPool();
-                    SINGLETON_EXPANDING_VH.setVolatile(0);
-                } else {
-                    Thread.onSpinWait();
-                }
-                continue;
-            }
-
-            long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
-
-            if (SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
-                long block = rawHead - 8L;
-                ForeignMemory.set(block, TYPE_SINGLETON);
-                ForeignMemory.set(block + 4L, 1);
-                ForeignMemory.set(rawHead, 0);
-                return rawHead;
-            }
-        }
+    public static long allocateMatrix(int length)
+    {
+        return Bit32.allocateMatrix(TYPE_MATRIX, length);
     }
 
-    public static long allocateArray(int length) {
-        checkActive();
-        if (length <= 0) throw new IllegalArgumentException("Length must be > 0!");
-
-        if (length == DEFAULT_CAPACITY) {
-            int tid = thread.ThreadRegistry.getThreadIndex();
-            long slotBase = CACHE_ARENA_BASE + (tid * 256L);
-            long countArrayAddr = slotBase + 4L;
-            int count = ForeignMemory.getUnsafeInt(countArrayAddr);
-            if (count > 0) {
-                int newCount = count - 1;
-                ForeignMemory.set(countArrayAddr, newCount);
-                long dataAddr = slotBase + 96L + (newCount * 8L);
-                long ptr = ForeignMemory.getUnsafeLong(dataAddr);
-                long base = ptr - 8L;
-                ForeignMemory.set(base, TYPE_ARRAY);
-                ForeignMemory.set(base + 4L, length);
-                ForeignMemory.setMemory(ptr, length * 4L, (byte) 0);
-                return ptr;
-            }
-            while (true) {
-                long oldTagged = arrayFreeHead;
-                long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                if (rawHead == 0L) {
-                    if (ARRAY_EXPANDING_VH.compareAndSet(0, 1)) {
-                        expandArrayPool();
-                        ARRAY_EXPANDING_VH.setVolatile(0);
-                    } else {
-                        Thread.onSpinWait();
-                    }
-                    continue;
-                }
-
-                long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
-
-                if (ARRAY_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
-                    long block = rawHead - 8L;
-                    ForeignMemory.set(block, TYPE_ARRAY);
-                    ForeignMemory.set(block + 4L, length);
-                    ForeignMemory.setMemory(rawHead, length * 4L, (byte) 0);
-                    return rawHead;
-                }
-            }
-        } else {
-            long totalBytes = 8L + (length * 4L);
-            long block = ForeignMemory.allocateNative(totalBytes);
-            long userPtr = block + 8L;
-            ForeignMemory.set(block, TYPE_ARRAY);
-            ForeignMemory.set(block + 4L, length);
-            ForeignMemory.setMemory(userPtr, length * 4L, (byte) 0);
-            return userPtr;
-        }
-    }
-
-    public static long allocateMatrix(int length) {
-        checkActive();
-        if (length <= 0) throw new IllegalArgumentException("Length must be > 0!");
-
-        if (length == DEFAULT_CAPACITY) {
-            int tid = thread.ThreadRegistry.getThreadIndex();
-            long slotBase = CACHE_ARENA_BASE + (tid * 256L);
-            long countMatrixAddr = slotBase + 8L;
-            int count = ForeignMemory.getUnsafeInt(countMatrixAddr);
-            if (count > 0) {
-                int newCount = count - 1;
-                ForeignMemory.set(countMatrixAddr, newCount);
-                long dataAddr = slotBase + 160L + (newCount * 8L);
-                long ptr = ForeignMemory.getUnsafeLong(dataAddr);
-                long base = ptr - 8L;
-                ForeignMemory.set(base, TYPE_MATRIX);
-                ForeignMemory.set(base + 4L, length);
-                ForeignMemory.setMemory(ptr, length * 8L, (byte) 0);
-                return ptr;
-            }
-            while (true) {
-                long oldTagged = matrixFreeHead;
-                long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                if (rawHead == 0L) {
-                    if (MATRIX_EXPANDING_VH.compareAndSet(0, 1)) {
-                        expandMatrixPool();
-                        MATRIX_EXPANDING_VH.setVolatile(0);
-                    } else {
-                        Thread.onSpinWait();
-                    }
-                    continue;
-                }
-
-                long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
-
-                if (MATRIX_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
-                    long block = rawHead - 8L;
-                    ForeignMemory.set(block, TYPE_MATRIX);
-                    ForeignMemory.set(block + 4L, length);
-                    ForeignMemory.setMemory(rawHead, length * 8L, (byte) 0);
-                    return rawHead;
-                }
-            }
-        } else {
-            long totalBytes = 8L + (length * 8L);
-            long block = ForeignMemory.allocateNative(totalBytes);
-            long userPtr = block + 8L;
-            ForeignMemory.set(block, TYPE_MATRIX);
-            ForeignMemory.set(block + 4L, length);
-            ForeignMemory.setMemory(userPtr, length * 8L, (byte) 0);
-            return userPtr;
-        }
-    }
-
-    public static void free(long pointer) {
-        if (pointer == 0L) return;
-        checkActive();
-
-        int type = type(pointer);
-        if (type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) {
-            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
-        }
-
-        int length = length(pointer);
-        long base = pointer - 8L;
-
-        ForeignMemory.set(base, 0);
-        ForeignMemory.set(base + 4L, -1);
-
-        int tid = thread.ThreadRegistry.getThreadIndex();
-        long slotBase = CACHE_ARENA_BASE + (tid * 256L);
-
-        if (type == TYPE_SINGLETON) {
-            long countSingletonAddr = slotBase;
-            int count = ForeignMemory.getUnsafeInt(countSingletonAddr);
-            if (count < 8) {
-                long dataAddr = slotBase + 32L + (count * 8L);
-                ForeignMemory.set(dataAddr, pointer);
-                ForeignMemory.set(countSingletonAddr, count + 1);
-                return;
-            }
-            while (true) {
-                long oldTagged = singletonFreeHead;
-                long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.set(pointer, rawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
-
-                if (SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        } else if (type == TYPE_ARRAY) {
-            if (length != DEFAULT_CAPACITY) {
-                ForeignMemory.freeNative(base);
-                return;
-            }
-            long countArrayAddr = slotBase + 4L;
-            int count = ForeignMemory.getUnsafeInt(countArrayAddr);
-            if (count < 8) {
-                long dataAddr = slotBase + 96L + (count * 8L);
-                ForeignMemory.set(dataAddr, pointer);
-                ForeignMemory.set(countArrayAddr, count + 1);
-                return;
-            }
-            while (true) {
-                long oldTagged = arrayFreeHead;
-                long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.set(pointer, rawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
-
-                if (ARRAY_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        } else if (type == TYPE_MATRIX) {
-            if (length != DEFAULT_CAPACITY) {
-                ForeignMemory.freeNative(base);
-                return;
-            }
-            long countMatrixAddr = slotBase + 8L;
-            int count = ForeignMemory.getUnsafeInt(countMatrixAddr);
-            if (count < 8) {
-                long dataAddr = slotBase + 160L + (count * 8L);
-                ForeignMemory.set(dataAddr, pointer);
-                ForeignMemory.set(countMatrixAddr, count + 1);
-                return;
-            }
-            while (true) {
-                long oldTagged = matrixFreeHead;
-                long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.set(pointer, rawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
-
-                if (MATRIX_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        }
+    public static void free(long pointer)
+    {
+        Bit32.free(pointer);
     }
 
     // --- MUTATORS & ACCESSORS ---
