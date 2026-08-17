@@ -65,16 +65,12 @@ public class Passive
 
     public static void free(long ptr)
     {
-        if (ptr == 0L) return;
-        long struct = ForeignMemory.getLong(ptr);
-        if (struct != 0L) ForeignMemory.freeNative(struct);
-        Bit64.free(ptr);
+        Object.free(ptr);
     }
 
     private static long struct(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        return ForeignMemory.getLong(ptr);
+        return Object.struct(ptr);
     }
 
     public static long getValue(long ptr)
