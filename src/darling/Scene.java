@@ -3,12 +3,9 @@ package darling;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
+import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
-
-import java.lang.foreign.Arena;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 
 /**
  * Off-heap scene root. Structural subclass of {@link Panel}: the layout core
@@ -48,137 +45,46 @@ public final class Scene {
     private static final int OFF_MODE = (int) Panel.USER_STRIDE; // 120 int (MODE_STRETCH/FIT/PIXEL)
 
     static final long USER_STRIDE = 128L; // bytes of user payload
-    private static final long SLOT_SIZE   = 136L; // 8B header + 128B payload
+    private static final long STRUCT_SIZE = USER_STRIDE; // native struct payload, stored in the Bit64 slot
 
-    // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
-    private static final int DEFAULT_CAPACITY = 1024;
-
-    private static final VarHandle FREE_HEAD_VH;
-    private static final VarHandle EXPANDING_VH;
-
-    private static volatile long freeHead;     // top 16 = gen tag, bottom 48 = raw ptr
-    private static volatile int expanding = 0;
-
-    private static Arena poolArena;
-    private static volatile boolean active;
-
-    static {
-        try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            FREE_HEAD_VH = lookup.findStaticVarHandle(Scene.class, "freeHead", long.class);
-            EXPANDING_VH = lookup.findStaticVarHandle(Scene.class, "expanding", int.class);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-
-        poolArena = Arena.ofShared();
-        active = true;
-        expandPool();
-    }
-
-    private Scene() {}
-
-    private static void checkActive() {
-        if (!active) throw new IllegalStateException("Scene subsystem is not active!");
-    }
+    // =========================================================================
+    // ALLOCATION / RECYCLING — DELEGATED TO THE BIT-WIDTH POOL (bit.Bit64)
+    // =========================================================================
 
     public static void freeAll() {
-        if (active) {
-            active = false;
-            if (poolArena != null && poolArena.scope().isAlive()) {
-                poolArena.close();
-            }
-        }
+        // No-op: Bit64.freeAll() manages the shared pool arena.
     }
-
-    private static void expandPool() {
-        long totalBytes = DEFAULT_CAPACITY * SLOT_SIZE;
-        long baseAddress = poolArena.allocate(totalBytes, 8).address();
-
-        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
-            long currentBlock = baseAddress + (i * SLOT_SIZE);
-            long userPtr = currentBlock + 8L;
-
-            while (true) {
-                long oldTagged = freeHead;
-                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.setUnsafe(userPtr, oldRawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
-
-                if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        }
-    }
-
-    // =========================================================================
-    // ALLOCATION / RECYCLING
-    // =========================================================================
 
     /** Allocates a Scene node (dirty by default). */
     public static long allocate() {
-        checkActive();
-
-        while (true) {
-            long oldTagged = freeHead;
-            long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-            if (rawHead == 0L) {
-                if (EXPANDING_VH.compareAndSet(0, 1)) {
-                    expandPool();
-                    EXPANDING_VH.setVolatile(0);
-                } else {
-                    Thread.onSpinWait();
-                }
-                continue;
-            }
-
-            long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
-
-            if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
-                long base = rawHead - 8L;
-                ForeignMemory.setUnsafe(base, TYPE_SINGLETON);
-                ForeignMemory.setUnsafe(base + 4L, 1);
-                ForeignMemory.setUnsafe(rawHead, 0);
-                initDefaults(rawHead);
-                return rawHead;
-            }
-        }
+        long enginePtr = Bit64.allocateSingleton(TYPE_SINGLETON);
+        long s = ForeignMemory.allocateNative(STRUCT_SIZE);
+        ForeignMemory.setLong(enginePtr, s);
+        initDefaults(enginePtr);
+        return enginePtr;
     }
 
     static void initDefaults(long ptr) {
         Panel.initDefaults(ptr);
         // Default PIXEL: 1 scene unit == 1 window px, top-left pinned. Resizing reveals
         // more window (bg-clear area) instead of scaling/centering the scene.
-        ForeignMemory.setInt(ptr + OFF_MODE, MODE_PIXEL);
+        ForeignMemory.setInt(struct(ptr) + OFF_MODE, MODE_PIXEL);
     }
 
     public static void free(long ptr) {
-        checkActive();
         if (ptr == 0L) return;
 
         int type = type(ptr);
         if (type != TYPE_SINGLETON) throw new IllegalStateException("Double free or corrupt Scene pointer: 0x" + java.lang.Long.toHexString(ptr).toUpperCase());
 
-        long base = ptr - 8L;
-        ForeignMemory.setUnsafe(base, 0);
-        ForeignMemory.setUnsafe(base + 4L, -1);
+        long s = struct(ptr);
+        ForeignMemory.freeNative(s);
+        Bit64.free(ptr);
+    }
 
-        while (true) {
-            long oldTagged = freeHead;
-            long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-            ForeignMemory.setUnsafe(ptr, oldRawHead);
-
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (ptr & 0x0000FFFFFFFFFFFFL);
-
-            if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
-        }
+    private static long struct(long ptr) {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL Scene pointer!");
+        return ForeignMemory.getLong(ptr);
     }
 
     // =========================================================================
@@ -215,12 +121,12 @@ public final class Scene {
     public static float getVirtualWidth(long ptr) { return Container.getWidth(ptr); }
     public static float getVirtualHeight(long ptr) { return Container.getHeight(ptr); }
 
-    public static int getMode(long ptr) { checkScene(ptr); return ForeignMemory.getInt(ptr + OFF_MODE); }
+    public static int getMode(long ptr) { checkScene(ptr); return ForeignMemory.getInt(struct(ptr) + OFF_MODE); }
 
     public static void setMode(long ptr, int mode) {
         checkScene(ptr);
         if (mode < MODE_STRETCH || mode > MODE_PIXEL) throw new IllegalArgumentException("Invalid scene mode " + mode);
-        ForeignMemory.setInt(ptr + OFF_MODE, mode);
+        ForeignMemory.setInt(struct(ptr) + OFF_MODE, mode);
         Panel.markDirty(ptr);
     }
 
