@@ -284,7 +284,7 @@ public class ForeignMemory {
         System.out.println("=== Native allocation leak report: " + totalCount + " live allocations, " + totalBytes + " bytes ===");
         for (java.util.Map.Entry<String, long[]> e : live) {
             long[] v = e.getValue();
-            System.out.printf("  %6d allocs  %10d bytes  %s%n", v[0], v[1], e.getKey());
+            System.out.println("  " + v[0] + " allocs  " + v[1] + " bytes  " + e.getKey());
         }
         if (live.isEmpty()) System.out.println("  (none - clean teardown)");
     }
