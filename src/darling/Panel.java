@@ -4,12 +4,9 @@ import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import annotation.Volatile;
+import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
-
-import java.lang.foreign.Arena;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 
 /**
  * Off-heap UI panel. Structural subclass of {@link Container}: the layout core
@@ -88,105 +85,22 @@ public final class Panel {
     private static final int DEFAULT_CHILDREN_CAPACITY = 4;
 
     static final long USER_STRIDE = 120L; // bytes of user payload
-    private static final long SLOT_SIZE   = 128L; // 8B header + 120B payload
+    private static final long STRUCT_SIZE = USER_STRIDE; // native struct payload, stored in the Bit64 slot
 
-    // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
-    private static final int DEFAULT_CAPACITY = 1024;
-
-    private static final VarHandle FREE_HEAD_VH;
-    private static final VarHandle EXPANDING_VH;
-
-    private static volatile long freeHead;     // top 16 = gen tag, bottom 48 = raw ptr
-    private static volatile int expanding = 0;
-
-    private static Arena poolArena;
-    private static volatile boolean active;
-
-    static {
-        try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            FREE_HEAD_VH = lookup.findStaticVarHandle(Panel.class, "freeHead", long.class);
-            EXPANDING_VH = lookup.findStaticVarHandle(Panel.class, "expanding", int.class);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-
-        poolArena = Arena.ofShared();
-        active = true;
-        expandPool();
-    }
-
-    private Panel() {}
-
-    private static void checkActive() {
-        if (!active) throw new IllegalStateException("Panel subsystem is not active!");
-    }
+    // =========================================================================
+    // ALLOCATION / RECYCLING — DELEGATED TO THE BIT-WIDTH POOL (bit.Bit64)
+    // =========================================================================
 
     public static void freeAll() {
-        if (active) {
-            active = false;
-            if (poolArena != null && poolArena.scope().isAlive()) {
-                poolArena.close();
-            }
-        }
+        // No-op: Bit64.freeAll() manages the shared pool arena.
     }
-
-    private static void expandPool() {
-        long totalBytes = DEFAULT_CAPACITY * SLOT_SIZE;
-        long baseAddress = poolArena.allocate(totalBytes, 8).address();
-
-        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
-            long currentBlock = baseAddress + (i * SLOT_SIZE);
-            long userPtr = currentBlock + 8L;
-
-            while (true) {
-                long oldTagged = freeHead;
-                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.setUnsafe(userPtr, oldRawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
-
-                if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        }
-    }
-
-    // =========================================================================
-    // ALLOCATION / RECYCLING
-    // =========================================================================
 
     public static long allocate() {
-        checkActive();
-
-        while (true) {
-            long oldTagged = freeHead;
-            long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-            if (rawHead == 0L) {
-                if (EXPANDING_VH.compareAndSet(0, 1)) {
-                    expandPool();
-                    EXPANDING_VH.setVolatile(0);
-                } else {
-                    Thread.onSpinWait();
-                }
-                continue;
-            }
-
-            long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
-
-            if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
-                long base = rawHead - 8L;
-                ForeignMemory.setUnsafe(base, TYPE_SINGLETON);
-                ForeignMemory.setUnsafe(base + 4L, 1);
-                ForeignMemory.setUnsafe(rawHead, 0);
-                initDefaults(rawHead);
-                return rawHead;
-            }
-        }
+        long enginePtr = Bit64.allocateSingleton(TYPE_SINGLETON);
+        long s = ForeignMemory.allocateNative(STRUCT_SIZE);
+        ForeignMemory.setLong(enginePtr, s);
+        initDefaults(enginePtr);
+        return enginePtr;
     }
 
     static void initDefaults(long ptr) {
@@ -202,7 +116,6 @@ public final class Panel {
     }
 
     public static void free(long ptr) {
-        checkActive();
         if (ptr == 0L) return;
 
         int type = type(ptr);
@@ -220,37 +133,31 @@ public final class Panel {
         long parentPtr = getParent(ptr);
         if (parentPtr != 0L) removeChild(parentPtr, ptr);
 
-        long base = ptr - 8L;
-        ForeignMemory.setUnsafe(base, 0);
-        ForeignMemory.setUnsafe(base + 4L, -1);
+        long s = struct(ptr);
 
         // Release the children array (if this panel owns one) so child panel
         // pointers are not leaked. The children themselves are separate
         // allocations owned by whoever allocated them — we only free the list.
-        long children = ForeignMemory.getLong(ptr + OFF_CHILDREN);
+        long children = ForeignMemory.getLong(s + OFF_CHILDREN);
         if (children != 0L) {
             primitive.Long.free(children);
-            ForeignMemory.setLong(ptr + OFF_CHILDREN, 0L);
+            ForeignMemory.setLong(s + OFF_CHILDREN, 0L);
         }
 
         // Release this panel's own parent-ref set if it has one (it was a source).
-        long refSet = ForeignMemory.getLong(ptr + OFF_PARENT_REF_SET);
+        long refSet = ForeignMemory.getLong(s + OFF_PARENT_REF_SET);
         if (refSet != 0L) {
             struct.Set.free(refSet);
-            ForeignMemory.setLong(ptr + OFF_PARENT_REF_SET, 0L);
+            ForeignMemory.setLong(s + OFF_PARENT_REF_SET, 0L);
         }
 
-        while (true) {
-            long oldTagged = freeHead;
-            long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
+        ForeignMemory.freeNative(s);
+        Bit64.free(ptr);
+    }
 
-            ForeignMemory.setUnsafe(ptr, oldRawHead);
-
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (ptr & 0x0000FFFFFFFFFFFFL);
-
-            if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
-        }
+    private static long struct(long ptr) {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL Panel pointer!");
+        return ForeignMemory.getLong(ptr);
     }
 
     // =========================================================================
@@ -360,8 +267,8 @@ public final class Panel {
     // BACKGROUND COLOR
     // =========================================================================
 
-    public static int getBackgroundColor(long ptr) { checkPanel(ptr); return ForeignMemory.getInt(ptr + OFF_COLOR); }
-    public static void setBackgroundColor(long ptr, int color) { checkPanel(ptr); ForeignMemory.setInt(ptr + OFF_COLOR, color); markDirty(ptr); }
+    public static int getBackgroundColor(long ptr) { checkPanel(ptr); return ForeignMemory.getInt(struct(ptr) + OFF_COLOR); }
+    public static void setBackgroundColor(long ptr, int color) { checkPanel(ptr); ForeignMemory.setInt(struct(ptr) + OFF_COLOR, color); markDirty(ptr); }
     public static void setBackgroundColor(long ptr, int r, int g, int b, int a) {
         setBackgroundColor(ptr, ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF));
     }
@@ -380,7 +287,7 @@ public final class Panel {
     public static long getFilters(long ptr) {
         checkPanel(ptr);
         long src = getSource(ptr);
-        return (src != 0L) ? getFilters(src) : ForeignMemory.getLong(ptr + OFF_FILTERS);
+        return (src != 0L) ? getFilters(src) : ForeignMemory.getLong(struct(ptr) + OFF_FILTERS);
     }
 
     @Draft
@@ -388,7 +295,7 @@ public final class Panel {
         checkPanel(ptr);
         long src = getSource(ptr);
         if (src != 0L) { markPayloadDirty(src); ForeignMemory.setLong(src + OFF_FILTERS, filtersPtr); return; }
-        ForeignMemory.setLong(ptr + OFF_FILTERS, filtersPtr);
+        ForeignMemory.setLong(struct(ptr) + OFF_FILTERS, filtersPtr);
         markPayloadDirty(ptr);
     }
 
@@ -406,7 +313,7 @@ public final class Panel {
     public static long getImage(long ptr) {
         checkPanel(ptr);
         long src = getSource(ptr);
-        return (src != 0L) ? getImage(src) : ForeignMemory.getLong(ptr + OFF_IMAGE);
+        return (src != 0L) ? getImage(src) : ForeignMemory.getLong(struct(ptr) + OFF_IMAGE);
     }
 
     /**
@@ -419,7 +326,7 @@ public final class Panel {
         checkPanel(ptr);
         long src = getSource(ptr);
         if (src != 0L) { markPayloadDirty(src); ForeignMemory.setLong(src + OFF_IMAGE, imagePtr); return; }
-        ForeignMemory.setLong(ptr + OFF_IMAGE, imagePtr);
+        ForeignMemory.setLong(struct(ptr) + OFF_IMAGE, imagePtr);
         markPayloadDirty(ptr);
     }
 
@@ -428,9 +335,9 @@ public final class Panel {
     // =========================================================================
 
     /** The canonical panel whose shared data this copy is a VIEW of. 0 = canonical / owns its data. */
-    public static long getSource(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(ptr + OFF_SOURCE); }
+    public static long getSource(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(struct(ptr) + OFF_SOURCE); }
 
-    private static void setSource(long ptr, long sourcePtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_SOURCE, sourcePtr); }
+    private static void setSource(long ptr, long sourcePtr) { checkPanel(ptr); ForeignMemory.setLong(struct(ptr) + OFF_SOURCE, sourcePtr); }
 
     /** Number of parents currently holding a view/copy of this panel's shared payloads. */
     public static int refCount(long ptr) {
@@ -538,8 +445,8 @@ public final class Panel {
     // PARENT-REF SET (shared-slot fan-out, Phase 1)
     // =========================================================================
 
-    public static long getParentRefSet(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(ptr + OFF_PARENT_REF_SET); }
-    public static void setParentRefSet(long ptr, long parentRefSetPtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_PARENT_REF_SET, parentRefSetPtr); }
+    public static long getParentRefSet(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(struct(ptr) + OFF_PARENT_REF_SET); }
+    public static void setParentRefSet(long ptr, long parentRefSetPtr) { checkPanel(ptr); ForeignMemory.setLong(struct(ptr) + OFF_PARENT_REF_SET, parentRefSetPtr); }
 
     // =========================================================================
     // PARENT / CHILDREN
@@ -550,16 +457,16 @@ public final class Panel {
      * parent). Children are stored in a primitive.Long array owned by the
      * parent; the parent slot points back via getParent().
      */
-    public static long getParent(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(ptr + OFF_PARENT); }
-    public static void setParent(long ptr, long parentPtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_PARENT, parentPtr); markDirty(ptr); Container.invalidateBase(ptr); }
+    public static long getParent(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(struct(ptr) + OFF_PARENT); }
+    public static void setParent(long ptr, long parentPtr) { checkPanel(ptr); ForeignMemory.setLong(struct(ptr) + OFF_PARENT, parentPtr); markDirty(ptr); Container.invalidateBase(ptr); }
 
     /** Number of direct children. */
-    public static int childCount(long ptr) { checkPanel(ptr); return ForeignMemory.getInt(ptr + OFF_CHILD_COUNT); }
+    public static int childCount(long ptr) { checkPanel(ptr); return ForeignMemory.getInt(struct(ptr) + OFF_CHILD_COUNT); }
 
-    private static void setChildCount(long ptr, int count) { checkPanel(ptr); ForeignMemory.setInt(ptr + OFF_CHILD_COUNT, count); }
+    private static void setChildCount(long ptr, int count) { checkPanel(ptr); ForeignMemory.setInt(struct(ptr) + OFF_CHILD_COUNT, count); }
 
-    private static long getChildren(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(ptr + OFF_CHILDREN); }
-    private static void setChildren(long ptr, long childrenPtr) { checkPanel(ptr); ForeignMemory.setLong(ptr + OFF_CHILDREN, childrenPtr); }
+    private static long getChildren(long ptr) { checkPanel(ptr); return ForeignMemory.getLong(struct(ptr) + OFF_CHILDREN); }
+    private static void setChildren(long ptr, long childrenPtr) { checkPanel(ptr); ForeignMemory.setLong(struct(ptr) + OFF_CHILDREN, childrenPtr); }
 
     /** Child panel pointer at index (0-based), or 0 if out of range. */
     public static long getChild(long ptr, int index) {
