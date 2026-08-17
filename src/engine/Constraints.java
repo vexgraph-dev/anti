@@ -166,19 +166,15 @@ public final class Constraints
 
     public static String getSummary()
     {
-        return String.format(
-            "Engine Constraints Summary:\n" +
-            "  - Max Entities:            %,d\n" +
-            "  - Max Triangles:           %,d\n" +
-            "  - Max Textures:            %,d\n" +
-            "  - Max Shaders:             %,d\n" +
-            "  - Max Lights:              %,d\n" +
-            "  - Max Audio Sources:       %,d\n" +
-            "  - Max Draw Calls / Frame:  %,d\n" +
-            "  - Max Off-Heap RAM:        %,d MB\n" +
-            "  - Max Worker Threads:      %d",
-            maxEntities, maxTriangles, maxTextures, maxShaders, maxLights,
-            maxAudioSources, maxDrawCallsPerFrame, maxOffHeapMemoryBytes / (1024 * 1024), maxThreads
-        );
+        return "Engine Constraints Summary:\n" +
+            "  - Max Entities:            " + maxEntities + "\n" +
+            "  - Max Triangles:           " + maxTriangles + "\n" +
+            "  - Max Textures:            " + maxTextures + "\n" +
+            "  - Max Shaders:             " + maxShaders + "\n" +
+            "  - Max Lights:              " + maxLights + "\n" +
+            "  - Max Audio Sources:       " + maxAudioSources + "\n" +
+            "  - Max Draw Calls / Frame:  " + maxDrawCallsPerFrame + "\n" +
+            "  - Max Off-Heap RAM:        " + (maxOffHeapMemoryBytes / (1024 * 1024)) + " MB\n" +
+            "  - Max Worker Threads:      " + maxThreads;
     }
 }
