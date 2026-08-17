@@ -5,6 +5,7 @@ import annotation.HotCode;
 import annotation.Intention;
 import annotation.Required;
 import annotation.Volatile;
+import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 import org.lwjgl.system.MemoryStack;
@@ -14,11 +15,6 @@ import org.lwjgl.vulkan.VkMemoryAllocateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
-
-import java.lang.foreign.Arena;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import org.lwjgl.PointerBuffer;
 
 import java.nio.LongBuffer;
 
@@ -31,13 +27,12 @@ import static org.lwjgl.vulkan.VK10.*;
  * IS the same physical DRAM as CPU arena memory — binding one of these buffers to a
  * compute shader and writing to it from the CPU is a true zero-copy path.
  *
- * Each slot stores two long handles:
+ * The engine pointer's data slot stores a pointer to an off-heap struct holding
+ * four long handles:
  *   [0] vkBufferHandle  — the VkBuffer handle (long)
  *   [1] vkMemoryHandle  — the VkDeviceMemory handle (long)
  *   [2] mappedAddress   — CPU-visible mapped pointer (long, raw off-heap address)
  *   [3] sizeInBytes     — allocation size in bytes (long)
- *
- * Slot layout: 8B header + 32B payload = 40B per slot.
  */
 @Draft
 @Intention("Off-heap lockless pool of HOST_VISIBLE Vulkan buffers for zero-copy GPU audio DSP")
@@ -49,88 +44,22 @@ public final class AudioComputeBuffer {
     public static final int CLASS_ID = TypeRegister.ID_AUDIO_COMPUTE_BUFFER;
     public static final int TYPE_SINGLETON = TypeRegister.AUDIO_COMPUTE_BUFFER_SINGLETON;
 
-    // Slot layout offsets within the 32B payload
+    // Struct field offsets within the 32B payload
     public static final long OFFSET_VK_BUFFER  = 0L;   // VkBuffer handle (long)
     public static final long OFFSET_VK_MEMORY  = 8L;   // VkDeviceMemory handle (long)
     public static final long OFFSET_MAPPED_PTR = 16L;  // CPU-side mapped address (long)
     public static final long OFFSET_SIZE_BYTES = 24L;  // allocation size in bytes (long)
 
-    private static final int DEFAULT_CAPACITY   = 64;
-    private static final long SLOT_SIZE         = 40L; // 8B header + 32B payload
-
-    private static final VarHandle FREE_HEAD_VH;
-    private static final VarHandle EXPANDING_VH;
-    private static volatile int expanding = 0;
-    private static volatile long freeHead;
-
-    private static Arena poolArena;
-    private static volatile boolean active;
-
-    static {
-        try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            FREE_HEAD_VH  = lookup.findStaticVarHandle(AudioComputeBuffer.class, "freeHead", long.class);
-            EXPANDING_VH  = lookup.findStaticVarHandle(AudioComputeBuffer.class, "expanding", int.class);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-        poolArena = Arena.ofShared();
-        active    = true;
-        expandPool();
-    }
+    private static final long STRUCT_SIZE = 32L;
 
     private AudioComputeBuffer() {}
 
-    private static void checkActive() {
-        if (!active) throw new IllegalStateException("AudioComputeBuffer subsystem is not active!");
-    }
-
     public static void freeAll() {
-        if (active) {
-            active = false;
-            if (poolArena != null && poolArena.scope().isAlive()) poolArena.close();
-        }
+        // Bit64.freeAll() manages the shared singleton slot arena.
     }
 
-    // ABA-tagged lockless push onto free list
-    private static void expandPool() {
-        long totalBytes = DEFAULT_CAPACITY * SLOT_SIZE;
-        long base = poolArena.allocate(totalBytes, 8).address();
-        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
-            long block   = base + (i * SLOT_SIZE);
-            long userPtr = block + 8L;
-            while (true) {
-                long old    = freeHead;
-                long oldRaw = old & 0x0000FFFFFFFFFFFFL;
-                ForeignMemory.setLong(userPtr, oldRaw);
-                long gen       = ((old >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (gen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
-                if (FREE_HEAD_VH.compareAndSet(old, newTagged)) break;
-            }
-        }
-    }
-
-    // Pop from free list and fill with Vulkan buffer allocation
-    private static long popSlot() {
-        checkActive();
-        while (true) {
-            long old    = freeHead;
-            long rawPtr = old & 0x0000FFFFFFFFFFFFL;
-            if (rawPtr == 0L) {
-                if (EXPANDING_VH.compareAndSet(0, 1)) { expandPool(); EXPANDING_VH.setVolatile(0); }
-                else Thread.onSpinWait();
-                continue;
-            }
-            long next      = ForeignMemory.getLong(rawPtr);
-            long gen       = ((old >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (gen << 48) | (next & 0x0000FFFFFFFFFFFFL);
-            if (FREE_HEAD_VH.compareAndSet(old, newTagged)) {
-                long block = rawPtr - 8L;
-                ForeignMemory.setInt(block,      TYPE_SINGLETON);
-                ForeignMemory.setInt(block + 4L, 1);
-                return rawPtr;
-            }
-        }
+    private static long struct(long ptr) {
+        return ForeignMemory.getLong(ptr);
     }
 
     /**
@@ -145,7 +74,9 @@ public final class AudioComputeBuffer {
      * @param usage          VkBufferUsageFlags — caller must include VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
      */
     public static long create(VkDevice device, VkPhysicalDevice physicalDevice, long sizeBytes, int usage) {
-        long slot = popSlot();
+        long enginePtr = Bit64.allocateSingleton(TYPE_SINGLETON);
+        long struct = ForeignMemory.allocateNative(STRUCT_SIZE);
+        ForeignMemory.setLong(enginePtr, struct);
         try (MemoryStack stack = MemoryStack.stackPush()) {
 
             // 1. Create VkBuffer
@@ -198,51 +129,43 @@ public final class AudioComputeBuffer {
             }
             long mappedAddr = pMapped.get(0);
 
-            // 7. Store into slot payload
-            ForeignMemory.setLong(slot + OFFSET_VK_BUFFER,  vkBuf);
-            ForeignMemory.setLong(slot + OFFSET_VK_MEMORY,  vkMem);
-            ForeignMemory.setLong(slot + OFFSET_MAPPED_PTR, mappedAddr);
-            ForeignMemory.setLong(slot + OFFSET_SIZE_BYTES, sizeBytes);
+            // 7. Store into struct payload
+            ForeignMemory.setLong(struct + OFFSET_VK_BUFFER,  vkBuf);
+            ForeignMemory.setLong(struct + OFFSET_VK_MEMORY,  vkMem);
+            ForeignMemory.setLong(struct + OFFSET_MAPPED_PTR, mappedAddr);
+            ForeignMemory.setLong(struct + OFFSET_SIZE_BYTES, sizeBytes);
         }
-        return slot;
+        return enginePtr;
     }
 
     /**
-     * Unmaps, destroys, and returns the slot to the free list.
+     * Unmaps, destroys, and returns the slot to the shared pool.
      * The mapped CPU address becomes invalid after this call.
      */
     public static void destroy(long slot, VkDevice device) {
-        checkActive();
         if (slot == 0L) return;
-        long vkBuf = ForeignMemory.getLong(slot + OFFSET_VK_BUFFER);
-        long vkMem = ForeignMemory.getLong(slot + OFFSET_VK_MEMORY);
-        if (vkMem != 0L) vkUnmapMemory(device, vkMem);
-        if (vkBuf != 0L) vkDestroyBuffer(device, vkBuf, null);
-        if (vkMem != 0L) vkFreeMemory(device, vkMem, null);
-        // Reset header and push back onto free list
-        long block = slot - 8L;
-        ForeignMemory.setInt(block,      0);
-        ForeignMemory.setInt(block + 4L, -1);
-        while (true) {
-            long old    = freeHead;
-            long oldRaw = old & 0x0000FFFFFFFFFFFFL;
-            ForeignMemory.setLong(slot, oldRaw);
-            long gen       = ((old >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (gen << 48) | (slot & 0x0000FFFFFFFFFFFFL);
-            if (FREE_HEAD_VH.compareAndSet(old, newTagged)) return;
+        long struct = ForeignMemory.getLong(slot);
+        if (struct != 0L) {
+            long vkBuf = ForeignMemory.getLong(struct + OFFSET_VK_BUFFER);
+            long vkMem = ForeignMemory.getLong(struct + OFFSET_VK_MEMORY);
+            if (vkMem != 0L) vkUnmapMemory(device, vkMem);
+            if (vkBuf != 0L) vkDestroyBuffer(device, vkBuf, null);
+            if (vkMem != 0L) vkFreeMemory(device, vkMem, null);
+            ForeignMemory.freeNative(struct);
         }
+        Bit64.free(slot);
     }
 
     // --- Accessors ---
 
     /** Returns the raw VkBuffer handle (long) for descriptor binding. */
-    public static long getVkBuffer(long slot)  { return ForeignMemory.getLong(slot + OFFSET_VK_BUFFER);  }
+    public static long getVkBuffer(long slot)  { return ForeignMemory.getLong(struct(slot) + OFFSET_VK_BUFFER);  }
 
     /** Returns the CPU-mapped raw address — write PCM floats here directly. */
-    public static long getMappedPtr(long slot) { return ForeignMemory.getLong(slot + OFFSET_MAPPED_PTR); }
+    public static long getMappedPtr(long slot) { return ForeignMemory.getLong(struct(slot) + OFFSET_MAPPED_PTR); }
 
     /** Returns the size in bytes of this buffer. */
-    public static long getSizeBytes(long slot) { return ForeignMemory.getLong(slot + OFFSET_SIZE_BYTES); }
+    public static long getSizeBytes(long slot) { return ForeignMemory.getLong(struct(slot) + OFFSET_SIZE_BYTES); }
 
     // --- Memory type helper ---
 
