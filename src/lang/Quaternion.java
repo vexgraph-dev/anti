@@ -220,6 +220,6 @@ public final class Quaternion
 
     public static String toString(long ptr)
     {
-        return String.format("Quat[%.4f, %.4f, %.4f, %.4f]", getX(ptr), getY(ptr), getZ(ptr), getW(ptr));
+        return "Quat[" + getX(ptr) + ", " + getY(ptr) + ", " + getZ(ptr) + ", " + getW(ptr) + "]";
     }
 }
