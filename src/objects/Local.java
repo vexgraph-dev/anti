@@ -8,10 +8,6 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 import thread.ThreadRegistry;
 
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.lang.invoke.VarHandle;
-
 @Draft
 @Intention("[purpose]")
 public class Local
@@ -19,9 +15,6 @@ public class Local
     @Required
     public static final int CLASS_ID = TypeRegister.ID_LOCAL;
     public static final int TYPE_SINGLETON = TypeRegister.FORM_SINGLETON | TypeRegister.MOD_LOCALE | CLASS_ID;
-
-    private static final VarHandle LONG_VH = ValueLayout.JAVA_LONG.varHandle();
-    private static final MemorySegment GLOBAL_MEMORY = MemorySegment.ofAddress(0).reinterpret(Long.MAX_VALUE);
 
     private static final long STRUCT_SIZE = 2048L; // 256 threads * 8 bytes = 2048 bytes payload
 
@@ -71,24 +64,23 @@ public class Local
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         int tid = ThreadRegistry.getThreadIndex();
-        return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, struct(ptr) + (tid * 8L));
+        return ForeignMemory.getVolatileLong(struct(ptr) + (tid * 8L));
     }
 
     public static void set(long ptr, long value)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         int tid = ThreadRegistry.getThreadIndex();
-        LONG_VH.setVolatile(GLOBAL_MEMORY, struct(ptr) + (tid * 8L), value);
+        ForeignMemory.setVolatileLong(struct(ptr) + (tid * 8L), value);
     }
 
     public static boolean compareAndSet(long ptr, long expected, long value)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         int tid = ThreadRegistry.getThreadIndex();
-        return (boolean) LONG_VH.compareAndSet(GLOBAL_MEMORY, struct(ptr) + (tid * 8L), expected, value);
+        return ForeignMemory.compareAndSetLong(struct(ptr) + (tid * 8L), expected, value);
     }
 
     @Intention("[purpose] line [n]")
     private Local() {}
 }
-
