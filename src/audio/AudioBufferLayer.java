@@ -4,17 +4,20 @@ import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import annotation.Volatile;
+import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 
 /**
  * Off-heap manager for the triple-buffered Audio Layer Swapchain.
  * Manages three distinct buses (Below-Active, Active, Above-Active) to support
  * Photoshop-style audio layer mixing with zero runtime heap allocation.
+ *
+ * The engine pointer's data slot stores a pointer to an off-heap struct holding
+ * the layer descriptors (capacity + six PCM bus pointers). The actual PCM sample
+ * layers live in a separate bufferArena closed by freeAll().
  */
 @Draft
 @Intention("Triple-buffered off-heap audio layer swapchain for high-performance canvas mixing")
@@ -23,9 +26,6 @@ public final class AudioBufferLayer
     @Required
     public static final int CLASS_ID = TypeRegister.ID_AUDIO_BUFFER_LAYER;
     public static final int TYPE_SINGLETON = TypeRegister.AUDIO_BUFFER_LAYER_SINGLETON;
-
-    private static final int DEFAULT_CAPACITY = 256;
-    private static final long SINGLETON_SLOT_SIZE = 64L; // Header (8B) + Stride Data (56B)
 
     // Struct field offsets
     public static final long OFFSET_CAPACITY = 0L;             // Int32
@@ -37,73 +37,26 @@ public final class AudioBufferLayer
     public static final long OFFSET_ABOVE_READ = 40L;          // Address (8B)
     public static final long OFFSET_ABOVE_WRITE = 48L;         // Address (8B)
 
-    private static final VarHandle SINGLETON_FREE_HEAD_VH;
-    private static final VarHandle SINGLETON_EXPANDING_VH;
-    private static volatile int singletonExpanding = 0;
+    private static final long STRUCT_SIZE = 56L;
 
-    private static Arena poolArena;
     private static Arena bufferArena; // Arena to allocate the actual PCM sample layers
-    private static volatile boolean active;
-    private static volatile long singletonFreeHead;
 
     static {
-        try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            SINGLETON_FREE_HEAD_VH = lookup.findStaticVarHandle(AudioBufferLayer.class, "singletonFreeHead", long.class);
-            SINGLETON_EXPANDING_VH = lookup.findStaticVarHandle(AudioBufferLayer.class, "singletonExpanding", int.class);
-        }
-        catch(ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-
-        poolArena = Arena.ofShared();
         bufferArena = Arena.ofShared();
-        active = true;
-
-        expandSingletonPool();
     }
 
     private AudioBufferLayer() {}
 
-    private static void checkActive()
-    {
-        if(!active) throw new IllegalStateException("AudioBufferLayer subsystem is not active!");
-    }
-
     public static void freeAll()
     {
-        if(active) {
-            active = false;
-            if(poolArena != null && poolArena.scope().isAlive()) {
-                poolArena.close();
-            }
-            if(bufferArena != null && bufferArena.scope().isAlive()) {
-                bufferArena.close();
-            }
+        // Bit64.freeAll() manages the shared singleton slot arena.
+        if(bufferArena != null && bufferArena.scope().isAlive()) {
+            bufferArena.close();
         }
     }
 
-    private static void expandSingletonPool()
-    {
-        long totalBytes = DEFAULT_CAPACITY * SINGLETON_SLOT_SIZE;
-        long baseAddress = poolArena.allocate(totalBytes, 8).address();
-
-        for(int i = 0; i < DEFAULT_CAPACITY; i++) {
-            long currentBlock = baseAddress + (i * SINGLETON_SLOT_SIZE);
-            long userPtr = currentBlock + 8L;
-
-            while(true) {
-                long oldTagged = singletonFreeHead;
-                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.setLong(userPtr, oldRawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
-
-                if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        }
+    private static long struct(long ptr) {
+        return ForeignMemory.getLong(ptr);
     }
 
     /**
@@ -112,17 +65,15 @@ public final class AudioBufferLayer
      */
     public static long allocate(int capacityInSamples)
     {
-        checkActive();
-        
         long bufferBytes = capacityInSamples * 2L * 4L; // Stereo (2 channels) * Float32 (4 bytes)
 
         // Allocate the double buffers
         long belowA = bufferArena.allocate(bufferBytes, 32).address();
         long belowB = bufferArena.allocate(bufferBytes, 32).address();
-        
+
         long activeA = bufferArena.allocate(bufferBytes, 32).address();
         long activeB = bufferArena.allocate(bufferBytes, 32).address();
-        
+
         long aboveA = bufferArena.allocate(bufferBytes, 32).address();
         long aboveB = bufferArena.allocate(bufferBytes, 32).address();
 
@@ -134,49 +85,26 @@ public final class AudioBufferLayer
         ForeignMemory.setMemory(aboveA, bufferBytes, (byte) 0);
         ForeignMemory.setMemory(aboveB, bufferBytes, (byte) 0);
 
-        while(true) {
-            long oldTagged = singletonFreeHead;
-            long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
+        long enginePtr = Bit64.allocateSingleton(TYPE_SINGLETON);
+        long struct = ForeignMemory.allocateNative(STRUCT_SIZE);
+        ForeignMemory.setLong(enginePtr, struct);
 
-            if(rawHead == 0L) {
-                if(SINGLETON_EXPANDING_VH.compareAndSet(0, 1)) {
-                    expandSingletonPool();
-                    SINGLETON_EXPANDING_VH.setVolatile(0);
-                }
-                else {
-                    Thread.onSpinWait();
-                }
-                continue;
-            }
+        // Populate descriptors
+        ForeignMemory.setInt(struct + OFFSET_CAPACITY, capacityInSamples);
+        ForeignMemory.setLong(struct + OFFSET_BELOW_READ, belowA);
+        ForeignMemory.setLong(struct + OFFSET_BELOW_WRITE, belowB);
 
-            long nextRawHead = ForeignMemory.getLong(rawHead);
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
+        ForeignMemory.setLong(struct + OFFSET_ACTIVE_READ, activeA);
+        ForeignMemory.setLong(struct + OFFSET_ACTIVE_WRITE, activeB);
 
-            if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
-                long base = rawHead - 8L;
-                ForeignMemory.setInt(base, TYPE_SINGLETON);
-                ForeignMemory.setInt(base + 4L, 1);
-                
-                // Populate descriptors
-                ForeignMemory.setInt(rawHead + OFFSET_CAPACITY, capacityInSamples);
-                ForeignMemory.setLong(rawHead + OFFSET_BELOW_READ, belowA);
-                ForeignMemory.setLong(rawHead + OFFSET_BELOW_WRITE, belowB);
-                
-                ForeignMemory.setLong(rawHead + OFFSET_ACTIVE_READ, activeA);
-                ForeignMemory.setLong(rawHead + OFFSET_ACTIVE_WRITE, activeB);
-                
-                ForeignMemory.setLong(rawHead + OFFSET_ABOVE_READ, aboveA);
-                ForeignMemory.setLong(rawHead + OFFSET_ABOVE_WRITE, aboveB);
-                
-                return rawHead;
-            }
-        }
+        ForeignMemory.setLong(struct + OFFSET_ABOVE_READ, aboveA);
+        ForeignMemory.setLong(struct + OFFSET_ABOVE_WRITE, aboveB);
+
+        return enginePtr;
     }
 
     public static void free(long pointer)
     {
-        checkActive();
         if(pointer == 0L) return;
 
         long base = pointer - 8L;
@@ -185,21 +113,11 @@ public final class AudioBufferLayer
             throw new IllegalStateException("Invalid AudioBufferLayer pointer: 0x" + Long.toHexString(pointer).toUpperCase());
         }
 
-        // Reset header
-        ForeignMemory.setInt(base, 0);
-        ForeignMemory.setInt(base + 4L, -1);
-
-        while(true) {
-            long oldTagged = singletonFreeHead;
-            long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-            ForeignMemory.setLong(pointer, oldRawHead);
-
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
-
-            if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
+        long struct = ForeignMemory.getLong(pointer);
+        if(struct != 0L) {
+            ForeignMemory.freeNative(struct);
         }
+        Bit64.free(pointer);
     }
 
     // --- ATOMIC AT-PLAY SWAP OPERATIONS ---
@@ -207,73 +125,73 @@ public final class AudioBufferLayer
     @Volatile
     public static void swapBelow(long layerPtr)
     {
-        long read = ForeignMemory.getVolatileLong(layerPtr + OFFSET_BELOW_READ);
-        long write = ForeignMemory.getVolatileLong(layerPtr + OFFSET_BELOW_WRITE);
-        
-        ForeignMemory.setVolatileLong(layerPtr + OFFSET_BELOW_READ, write);
-        ForeignMemory.setVolatileLong(layerPtr + OFFSET_BELOW_WRITE, read);
+        long read = ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_BELOW_READ);
+        long write = ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_BELOW_WRITE);
+
+        ForeignMemory.setVolatileLong(struct(layerPtr) + OFFSET_BELOW_READ, write);
+        ForeignMemory.setVolatileLong(struct(layerPtr) + OFFSET_BELOW_WRITE, read);
     }
 
     @Volatile
     public static void swapActive(long layerPtr)
     {
-        long read = ForeignMemory.getVolatileLong(layerPtr + OFFSET_ACTIVE_READ);
-        long write = ForeignMemory.getVolatileLong(layerPtr + OFFSET_ACTIVE_WRITE);
-        
-        ForeignMemory.setVolatileLong(layerPtr + OFFSET_ACTIVE_READ, write);
-        ForeignMemory.setVolatileLong(layerPtr + OFFSET_ACTIVE_WRITE, read);
+        long read = ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_ACTIVE_READ);
+        long write = ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_ACTIVE_WRITE);
+
+        ForeignMemory.setVolatileLong(struct(layerPtr) + OFFSET_ACTIVE_READ, write);
+        ForeignMemory.setVolatileLong(struct(layerPtr) + OFFSET_ACTIVE_WRITE, read);
     }
 
     @Volatile
     public static void swapAbove(long layerPtr)
     {
-        long read = ForeignMemory.getVolatileLong(layerPtr + OFFSET_ABOVE_READ);
-        long write = ForeignMemory.getVolatileLong(layerPtr + OFFSET_ABOVE_WRITE);
-        
-        ForeignMemory.setVolatileLong(layerPtr + OFFSET_ABOVE_READ, write);
-        ForeignMemory.setVolatileLong(layerPtr + OFFSET_ABOVE_WRITE, read);
+        long read = ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_ABOVE_READ);
+        long write = ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_ABOVE_WRITE);
+
+        ForeignMemory.setVolatileLong(struct(layerPtr) + OFFSET_ABOVE_READ, write);
+        ForeignMemory.setVolatileLong(struct(layerPtr) + OFFSET_ABOVE_WRITE, read);
     }
 
     // --- ACCESSORS ---
 
     public static int getCapacity(long layerPtr)
     {
-        return ForeignMemory.getInt(layerPtr + OFFSET_CAPACITY);
+        return ForeignMemory.getInt(struct(layerPtr) + OFFSET_CAPACITY);
     }
 
     @Volatile
     public static long getBelowReadPtr(long layerPtr)
     {
-        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_BELOW_READ);
+        return ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_BELOW_READ);
     }
 
     @Volatile
     public static long getBelowWritePtr(long layerPtr)
     {
-        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_BELOW_WRITE);
+        return ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_BELOW_WRITE);
     }
 
     @Volatile
     public static long getActiveReadPtr(long layerPtr)
     {
-        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_ACTIVE_READ);
+        return ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_ACTIVE_READ);
     }
 
     @Volatile
     public static long getActiveWritePtr(long layerPtr)
     {
-        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_ACTIVE_WRITE);
+        return ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_ACTIVE_WRITE);
     }
 
     @Volatile
     public static long getAboveReadPtr(long layerPtr)
     {
-        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_ABOVE_READ);
+        return ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_ABOVE_READ);
     }
 
     @Volatile
     public static long getAboveWritePtr(long layerPtr)
     {
-        return ForeignMemory.getVolatileLong(layerPtr + OFFSET_ABOVE_WRITE);
+        return ForeignMemory.getVolatileLong(struct(layerPtr) + OFFSET_ABOVE_WRITE);
     }
 }
