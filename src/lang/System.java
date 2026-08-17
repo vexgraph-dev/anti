@@ -26,49 +26,20 @@ public final class System {
         long totalMemory = 0L;
         long freeMemory = 0L;
 
-        // Pure FFM OSHI Telemetry Probe
-        boolean oshiAvailable = false;
+        // Non-reflective: com.sun.management.OperatingSystemMXBean directly exposes
+        // getTotalPhysicalMemorySize/getFreePhysicalMemorySize methods.
         try {
-            oshi.ffm.SystemInfo oshiSys = new oshi.ffm.SystemInfo();
-            oshi.hardware.HardwareAbstractionLayer hal = oshiSys.getHardware();
-            oshi.hardware.CentralProcessor cpu = hal.getProcessor();
-            oshi.hardware.GlobalMemory mem = hal.getMemory();
-
-            if (cpu != null && cpu.getProcessorIdentifier() != null) {
-                String fetchedCpu = cpu.getProcessorIdentifier().getName();
-                if (fetchedCpu != null && !fetchedCpu.isBlank()) {
-                    rawCpu = fetchedCpu.trim();
-                }
-                if (cpu.getPhysicalProcessorCount() > 0) {
-                    cores = cpu.getPhysicalProcessorCount();
-                }
-                if (cpu.getLogicalProcessorCount() > 0) {
-                    threads = cpu.getLogicalProcessorCount();
-                }
+            java.lang.management.OperatingSystemMXBean osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+            if (osBean instanceof com.sun.management.OperatingSystemMXBean sun) {
+                totalMemory = sun.getTotalPhysicalMemorySize();
+                freeMemory = sun.getFreePhysicalMemorySize();
+            } else {
+                totalMemory = Runtime.getRuntime().maxMemory();
+                freeMemory = Runtime.getRuntime().freeMemory();
             }
-            if (mem != null) {
-                totalMemory = mem.getTotal();
-                freeMemory = mem.getAvailable();
-            }
-            oshiAvailable = true;
-        } catch (Throwable ignored) {}
-
-        if (!oshiAvailable || totalMemory == 0L) {
-            // Non-reflective: com.sun.management.OperatingSystemMXBean directly exposes the
-            // getTotalPhysicalMemorySize/getFreePhysicalMemorySize methods the reflection
-            // block used to fish for. This is the documented GraalVM-safe replacement.
-            try {
-                java.lang.management.OperatingSystemMXBean osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
-                if (osBean instanceof com.sun.management.OperatingSystemMXBean sun) {
-                    totalMemory = sun.getTotalPhysicalMemorySize();
-                    freeMemory = sun.getFreePhysicalMemorySize();
-                } else {
-                    totalMemory = Runtime.getRuntime().maxMemory();
-                    freeMemory = Runtime.getRuntime().freeMemory();
-                }
-            } catch (Throwable e) {
-                throw new RuntimeException("System: failed to query physical memory sizes", e);
-            }
+        } catch (Throwable e) {
+            totalMemory = Runtime.getRuntime().maxMemory();
+            freeMemory = Runtime.getRuntime().freeMemory();
         }
 
         long cpuBrandPtr = string.allocate(rawCpu != null ? rawCpu : java.lang.System.getProperty("os.arch"));
@@ -98,25 +69,10 @@ public final class System {
         // ==========================================
         // 3. DYNAMIC GRAPHICS & RUNTIME TARGET PROBING
         // ==========================================
-        String detectedGpuName = "Software Rasterizer";
+        String detectedGpuName = osName.contains("mac") ? "Apple Metal GPU (UMA)" : "Software Rasterizer";
         String primaryGraphicsApi;
-        boolean unifiedMemoryArchitecture = false;
+        boolean unifiedMemoryArchitecture = osName.contains("mac");
         long physicalVramTotal = 0L;
-
-        // Try FFM OSHI GPU hardware probing first
-        try {
-            oshi.ffm.SystemInfo oshiSys = new oshi.ffm.SystemInfo();
-            java.util.List<oshi.hardware.GraphicsCard> gpus = oshiSys.getHardware().getGraphicsCards();
-            if (gpus != null && !gpus.isEmpty()) {
-                oshi.hardware.GraphicsCard mainGpu = gpus.getFirst();
-                if (mainGpu.getName() != null && !mainGpu.getName().isBlank()) {
-                    detectedGpuName = mainGpu.getName().trim();
-                }
-                if (mainGpu.getVRam() > 0) {
-                    physicalVramTotal = mainGpu.getVRam();
-                }
-            }
-        } catch (Throwable ignored) {}
 
         boolean hasVulkanSdk = java.lang.System.getenv("VULKAN_SDK") != null || java.lang.System.getenv("VK_LAYER_PATH") != null;
         String vulkanApiVersion = "0.0.0";
@@ -268,20 +224,6 @@ public final class System {
 
         String batteryStatusStr = "AC Powered";
         float batteryLevelVal = 1.0f;
-        try {
-            oshi.ffm.SystemInfo oshiSys = new oshi.ffm.SystemInfo();
-            java.util.List<oshi.hardware.PowerSource> powerSources = oshiSys.getHardware().getPowerSources();
-            if (powerSources != null && !powerSources.isEmpty()) {
-                oshi.hardware.PowerSource ps = powerSources.getFirst();
-                double capacity = ps.getRemainingCapacityPercent();
-                batteryLevelVal = (float) (capacity > 0 ? capacity : 1.0);
-                if (ps.isPowerOnLine()) {
-                    batteryStatusStr = ps.isCharging() ? "AC Powered (Charging)" : "AC Powered (Full)";
-                } else {
-                    batteryStatusStr = "Battery Power (Discharging)";
-                }
-            }
-        } catch (Throwable ignored) {}
 
         // Set Hardware Static State
         HardwareInfo.setOperatingSystem(osNamePtr);
