@@ -38,7 +38,7 @@ public final class DenylistLinter {
 
         @Override
         public String toString() {
-            return String.format("%-7s %s:%d [%s] %s", severity, file, line, rule, message);
+            return severity + "  " + file + ":" + line + " [" + rule + "] " + message;
         }
     }
 
@@ -97,10 +97,10 @@ public final class DenylistLinter {
         new Rule("HEAP_LOCK_HOTPATH", Severity.WARNING,
             Pattern.compile("\\bsynchronized\\b|\\bReentrantLock\\b|\\bConcurrentHashMap\\b"),
             "Heap lock / concurrent structure on hot path — known debt (§14.3)."),
-        // §1/§13 allocation on hot paths — informational.
-        new Rule("STRING_FORMAT_HOTPATH", Severity.INFO,
-            Pattern.compile("String\\.format|\\bnew\\s+StringBuilder\\b"),
-            "String allocation in hot path — review (§1/§13).")
+        // §13.2 String.format & printf — banned (pulls in Formatter, Locale, DecimalFormat, Unicode tables).
+        new Rule("STRING_FORMAT_BANNED", Severity.ERROR,
+            Pattern.compile("\\bString\\.format\\s*\\(|\\.printf\\s*\\("),
+            "String.format / printf is banned (§13.2); use string concat or zero-alloc formatters.")
     );
 
     private DenylistLinter() {}
