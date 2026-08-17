@@ -1,18 +1,14 @@
 package audio;
 
 import annotation.Draft;
-import annotation.Unsafe;
-import annotation.Volatile;
+import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
-import java.lang.foreign.Arena;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-
 /**
  * Off-heap AudioSource component manager conforming to the Anti Architecture.
- * Packs Source properties contiguously into lock-free pooled memory slots.
+ * The engine pointer's data slot stores a pointer to an off-heap struct holding
+ * the Source properties (AL Source ID, AL Buffer ID, Pitch, Gain, Looping).
  */
 @Draft
 public final class AudioSource
@@ -20,115 +16,33 @@ public final class AudioSource
     public static final int CLASS_ID = TypeRegister.ID_AUDIO_SOURCE;
     public static final int TYPE_SINGLETON = TypeRegister.AUDIO_SOURCE_SINGLETON;
 
-    private static final int DEFAULT_CAPACITY = 256;
-    private static final long SINGLETON_SLOT_SIZE = 64L; // Header (8B) + Data (56B)
-
-    private static final VarHandle SINGLETON_FREE_HEAD_VH;
-    private static final VarHandle SINGLETON_EXPANDING_VH;
-    private static volatile int singletonExpanding = 0;
-
-    private static Arena poolArena;
-    private static volatile boolean active;
-    private static volatile long singletonFreeHead;
-
-    static {
-        try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            SINGLETON_FREE_HEAD_VH = lookup.findStaticVarHandle(AudioSource.class, "singletonFreeHead", long.class);
-            SINGLETON_EXPANDING_VH = lookup.findStaticVarHandle(AudioSource.class, "singletonExpanding", int.class);
-        }
-        catch(ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-
-        poolArena = Arena.ofShared();
-        active = true;
-
-        expandSingletonPool();
-    }
+    private static final long STRUCT_SIZE = 20L; // AL Source ID(4) + AL Buffer ID(4) + Pitch(4) + Gain(4) + Looping(4)
 
     private AudioSource() {}
 
-    private static void checkActive()
-    {
-        if(!active) throw new IllegalStateException("AudioSource subsystem is not active!");
-    }
-
     public static void freeAll()
     {
-        if(active) {
-            active = false;
-            if(poolArena != null && poolArena.scope().isAlive()) {
-                poolArena.close();
-            }
-        }
-    }
-
-    private static void expandSingletonPool()
-    {
-        long totalBytes = DEFAULT_CAPACITY * SINGLETON_SLOT_SIZE;
-        long baseAddress = poolArena.allocate(totalBytes, 8).address();
-
-        for(int i = 0; i < DEFAULT_CAPACITY; i++) {
-            long currentBlock = baseAddress + (i * SINGLETON_SLOT_SIZE);
-            long userPtr = currentBlock + 8L;
-
-            while(true) {
-                long oldTagged = singletonFreeHead;
-                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.setLong(userPtr, oldRawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
-
-                if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        }
+        // Bit64.freeAll() manages the shared singleton slot arena.
     }
 
     public static long allocate()
     {
-        checkActive();
-        while(true) {
-            long oldTagged = singletonFreeHead;
-            long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
+        long enginePtr = Bit64.allocateSingleton(TYPE_SINGLETON);
+        long struct = ForeignMemory.allocateNative(STRUCT_SIZE);
+        ForeignMemory.setLong(enginePtr, struct);
 
-            if(rawHead == 0L) {
-                if(SINGLETON_EXPANDING_VH.compareAndSet(0, 1)) {
-                    expandSingletonPool();
-                    SINGLETON_EXPANDING_VH.setVolatile(0);
-                }
-                else {
-                    Thread.onSpinWait();
-                }
-                continue;
-            }
+        // Initialize default audio fields
+        ForeignMemory.setInt(struct, 0);         // AL Source ID
+        ForeignMemory.setInt(struct + 4L, 0);    // AL Buffer ID
+        ForeignMemory.setFloat(struct + 8L, 1.0f); // Pitch
+        ForeignMemory.setFloat(struct + 12L, 1.0f); // Gain
+        ForeignMemory.setInt(struct + 16L, 0);   // Looping (0 = false)
 
-            long nextRawHead = ForeignMemory.getLong(rawHead);
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
-
-            if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
-                long base = rawHead - 8L;
-                ForeignMemory.setInt(base, TYPE_SINGLETON);
-                ForeignMemory.setInt(base + 4L, 1);
-                
-                // Initialize default audio fields
-                ForeignMemory.setInt(rawHead, 0);       // AL Source ID
-                ForeignMemory.setInt(rawHead + 4L, 0);  // AL Buffer ID
-                ForeignMemory.setFloat(rawHead + 8L, 1.0f); // Pitch
-                ForeignMemory.setFloat(rawHead + 12L, 1.0f); // Gain
-                ForeignMemory.setInt(rawHead + 16L, 0); // Looping (0 = false)
-                
-                return rawHead;
-            }
-        }
+        return enginePtr;
     }
 
     public static void free(long pointer)
     {
-        checkActive();
         if(pointer == 0L) return;
 
         long base = pointer - 8L;
@@ -137,20 +51,10 @@ public final class AudioSource
             throw new IllegalStateException("Invalid AudioSource pointer: 0x" + Long.toHexString(pointer).toUpperCase());
         }
 
-        // Reset header
-        ForeignMemory.setInt(base, 0);
-        ForeignMemory.setInt(base + 4L, -1);
-
-        while(true) {
-            long oldTagged = singletonFreeHead;
-            long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-            ForeignMemory.setLong(pointer, oldRawHead);
-
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
-
-            if(SINGLETON_FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
+        long struct = ForeignMemory.getLong(pointer);
+        if(struct != 0L) {
+            ForeignMemory.freeNative(struct);
         }
+        Bit64.free(pointer);
     }
 }
