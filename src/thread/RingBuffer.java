@@ -10,9 +10,6 @@ import oop.Stride;
 import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.lang.invoke.VarHandle;
 
 /**
  * High-throughput off-heap Ring Buffer queue for inter-thread message dispatching.
@@ -29,9 +26,6 @@ public final class RingBuffer {
 
     private static final int DEFAULT_CAPACITY = 1024;
     private static final long HEADER_SIZE = 48L; // 8B metadata header + 40B slot layout
-
-    private static final VarHandle LONG_VH = ValueLayout.JAVA_LONG.varHandle();
-    private static final MemorySegment GLOBAL_MEMORY = MemorySegment.ofAddress(0).reinterpret(Long.MAX_VALUE);
 
     private static Arena poolArena;
     private static volatile boolean active;
@@ -88,9 +82,9 @@ public final class RingBuffer {
         // Write user fields
         ForeignMemory.setInt(userPtr, classId);
         ForeignMemory.setInt(userPtr + 4L, cap);
-        LONG_VH.setVolatile(GLOBAL_MEMORY, userPtr + 8L, 0L);  // writeIndex
-        LONG_VH.setVolatile(GLOBAL_MEMORY, userPtr + 16L, 0L); // readIndex
-        ForeignMemory.setInt(userPtr + 24L, 0);                 // SpinLock field
+        ForeignMemory.setVolatileLong(userPtr + 8L, 0L);  // writeIndex
+        ForeignMemory.setVolatileLong(userPtr + 16L, 0L); // readIndex
+        ForeignMemory.setInt(userPtr + 24L, 0);           // SpinLock field
         ForeignMemory.setInt(userPtr + 28L, stride);
         
         long bufferBytes = (long) cap * stride;
@@ -123,8 +117,8 @@ public final class RingBuffer {
         long lockPtr = ringBufferPtr + 24L;
         SpinLock.lock(lockPtr);
         try {
-            long w = (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ringBufferPtr + 8L);
-            long r = (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ringBufferPtr + 16L);
+            long w = ForeignMemory.getVolatileLong(ringBufferPtr + 8L);
+            long r = ForeignMemory.getVolatileLong(ringBufferPtr + 16L);
             int cap = capacity(ringBufferPtr);
 
             if (w - r >= cap) {
@@ -136,7 +130,7 @@ public final class RingBuffer {
             long slot = dataBuffer + ((w & (cap - 1)) * stride);
             writeSlot(slot, stride, valueOrPointer);
 
-            LONG_VH.setVolatile(GLOBAL_MEMORY, ringBufferPtr + 8L, w + 1);
+            ForeignMemory.setVolatileLong(ringBufferPtr + 8L, w + 1);
             return true;
         } finally {
             SpinLock.unlock(lockPtr);
@@ -151,8 +145,8 @@ public final class RingBuffer {
         long lockPtr = ringBufferPtr + 24L;
         SpinLock.lock(lockPtr);
         try {
-            long w = (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ringBufferPtr + 8L);
-            long r = (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ringBufferPtr + 16L);
+            long w = ForeignMemory.getVolatileLong(ringBufferPtr + 8L);
+            long r = ForeignMemory.getVolatileLong(ringBufferPtr + 16L);
 
             if (r >= w) {
                 return 0L; // Empty
@@ -164,7 +158,7 @@ public final class RingBuffer {
             long slot = dataBuffer + ((r & (cap - 1)) * stride);
             long val = readSlot(slot, stride);
 
-            LONG_VH.setVolatile(GLOBAL_MEMORY, ringBufferPtr + 16L, r + 1);
+            ForeignMemory.setVolatileLong(ringBufferPtr + 16L, r + 1);
             return val;
         } finally {
             SpinLock.unlock(lockPtr);
@@ -179,8 +173,8 @@ public final class RingBuffer {
         long lockPtr = ringBufferPtr + 24L;
         SpinLock.lock(lockPtr);
         try {
-            long w = (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ringBufferPtr + 8L);
-            long r = (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ringBufferPtr + 16L);
+            long w = ForeignMemory.getVolatileLong(ringBufferPtr + 8L);
+            long r = ForeignMemory.getVolatileLong(ringBufferPtr + 16L);
 
             if (r >= w) {
                 return 0L; // Empty
@@ -205,11 +199,11 @@ public final class RingBuffer {
     }
 
     public static long writeIndex(long ringBufferPtr) {
-        return ringBufferPtr == 0L ? 0L : (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ringBufferPtr + 8L);
+        return ringBufferPtr == 0L ? 0L : ForeignMemory.getVolatileLong(ringBufferPtr + 8L);
     }
 
     public static long readIndex(long ringBufferPtr) {
-        return ringBufferPtr == 0L ? 0L : (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ringBufferPtr + 16L);
+        return ringBufferPtr == 0L ? 0L : ForeignMemory.getVolatileLong(ringBufferPtr + 16L);
     }
 
     public static int size(long ringBufferPtr) {
