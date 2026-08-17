@@ -3,6 +3,7 @@ package objects;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
+import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
@@ -29,6 +30,8 @@ public class Passive
         SET_INVOKER = linker.downcallHandle(FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
     }
 
+    private static final long STRUCT_SIZE = 24L; // [0]=cached value, [8]=getFunc, [16]=setFunc
+
     // [definition]
     // the passive object acts as a lazy object. instead of setting and getting objects itself,
     // the setting of the object is a function, returning a value, and then the get is that exact
@@ -49,28 +52,35 @@ public class Passive
      */
     public static long allocate(long getFuncAddress, long setFuncAddress)
     {
-        long block = ForeignMemory.allocateNative(32);
-        long userPtr = block + 8L;
+        long enginePtr = Bit64.allocateSingleton(TYPE_SINGLETON);
+        long struct = ForeignMemory.allocateNative(STRUCT_SIZE);
+        ForeignMemory.setLong(enginePtr, struct);
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
-        ForeignMemory.setInt(block + 4L, 1); // active flag
+        ForeignMemory.setLong(struct, 0L); // cached value
+        ForeignMemory.setLong(struct + 8L, getFuncAddress); // getFuncAddress
+        ForeignMemory.setLong(struct + 16L, setFuncAddress); // setFuncAddress
 
-        ForeignMemory.setLong(userPtr, 0L); // cached value
-        ForeignMemory.setLong(userPtr + 8L, getFuncAddress); // getFuncAddress
-        ForeignMemory.setLong(userPtr + 16L, setFuncAddress); // setFuncAddress
-
-        return userPtr;
+        return enginePtr;
     }
 
     public static void free(long ptr)
     {
-        ForeignMemory.freeNative(ptr - 8L);
+        if (ptr == 0L) return;
+        long struct = ForeignMemory.getLong(ptr);
+        if (struct != 0L) ForeignMemory.freeNative(struct);
+        Bit64.free(ptr);
+    }
+
+    private static long struct(long ptr)
+    {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        return ForeignMemory.getLong(ptr);
     }
 
     public static long getValue(long ptr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        long getFunc = ForeignMemory.getLong(ptr + 8L);
+        long getFunc = ForeignMemory.getLong(struct(ptr) + 8L);
         if (getFunc != 0L) {
             try {
                 return (long) GET_INVOKER.bindTo(MemorySegment.ofAddress(getFunc)).invokeExact();
@@ -78,13 +88,13 @@ public class Passive
                 throw new RuntimeException("Failed to invoke getFunction: " + t.getMessage(), t);
             }
         }
-        return ForeignMemory.getLong(ptr);
+        return ForeignMemory.getLong(struct(ptr));
     }
 
     public static void setValue(long ptr, long value)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        long setFunc = ForeignMemory.getLong(ptr + 16L);
+        long setFunc = ForeignMemory.getLong(struct(ptr) + 16L);
         if (setFunc != 0L) {
             try {
                 SET_INVOKER.bindTo(MemorySegment.ofAddress(setFunc)).invokeExact(value);
@@ -92,7 +102,7 @@ public class Passive
                 throw new RuntimeException("Failed to invoke setFunction: " + t.getMessage(), t);
             }
         } else {
-            ForeignMemory.setLong(ptr, value);
+            ForeignMemory.setLong(struct(ptr), value);
         }
     }
 
