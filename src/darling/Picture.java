@@ -3,6 +3,7 @@ package darling;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
+import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
@@ -65,143 +66,52 @@ public final class Picture {
     private static final int OFF_HAS_CROP    = 89; // byte
 
     private static final long USER_STRIDE = 96L; // bytes of user payload
-    private static final long SLOT_SIZE   = 104L; // 8B header + 96B payload
+    private static final long STRUCT_SIZE = USER_STRIDE; // native struct payload, stored in the Bit64 slot
 
-    // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
-    private static final int DEFAULT_CAPACITY = 1024;
-
-    private static final java.lang.invoke.VarHandle FREE_HEAD_VH;
-    private static final java.lang.invoke.VarHandle EXPANDING_VH;
-
-    private static volatile long freeHead;     // top 16 = gen tag, bottom 48 = raw ptr
-    private static volatile int expanding = 0;
-
-    private static java.lang.foreign.Arena poolArena;
-    private static volatile boolean active;
-
-    static {
-        try {
-            java.lang.invoke.MethodHandles.Lookup lookup = java.lang.invoke.MethodHandles.lookup();
-            FREE_HEAD_VH = lookup.findStaticVarHandle(Picture.class, "freeHead", long.class);
-            EXPANDING_VH = lookup.findStaticVarHandle(Picture.class, "expanding", int.class);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-
-        poolArena = java.lang.foreign.Arena.ofShared();
-        active = true;
-        expandPool();
-    }
-
-    private Picture() {}
-
-    private static void checkActive() {
-        if (!active) throw new IllegalStateException("Picture subsystem is not active!");
-    }
+    // =========================================================================
+    // ALLOCATION / RECYCLING — DELEGATED TO THE BIT-WIDTH POOL (bit.Bit64)
+    // =========================================================================
 
     public static void freeAll() {
-        if (active) {
-            active = false;
-            if (poolArena != null && poolArena.scope().isAlive()) {
-                poolArena.close();
-            }
-        }
+        // No-op: Bit64.freeAll() manages the shared pool arena.
     }
-
-    private static void expandPool() {
-        long totalBytes = DEFAULT_CAPACITY * SLOT_SIZE;
-        long baseAddress = poolArena.allocate(totalBytes, 8).address();
-
-        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
-            long currentBlock = baseAddress + (i * SLOT_SIZE);
-            long userPtr = currentBlock + 8L;
-
-            while (true) {
-                long oldTagged = freeHead;
-                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.setUnsafe(userPtr, oldRawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
-
-                if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        }
-    }
-
-    // =========================================================================
-    // ALLOCATION / RECYCLING
-    // =========================================================================
 
     /** Allocates a Picture node (dirty by default). */
     public static long allocate() {
-        checkActive();
-
-        while (true) {
-            long oldTagged = freeHead;
-            long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-            if (rawHead == 0L) {
-                if (EXPANDING_VH.compareAndSet(0, 1)) {
-                    expandPool();
-                    EXPANDING_VH.setVolatile(0);
-                } else {
-                    Thread.onSpinWait();
-                }
-                continue;
-            }
-
-            long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
-
-            if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
-                long base = rawHead - 8L;
-                ForeignMemory.setUnsafe(base, TYPE_SINGLETON);
-                ForeignMemory.setUnsafe(base + 4L, 1);
-                ForeignMemory.setUnsafe(rawHead, 0);
-                initDefaults(rawHead);
-                return rawHead;
-            }
-        }
+        long enginePtr = Bit64.allocateSingleton(TYPE_SINGLETON);
+        long s = ForeignMemory.allocateNative(STRUCT_SIZE);
+        ForeignMemory.setLong(enginePtr, s);
+        initDefaults(enginePtr);
+        return enginePtr;
     }
 
     private static void initDefaults(long ptr) {
         Container.initDefaults(ptr);
-        ForeignMemory.setLong(ptr + OFF_IMAGE, 0L);
-        ForeignMemory.setFloat(ptr + OFF_IMAGE_SIZE_W, 0f);
-        ForeignMemory.setFloat(ptr + OFF_IMAGE_SIZE_H, 0f);
-        ForeignMemory.setFloat(ptr + OFF_CROP_X1, 0f);
-        ForeignMemory.setFloat(ptr + OFF_CROP_Y1, 0f);
-        ForeignMemory.setFloat(ptr + OFF_CROP_X2, 0f);
-        ForeignMemory.setFloat(ptr + OFF_CROP_Y2, 0f);
-        ForeignMemory.setByte(ptr + OFF_HAS_IMAGE_SIZE, (byte) 0);
-        ForeignMemory.setByte(ptr + OFF_HAS_CROP, (byte) 0);
+        ForeignMemory.setLong(struct(ptr) + OFF_IMAGE, 0L);
+        ForeignMemory.setFloat(struct(ptr) + OFF_IMAGE_SIZE_W, 0f);
+        ForeignMemory.setFloat(struct(ptr) + OFF_IMAGE_SIZE_H, 0f);
+        ForeignMemory.setFloat(struct(ptr) + OFF_CROP_X1, 0f);
+        ForeignMemory.setFloat(struct(ptr) + OFF_CROP_Y1, 0f);
+        ForeignMemory.setFloat(struct(ptr) + OFF_CROP_X2, 0f);
+        ForeignMemory.setFloat(struct(ptr) + OFF_CROP_Y2, 0f);
+        ForeignMemory.setByte(struct(ptr) + OFF_HAS_IMAGE_SIZE, (byte) 0);
+        ForeignMemory.setByte(struct(ptr) + OFF_HAS_CROP, (byte) 0);
     }
 
     public static void free(long ptr) {
-        checkActive();
         if (ptr == 0L) return;
 
         int type = type(ptr);
         if (type != TYPE_SINGLETON) throw new IllegalStateException("Double free or corrupt Picture pointer: 0x" + java.lang.Long.toHexString(ptr).toUpperCase());
 
-        long base = ptr - 8L;
-        ForeignMemory.setUnsafe(base, 0);
-        ForeignMemory.setUnsafe(base + 4L, -1);
+        long s = struct(ptr);
+        ForeignMemory.freeNative(s);
+        Bit64.free(ptr);
+    }
 
-        while (true) {
-            long oldTagged = freeHead;
-            long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-            ForeignMemory.setUnsafe(ptr, oldRawHead);
-
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (ptr & 0x0000FFFFFFFFFFFFL);
-
-            if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
-        }
+    private static long struct(long ptr) {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL Picture pointer!");
+        return ForeignMemory.getLong(ptr);
     }
 
     // =========================================================================
@@ -274,11 +184,11 @@ public final class Picture {
     // =========================================================================
 
     /** The bound image.Image asset, or 0 if none. */
-    public static long getImage(long ptr) { checkPicture(ptr); return ForeignMemory.getLong(ptr + OFF_IMAGE); }
+    public static long getImage(long ptr) { checkPicture(ptr); return ForeignMemory.getLong(struct(ptr) + OFF_IMAGE); }
 
     public static void setImage(long ptr, long imageEnginePtr) {
         checkPicture(ptr);
-        ForeignMemory.setLong(ptr + OFF_IMAGE, imageEnginePtr);
+        ForeignMemory.setLong(struct(ptr) + OFF_IMAGE, imageEnginePtr);
         Container.markDirty(ptr);
     }
 
@@ -296,15 +206,15 @@ public final class Picture {
     public static void setImageSize(long ptr, float w, float h) {
         checkPicture(ptr);
         boolean has = (w > 0f || h > 0f);
-        ForeignMemory.setFloat(ptr + OFF_IMAGE_SIZE_W, Math.max(0f, w));
-        ForeignMemory.setFloat(ptr + OFF_IMAGE_SIZE_H, Math.max(0f, h));
-        ForeignMemory.setByte(ptr + OFF_HAS_IMAGE_SIZE, (byte) (has ? 1 : 0));
+        ForeignMemory.setFloat(struct(ptr) + OFF_IMAGE_SIZE_W, Math.max(0f, w));
+        ForeignMemory.setFloat(struct(ptr) + OFF_IMAGE_SIZE_H, Math.max(0f, h));
+        ForeignMemory.setByte(struct(ptr) + OFF_HAS_IMAGE_SIZE, (byte) (has ? 1 : 0));
         Container.markDirty(ptr);
     }
 
-    public static boolean hasImageSize(long ptr) { checkPicture(ptr); return ForeignMemory.getByte(ptr + OFF_HAS_IMAGE_SIZE) != 0; }
-    public static float getImageSizeWidth(long ptr) { checkPicture(ptr); return ForeignMemory.getFloat(ptr + OFF_IMAGE_SIZE_W); }
-    public static float getImageSizeHeight(long ptr) { checkPicture(ptr); return ForeignMemory.getFloat(ptr + OFF_IMAGE_SIZE_H); }
+    public static boolean hasImageSize(long ptr) { checkPicture(ptr); return ForeignMemory.getByte(struct(ptr) + OFF_HAS_IMAGE_SIZE) != 0; }
+    public static float getImageSizeWidth(long ptr) { checkPicture(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_IMAGE_SIZE_W); }
+    public static float getImageSizeHeight(long ptr) { checkPicture(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_IMAGE_SIZE_H); }
 
     /**
      * Sets the image crop as two corner points in image pixels: (x1, y1) is the
@@ -316,21 +226,21 @@ public final class Picture {
      */
     public static void setCrop(long ptr, float x1, float y1, float x2, float y2) {
         checkPicture(ptr);
-        ForeignMemory.setFloat(ptr + OFF_CROP_X1, x1);
-        ForeignMemory.setFloat(ptr + OFF_CROP_Y1, y1);
-        ForeignMemory.setFloat(ptr + OFF_CROP_X2, x2);
-        ForeignMemory.setFloat(ptr + OFF_CROP_Y2, y2);
-        ForeignMemory.setByte(ptr + OFF_HAS_CROP, (byte) 1);
+        ForeignMemory.setFloat(struct(ptr) + OFF_CROP_X1, x1);
+        ForeignMemory.setFloat(struct(ptr) + OFF_CROP_Y1, y1);
+        ForeignMemory.setFloat(struct(ptr) + OFF_CROP_X2, x2);
+        ForeignMemory.setFloat(struct(ptr) + OFF_CROP_Y2, y2);
+        ForeignMemory.setByte(struct(ptr) + OFF_HAS_CROP, (byte) 1);
         Container.markDirty(ptr);
     }
 
     public static void clearCrop(long ptr) {
         checkPicture(ptr);
-        ForeignMemory.setByte(ptr + OFF_HAS_CROP, (byte) 0);
+        ForeignMemory.setByte(struct(ptr) + OFF_HAS_CROP, (byte) 0);
         Container.markDirty(ptr);
     }
 
-    public static boolean hasCrop(long ptr) { checkPicture(ptr); return ForeignMemory.getByte(ptr + OFF_HAS_CROP) != 0; }
+    public static boolean hasCrop(long ptr) { checkPicture(ptr); return ForeignMemory.getByte(struct(ptr) + OFF_HAS_CROP) != 0; }
 
     /**
      * Resolves the crop into a normalized UV rect [u1, v1, u2, v2] within the
@@ -361,10 +271,10 @@ public final class Picture {
         float iw = image.Image.getWidth(imagePtr);
         float ih = image.Image.getHeight(imagePtr);
 
-        float x1 = ForeignMemory.getFloat(ptr + OFF_CROP_X1);
-        float y1 = ForeignMemory.getFloat(ptr + OFF_CROP_Y1);
-        float x2 = ForeignMemory.getFloat(ptr + OFF_CROP_X2);
-        float y2 = ForeignMemory.getFloat(ptr + OFF_CROP_Y2);
+        float x1 = ForeignMemory.getFloat(struct(ptr) + OFF_CROP_X1);
+        float y1 = ForeignMemory.getFloat(struct(ptr) + OFF_CROP_Y1);
+        float x2 = ForeignMemory.getFloat(struct(ptr) + OFF_CROP_X2);
+        float y2 = ForeignMemory.getFloat(struct(ptr) + OFF_CROP_Y2);
 
         // Edge case: inverted corner points -> normalize orientation.
         if (x1 > x2) { float t = x1; x1 = x2; x2 = t; }
