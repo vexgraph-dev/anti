@@ -4,10 +4,6 @@ import annotation.Intention;
 import engine.EngineLoop;
 import annotation.Draft;
 
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.lang.invoke.VarHandle;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -24,8 +20,7 @@ public final class Window {
     // Title mailbox bridging the Core Draw Worker -> Thread 0.
     // AppKit requires window geometry/title changes on the main thread, so the worker
     // only *publishes* the FPS label here; Window.run's pump *applies* it every pass.
-    private static final MemorySegment TITLE_MAILBOX = Arena.global().allocate(136);
-    private static final VarHandle TITLE_SEQ_VH = ValueLayout.JAVA_LONG.varHandle();
+    private static final long TITLE_MAILBOX = nio.ForeignMemory.allocateNative(136);
     private static long titleLastSeq;
 
     /** Serializes AppKit events with Metal-backed Vulkan swapchain operations on macOS. */
@@ -208,24 +203,24 @@ public final class Window {
         byte[] b = title.getBytes(StandardCharsets.UTF_8);
         int len = Math.min(b.length, 127);
         for (int i = 0; i < len; i++) {
-            TITLE_MAILBOX.set(ValueLayout.JAVA_BYTE, i, b[i]);
+            nio.ForeignMemory.setByte(TITLE_MAILBOX + i, b[i]);
         }
-        TITLE_MAILBOX.set(ValueLayout.JAVA_BYTE, len, (byte) 0);
-        long seq = (long) TITLE_SEQ_VH.getVolatile(TITLE_MAILBOX, 128L) + 1L;
-        TITLE_SEQ_VH.setVolatile(TITLE_MAILBOX, 128L, seq); // release fence after the bytes
+        nio.ForeignMemory.setByte(TITLE_MAILBOX + len, (byte) 0);
+        long seq = nio.ForeignMemory.getVolatileLong(TITLE_MAILBOX + 128L) + 1L;
+        nio.ForeignMemory.setVolatileLong(TITLE_MAILBOX + 128L, seq); // release fence after the bytes
     }
 
     /** Thread 0 side: apply the latest published label (called from the event pump). */
     private static void applyPendingTitle(long pointer) {
-        long seq = (long) TITLE_SEQ_VH.getVolatile(TITLE_MAILBOX, 128L);
+        long seq = nio.ForeignMemory.getVolatileLong(TITLE_MAILBOX + 128L);
         if (seq == titleLastSeq) return;
         titleLastSeq = seq;
 
         int len = 0;
-        while (TITLE_MAILBOX.get(ValueLayout.JAVA_BYTE, len) != 0) len++;
+        while (nio.ForeignMemory.getByte(TITLE_MAILBOX + len) != (byte) 0) len++;
         byte[] buf = new byte[len];
         for (int i = 0; i < len; i++) {
-            buf[i] = TITLE_MAILBOX.get(ValueLayout.JAVA_BYTE, i);
+            buf[i] = nio.ForeignMemory.getByte(TITLE_MAILBOX + i);
         }
         setTitle(pointer, new String(buf, StandardCharsets.UTF_8));
     }
