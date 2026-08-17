@@ -93,14 +93,29 @@ public class EngineTest {
         // @Draft picture demo (pending review): Image asset + darling.Picture node.
         // Width/height AUTO (-1) derive from the image; here width is fixed and
         // height AUTO keeps the sunflower's aspect ratio.
-        long imagePtr = image.Image.allocate(
-                System.getProperty("anti.picture", "/Users/vexgraph/Downloads/sunflower.png"), 2048);
-        long picturePtr = darling.Picture.allocate();
-        darling.Picture.setImage(picturePtr, imagePtr);
-        darling.Picture.setWidth(picturePtr, 320f);
-        darling.Picture.setHeight(picturePtr, darling.Picture.AUTO);
-        darling.Picture.setLocation(picturePtr, 100f, 60f);
-        vulkan.TriangleRenderer.setPicture(picturePtr);
+        String picturePath = System.getProperty("anti.picture");
+        if (picturePath == null || !java.nio.file.Files.exists(java.nio.file.Path.of(picturePath))) {
+            if (java.nio.file.Files.exists(java.nio.file.Path.of("/Users/vexgraph/Downloads/sunflower.png"))) {
+                picturePath = "/Users/vexgraph/Downloads/sunflower.png";
+            } else if (java.nio.file.Files.exists(java.nio.file.Path.of("clipboard.png"))) {
+                picturePath = "clipboard.png";
+            } else if (java.nio.file.Files.exists(java.nio.file.Path.of("/Users/vexgraph/IdeaProjects/anti/clipboard.png"))) {
+                picturePath = "/Users/vexgraph/IdeaProjects/anti/clipboard.png";
+            }
+        }
+        if (picturePath != null && java.nio.file.Files.exists(java.nio.file.Path.of(picturePath))) {
+            try {
+                long imagePtr = image.Image.allocate(picturePath, 2048);
+                long picturePtr = darling.Picture.allocate();
+                darling.Picture.setImage(picturePtr, imagePtr);
+                darling.Picture.setWidth(picturePtr, 320f);
+                darling.Picture.setHeight(picturePtr, darling.Picture.AUTO);
+                darling.Picture.setLocation(picturePtr, 100f, 60f);
+                vulkan.TriangleRenderer.setPicture(picturePtr);
+            } catch (Throwable t) {
+                System.err.println("[EngineTest] Optional demo picture load skipped: " + t.getMessage());
+            }
+        }
 
         System.out.println("[Main Thread] Handing over control to the event pump...");
 
