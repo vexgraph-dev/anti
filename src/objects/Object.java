@@ -2,11 +2,10 @@ package objects;
 
 import annotation.Intention;
 import annotation.Required;
+import bit.Bit64;
 import lang.Class;
 import nio.ForeignMemory;
 import oop.TypeRegister;
-
-import java.util.Objects;
 
 // [definition]
 // the whole thing, this is the struct where it considers an object of any type, but still an object.
@@ -20,7 +19,10 @@ public class Object
 
     public static void free(long ptr)
     {
-        ForeignMemory.freeNative(ptr - 8L);
+        if (ptr == 0L) return;
+        long struct = ForeignMemory.getLong(ptr);
+        if (struct != 0L) ForeignMemory.freeNative(struct);
+        Bit64.free(ptr);
     }
 
     public static int type(long ptr) {
@@ -71,5 +73,10 @@ public class Object
     @Intention("[process]")
     private Object() {}
 
+    public static long struct(long ptr)
+    {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        return ForeignMemory.getLong(ptr);
+    }
 }
 
