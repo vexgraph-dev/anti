@@ -68,7 +68,7 @@ public class Future
     public static boolean setDesiredValue(long ptr, long value)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        if ((boolean) BYTE_VH.compareAndSet(GLOBAL_MEMORY, ptr, (byte) 0, (byte) 1)) {
+        if (ForeignMemory.compareAndSetByte(ptr, (byte) 0, (byte) 1)) {
             ForeignMemory.setLong(ptr + 8L, value);
             return true;
         }
