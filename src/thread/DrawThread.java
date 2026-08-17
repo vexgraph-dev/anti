@@ -401,8 +401,8 @@ public final class DrawThread {
                     long totalIterNanos = dbgIterNanos;
                     
                     if (System.getProperty("anti.debug.present") != null)
-                        System.out.println("[DEBUG] Draw=" + String.format("%.1f", drawFps)
-                                + " Present=" + String.format("%.1f", presentFps)
+                        System.out.println("[DEBUG] Draw=" + fmt1(drawFps)
+                                + " Present=" + fmt1(presentFps)
                                 + " iterMs=" + (totalIterNanos / 1_000_000)
                                 + " acqMs=" + (vulkan.Renderer.getDbgAcquireNanos() / 1_000_000)
                                 + " relWaitMs=" + (vulkan.Renderer.getDbgReleasedWaitNanos() / 1_000_000)
@@ -421,11 +421,10 @@ public final class DrawThread {
                         double drawDelta = (currDraw - lastDraw);
                         double avgDrawMs = drawDelta > 0 ? (totalIterNanos / 1_000_000.0) / drawDelta : 0.0;
                         long winSize = windowPtr != 0L ? window.Window.getContentSize(windowPtr) : 0L;
-                        window.Window.publishTitle(String.format(
-                                "Window | Draw %.1f FPS (%.2f ms) | win=%dx%d | %s",
-                                drawFps, avgDrawMs,
-                                (int) (winSize >>> 32), (int) (winSize & 0xFFFFFFFFL),
-                                vulkan.TriangleRenderer.dbgFbRect()));
+                        window.Window.publishTitle(
+                                "Window | Draw " + fmt1(drawFps) + " FPS (" + fmt2(avgDrawMs) + " ms) | win="
+                                + (int) (winSize >>> 32) + "x" + (int) (winSize & 0xFFFFFFFFL) + " | "
+                                + vulkan.TriangleRenderer.dbgFbRect());
                     }
                     fpsWindowStart = now;
                     lastDraw = currDraw;
@@ -478,5 +477,15 @@ public final class DrawThread {
             case ROLE_UI -> ui.UiRole.record(taskPtr);
             default -> render.UserRole.record(taskPtr); // ROLE_USER..N
         }
+    }
+
+    private static String fmt1(double d) {
+        long rounded = Math.round(d * 10.0);
+        return (rounded / 10) + "." + Math.abs(rounded % 10);
+    }
+
+    private static String fmt2(double d) {
+        long rounded = Math.round(d * 100.0);
+        return (rounded / 100) + "." + Math.abs(rounded % 100);
     }
 }
