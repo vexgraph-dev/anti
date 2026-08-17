@@ -591,7 +591,7 @@
       ]
     },
     {
-      "type": "primitive.Bool",
+      "type": "bit.Bit8",
       "fields": [
         {
           "name": "arrayExpanding128"
@@ -650,30 +650,7 @@
       ]
     },
     {
-      "type": "primitive.Brain",
-      "fields": [
-        {
-          "name": "arrayExpanding"
-        },
-        {
-          "name": "arrayFreeHead"
-        },
-        {
-          "name": "matrixExpanding"
-        },
-        {
-          "name": "matrixFreeHead"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "primitive.Byte",
+      "type": "bit.Bit16",
       "fields": [
         {
           "name": "arrayExpanding128"
@@ -732,7 +709,7 @@
       ]
     },
     {
-      "type": "primitive.Double",
+      "type": "bit.Bit32",
       "fields": [
         {
           "name": "arrayExpanding128"
@@ -791,53 +768,7 @@
       ]
     },
     {
-      "type": "primitive.Fixed32",
-      "fields": [
-        {
-          "name": "arrayExpanding"
-        },
-        {
-          "name": "arrayFreeHead"
-        },
-        {
-          "name": "matrixExpanding"
-        },
-        {
-          "name": "matrixFreeHead"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "primitive.Fixed64",
-      "fields": [
-        {
-          "name": "arrayExpanding"
-        },
-        {
-          "name": "arrayFreeHead"
-        },
-        {
-          "name": "matrixExpanding"
-        },
-        {
-          "name": "matrixFreeHead"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "primitive.Float",
+      "type": "bit.Bit64",
       "fields": [
         {
           "name": "arrayExpanding128"
@@ -896,217 +827,7 @@
       ]
     },
     {
-      "type": "primitive.Int",
-      "fields": [
-        {
-          "name": "arrayExpanding128"
-        },
-        {
-          "name": "arrayExpanding32"
-        },
-        {
-          "name": "arrayExpanding512"
-        },
-        {
-          "name": "arrayExpanding8"
-        },
-        {
-          "name": "arrayFreeHead128"
-        },
-        {
-          "name": "arrayFreeHead32"
-        },
-        {
-          "name": "arrayFreeHead512"
-        },
-        {
-          "name": "arrayFreeHead8"
-        },
-        {
-          "name": "matrixExpanding128"
-        },
-        {
-          "name": "matrixExpanding32"
-        },
-        {
-          "name": "matrixExpanding512"
-        },
-        {
-          "name": "matrixExpanding8"
-        },
-        {
-          "name": "matrixFreeHead128"
-        },
-        {
-          "name": "matrixFreeHead32"
-        },
-        {
-          "name": "matrixFreeHead512"
-        },
-        {
-          "name": "matrixFreeHead8"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "primitive.IntDouble",
-      "fields": [
-        {
-          "name": "arrayExpanding"
-        },
-        {
-          "name": "arrayFreeHead"
-        },
-        {
-          "name": "matrixExpanding"
-        },
-        {
-          "name": "matrixFreeHead"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "primitive.IntFloat",
-      "fields": [
-        {
-          "name": "arrayExpanding"
-        },
-        {
-          "name": "arrayFreeHead"
-        },
-        {
-          "name": "matrixExpanding"
-        },
-        {
-          "name": "matrixFreeHead"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "primitive.Long",
-      "fields": [
-        {
-          "name": "arrayExpanding128"
-        },
-        {
-          "name": "arrayExpanding32"
-        },
-        {
-          "name": "arrayExpanding512"
-        },
-        {
-          "name": "arrayExpanding8"
-        },
-        {
-          "name": "arrayFreeHead128"
-        },
-        {
-          "name": "arrayFreeHead32"
-        },
-        {
-          "name": "arrayFreeHead512"
-        },
-        {
-          "name": "arrayFreeHead8"
-        },
-        {
-          "name": "matrixExpanding128"
-        },
-        {
-          "name": "matrixExpanding32"
-        },
-        {
-          "name": "matrixExpanding512"
-        },
-        {
-          "name": "matrixExpanding8"
-        },
-        {
-          "name": "matrixFreeHead128"
-        },
-        {
-          "name": "matrixFreeHead32"
-        },
-        {
-          "name": "matrixFreeHead512"
-        },
-        {
-          "name": "matrixFreeHead8"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "primitive.LongDouble",
-      "fields": [
-        {
-          "name": "arrayExpanding"
-        },
-        {
-          "name": "arrayFreeHead"
-        },
-        {
-          "name": "matrixExpanding"
-        },
-        {
-          "name": "matrixFreeHead"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "primitive.LongFloat",
-      "fields": [
-        {
-          "name": "arrayExpanding"
-        },
-        {
-          "name": "arrayFreeHead"
-        },
-        {
-          "name": "matrixExpanding"
-        },
-        {
-          "name": "matrixFreeHead"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "primitive.Short",
+      "type": "bit.Bit128",
       "fields": [
         {
           "name": "arrayExpanding128"
