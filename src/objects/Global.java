@@ -15,11 +15,13 @@ public class Global
     public static final int CLASS_ID = TypeRegister.ID_GLOBAL;
     public static final int TYPE_SINGLETON = TypeRegister.FORM_SINGLETON | TypeRegister.MOD_GLOBAL | CLASS_ID;
 
-    // [purpose]
-    // the purpose of the global variable is that the gloabel variable will be used to make
-    // a pointer that is dedicated for a single variable (whether it be a struct, a primitive,
-    // an array of objects, etc. it can act as just a pointer, it doesnt allocate a array for
-    // each thread. shall be allocate as global when allocated for games.
+    /*
+     [purpose]
+     the purpose of the global variable is that the gloabel variable will be used to make
+     a pointer that is dedicated for a single variable (whether it be a struct, a primitive,
+     an array of objects, etc. it can act as just a pointer, it doesnt allocate a array for
+     each thread. shall be allocate as global when allocated for games.
+    */
 
     /**
      * Allocates off-heap memory for a Global pointer object.
