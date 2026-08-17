@@ -7,10 +7,6 @@ import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.lang.invoke.VarHandle;
-
 @Draft
 @Intention("[definition]")
 public class Future
@@ -18,9 +14,6 @@ public class Future
     @Required
     public static final int CLASS_ID = TypeRegister.ID_FUTURE;
     public static final int TYPE_SINGLETON = TypeRegister.FORM_SINGLETON | TypeRegister.WRAP_FUTURE | CLASS_ID;
-
-    private static final VarHandle BYTE_VH = ValueLayout.JAVA_BYTE.varHandle();
-    private static final MemorySegment GLOBAL_MEMORY = MemorySegment.ofAddress(0).reinterpret(Long.MAX_VALUE);
 
     private static final long STRUCT_SIZE = 16L; // 8B struct: [0]=given (1B), [8]=value (8B)
 
@@ -66,7 +59,7 @@ public class Future
     public static boolean isGiven(long ptr)
     {
         if (ptr == 0L) return false;
-        return (byte) BYTE_VH.getVolatile(GLOBAL_MEMORY, struct(ptr)) != (byte) 0;
+        return ForeignMemory.getVolatileByte(struct(ptr)) != (byte) 0;
     }
 
     public static long get(long ptr)
