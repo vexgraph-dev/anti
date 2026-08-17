@@ -3,6 +3,7 @@ package objects;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
+import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
@@ -28,6 +29,8 @@ public class Reactive
         GET_INVOKER = linker.downcallHandle(FunctionDescriptor.of(ValueLayout.JAVA_LONG));
         SET_INVOKER = linker.downcallHandle(FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
     }
+
+    private static final long STRUCT_SIZE = 32L; // [0]=value, [8]=setValueEvent, [16]=getValueEvent, [24]=changedValueEvent
 
     // [definition]
     // the reactive object acts as a reactive object that makes scripting easy because it is just THAT reactive.
@@ -60,48 +63,54 @@ public class Reactive
      */
     public static long allocate(long initialValue)
     {
-        long block = ForeignMemory.allocateNative(40);
-        long userPtr = block + 8L;
+        long enginePtr = Bit64.allocateSingleton(TYPE_SINGLETON);
+        long struct = ForeignMemory.allocateNative(STRUCT_SIZE);
+        ForeignMemory.setLong(enginePtr, struct);
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
-        ForeignMemory.setInt(block + 4L, 1); // active flag
+        ForeignMemory.setLong(struct, initialValue); // value
+        ForeignMemory.setLong(struct + 8L, 0L); // setValueEvent
+        ForeignMemory.setLong(struct + 16L, 0L); // getValueEvent
+        ForeignMemory.setLong(struct + 24L, 0L); // changedValueEvent
 
-        ForeignMemory.setLong(userPtr, initialValue); // value
-        ForeignMemory.setLong(userPtr + 8L, 0L); // setValueEvent
-        ForeignMemory.setLong(userPtr + 16L, 0L); // getValueEvent
-        ForeignMemory.setLong(userPtr + 24L, 0L); // changedValueEvent
-
-        return userPtr;
+        return enginePtr;
     }
 
     public static void free(long ptr)
     {
         if (ptr == 0L) return;
-        ForeignMemory.freeNative(ptr - 8L);
+        long struct = ForeignMemory.getLong(ptr);
+        if (struct != 0L) ForeignMemory.freeNative(struct);
+        Bit64.free(ptr);
+    }
+
+    private static long struct(long ptr)
+    {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        return ForeignMemory.getLong(ptr);
     }
 
     public static void setValueEvent(long ptr, long eventCallbackAddr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.setLong(ptr + 8L, eventCallbackAddr);
+        ForeignMemory.setLong(struct(ptr) + 8L, eventCallbackAddr);
     }
 
     public static void getValueEvent(long ptr, long eventCallbackAddr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.setLong(ptr + 16L, eventCallbackAddr);
+        ForeignMemory.setLong(struct(ptr) + 16L, eventCallbackAddr);
     }
 
     public static void changedValueEvent(long ptr, long eventCallbackAddr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        ForeignMemory.setLong(ptr + 24L, eventCallbackAddr);
+        ForeignMemory.setLong(struct(ptr) + 24L, eventCallbackAddr);
     }
 
     public static long getValue(long ptr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        long getEv = ForeignMemory.getLong(ptr + 16L);
+        long getEv = ForeignMemory.getLong(struct(ptr) + 16L);
         if (getEv != 0L) {
             try {
                 GET_INVOKER.bindTo(MemorySegment.ofAddress(getEv)).invokeExact();
@@ -109,13 +118,13 @@ public class Reactive
                 throw new RuntimeException("Failed to invoke getValueEvent: " + t.getMessage(), t);
             }
         }
-        return ForeignMemory.getLong(ptr);
+        return ForeignMemory.getLong(struct(ptr));
     }
 
     public static void setValue(long ptr, long value)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        long setEv = ForeignMemory.getLong(ptr + 8L);
+        long setEv = ForeignMemory.getLong(struct(ptr) + 8L);
         if (setEv != 0L) {
             try {
                 SET_INVOKER.bindTo(MemorySegment.ofAddress(setEv)).invokeExact(value);
@@ -124,11 +133,11 @@ public class Reactive
             }
         }
 
-        long oldVal = ForeignMemory.getLong(ptr);
-        ForeignMemory.setLong(ptr, value);
+        long oldVal = ForeignMemory.getLong(struct(ptr));
+        ForeignMemory.setLong(struct(ptr), value);
 
         if (oldVal != value) {
-            long changedEv = ForeignMemory.getLong(ptr + 24L);
+            long changedEv = ForeignMemory.getLong(struct(ptr) + 24L);
             if (changedEv != 0L) {
                 try {
                     SET_INVOKER.bindTo(MemorySegment.ofAddress(changedEv)).invokeExact(value);
