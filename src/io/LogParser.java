@@ -94,8 +94,9 @@ public final class LogParser {
     public static String formatRecord(int kind, long ts, long baseTs, String name,
                                       long v0, long v1, long v2, long v3, long v4) {
         double ms = baseTs <= 0L ? 0.0 : (ts - baseTs) / 1_000_000.0;
-        return String.format("%12.3f ms  %-12s  %d  %d  %d  %d  %d",
-            ms, name, v0, v1, v2, v3, v4);
+        long rounded = Math.round(ms * 1000.0);
+        String msStr = (rounded / 1000) + "." + String.valueOf(1000 + Math.abs(rounded % 1000)).substring(1);
+        return msStr + " ms  " + name + "  " + v0 + "  " + v1 + "  " + v2 + "  " + v3 + "  " + v4;
     }
 
     private static int readInt(byte[] b, int off) {
