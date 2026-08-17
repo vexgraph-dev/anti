@@ -3,6 +3,7 @@ package objects;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
+import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
@@ -37,20 +38,15 @@ public class Global
      */
     public static long allocate(long initialValue)
     {
-        long block = ForeignMemory.allocateNative(16);
-        long userPtr = block + 8L;
+        long enginePtr = Bit64.allocateSingleton(TYPE_SINGLETON);
+        ForeignMemory.setLong(enginePtr, initialValue); // value
 
-        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
-        ForeignMemory.setInt(block + 4L, 1); // active flag
-
-        ForeignMemory.setLong(userPtr, initialValue); // value
-
-        return userPtr;
+        return enginePtr;
     }
 
     public static void free(long ptr)
     {
-        ForeignMemory.freeNative(ptr - 8L);
+        Bit64.free(ptr);
     }
 
     public static long get(long ptr)
