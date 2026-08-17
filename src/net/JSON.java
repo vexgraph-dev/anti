@@ -576,7 +576,12 @@ public final class JSON {
                 case '\t': sb.append("\\t");  break;
                 default:
                     if (c < 0x20) {
-                        sb.append(String.format("\\u%04x", (int) c));
+                        sb.append("\\u");
+                        int code = (int) c;
+                        sb.append(Character.forDigit((code >> 12) & 0xF, 16));
+                        sb.append(Character.forDigit((code >> 8) & 0xF, 16));
+                        sb.append(Character.forDigit((code >> 4) & 0xF, 16));
+                        sb.append(Character.forDigit(code & 0xF, 16));
                     } else {
                         sb.append(c);
                     }
