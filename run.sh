@@ -57,7 +57,7 @@ if [ "${ANTI_SKIP_GRAAL_CHECK:-0}" != "1" ]; then
     }
 fi
 
-CP="out/production/anti:lib/lwjgl-release-3.4.2-custom/*:lib/oshi/*"
+CP="out/production/anti:lib/lwjgl-release-3.4.2-custom/*"
 
 # 5. Build the whole project fresh before running.
 #    - Skip the native-image-only FFMRegistrationFeature (needs the GraalVM hosted SDK, not
