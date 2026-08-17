@@ -3,6 +3,7 @@ package objects;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
+import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 import thread.ThreadRegistry;
@@ -22,6 +23,8 @@ public class Local
     private static final VarHandle LONG_VH = ValueLayout.JAVA_LONG.varHandle();
     private static final MemorySegment GLOBAL_MEMORY = MemorySegment.ofAddress(0).reinterpret(Long.MAX_VALUE);
 
+    private static final long STRUCT_SIZE = 2048L; // 256 threads * 8 bytes = 2048 bytes payload
+
     // [purpose]
     // the purpose of the local variable is that the local variable will be used
     // to generate a bunch of singletons/pointers, regarding objects to act as a singleton
@@ -40,43 +43,49 @@ public class Local
      */
     public static long allocate()
     {
-        // 256 threads * 8 bytes = 2048 bytes payload
-        long block = ForeignMemory.allocateNative(8L + 2048L);
-        long userPtr = block + 8L;
-
-        ForeignMemory.setInt(block, TYPE_SINGLETON); // class type header
-        ForeignMemory.setInt(block + 4L, 256); // capacity (number of threads)
+        long enginePtr = Bit64.allocateSingleton(TYPE_SINGLETON);
+        long struct = ForeignMemory.allocateNative(STRUCT_SIZE);
+        ForeignMemory.setLong(enginePtr, struct);
 
         // Zero out the thread local slots
-        ForeignMemory.setMemory(userPtr, 2048L, (byte) 0); // thread-local variable value slots
+        ForeignMemory.setMemory(struct, STRUCT_SIZE, (byte) 0); // thread-local variable value slots
 
-        return userPtr;
+        return enginePtr;
     }
 
     public static void free(long ptr)
     {
-        Object.free(ptr);
+        if (ptr == 0L) return;
+        long struct = ForeignMemory.getLong(ptr);
+        if (struct != 0L) ForeignMemory.freeNative(struct);
+        Bit64.free(ptr);
+    }
+
+    private static long struct(long ptr)
+    {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        return ForeignMemory.getLong(ptr);
     }
 
     public static long get(long ptr)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         int tid = ThreadRegistry.getThreadIndex();
-        return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ptr + (tid * 8L));
+        return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, struct(ptr) + (tid * 8L));
     }
 
     public static void set(long ptr, long value)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         int tid = ThreadRegistry.getThreadIndex();
-        LONG_VH.setVolatile(GLOBAL_MEMORY, ptr + (tid * 8L), value);
+        LONG_VH.setVolatile(GLOBAL_MEMORY, struct(ptr) + (tid * 8L), value);
     }
 
     public static boolean compareAndSet(long ptr, long expected, long value)
     {
         if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
         int tid = ThreadRegistry.getThreadIndex();
-        return (boolean) LONG_VH.compareAndSet(GLOBAL_MEMORY, ptr + (tid * 8L), expected, value);
+        return (boolean) LONG_VH.compareAndSet(GLOBAL_MEMORY, struct(ptr) + (tid * 8L), expected, value);
     }
 
     @Intention("[purpose] line [n]")
