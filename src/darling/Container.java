@@ -4,13 +4,10 @@ import annotation.Draft;
 import annotation.Intention;
 import annotation.Required;
 import annotation.Volatile;
+import bit.Bit64;
 import lang.Vec4;
 import nio.ForeignMemory;
 import oop.TypeRegister;
-
-import java.lang.foreign.Arena;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 
 /**
  * Off-heap layout base for every darling UI node. Flat struct, zero-GC,
@@ -100,106 +97,23 @@ public final class Container {
     static final int OFF_BASE_H     = 52;  // float
 
     static final long USER_STRIDE = 56L; // bytes of user payload
-    static final long SLOT_SIZE   = 64L; // 8B header + 56B payload
+    private static final long STRUCT_SIZE = USER_STRIDE; // native struct payload, stored in the Bit64 slot
 
-    // --- Pool (lock-free free-list, ABA-tagged head, expansion flag) ---
-    private static final int DEFAULT_CAPACITY = 1024;
-
-    private static final VarHandle FREE_HEAD_VH;
-    private static final VarHandle EXPANDING_VH;
-
-    private static volatile long freeHead;     // top 16 = gen tag, bottom 48 = raw ptr
-    private static volatile int expanding = 0;
-
-    private static Arena poolArena;
-    private static volatile boolean active;
-
-    static {
-        try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            FREE_HEAD_VH = lookup.findStaticVarHandle(Container.class, "freeHead", long.class);
-            EXPANDING_VH = lookup.findStaticVarHandle(Container.class, "expanding", int.class);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-
-        poolArena = Arena.ofShared();
-        active = true;
-        expandPool();
-    }
-
-    private Container() {}
-
-    private static void checkActive() {
-        if (!active) throw new IllegalStateException("Container subsystem is not active!");
-    }
+    // =========================================================================
+    // ALLOCATION / RECYCLING — DELEGATED TO THE BIT-WIDTH POOL (bit.Bit64)
+    // =========================================================================
 
     public static void freeAll() {
-        if (active) {
-            active = false;
-            if (poolArena != null && poolArena.scope().isAlive()) {
-                poolArena.close();
-            }
-        }
+        // No-op: Bit64.freeAll() manages the shared pool arena.
     }
-
-    private static void expandPool() {
-        long totalBytes = DEFAULT_CAPACITY * SLOT_SIZE;
-        long baseAddress = poolArena.allocate(totalBytes, 8).address();
-
-        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
-            long currentBlock = baseAddress + (i * SLOT_SIZE);
-            long userPtr = currentBlock + 8L;
-
-            while (true) {
-                long oldTagged = freeHead;
-                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-                ForeignMemory.setUnsafe(userPtr, oldRawHead);
-
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
-
-                if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) break;
-            }
-        }
-    }
-
-    // =========================================================================
-    // ALLOCATION / RECYCLING
-    // =========================================================================
 
     /** Allocates a standalone Container (a bare group/div). Subclasses allocate their own slots. */
     public static long allocate() {
-        checkActive();
-
-        while (true) {
-            long oldTagged = freeHead;
-            long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-            if (rawHead == 0L) {
-                if (EXPANDING_VH.compareAndSet(0, 1)) {
-                    expandPool();
-                    EXPANDING_VH.setVolatile(0);
-                } else {
-                    Thread.onSpinWait();
-                }
-                continue;
-            }
-
-            long nextRawHead = ForeignMemory.getUnsafeLong(rawHead);
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
-
-            if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) {
-                long base = rawHead - 8L;
-                ForeignMemory.setUnsafe(base, TYPE_SINGLETON);
-                ForeignMemory.setUnsafe(base + 4L, 1);
-                ForeignMemory.setUnsafe(rawHead, 0);
-                initDefaults(rawHead);
-                return rawHead;
-            }
-        }
+        long enginePtr = Bit64.allocateSingleton(TYPE_SINGLETON);
+        long s = ForeignMemory.allocateNative(STRUCT_SIZE);
+        ForeignMemory.setLong(enginePtr, s);
+        initDefaults(enginePtr);
+        return enginePtr;
     }
 
     /** Initializes the shared layout prefix. Subclasses call this before their own fields. */
@@ -225,27 +139,19 @@ public final class Container {
     }
 
     public static void free(long ptr) {
-        checkActive();
         if (ptr == 0L) return;
 
         int type = type(ptr);
         if (type != TYPE_SINGLETON) throw new IllegalStateException("Double free or corrupt Container pointer: 0x" + java.lang.Long.toHexString(ptr).toUpperCase());
 
-        long base = ptr - 8L;
-        ForeignMemory.setUnsafe(base, 0);
-        ForeignMemory.setUnsafe(base + 4L, -1);
+        long s = ForeignMemory.getLong(ptr);
+        if (s != 0L) ForeignMemory.freeNative(s);
+        Bit64.free(ptr);
+    }
 
-        while (true) {
-            long oldTagged = freeHead;
-            long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-            ForeignMemory.setUnsafe(ptr, oldRawHead);
-
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (ptr & 0x0000FFFFFFFFFFFFL);
-
-            if (FREE_HEAD_VH.compareAndSet(oldTagged, newTagged)) return;
-        }
+    private static long struct(long ptr) {
+        if (ptr == 0L) throw new NullPointerException("Accessing NULL Container pointer!");
+        return ForeignMemory.getLong(ptr);
     }
 
     // =========================================================================
@@ -293,15 +199,15 @@ public final class Container {
     // POSITION & SIZE
     // =========================================================================
 
-    public static float getX(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_X); }
-    public static float getY(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_Y); }
-    public static float getWidth(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_W); }
-    public static float getHeight(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_H); }
+    public static float getX(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_X); }
+    public static float getY(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_Y); }
+    public static float getWidth(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_W); }
+    public static float getHeight(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_H); }
 
-    public static void setX(long ptr, float x) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_X, x); markDirty(ptr); invalidateBase(ptr); }
-    public static void setY(long ptr, float y) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_Y, y); markDirty(ptr); invalidateBase(ptr); }
-    public static void setWidth(long ptr, float width) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_W, width); markDirty(ptr); invalidateBase(ptr); }
-    public static void setHeight(long ptr, float height) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_H, height); markDirty(ptr); invalidateBase(ptr); }
+    public static void setX(long ptr, float x) { checkContainer(ptr); ForeignMemory.setFloat(struct(ptr) + OFF_X, x); markDirty(ptr); invalidateBase(ptr); }
+    public static void setY(long ptr, float y) { checkContainer(ptr); ForeignMemory.setFloat(struct(ptr) + OFF_Y, y); markDirty(ptr); invalidateBase(ptr); }
+    public static void setWidth(long ptr, float width) { checkContainer(ptr); ForeignMemory.setFloat(struct(ptr) + OFF_W, width); markDirty(ptr); invalidateBase(ptr); }
+    public static void setHeight(long ptr, float height) { checkContainer(ptr); ForeignMemory.setFloat(struct(ptr) + OFF_H, height); markDirty(ptr); invalidateBase(ptr); }
 
     public static void setPos(long ptr, float x, float y) { setX(ptr, x); setY(ptr, y); }
     public static void setLocation(long ptr, float x, float y) { setX(ptr, x); setY(ptr, y); }
@@ -311,11 +217,11 @@ public final class Container {
     // SCALE
     // =========================================================================
 
-    public static float getScaleWidth(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_SCALE_X); }
-    public static float getScaleHeight(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_SCALE_Y); }
+    public static float getScaleWidth(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_SCALE_X); }
+    public static float getScaleHeight(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_SCALE_Y); }
 
-    public static void setScaleWidth(long ptr, float scaleWidth) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_SCALE_X, scaleWidth); markDirty(ptr); invalidateBase(ptr); }
-    public static void setScaleHeight(long ptr, float scaleHeight) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_SCALE_Y, scaleHeight); markDirty(ptr); invalidateBase(ptr); }
+    public static void setScaleWidth(long ptr, float scaleWidth) { checkContainer(ptr); ForeignMemory.setFloat(struct(ptr) + OFF_SCALE_X, scaleWidth); markDirty(ptr); invalidateBase(ptr); }
+    public static void setScaleHeight(long ptr, float scaleHeight) { checkContainer(ptr); ForeignMemory.setFloat(struct(ptr) + OFF_SCALE_Y, scaleHeight); markDirty(ptr); invalidateBase(ptr); }
 
     /** Sets both scale factors, one dirty region. */
     public static void setScale(long ptr, float scaleWidth, float scaleHeight) { setScaleWidth(ptr, scaleWidth); setScaleHeight(ptr, scaleHeight); }
@@ -324,11 +230,11 @@ public final class Container {
     // RESIZE-DELTA REFERENCE (the parent size at which the element was last laid out)
     // =========================================================================
 
-    static float getBaseWidth(long ptr)  { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_BASE_W); }
-    static float getBaseHeight(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_BASE_H); }
+    static float getBaseWidth(long ptr)  { checkContainer(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_BASE_W); }
+    static float getBaseHeight(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_BASE_H); }
 
-    private static void setBaseWidth(long ptr, float baseWidth)  { ForeignMemory.setFloat(ptr + OFF_BASE_W, baseWidth); }
-    private static void setBaseHeight(long ptr, float baseHeight) { ForeignMemory.setFloat(ptr + OFF_BASE_H, baseHeight); }
+    private static void setBaseWidth(long ptr, float baseWidth)  { ForeignMemory.setFloat(struct(ptr) + OFF_BASE_W, baseWidth); }
+    private static void setBaseHeight(long ptr, float baseHeight) { ForeignMemory.setFloat(struct(ptr) + OFF_BASE_H, baseHeight); }
 
     /**
      * Forces the next resolveSized to re-capture the resize-delta reference at the
@@ -355,15 +261,15 @@ public final class Container {
      */
     public static int getParentAnchor(long ptr) {
         checkContainer(ptr);
-        return ForeignMemory.getInt(ptr + OFF_REF_ANCHOR) & 0xFF;
+        return ForeignMemory.getInt(struct(ptr) + OFF_REF_ANCHOR) & 0xFF;
     }
 
     public static void setParentAnchor(long ptr, int parentAnchor) {
         checkContainer(ptr);
         checkParentAnchor(parentAnchor);
-        int old = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
+        int old = ForeignMemory.getInt(struct(ptr) + OFF_REF_ANCHOR);
         int selfAnchor = (old >>> 8) & 0xFF;
-        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, (selfAnchor << 8) | (parentAnchor & 0xFF));
+        ForeignMemory.setInt(struct(ptr) + OFF_REF_ANCHOR, (selfAnchor << 8) | (parentAnchor & 0xFF));
         markDirty(ptr);
         invalidateBase(ptr);
     }
@@ -380,7 +286,7 @@ public final class Container {
      */
     public static int getSelfAnchor(long ptr) {
         checkContainer(ptr);
-        int raw = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
+        int raw = ForeignMemory.getInt(struct(ptr) + OFF_REF_ANCHOR);
         int selfAnchor = (raw >>> 8) & 0xFF;
         return (selfAnchor == 0) ? SELF_ANCHOR_TOP_LEFT : (selfAnchor - 1);
     }
@@ -388,9 +294,9 @@ public final class Container {
     public static void setSelfAnchor(long ptr, int selfAnchor) {
         checkContainer(ptr);
         checkSelfAnchor(selfAnchor);
-        int old = ForeignMemory.getInt(ptr + OFF_REF_ANCHOR);
+        int old = ForeignMemory.getInt(struct(ptr) + OFF_REF_ANCHOR);
         int parentAnchor = old & 0xFF;
-        ForeignMemory.setInt(ptr + OFF_REF_ANCHOR, ((selfAnchor + 1) << 8) | parentAnchor);
+        ForeignMemory.setInt(struct(ptr) + OFF_REF_ANCHOR, ((selfAnchor + 1) << 8) | parentAnchor);
         markDirty(ptr);
         invalidateBase(ptr);
     }
@@ -407,13 +313,13 @@ public final class Container {
      */
     public static int getPivotReference(long ptr) {
         checkContainer(ptr);
-        return ForeignMemory.getInt(ptr + OFF_PIVOT_REF);
+        return ForeignMemory.getInt(struct(ptr) + OFF_PIVOT_REF);
     }
 
     public static void setPivotReference(long ptr, int pivotReference) {
         checkContainer(ptr);
         checkPivotReference(pivotReference);
-        ForeignMemory.setInt(ptr + OFF_PIVOT_REF, pivotReference);
+        ForeignMemory.setInt(struct(ptr) + OFF_PIVOT_REF, pivotReference);
         markDirty(ptr);
         invalidateBase(ptr);
     }
@@ -447,12 +353,12 @@ public final class Container {
     // PERCENTAGE PLACEMENT
     // =========================================================================
 
-    public static float getPercentX(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_PERCENT_X); }
-    public static float getPercentY(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(ptr + OFF_PERCENT_Y); }
+    public static float getPercentX(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_PERCENT_X); }
+    public static float getPercentY(long ptr) { checkContainer(ptr); return ForeignMemory.getFloat(struct(ptr) + OFF_PERCENT_Y); }
 
     /** Percent of parent width/height for placement. < 0 (PERCENT_UNSET) disables and falls back to anchor. */
-    public static void setPercentX(long ptr, float pct) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_PERCENT_X, pct); markDirty(ptr); }
-    public static void setPercentY(long ptr, float pct) { checkContainer(ptr); ForeignMemory.setFloat(ptr + OFF_PERCENT_Y, pct); markDirty(ptr); }
+    public static void setPercentX(long ptr, float pct) { checkContainer(ptr); ForeignMemory.setFloat(struct(ptr) + OFF_PERCENT_X, pct); markDirty(ptr); }
+    public static void setPercentY(long ptr, float pct) { checkContainer(ptr); ForeignMemory.setFloat(struct(ptr) + OFF_PERCENT_Y, pct); markDirty(ptr); }
 
     public static boolean hasPercentX(long ptr) { return getPercentX(ptr) >= 0f; }
     public static boolean hasPercentY(long ptr) { return getPercentY(ptr) >= 0f; }
@@ -461,21 +367,21 @@ public final class Container {
     // Z-ORDER
     // =========================================================================
 
-    public static int getZ(long ptr) { checkContainer(ptr); return ForeignMemory.getInt(ptr + OFF_Z); }
-    public static void setZ(long ptr, int z) { checkContainer(ptr); ForeignMemory.setInt(ptr + OFF_Z, z); markDirty(ptr); }
+    public static int getZ(long ptr) { checkContainer(ptr); return ForeignMemory.getInt(struct(ptr) + OFF_Z); }
+    public static void setZ(long ptr, int z) { checkContainer(ptr); ForeignMemory.setInt(struct(ptr) + OFF_Z, z); markDirty(ptr); }
 
     // =========================================================================
     // VISIBILITY / ENABLED / DIRTY
     // =========================================================================
 
-    public static boolean isVisible(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(ptr + OFF_VISIBLE) != 0; }
-    public static boolean isEnabled(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(ptr + OFF_ENABLED) != 0; }
-    public static boolean isDirty(long ptr)    { return ForeignMemory.getByte(ptr + OFF_DIRTY) != 0; }
-    public static boolean isClipChildren(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(ptr + OFF_CLIPPING) != 0; }
+    public static boolean isVisible(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(struct(ptr) + OFF_VISIBLE) != 0; }
+    public static boolean isEnabled(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(struct(ptr) + OFF_ENABLED) != 0; }
+    public static boolean isDirty(long ptr)    { return ForeignMemory.getByte(struct(ptr) + OFF_DIRTY) != 0; }
+    public static boolean isClipChildren(long ptr) { checkContainer(ptr); return ForeignMemory.getByte(struct(ptr) + OFF_CLIPPING) != 0; }
 
-    public static void setVisible(long ptr, boolean visible) { checkContainer(ptr); ForeignMemory.setByte(ptr + OFF_VISIBLE, (byte) (visible ? 1 : 0)); markDirty(ptr); }
-    public static void setEnabled(long ptr, boolean enabled) { checkContainer(ptr); ForeignMemory.setByte(ptr + OFF_ENABLED, (byte) (enabled ? 1 : 0)); markDirty(ptr); }
-    public static void setClipChildren(long ptr, boolean clip) { checkContainer(ptr); ForeignMemory.setByte(ptr + OFF_CLIPPING, (byte) (clip ? 1 : 0)); markDirty(ptr); }
+    public static void setVisible(long ptr, boolean visible) { checkContainer(ptr); ForeignMemory.setByte(struct(ptr) + OFF_VISIBLE, (byte) (visible ? 1 : 0)); markDirty(ptr); }
+    public static void setEnabled(long ptr, boolean enabled) { checkContainer(ptr); ForeignMemory.setByte(struct(ptr) + OFF_ENABLED, (byte) (enabled ? 1 : 0)); markDirty(ptr); }
+    public static void setClipChildren(long ptr, boolean clip) { checkContainer(ptr); ForeignMemory.setByte(struct(ptr) + OFF_CLIPPING, (byte) (clip ? 1 : 0)); markDirty(ptr); }
 
     /**
      * Marks the node dirty. This is an INTERNAL side-effect: every layout
@@ -486,12 +392,12 @@ public final class Container {
     @Volatile
     public static void markDirty(long ptr) {
         checkContainer(ptr);
-        ForeignMemory.setVolatileByte(ptr + OFF_DIRTY, (byte) 1);
+        ForeignMemory.setVolatileByte(struct(ptr) + OFF_DIRTY, (byte) 1);
     }
 
     public static void clearDirty(long ptr) {
         checkContainer(ptr);
-        ForeignMemory.setVolatileByte(ptr + OFF_DIRTY, (byte) 0);
+        ForeignMemory.setVolatileByte(struct(ptr) + OFF_DIRTY, (byte) 0);
     }
 
     // =========================================================================
