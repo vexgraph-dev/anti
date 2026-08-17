@@ -24,7 +24,10 @@ import primitive.string;
  * pointer-based surface: open/read/write/seek/size/flush/close/exists/delete.
  */
 @Draft
-@Intention("Off-heap file handle replicating the java.io.File / java.nio surface: a long pointer to a [name|handle|size|position|mode] struct whose I/O crosses the ForeignMemory bridge (zero heap on the data path).")
+@Intention("Off-heap file handle replicating the java.io.File " +
+        "/ java.nio surface: a long pointer to a [name|handle|size|position|mode] " +
+        "struct whose I/O crosses the ForeignMemory bridge " +
+        "(zero heap on the data path).")
 public final class File {
 
     @Required
