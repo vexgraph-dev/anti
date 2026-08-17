@@ -177,7 +177,7 @@ public final class AOTCompiler {
                 "--enable-preview",
                 "--enable-native-access=ALL-UNNAMED",
                 "-H:+ForeignAPISupport",
-                "-cp", "out:lib/lwjgl-release-3.4.2-custom/*:lib/oshi/*",
+                "-cp", "out:lib/lwjgl-release-3.4.2-custom/*",
                 mainClass,
                 "-o", "out/" + binaryName
             );
