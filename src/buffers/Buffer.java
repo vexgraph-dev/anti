@@ -4,13 +4,10 @@ import annotation.Draft;
 import annotation.Required;
 import annotation.Unsafe;
 import annotation.Volatile;
+import bit.Bit8;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 import oop.Inheritance;
-
-import java.lang.foreign.Arena;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 
 @Draft
 public final class Buffer {
@@ -18,168 +15,41 @@ public final class Buffer {
     @Required
     public static final int CLASS_ID = TypeRegister.ID_BUFFER;
 
-    private static final int DEFAULT_CAPACITY = 1024;
-    private static final int BUCKET_8 = 8;
-    private static final int BUCKET_32 = 32;
-    private static final int BUCKET_128 = 128;
-    private static final int BUCKET_512 = 512;
+    private static final long HEADER_SIZE = 24L; // padding(4) + width(4) + height(4) + channels(4) + type(4) + length(4)
 
-    private static final VarHandle ARRAY_FREE_HEAD_8_VH;
-    private static final VarHandle ARRAY_FREE_HEAD_32_VH;
-    private static final VarHandle ARRAY_FREE_HEAD_128_VH;
-    private static final VarHandle ARRAY_FREE_HEAD_512_VH;
-
-    private static final VarHandle ARRAY_EXPANDING_8_VH;
-    private static final VarHandle ARRAY_EXPANDING_32_VH;
-    private static final VarHandle ARRAY_EXPANDING_128_VH;
-    private static final VarHandle ARRAY_EXPANDING_512_VH;
-
-    private static volatile int arrayExpanding8 = 0;
-    private static volatile int arrayExpanding32 = 0;
-    private static volatile int arrayExpanding128 = 0;
-    private static volatile int arrayExpanding512 = 0;
-
-    private static Arena poolArena;
-    private static volatile boolean active;
-
-    private static volatile long arrayFreeHead8;
-    private static volatile long arrayFreeHead32;
-    private static volatile long arrayFreeHead128;
-    private static volatile long arrayFreeHead512;
-
-    static {
-        try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            ARRAY_FREE_HEAD_8_VH = lookup.findStaticVarHandle(Buffer.class, "arrayFreeHead8", long.class);
-            ARRAY_FREE_HEAD_32_VH = lookup.findStaticVarHandle(Buffer.class, "arrayFreeHead32", long.class);
-            ARRAY_FREE_HEAD_128_VH = lookup.findStaticVarHandle(Buffer.class, "arrayFreeHead128", long.class);
-            ARRAY_FREE_HEAD_512_VH = lookup.findStaticVarHandle(Buffer.class, "arrayFreeHead512", long.class);
-
-            ARRAY_EXPANDING_8_VH = lookup.findStaticVarHandle(Buffer.class, "arrayExpanding8", int.class);
-            ARRAY_EXPANDING_32_VH = lookup.findStaticVarHandle(Buffer.class, "arrayExpanding32", int.class);
-            ARRAY_EXPANDING_128_VH = lookup.findStaticVarHandle(Buffer.class, "arrayExpanding128", int.class);
-            ARRAY_EXPANDING_512_VH = lookup.findStaticVarHandle(Buffer.class, "arrayExpanding512", int.class);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-
-        poolArena = Arena.ofShared();
-        active = true;
-
-        expandArrayPool(BUCKET_8, ARRAY_FREE_HEAD_8_VH);
-        expandArrayPool(BUCKET_32, ARRAY_FREE_HEAD_32_VH);
-        expandArrayPool(BUCKET_128, ARRAY_FREE_HEAD_128_VH);
-        expandArrayPool(BUCKET_512, ARRAY_FREE_HEAD_512_VH);
-    }
-
-    private static void checkActive() {
-        if (!active)
-            throw new IllegalStateException("Buffer subsystem is not active!");
-    }
+    private Buffer() {}
 
     public static void freeAll() {
-        if (active) {
-            active = false;
-            if (poolArena != null && poolArena.scope().isAlive())
-                poolArena.close();
-        }
+        // Bit8.freeAll() manages the shared array slot arenas.
     }
 
     public static boolean isBufferClass(int classId) {
         return classId >= 0x000050 && classId <= 0x000063;
     }
 
-    private static void expandArrayPool(int bucketSize, VarHandle freeHeadVH) {
-        long slotSize = 24L + (bucketSize * 8L);
-        long totalBytes = DEFAULT_CAPACITY * slotSize;
-        long baseAddress = poolArena.allocate(totalBytes, 8).address();
-
-        for (int i = 0; i < DEFAULT_CAPACITY; i++) {
-            long currentBlock = baseAddress + (i * slotSize);
-            long userPtr = currentBlock + 24L;
-            while (true) {
-                long oldTagged = (long) freeHeadVH.getVolatile();
-                long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-                ForeignMemory.setLong(userPtr, oldRawHead);
-                long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-                long newTagged = (nextGen << 48) | (userPtr & 0x0000FFFFFFFFFFFFL);
-                if (freeHeadVH.compareAndSet(oldTagged, newTagged))
-                    break;
-            }
-        }
-    }
-
+    /**
+     * Allocates a buffer of {@code width * height * channels} long elements from the
+     * shared bit.Bit8 array pool. The returned pointer carries a 24-byte metadata
+     * header (width/height/channels/type/length) immediately below the data; the
+     * bit.Bit8 block header sits 24 bytes further down and is owned by the pool.
+     */
     public static long allocate(int classId, int width, int height, int channels) {
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
             throw new IllegalArgumentException("Class ID 0x" + Integer.toHexString(classId) + " is not a subclass of Buffer");
-        checkActive();
 
         int length = width * height * channels;
-        VarHandle headVH;
-        VarHandle expandingVH;
-        int bucketSize;
-
-        if (length <= BUCKET_8) {
-            headVH = ARRAY_FREE_HEAD_8_VH;
-            expandingVH = ARRAY_EXPANDING_8_VH;
-            bucketSize = BUCKET_8;
-        } else if (length <= BUCKET_32) {
-            headVH = ARRAY_FREE_HEAD_32_VH;
-            expandingVH = ARRAY_EXPANDING_32_VH;
-            bucketSize = BUCKET_32;
-        } else if (length <= BUCKET_128) {
-            headVH = ARRAY_FREE_HEAD_128_VH;
-            expandingVH = ARRAY_EXPANDING_128_VH;
-            bucketSize = BUCKET_128;
-        } else if (length <= BUCKET_512) {
-            headVH = ARRAY_FREE_HEAD_512_VH;
-            expandingVH = ARRAY_EXPANDING_512_VH;
-            bucketSize = BUCKET_512;
-        } else {
-            long totalBytes = 24L + (length * 8L);
-            long base = ForeignMemory.allocateNative(totalBytes);
-            long userPtr = base + 24L;
-            ForeignMemory.setInt(userPtr - 20L, width);
-            ForeignMemory.setInt(userPtr - 16L, height);
-            ForeignMemory.setInt(userPtr - 12L, channels);
-            int type = TypeRegister.FORM_ARRAY | classId;
-            ForeignMemory.setInt(userPtr - 8L, type);
-            ForeignMemory.setInt(userPtr - 4L, length);
-            return userPtr;
-        }
-
-        while (true) {
-            long oldTagged = (long) headVH.getVolatile();
-            long rawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-
-            if (rawHead == 0L) {
-                int exp = (int) expandingVH.getVolatile();
-                if (exp == 0 && expandingVH.compareAndSet(0, 1)) {
-                    expandArrayPool(bucketSize, headVH);
-                    expandingVH.setVolatile(0);
-                } else
-                    Thread.onSpinWait();
-                continue;
-            }
-
-            long nextRawHead = ForeignMemory.getLong(rawHead);
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (nextRawHead & 0x0000FFFFFFFFFFFFL);
-
-            if (headVH.compareAndSet(oldTagged, newTagged)) {
-                ForeignMemory.setInt(rawHead - 20L, width);
-                ForeignMemory.setInt(rawHead - 16L, height);
-                ForeignMemory.setInt(rawHead - 12L, channels);
-                int type = TypeRegister.FORM_ARRAY | classId;
-                ForeignMemory.setInt(rawHead - 8L, type);
-                ForeignMemory.setInt(rawHead - 4L, length);
-                return rawHead;
-            }
-        }
+        int type = TypeRegister.FORM_ARRAY | classId;
+        long base = Bit8.allocateArray(type, (int) (HEADER_SIZE + (length * 8L)));
+        long pointer = base + HEADER_SIZE;
+        ForeignMemory.setInt(pointer - 20L, width);
+        ForeignMemory.setInt(pointer - 16L, height);
+        ForeignMemory.setInt(pointer - 12L, channels);
+        ForeignMemory.setInt(pointer - 8L, type);
+        ForeignMemory.setInt(pointer - 4L, length);
+        return pointer;
     }
 
     public static long expand(long oldPointer, int newWidth, int newHeight) {
-        checkActive();
         if (oldPointer == 0L)
             throw new NullPointerException("Expanding NULL old pointer!");
         int type = type(oldPointer);
@@ -196,7 +66,6 @@ public final class Buffer {
     }
 
     public static void free(long pointer) {
-        checkActive();
         if (pointer == 0L)
             return;
 
@@ -205,40 +74,7 @@ public final class Buffer {
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
             throw new IllegalStateException("Not a buffer class or corrupt pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
 
-        int length = length(pointer);
-        long base = pointer - 24L;
-
-        ForeignMemory.setInt(base, 0);
-        ForeignMemory.setInt(base + 4L, 0);
-        ForeignMemory.setInt(base + 8L, 0);
-        ForeignMemory.setInt(base + 12L, 0);
-        ForeignMemory.setInt(base + 16L, 0);
-        ForeignMemory.setInt(base + 20L, -1);
-
-        if (length > BUCKET_512) {
-            ForeignMemory.freeNative(base);
-            return;
-        }
-
-        VarHandle headVH;
-        if (length <= BUCKET_8)
-            headVH = ARRAY_FREE_HEAD_8_VH;
-        else if (length <= BUCKET_32)
-            headVH = ARRAY_FREE_HEAD_32_VH;
-        else if (length <= BUCKET_128)
-            headVH = ARRAY_FREE_HEAD_128_VH;
-        else
-            headVH = ARRAY_FREE_HEAD_512_VH;
-
-        while (true) {
-            long oldTagged = (long) headVH.getVolatile();
-            long oldRawHead = oldTagged & 0x0000FFFFFFFFFFFFL;
-            ForeignMemory.setLong(pointer, oldRawHead);
-            long nextGen = ((oldTagged >>> 48) + 1L) & 0xFFFFL;
-            long newTagged = (nextGen << 48) | (pointer & 0x0000FFFFFFFFFFFFL);
-            if (headVH.compareAndSet(oldTagged, newTagged))
-                return;
-        }
+        Bit8.free(pointer - HEADER_SIZE);
     }
 
     public static long get(long pointer) {
