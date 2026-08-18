@@ -8,6 +8,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 import primitive.string;
 
+import nio.StringLookup;
 @Draft
 @Intention("Data-Oriented Design (DOD) off-heap network request poller layout manager over contiguous native strides")
 public final class PollRequest {
@@ -148,7 +149,7 @@ public final class PollRequest {
             authHeaderPtr = TransportProtocol.createBasicAuth(userPtr, passPtr);
         }
 
-        String methodStr = (method == METHOD_POST) ? "POST" : (method == METHOD_PUT) ? "PUT" : (method == METHOD_DELETE) ? "DELETE" : "GET";
+        String methodStr = (method == METHOD_POST) ? StringLookup.getJavaString(56) : (method == METHOD_PUT) ? StringLookup.getJavaString(57) : (method == METHOD_DELETE) ? StringLookup.getJavaString(58) : StringLookup.getJavaString(59);
         String uriStr = string.get(uriPtr);
         String authHeaderStr = authHeaderPtr != 0L ? string.get(authHeaderPtr) : null;
         String payloadStr = payloadPtr != 0L ? string.get(payloadPtr) : null;

@@ -7,6 +7,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import nio.StringLookup;
 /**
  * Method directory for the scripting system.
  *
@@ -67,36 +68,36 @@ public final class Bindings {
     static {
         TABLE = new MethodHandle[METHOD_COUNT];
         NAMES = new String[METHOD_COUNT];
-        register(SLOT_MATH_ADD,     BindingsMath.class, "add",          "math.add");
-        register(SLOT_MATH_SUB,     BindingsMath.class, "sub",          "math.sub");
-        register(SLOT_MATH_MUL,     BindingsMath.class, "mul",          "math.mul");
-        register(SLOT_MATH_DIV,     BindingsMath.class, "div",          "math.div");
-        register(SLOT_MATH_MAX,     BindingsMath.class, "max",          "math.max");
-        register(SLOT_MATH_MIN,     BindingsMath.class, "min",          "math.min");
-        register(SLOT_MATH_ABS,     BindingsMath.class, "abs",          "math.abs");
-        register(SLOT_VEC2_LENGTH,  BindingsMath.class, "vec2Length",   "vec2.length");
-        register(SLOT_VEC4_LENGTH,  BindingsMath.class, "vec4Length",   "vec4.length");
-        register(SLOT_INT_GET,      BindingsMath.class, "intGet",       "int.get");
-        register(SLOT_INT_SET,      BindingsMath.class, "intSet",       "int.set");
-        register(SLOT_FILE_EXISTS,  BindingsIO.class,   "fileExists",   "file.exists");
-        register(SLOT_FILE_OPEN,    BindingsIO.class,   "fileOpen",     "file.open");
-        register(SLOT_FILE_CLOSE,   BindingsIO.class,   "fileClose",    "file.close");
-        register(SLOT_FILE_WRITE,   BindingsIO.class,   "fileWrite",    "file.write");
-        register(SLOT_STRING_ALLOC, BindingsIO.class,   "stringAllocate", "string.allocate");
-        register(SLOT_STRING_FREE,  BindingsIO.class,   "stringFree",   "string.free");
-        register(SLOT_STRING_LEN,   BindingsIO.class,   "stringLength", "string.length");
+        register(SLOT_MATH_ADD,     BindingsMath.class, StringLookup.getJavaString(1031),          StringLookup.getJavaString(1032));
+        register(SLOT_MATH_SUB,     BindingsMath.class, StringLookup.getJavaString(1033),          StringLookup.getJavaString(1034));
+        register(SLOT_MATH_MUL,     BindingsMath.class, StringLookup.getJavaString(1035),          StringLookup.getJavaString(1036));
+        register(SLOT_MATH_DIV,     BindingsMath.class, StringLookup.getJavaString(1037),          StringLookup.getJavaString(1038));
+        register(SLOT_MATH_MAX,     BindingsMath.class, StringLookup.getJavaString(1039),          StringLookup.getJavaString(1040));
+        register(SLOT_MATH_MIN,     BindingsMath.class, StringLookup.getJavaString(1041),          StringLookup.getJavaString(1042));
+        register(SLOT_MATH_ABS,     BindingsMath.class, StringLookup.getJavaString(1043),          StringLookup.getJavaString(1044));
+        register(SLOT_VEC2_LENGTH,  BindingsMath.class, StringLookup.getJavaString(1045),   StringLookup.getJavaString(1046));
+        register(SLOT_VEC4_LENGTH,  BindingsMath.class, StringLookup.getJavaString(1047),   StringLookup.getJavaString(1048));
+        register(SLOT_INT_GET,      BindingsMath.class, StringLookup.getJavaString(1049),       StringLookup.getJavaString(1050));
+        register(SLOT_INT_SET,      BindingsMath.class, StringLookup.getJavaString(1051),       StringLookup.getJavaString(1052));
+        register(SLOT_FILE_EXISTS,  BindingsIO.class,   StringLookup.getJavaString(1053),   StringLookup.getJavaString(1054));
+        register(SLOT_FILE_OPEN,    BindingsIO.class,   StringLookup.getJavaString(1055),     StringLookup.getJavaString(1056));
+        register(SLOT_FILE_CLOSE,   BindingsIO.class,   StringLookup.getJavaString(1057),    StringLookup.getJavaString(1058));
+        register(SLOT_FILE_WRITE,   BindingsIO.class,   StringLookup.getJavaString(1059),    StringLookup.getJavaString(1060));
+        register(SLOT_STRING_ALLOC, BindingsIO.class,   StringLookup.getJavaString(1061), StringLookup.getJavaString(1062));
+        register(SLOT_STRING_FREE,  BindingsIO.class,   StringLookup.getJavaString(1063),   StringLookup.getJavaString(1064));
+        register(SLOT_STRING_LEN,   BindingsIO.class,   StringLookup.getJavaString(1065), StringLookup.getJavaString(1066));
     }
 
     private static void register(int slot, Class<?> owner, String method, String name) {
         if (slot < 0 || slot >= METHOD_COUNT) {
-            throw new ExceptionInInitializerError("Slot " + slot + " out of range [0, " + METHOD_COUNT + ")");
+            throw new ExceptionInInitializerError(StringLookup.getJavaString(1067) + slot + StringLookup.getJavaString(1068) + METHOD_COUNT + StringLookup.getJavaString(18));
         }
         try {
             TABLE[slot] = MethodHandles.lookup().findStatic(
                     owner, method, MethodType.methodType(long.class, long.class, long.class));
             NAMES[slot] = name;
         } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError("Failed to bind " + owner.getName() + "." + method + ": " + e);
+            throw new ExceptionInInitializerError(StringLookup.getJavaString(1069) + owner.getName() + StringLookup.getJavaString(311) + method + StringLookup.getJavaString(846) + e);
         }
     }
 
@@ -119,14 +120,14 @@ public final class Bindings {
         try {
             return (long) TABLE[slot].invokeExact(argsPtr, argCount);
         } catch (Throwable t) {
-            throw new RuntimeException("Bindings.invoke failed for slot " + slot + " (" + NAMES[slot] + "): " + t, t);
+            throw new RuntimeException(StringLookup.getJavaString(1070) + slot + StringLookup.getJavaString(370) + NAMES[slot] + StringLookup.getJavaString(1071) + t, t);
         }
     }
 
     /** Convenience: name -> invoke, resolving the slot each call (bind/script paths only). */
     public static long call(String name, long argsPtr, long argCount) {
         int slot = slot(name);
-        if (slot < 0) throw new IllegalArgumentException("Unknown binding: " + name);
+        if (slot < 0) throw new IllegalArgumentException(StringLookup.getJavaString(1072) + name);
         return invoke(slot, argsPtr, argCount);
     }
 }

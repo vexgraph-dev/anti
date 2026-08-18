@@ -6,6 +6,7 @@ import annotation.Unsafe;
 import lang.FastMath;
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * High-performance, zero-allocation Data-Oriented Design (DOD) Physics Engine.
  * Manages an off-heap contiguous block of Physics Bodies.
@@ -46,7 +47,7 @@ public final class PhysicsEngine
             ForeignMemory.setByte(bodiesBlockPtr + i, (byte)0);
         }
         
-        System.out.println("[Physics] Engine initialized with capacity: " + capacity);
+        System.out.println(StringLookup.getJavaString(1027) + capacity);
     }
 
     public static void setGravity(float x, float y, float z)
@@ -80,7 +81,7 @@ public final class PhysicsEngine
     ) {
         if (bodyCount >= maxBodies)
         {
-            throw new RuntimeException("[Physics ERROR] Exceeded maximum body capacity: " + maxBodies);
+            throw new RuntimeException(StringLookup.getJavaString(1028) + maxBodies);
         }
 
         long ptr = bodiesBlockPtr + bodyCount * PhysicsBody.BYTES;
@@ -389,7 +390,7 @@ public final class PhysicsEngine
             bodiesBlockPtr = 0L;
             bodyCount = 0;
             maxBodies = 0;
-            System.out.println("[Physics] Engine resources freed.");
+            System.out.println(StringLookup.getJavaString(1029));
         }
     }
 }
