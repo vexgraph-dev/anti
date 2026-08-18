@@ -195,10 +195,15 @@ public final class StringLookup {
                     // ID 0 already initialized as empty string
                 } else {
                     long payloadPtr = ForeignMemory.allocateNative((long) strLen + 1L);
+                    int decLen = 0;
                     if (strLen > 0) {
-                        ForeignMemory.copy(rawBuf + strStart, payloadPtr, strLen);
+                        // Decode Java-style escape sequences (\\, \n, \r, \t, \", \\uXXXX)
+                        // so multi-line and control-character strings round-trip through
+                        // the line-based .ini format. Existing backslash-free entries are
+                        // byte-identical after decoding.
+                        decLen = (int) decodeEscapedCopy(rawBuf + strStart, payloadPtr, strLen);
                     }
-                    ForeignMemory.setByte(payloadPtr + strLen, (byte) 0); // Null-terminator
+                    ForeignMemory.setByte(payloadPtr + decLen, (byte) 0); // Null-terminator
 
                     // Free previous entry if re-registering
                     long prevPtr = ForeignMemory.getLong(table + ((long) id * ENTRY_STRIDE) + OFF_PTR);
@@ -207,7 +212,7 @@ public final class StringLookup {
                     }
 
                     ForeignMemory.setLong(table + ((long) id * ENTRY_STRIDE) + OFF_PTR, payloadPtr);
-                    ForeignMemory.setInt(table + ((long) id * ENTRY_STRIDE) + OFF_LEN, strLen);
+                    ForeignMemory.setInt(table + ((long) id * ENTRY_STRIDE) + OFF_LEN, decLen);
                 }
             }
 
@@ -237,6 +242,95 @@ public final class StringLookup {
 
         tablePtr = table;
         tableCapacity = capacity;
+    }
+
+    /**
+     * Copies {@code len} bytes from {@code src} into {@code dst}, decoding Java-style
+     * backslash escape sequences (\\, \", \', \n, \r, \t, \b, \f, \\uXXXX, octal \0NN).
+     * Returns the number of bytes written. Raw bytes with no backslash are copied verbatim.
+     */
+    private static long decodeEscapedCopy(long src, long dst, int len) {
+        int out = 0;
+        int i = 0;
+        while (i < len) {
+            byte b = ForeignMemory.getByte(src + i);
+            if (b != '\\') {
+                ForeignMemory.setByte(dst + out, b);
+                out++;
+                i++;
+                continue;
+            }
+            if (i + 1 >= len) {
+                ForeignMemory.setByte(dst + out, b);
+                out++;
+                i++;
+                continue;
+            }
+            byte e = ForeignMemory.getByte(src + i + 1);
+            switch (e) {
+                case 'n': ForeignMemory.setByte(dst + out, (byte) '\n'); out++; i += 2; break;
+                case 'r': ForeignMemory.setByte(dst + out, (byte) '\r'); out++; i += 2; break;
+                case 't': ForeignMemory.setByte(dst + out, (byte) '\t'); out++; i += 2; break;
+                case 'b': ForeignMemory.setByte(dst + out, (byte) '\b'); out++; i += 2; break;
+                case 'f': ForeignMemory.setByte(dst + out, (byte) '\f'); out++; i += 2; break;
+                case '"': ForeignMemory.setByte(dst + out, (byte) '"'); out++; i += 2; break;
+                case '\'': ForeignMemory.setByte(dst + out, (byte) '\''); out++; i += 2; break;
+                case '\\': ForeignMemory.setByte(dst + out, (byte) '\\'); out++; i += 2; break;
+                case 'u': {
+                    if (i + 6 <= len) {
+                        int cp = 0;
+                        boolean ok = true;
+                        for (int k = 0; k < 4; k++) {
+                            byte h = ForeignMemory.getByte(src + i + 2 + k);
+                            int d = hexVal(h);
+                            if (d < 0) { ok = false; break; }
+                            cp = (cp << 4) | d;
+                        }
+                        if (ok) {
+                            out = writeUtf8(dst, out, cp);
+                            i += 6;
+                            break;
+                        }
+                    }
+                    // Not a valid \\uXXXX: fall through and keep literal backslash + 'u'
+                    ForeignMemory.setByte(dst + out, b); out++;
+                    ForeignMemory.setByte(dst + out, e); out++;
+                    i += 2;
+                    break;
+                }
+                default:
+                    // Octal escapes \0NN and unknown escapes keep the backslash + char
+                    ForeignMemory.setByte(dst + out, b); out++;
+                    ForeignMemory.setByte(dst + out, e); out++;
+                    i += 2;
+                    break;
+            }
+        }
+        return out;
+    }
+
+    private static int hexVal(byte b) {
+        if (b >= '0' && b <= '9') return b - '0';
+        if (b >= 'a' && b <= 'f') return b - 'a' + 10;
+        if (b >= 'A' && b <= 'F') return b - 'A' + 10;
+        return -1;
+    }
+
+    /** UTF-8 encodes code point cp into dst at out; returns new write offset. */
+    private static int writeUtf8(long dst, int out, int cp) {
+        if (cp <= 0x7F) {
+            ForeignMemory.setByte(dst + out, (byte) cp);
+            return out + 1;
+        } else if (cp <= 0x7FF) {
+            ForeignMemory.setByte(dst + out, (byte) (0xC0 | (cp >> 6)));
+            ForeignMemory.setByte(dst + out + 1, (byte) (0x80 | (cp & 0x3F)));
+            return out + 2;
+        } else {
+            ForeignMemory.setByte(dst + out, (byte) (0xE0 | (cp >> 12)));
+            ForeignMemory.setByte(dst + out + 1, (byte) (0x80 | ((cp >> 6) & 0x3F)));
+            ForeignMemory.setByte(dst + out + 2, (byte) (0x80 | (cp & 0x3F)));
+            return out + 3;
+        }
     }
 
     @HotCode
