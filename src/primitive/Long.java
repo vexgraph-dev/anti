@@ -220,10 +220,42 @@ public final class Long
         return ForeignMemory.compareAndSetLong(pointer, expected, value);
     }
 
+    public static boolean compareAndSet(long pointer, int index, long expected, long value) {
+        checkBounds(pointer, index);
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        return ForeignMemory.compareAndSetLong(pointer + (index * 8L), expected, value);
+    }
+
     public static long getAndSet(long pointer, long value) {
         if(pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
         if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
         return ForeignMemory.getAndSetLong(pointer, value);
+    }
+
+    public static long getAndSet(long pointer, int index, long value) {
+        checkBounds(pointer, index);
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        return ForeignMemory.getAndSetLong(pointer + (index * 8L), value);
+    }
+
+    public static long getAndAdd(long pointer, long delta) {
+        if(pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        return ForeignMemory.getAndAddLong(pointer, delta);
+    }
+
+    public static long getAndAdd(long pointer, int index, long delta) {
+        checkBounds(pointer, index);
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        return ForeignMemory.getAndAddLong(pointer + (index * 8L), delta);
+    }
+
+    public static long incrementAndGet(long pointer) {
+        return getAndAdd(pointer, 1L) + 1L;
+    }
+
+    public static long decrementAndGet(long pointer) {
+        return getAndAdd(pointer, -1L) - 1L;
     }
 
     // =========================================================================
@@ -264,5 +296,35 @@ public final class Long
     @Volatile
     public static void setUnsafeVolatilePointer(long matrixPointer, int index, long targetPointer) {
         ForeignMemory.setUnsafeVolatile(matrixPointer + (index * 8L), targetPointer);
+    }
+
+    @Unsafe
+    public static boolean compareAndSetUnsafe(long pointer, long expected, long value) {
+        return ForeignMemory.compareAndSetLong(pointer, expected, value);
+    }
+
+    @Unsafe
+    public static boolean compareAndSetUnsafe(long pointer, int index, long expected, long value) {
+        return ForeignMemory.compareAndSetLong(pointer + (index * 8L), expected, value);
+    }
+
+    @Unsafe
+    public static long getAndSetUnsafe(long pointer, long value) {
+        return ForeignMemory.getAndSetLong(pointer, value);
+    }
+
+    @Unsafe
+    public static long getAndSetUnsafe(long pointer, int index, long value) {
+        return ForeignMemory.getAndSetLong(pointer + (index * 8L), value);
+    }
+
+    @Unsafe
+    public static long getAndAddUnsafe(long pointer, long delta) {
+        return ForeignMemory.getAndAddLong(pointer, delta);
+    }
+
+    @Unsafe
+    public static long getAndAddUnsafe(long pointer, int index, long delta) {
+        return ForeignMemory.getAndAddLong(pointer + (index * 8L), delta);
     }
 }
