@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import thread.Atomic;
 
+import nio.StringLookup;
 /**
  * Cryptographically secure off-heap PRNG backed by OS entropy sources.
  * Pure zero-JDK-crypto implementation (seeded from /dev/urandom with Xoshiro256++).
@@ -27,13 +28,13 @@ public final class SecureRandom {
     public static final int CLASS_ID = TypeRegister.ID_SECURE_RANDOM;
     public static final int TYPE_SECURE_RANDOM = TypeRegister.FORM_SINGLETON | CLASS_ID;
 
-    private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
+    private static final char[] HEX_CHARS = StringLookup.getJavaString(130).toCharArray();
     private static final long SEED_SOURCE = Atomic.allocateLong(System.nanoTime() ^ 0x9E3779B97F4A7C15L);
 
     static {
         // Seed from OS entropy (/dev/urandom) if available
         try {
-            Path urandom = Path.of("/dev/urandom");
+            Path urandom = Path.of(StringLookup.getJavaString(131));
             if (Files.exists(urandom)) {
                 try (InputStream in = new FileInputStream(urandom.toFile())) {
                     byte[] seed = new byte[8];
@@ -93,7 +94,7 @@ public final class SecureRandom {
     }
 
     public static int nextInt(int bound) {
-        if (bound <= 0) throw new IllegalArgumentException("bound must be positive");
+        if (bound <= 0) throw new IllegalArgumentException(StringLookup.getJavaString(132));
         int r = (int) (nextLong() & 0x7FFFFFFFL);
         return r % bound;
     }

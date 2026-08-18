@@ -5,6 +5,7 @@ import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-heap AudioSource component manager conforming to the Anti Architecture.
  * The engine pointer's data slot stores a pointer to an off-heap struct holding
@@ -48,7 +49,7 @@ public final class AudioSource
         long base = pointer - 8L;
         int type = ForeignMemory.getInt(base);
         if(type != TYPE_SINGLETON) {
-            throw new IllegalStateException("Invalid AudioSource pointer: 0x" + Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(584) + Long.toHexString(pointer).toUpperCase());
         }
 
         long struct = ForeignMemory.getLong(pointer);

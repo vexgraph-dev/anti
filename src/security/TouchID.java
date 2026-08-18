@@ -11,7 +11,10 @@ import primitive.string;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
+import nio.StringLookup;
 /**
  * macOS LocalAuthentication TouchID / FaceID biometric verification downcall handle.
  */
@@ -28,8 +31,8 @@ public final class TouchID {
     private static final boolean isMac;
 
     static {
-        String os = System.getProperty("os.name", "").toLowerCase();
-        isMac = os.contains("mac") || os.contains("darwin");
+        String os = System.getProperty(StringLookup.getJavaString(143), StringLookup.getJavaString(0)).toLowerCase();
+        isMac = os.contains(StringLookup.getJavaString(144)) || os.contains(StringLookup.getJavaString(145));
     }
 
     private TouchID() {}
@@ -52,7 +55,7 @@ public final class TouchID {
      */
     public static boolean authenticate(String reasonPrompt) {
         if (!isMac) return false;
-        long reasonPtr = string.allocate(reasonPrompt != null ? reasonPrompt : "Authenticate Anti Security Subsystem");
+        long reasonPtr = string.allocate(reasonPrompt != null ? reasonPrompt : StringLookup.getJavaString(146));
         boolean res = authenticate(reasonPtr);
         string.free(reasonPtr);
         return res;
@@ -63,29 +66,18 @@ public final class TouchID {
 
         String reason = string.get(reasonPtr);
         if (reason == null || reason.isEmpty()) {
-            reason = "Authenticate with TouchID for Anti Security Subsystem";
+            reason = StringLookup.getJavaString(147);
         }
 
-        String swiftScript = """
-                import LocalAuthentication
-                import Foundation
-                let context = LAContext()
-                var error: NSError?
-                let reason = "%s"
-                if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) || context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
-                    let semaphore = DispatchSemaphore(value: 0)
-                    var authenticated = false
-                    context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, authError in
-                        authenticated = success
-                        semaphore.signal()
-                    }
-                    semaphore.wait()
-                    if authenticated { print("TOUCHID_SUCCESS"); exit(0); } else { print("TOUCHID_FAILED"); exit(1); }
-                } else { print("TOUCHID_UNAVAILABLE"); exit(2); }
-                """.formatted(reason.replace("\"", "\\\""));
+        String swiftScript;
+        try {
+            swiftScript = Files.readString(Path.of(StringLookup.getJavaString(148))).formatted(reason.replace(StringLookup.getJavaString(63), StringLookup.getJavaString(69)));
+        } catch (Exception e) {
+            throw new RuntimeException(StringLookup.getJavaString(1238), e);
+        }
 
         try {
-            ProcessBuilder pb = new ProcessBuilder("swift", "-");
+            ProcessBuilder pb = new ProcessBuilder(StringLookup.getJavaString(149), StringLookup.getJavaString(150));
             Process p = pb.start();
             p.getOutputStream().write(swiftScript.getBytes(StandardCharsets.UTF_8));
             p.getOutputStream().flush();
@@ -95,7 +87,7 @@ public final class TouchID {
             String line;
             boolean success = false;
             while ((line = reader.readLine()) != null) {
-                if (line.contains("TOUCHID_SUCCESS")) {
+                if (line.contains(StringLookup.getJavaString(151))) {
                     success = true;
                 }
             }
@@ -107,7 +99,7 @@ public final class TouchID {
             if (exitCode == 2) return false;
             
         } catch (Exception e) {
-            throw new RuntimeException("Swift is not installed or available on this Mac! The Anti Security Subsystem requires the Swift CLI to execute biometric authentication.", e);
+            throw new RuntimeException(StringLookup.getJavaString(152), e);
         }
         return false;
     }

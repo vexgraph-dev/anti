@@ -7,6 +7,7 @@ import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-heap scene root. Structural subclass of {@link Panel}: the layout core
  * lives in Container, background color + the parent/child tree live in Panel,
@@ -75,7 +76,7 @@ public final class Scene {
         if (ptr == 0L) return;
 
         int type = type(ptr);
-        if (type != TYPE_SINGLETON) throw new IllegalStateException("Double free or corrupt Scene pointer: 0x" + java.lang.Long.toHexString(ptr).toUpperCase());
+        if (type != TYPE_SINGLETON) throw new IllegalStateException(StringLookup.getJavaString(649) + java.lang.Long.toHexString(ptr).toUpperCase());
 
         long s = struct(ptr);
         ForeignMemory.freeNative(s);
@@ -83,7 +84,7 @@ public final class Scene {
     }
 
     private static long struct(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL Scene pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(650));
         return ForeignMemory.getLong(ptr);
     }
 
@@ -92,12 +93,12 @@ public final class Scene {
     // =========================================================================
 
     public static int type(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("type() on NULL Scene pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(651));
         return ForeignMemory.getUnsafeInt(ptr - 8L);
     }
 
     public static int length(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("length() on NULL Scene pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(652));
         return ForeignMemory.getUnsafeInt(ptr - 4L);
     }
 
@@ -106,9 +107,9 @@ public final class Scene {
     public static int classId(long ptr) { return TypeRegister.getClassId(type(ptr)); }
 
     private static void checkScene(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL Scene pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(650));
         if (!TypeRegister.isA(classId(ptr), CLASS_ID))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(ptr).toUpperCase() + " is Class ID " + classId(ptr) + ", expected Scene (or subclass)");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(ptr).toUpperCase() + StringLookup.getJavaString(29) + classId(ptr) + StringLookup.getJavaString(653));
     }
 
     // =========================================================================
@@ -125,7 +126,7 @@ public final class Scene {
 
     public static void setMode(long ptr, int mode) {
         checkScene(ptr);
-        if (mode < MODE_STRETCH || mode > MODE_PIXEL) throw new IllegalArgumentException("Invalid scene mode " + mode);
+        if (mode < MODE_STRETCH || mode > MODE_PIXEL) throw new IllegalArgumentException(StringLookup.getJavaString(654) + mode);
         ForeignMemory.setInt(struct(ptr) + OFF_MODE, mode);
         Panel.markDirty(ptr);
     }

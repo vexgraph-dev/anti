@@ -10,6 +10,7 @@ import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
 
+import nio.StringLookup;
 /**
  * Off-heap manager for the triple-buffered Audio Layer Swapchain.
  * Manages three distinct buses (Below-Active, Active, Above-Active) to support
@@ -110,7 +111,7 @@ public final class AudioBufferLayer
         long base = pointer - 8L;
         int type = ForeignMemory.getInt(base);
         if(type != TYPE_SINGLETON) {
-            throw new IllegalStateException("Invalid AudioBufferLayer pointer: 0x" + Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(585) + Long.toHexString(pointer).toUpperCase());
         }
 
         long struct = ForeignMemory.getLong(pointer);

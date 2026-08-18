@@ -15,6 +15,7 @@ import java.nio.IntBuffer;
 import static org.lwjgl.openal.AL10.*;
 import static org.lwjgl.openal.ALC10.*;
 
+import nio.StringLookup;
 /**
  * Centrally managed, off-heap OpenAL Audio System conforming to the Anti Philosophy.
  * Exposes zero-GC static downcalls to play, pause, stop, and configure pooled sound sources.
@@ -39,7 +40,7 @@ public final class AudioSystem
         deviceHandle = alcOpenDevice((ByteBuffer) null);
         if (deviceHandle == 0L)
         {
-            throw new RuntimeException("Failed to open default OpenAL device.");
+            throw new RuntimeException(StringLookup.getJavaString(587));
         }
 
         // 2. Create Context
@@ -47,7 +48,7 @@ public final class AudioSystem
         if (contextHandle == 0L)
         {
             alcCloseDevice(deviceHandle);
-            throw new RuntimeException("Failed to create OpenAL context.");
+            throw new RuntimeException(StringLookup.getJavaString(588));
         }
 
         // 3. Make Context Current
@@ -55,7 +56,7 @@ public final class AudioSystem
         {
             alcDestroyContext(contextHandle);
             alcCloseDevice(deviceHandle);
-            throw new RuntimeException("Failed to make OpenAL context current.");
+            throw new RuntimeException(StringLookup.getJavaString(589));
         }
 
         // 4. Initialize LWJGL AL Capabilities
@@ -63,7 +64,7 @@ public final class AudioSystem
         ALCapabilities alCapabilities = AL.createCapabilities(alcCapabilities);
 
         initialized = true;
-        System.out.println("[AudioSystem] OpenAL Subsystem initialized successfully.");
+        System.out.println(StringLookup.getJavaString(590));
     }
 
     /**
@@ -86,7 +87,7 @@ public final class AudioSystem
         }
 
         initialized = false;
-        System.out.println("[AudioSystem] OpenAL Subsystem terminated.");
+        System.out.println(StringLookup.getJavaString(591));
     }
 
     /**

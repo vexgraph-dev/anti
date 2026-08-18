@@ -10,6 +10,7 @@ import primitive.string;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import nio.StringLookup;
 /**
  * Off-heap cryptographic hashing and message authentication engine.
  * Pure zero-dependency off-heap implementation (0 JDK crypto provider overhead).
@@ -21,7 +22,7 @@ public final class HashVariable {
     @Required
     public static final int CLASS_ID = TypeRegister.ID_HASH_VARIABLE;
 
-    private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
+    private static final char[] HEX_CHARS = StringLookup.getJavaString(130).toCharArray();
 
     // SHA-256 K constants
     private static final int[] K256 = {

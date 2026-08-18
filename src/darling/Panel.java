@@ -8,6 +8,7 @@ import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-heap UI panel. Structural subclass of {@link Container}: the layout core
  * (position, size, scale, anchors, percents, z, visible/enabled/dirty) lives in
@@ -119,7 +120,7 @@ public final class Panel {
         if (ptr == 0L) return;
 
         int type = type(ptr);
-        if (type != TYPE_SINGLETON) throw new IllegalStateException("Double free or corrupt Panel pointer: 0x" + java.lang.Long.toHexString(ptr).toUpperCase());
+        if (type != TYPE_SINGLETON) throw new IllegalStateException(StringLookup.getJavaString(655) + java.lang.Long.toHexString(ptr).toUpperCase());
 
         // If this panel is a deep-copy VIEW, detach it from its source's
         // parent-ref set so the source's shared data can outlive the view.
@@ -156,7 +157,7 @@ public final class Panel {
     }
 
     private static long struct(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL Panel pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(656));
         return ForeignMemory.getLong(ptr);
     }
 
@@ -167,21 +168,21 @@ public final class Panel {
     public static int classId() { return CLASS_ID; }
 
     public static int type(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("type() on NULL Panel pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(657));
         return ForeignMemory.getUnsafeInt(ptr - 8L);
     }
 
     public static int length(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("length() on NULL Panel pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(658));
         return ForeignMemory.getUnsafeInt(ptr - 4L);
     }
 
     public static int classId(long ptr) { return TypeRegister.getClassId(type(ptr)); }
 
     private static void checkPanel(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL Panel pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(656));
         if (!TypeRegister.isA(classId(ptr), CLASS_ID))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(ptr).toUpperCase() + " is Class ID " + classId(ptr) + ", expected Panel (or subclass)");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(ptr).toUpperCase() + StringLookup.getJavaString(29) + classId(ptr) + StringLookup.getJavaString(659));
     }
 
     // =========================================================================
@@ -358,7 +359,7 @@ public final class Panel {
     public static long add(long parent, long node) {
         checkPanel(parent);
         checkPanel(node);
-        if (parent == node) throw new IllegalArgumentException("add: parent == node!");
+        if (parent == node) throw new IllegalArgumentException(StringLookup.getJavaString(660));
 
         long copy = allocate();
 
@@ -484,7 +485,7 @@ public final class Panel {
      */
     public static void addChild(long ptr, long childPtr) {
         checkPanel(ptr);
-        if (childPtr == 0L) throw new NullPointerException("addChild: child is NULL!");
+        if (childPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(661));
         checkPanel(childPtr);
 
         if (getParent(childPtr) != 0L) {
