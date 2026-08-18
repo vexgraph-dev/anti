@@ -13,6 +13,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
+import nio.StringLookup;
 @Draft
 @Intention("[definition]")
 public class Reactive
@@ -85,37 +86,37 @@ public class Reactive
 
     private static long struct(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getLong(ptr);
     }
 
     public static void setValueEvent(long ptr, long eventCallbackAddr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         ForeignMemory.setLong(struct(ptr) + 8L, eventCallbackAddr);
     }
 
     public static void getValueEvent(long ptr, long eventCallbackAddr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         ForeignMemory.setLong(struct(ptr) + 16L, eventCallbackAddr);
     }
 
     public static void changedValueEvent(long ptr, long eventCallbackAddr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         ForeignMemory.setLong(struct(ptr) + 24L, eventCallbackAddr);
     }
 
     public static long getValue(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         long getEv = ForeignMemory.getLong(struct(ptr) + 16L);
         if (getEv != 0L) {
             try {
                 GET_INVOKER.bindTo(MemorySegment.ofAddress(getEv)).invokeExact();
             } catch (Throwable t) {
-                throw new RuntimeException("Failed to invoke getValueEvent: " + t.getMessage(), t);
+                throw new RuntimeException(StringLookup.getJavaString(358) + t.getMessage(), t);
             }
         }
         return ForeignMemory.getLong(struct(ptr));
@@ -123,13 +124,13 @@ public class Reactive
 
     public static void setValue(long ptr, long value)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         long setEv = ForeignMemory.getLong(struct(ptr) + 8L);
         if (setEv != 0L) {
             try {
                 SET_INVOKER.bindTo(MemorySegment.ofAddress(setEv)).invokeExact(value);
             } catch (Throwable t) {
-                throw new RuntimeException("Failed to invoke setValueEvent: " + t.getMessage(), t);
+                throw new RuntimeException(StringLookup.getJavaString(359) + t.getMessage(), t);
             }
         }
 
@@ -142,7 +143,7 @@ public class Reactive
                 try {
                     SET_INVOKER.bindTo(MemorySegment.ofAddress(changedEv)).invokeExact(value);
                 } catch (Throwable t) {
-                    throw new RuntimeException("Failed to invoke changedValueEvent: " + t.getMessage(), t);
+                    throw new RuntimeException(StringLookup.getJavaString(360) + t.getMessage(), t);
                 }
             }
         }

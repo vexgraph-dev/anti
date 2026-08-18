@@ -7,6 +7,7 @@ import lang.Class;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 // [definition]
 // the whole thing, this is the struct where it considers an object of any type, but still an object.
 // id must be 0xAA000000 regardless (catch for all object and primitive)
@@ -75,7 +76,7 @@ public class Object
 
     public static long struct(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getLong(ptr);
     }
 }

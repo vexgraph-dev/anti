@@ -8,6 +8,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 import thread.ThreadRegistry;
 
+import nio.StringLookup;
 @Draft
 @Intention("[purpose]")
 public class Local
@@ -58,21 +59,21 @@ public class Local
 
     public static long get(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         int tid = ThreadRegistry.getThreadIndex();
         return ForeignMemory.getVolatileLong(struct(ptr) + (tid * 8L));
     }
 
     public static void set(long ptr, long value)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         int tid = ThreadRegistry.getThreadIndex();
         ForeignMemory.setVolatileLong(struct(ptr) + (tid * 8L), value);
     }
 
     public static boolean compareAndSet(long ptr, long expected, long value)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         int tid = ThreadRegistry.getThreadIndex();
         return ForeignMemory.compareAndSetLong(struct(ptr) + (tid * 8L), expected, value);
     }

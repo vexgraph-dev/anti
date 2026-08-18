@@ -6,6 +6,7 @@ import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 @Draft
 @Intention("[definition]")
 public class Probable
@@ -56,7 +57,7 @@ public class Probable
 
     public static long getObject(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getLong(ptr);
     }
 
@@ -67,25 +68,25 @@ public class Probable
 
     public static int getTotal(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getInt(ptr + 12L);
     }
 
     public static void setObject(long ptr, long objectPtr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         ForeignMemory.setLong(ptr, objectPtr);
     }
 
     public static void setWeight(long ptr, int weight)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         ForeignMemory.setInt(ptr + 8L, weight);
     }
 
     public static void setTotal(long ptr, int total)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         ForeignMemory.setInt(ptr + 12L, total);
     }
 

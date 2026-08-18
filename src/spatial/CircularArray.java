@@ -11,6 +11,7 @@ import struct.List;
 
 import java.lang.foreign.Arena;
 
+import nio.StringLookup;
 /**
  * Off-heap Circular Polar Grid Spatial Partitioning Array implementation.
  * Modified to be Integer Index based (chunk/view based).
@@ -38,11 +39,11 @@ public final class CircularArray {
     private CircularArray() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("CircularArray subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(1079));
     }
 
     private static void checkValid(long circularPtr) {
-        if (circularPtr == 0L) throw new NullPointerException("Accessing NULL off-heap CircularArray pointer!");
+        if (circularPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1080));
     }
 
     // free all subsystem resources
@@ -58,7 +59,7 @@ public final class CircularArray {
     // create a new off-heap index-based polar spatial grid
     public static long instant(int numRings, int numSlices) {
         checkActive();
-        if (numRings <= 0 || numSlices <= 0) throw new IllegalArgumentException("Rings and slices must be positive!");
+        if (numRings <= 0 || numSlices <= 0) throw new IllegalArgumentException(StringLookup.getJavaString(1081));
 
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
@@ -205,7 +206,7 @@ public final class CircularArray {
     public static synchronized void getAll(long circularPtr, long resultListPtr) {
         checkActive();
         checkValid(circularPtr);
-        if (resultListPtr == 0L) throw new NullPointerException("Result List pointer cannot be NULL!");
+        if (resultListPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1077));
 
         int rings = numRings(circularPtr);
         int slices = numSlices(circularPtr);
@@ -246,7 +247,7 @@ public final class CircularArray {
     public static synchronized void query(long circularPtr, int minRing, int maxRing, int minSlice, int maxSlice, long resultListPtr) {
         checkActive();
         checkValid(circularPtr);
-        if (resultListPtr == 0L) throw new NullPointerException("Result List pointer cannot be NULL!");
+        if (resultListPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1077));
 
         int rings = numRings(circularPtr);
         int slices = numSlices(circularPtr);
@@ -311,7 +312,7 @@ public final class CircularArray {
         long headerBlock = circularPtr - 8L;
         int type = ForeignMemory.getInt(headerBlock);
         if (type == 0 || (type & TypeRegister.MASK_FORM) != TypeRegister.FORM_ARRAY) {
-            throw new IllegalStateException("Double free or corrupt CircularArray pointer: 0x" + Long.toHexString(circularPtr).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(1082) + Long.toHexString(circularPtr).toUpperCase());
         }
 
         int rings = numRings(circularPtr);

@@ -12,6 +12,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 
+import nio.StringLookup;
 /**
  * Off-Heap Relational Variable Subsystem.
  * Draft implementation of a 32-character string symbol registry (always stored lowercase)
@@ -58,13 +59,13 @@ public final class Variable {
     private Variable() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("Variable subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(128));
     }
 
     private static void checkBounds(int varId) {
         checkActive();
         if (varId < 0 || varId >= activeCount)
-            throw new IndexOutOfBoundsException("Variable ID " + varId + " out of bounds for active count " + activeCount);
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(16) + varId + StringLookup.getJavaString(129) + activeCount);
     }
 
     // free all subsystem memory resources

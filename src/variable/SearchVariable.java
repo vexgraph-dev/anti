@@ -9,6 +9,7 @@ import search.Trie;
 
 import java.nio.charset.StandardCharsets;
 
+import nio.StringLookup;
 /**
  * Symbol Search and Autocomplete Index using an off-heap Trie structure.
  */
@@ -30,7 +31,7 @@ public final class SearchVariable {
     private SearchVariable() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("SearchVariable subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(126));
     }
 
     public static void freeAll() {
@@ -71,7 +72,7 @@ public final class SearchVariable {
     public static synchronized void insert(byte[] nameBytes, int variableId) {
         checkActive();
         if (!validateName(nameBytes)) {
-            throw new IllegalArgumentException("Invalid variable name. Only abcdefghijklmnopqrstuvwxyz1234567890_$ and length <= 32 allowed.");
+            throw new IllegalArgumentException(StringLookup.getJavaString(127));
         }
         Trie.insert(trieRoot, nameBytes, variableId);
     }

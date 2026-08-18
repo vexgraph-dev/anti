@@ -6,6 +6,7 @@ import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 @Draft
 @Intention("[definition]")
 public class ProbableObjects
@@ -86,11 +87,11 @@ public class ProbableObjects
 
     public static void add(long ptr, long objectPtr, int weight)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         int count = ForeignMemory.getInt(ptr);
         int cap = capacity(ptr);
         if (count >= cap) {
-            throw new IndexOutOfBoundsException("ProbableObjects pool full! Capacity: " + cap);
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(357) + cap);
         }
 
         long slotBase = ptr + 8L + (count * 16L);
