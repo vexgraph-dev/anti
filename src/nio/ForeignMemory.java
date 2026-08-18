@@ -553,16 +553,36 @@ public class ForeignMemory {
     }
 
 
-    public static short getAndSetShort(long address, short value)
-    {
+    public static short getAndSetShort(long address, short value) {
         if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        return (short) SHORT_VH.getAndSet(GLOBAL_MEMORY, address, value);
+        long alignedAddr = address & ~3L;
+        int shift = (int) (address & 3L) * 8;
+        int mask = 0xFFFF << shift;
+        int valueBits = (value & 0xFFFF) << shift;
+        while (true) {
+            int oldVal = getVolatileInt(alignedAddr);
+            short oldShort = (short) ((oldVal >>> shift) & 0xFFFF);
+            int newVal = (oldVal & ~mask) | valueBits;
+            if (compareAndSetInt(alignedAddr, oldVal, newVal)) {
+                return oldShort;
+            }
+        }
     }
 
-    public static byte getAndSetByte(long address, byte value)
-    {
+    public static byte getAndSetByte(long address, byte value) {
         if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        return (byte) BYTE_VH.getAndSet(GLOBAL_MEMORY, address, value);
+        long alignedAddr = address & ~3L;
+        int shift = (int) (address & 3L) * 8;
+        int mask = 0xFF << shift;
+        int valueBits = (value & 0xFF) << shift;
+        while (true) {
+            int oldVal = getVolatileInt(alignedAddr);
+            byte oldByte = (byte) ((oldVal >>> shift) & 0xFF);
+            int newVal = (oldVal & ~mask) | valueBits;
+            if (compareAndSetInt(alignedAddr, oldVal, newVal)) {
+                return oldByte;
+            }
+        }
     }
 
     public static boolean compareAndSetInt(long address, int expected, int value) {
