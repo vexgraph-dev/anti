@@ -9,6 +9,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 
 
+import nio.StringLookup;
 public final class Long
 {
     @Required
@@ -79,9 +80,9 @@ public final class Long
 
     private static void checkBounds(long pointer, int index)
     {
-        if(pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
+        if(pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(33));
         int len = length(pointer);
-        if(index < 0 || index >= len) throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+        if(index < 0 || index >= len) throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(35) + len + StringLookup.getJavaString(36) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(37) + Integer.toHexString(type(pointer)).toUpperCase() + StringLookup.getJavaString(18));
     }
 
     public static int classId() { return CLASS_ID; }
@@ -97,39 +98,39 @@ public final class Long
     // =========================================================================
 
     public static long get(long pointer) {
-        if(pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         return ForeignMemory.getLong(pointer);
     }
 
     public static long get(long pointer, int index) {
         checkBounds(pointer, index);
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         return ForeignMemory.getLong(pointer + (index * 8L));
     }
 
     public static long getPointer(long matrixPointer, int index) {
-        if(matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
-        if(!isPointer(matrixPointer)) throw new IllegalArgumentException("Expected Pointer Array (Matrix)");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
+        if(!isPointer(matrixPointer)) throw new IllegalArgumentException(StringLookup.getJavaString(261));
         checkBounds(matrixPointer, index);
         return ForeignMemory.getLong(matrixPointer + (index * 8L));
     }
 
     public static void set(long pointer, long value) {
-        if(pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         ForeignMemory.set(pointer, value);
     }
 
     public static void set(long pointer, int index, long value) {
         checkBounds(pointer, index);
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         ForeignMemory.set(pointer + (index * 8L), value);
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) {
-        if(matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
-        if(!isPointer(matrixPointer)) throw new IllegalArgumentException("Expected Pointer Array (Matrix)");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
+        if(!isPointer(matrixPointer)) throw new IllegalArgumentException(StringLookup.getJavaString(261));
         checkBounds(matrixPointer, index);
         ForeignMemory.set(matrixPointer + (index * 8L), targetPointer);
     }
@@ -174,79 +175,79 @@ public final class Long
 
     @Volatile
     public static long getVolatile(long pointer) {
-        if(pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         return ForeignMemory.getVolatileLong(pointer);
     }
 
     @Volatile
     public static long getVolatile(long pointer, int index) {
         checkBounds(pointer, index);
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         return ForeignMemory.getVolatileLong(pointer + (index * 8L));
     }
 
     @Volatile
     public static long getVolatilePointer(long matrixPointer, int index) {
-        if(matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
         checkBounds(matrixPointer, index);
         return ForeignMemory.getVolatileLong(matrixPointer + (index * 8L));
     }
 
     @Volatile
     public static void setVolatile(long pointer, long value) {
-        if(pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         ForeignMemory.setVolatile(pointer, value);
     }
 
     @Volatile
     public static void setVolatile(long pointer, int index, long value) {
         checkBounds(pointer, index);
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         ForeignMemory.setVolatile(pointer + (index * 8L), value);
     }
 
     @Volatile
     public static void setVolatilePointer(long matrixPointer, int index, long targetPointer) {
-        if(matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
         checkBounds(matrixPointer, index);
         ForeignMemory.setVolatile(matrixPointer + (index * 8L), targetPointer);
     }
 
     public static boolean compareAndSet(long pointer, long expected, long value) {
-        if(pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         return ForeignMemory.compareAndSetLong(pointer, expected, value);
     }
 
     public static boolean compareAndSet(long pointer, int index, long expected, long value) {
         checkBounds(pointer, index);
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         return ForeignMemory.compareAndSetLong(pointer + (index * 8L), expected, value);
     }
 
     public static long getAndSet(long pointer, long value) {
-        if(pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         return ForeignMemory.getAndSetLong(pointer, value);
     }
 
     public static long getAndSet(long pointer, int index, long value) {
         checkBounds(pointer, index);
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         return ForeignMemory.getAndSetLong(pointer + (index * 8L), value);
     }
 
     public static long getAndAdd(long pointer, long delta) {
-        if(pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         return ForeignMemory.getAndAddLong(pointer, delta);
     }
 
     public static long getAndAdd(long pointer, int index, long delta) {
         checkBounds(pointer, index);
-        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Long");
+        if(classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(273));
         return ForeignMemory.getAndAddLong(pointer + (index * 8L), delta);
     }
 

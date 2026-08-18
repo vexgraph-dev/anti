@@ -8,6 +8,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 import thread.ThreadRegistry;
 
+import nio.StringLookup;
 /**
  * Off-heap argument list for the bindings / scripting language pack.
  *
@@ -81,7 +82,7 @@ public final class Arguments {
 
     /** Allocates a fresh off-heap argument buffer with the given capacity. */
     public static long allocate(int capacity) {
-        if (capacity <= 0) throw new IllegalArgumentException("Argument capacity must be positive!");
+        if (capacity <= 0) throw new IllegalArgumentException(StringLookup.getJavaString(288));
         long bytes = 8L + DATA_OFFSET + (long) capacity * STRIDE;
         long block = ForeignMemory.allocateNative(bytes);
         long userPtr = block + 8L;
@@ -97,10 +98,10 @@ public final class Arguments {
     /** Frees an argument buffer allocated by {@link #allocate(int)}. */
     public static void free(long userPtr) {
         if (userPtr == 0L) return;
-        if (userPtr == CACHE_ARENA_BASE) throw new IllegalStateException("Cannot free the pooled thread args buffer!");
+        if (userPtr == CACHE_ARENA_BASE) throw new IllegalStateException(StringLookup.getJavaString(289));
         int type = ForeignMemory.getInt(userPtr - 8L);
         if (type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) {
-            throw new IllegalStateException("Double free or corrupt arguments pointer: 0x" + java.lang.Long.toHexString(userPtr).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(290) + java.lang.Long.toHexString(userPtr).toUpperCase());
         }
         ForeignMemory.setInt(userPtr - 8L, 0);
         ForeignMemory.setInt(userPtr - 4L, -1);
@@ -142,7 +143,7 @@ public final class Arguments {
 
     public static void setCount(long userPtr, int n) {
         if (n < 0 || n > capacity(userPtr)) {
-            throw new IndexOutOfBoundsException("Argument count " + n + " out of capacity " + capacity(userPtr));
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(291) + n + StringLookup.getJavaString(292) + capacity(userPtr));
         }
         ForeignMemory.setInt(userPtr + COUNT_OFFSET, n);
     }
@@ -156,10 +157,10 @@ public final class Arguments {
     }
 
     private static void checkBounds(long userPtr, int index) {
-        if (userPtr == 0L) throw new NullPointerException("Accessing NULL off-heap arguments pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(293));
         int cap = capacity(userPtr);
         if (index < 0 || index >= cap) {
-            throw new IndexOutOfBoundsException("Argument index " + index + " out of capacity " + cap);
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(294) + index + StringLookup.getJavaString(292) + cap);
         }
     }
 

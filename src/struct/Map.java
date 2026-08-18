@@ -11,6 +11,7 @@ import util.Hash;
 
 import java.lang.foreign.Arena;
 
+import nio.StringLookup;
 /**
  * Off-heap key-value hash map implementation.
  */
@@ -43,11 +44,11 @@ public final class Map {
     private Map() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("Map subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(391));
     }
 
     private static void checkValid(long mapPtr) {
-        if (mapPtr == 0L) throw new NullPointerException("Accessing NULL off-heap map pointer!");
+        if (mapPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(392));
     }
 
     // free all subsystem resources
@@ -345,7 +346,7 @@ public final class Map {
         long headerBlock = mapPtr - 8L;
         int type = ForeignMemory.getInt(headerBlock);
         if (type == 0 || !TypeRegister.isPointer(type)) {
-            throw new IllegalStateException("Double free or corrupt map pointer: 0x" + Long.toHexString(mapPtr).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(393) + Long.toHexString(mapPtr).toUpperCase());
         }
 
         long buffer = dataBuffer(mapPtr);

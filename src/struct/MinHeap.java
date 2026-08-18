@@ -3,6 +3,7 @@ package struct;
 import annotation.HotCode;
 import primitive.IntFloat;
 
+import nio.StringLookup;
 /**
  * Zero-GC Off-Heap Min-Heap implementation.
  * Wraps an IntFloat array pointer.
@@ -50,7 +51,7 @@ public final class MinHeap {
         
         int cap = capacity(ptr);
         if (sz > cap) {
-            throw new IllegalStateException("MinHeap is full! Capacity: " + cap);
+            throw new IllegalStateException(StringLookup.getJavaString(389) + cap);
         }
         
         IntFloat.setUnsafe(ptr, 0, sz, 0f); // update size
@@ -61,7 +62,7 @@ public final class MinHeap {
     @HotCode
     public static int popItem(long ptr) {
         int sz = size(ptr);
-        if (sz == 0) throw new IllegalStateException("MinHeap is empty!");
+        if (sz == 0) throw new IllegalStateException(StringLookup.getJavaString(390));
         
         // Root is always at index 1
         int result = IntFloat.unsafeGetIntPart(ptr, 1);

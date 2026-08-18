@@ -11,6 +11,7 @@ import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
 
+import nio.StringLookup;
 /**
  * Off-heap dynamic stride-based stack (LIFO) implementation.
  */
@@ -38,13 +39,13 @@ public final class Stack {
     private Stack() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("Stack subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(419));
     }
 
     private static void checkBounds(long stackPtr) {
-        if (stackPtr == 0L) throw new NullPointerException("Accessing NULL off-heap stack pointer!");
+        if (stackPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(420));
         if (isEmpty(stackPtr)) {
-            throw new IndexOutOfBoundsException("Attempted LIFO operation on an empty stack!");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(421));
         }
     }
 
@@ -91,7 +92,7 @@ public final class Stack {
     // allocate stack with pre-allocated items/slots initialized to size count
     public static synchronized long allocate(int generic, int count) {
         checkActive();
-        if (count < 0) throw new IllegalArgumentException("Count must be non-negative!");
+        if (count < 0) throw new IllegalArgumentException(StringLookup.getJavaString(399));
         int stride = Stride.get(generic);
         int cap = Math.max(DEFAULT_CAPACITY, count);
 
@@ -132,7 +133,7 @@ public final class Stack {
     // push a value or pointer onto the stack
     public static synchronized void push(long stackPtr, long valueOrPointer) {
         checkActive();
-        if (stackPtr == 0L) throw new NullPointerException("Pushing to NULL off-heap stack!");
+        if (stackPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(422));
 
         int count = size(stackPtr);
         int cap = capacity(stackPtr);
@@ -193,10 +194,10 @@ public final class Stack {
 
     // get pointer to struct element at index
     public static synchronized long getStruct(long stackPtr, int index) {
-        if (stackPtr == 0L) throw new NullPointerException("Accessing NULL off-heap stack pointer!");
+        if (stackPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(420));
         int len = size(stackPtr);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for stack size " + len);
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(423) + len);
         }
         int stride = stride(stackPtr);
         long dataBuffer = dataBuffer(stackPtr);
@@ -239,7 +240,7 @@ public final class Stack {
         long headerBlock = stackPtr - 8L;
         int type = ForeignMemory.getInt(headerBlock);
         if (type == 0 || !TypeRegister.isArray(type)) {
-            throw new IllegalStateException("Double free or corrupt stack pointer: 0x" + Long.toHexString(stackPtr).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(424) + Long.toHexString(stackPtr).toUpperCase());
         }
 
         long dataBuffer = dataBuffer(stackPtr);

@@ -13,6 +13,7 @@ import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
 
+import nio.StringLookup;
 /**
  * Off-heap circular buffer double-ended queue (Deque) implementation.
  */
@@ -40,14 +41,14 @@ public final class Deque {
     private Deque() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("Deque subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(411));
     }
 
     private static void checkBounds(long dequePtr, int index) {
-        if (dequePtr == 0L) throw new NullPointerException("Accessing NULL off-heap deque pointer!");
+        if (dequePtr == 0L) throw new NullPointerException(StringLookup.getJavaString(412));
         int len = size(dequePtr);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for deque size " + len);
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(413) + len);
         }
     }
 
@@ -94,7 +95,7 @@ public final class Deque {
     // allocate deque with pre-allocated items/slots initialized to size count
     public static synchronized long allocate(int generic, int count) {
         checkActive();
-        if (count < 0) throw new IllegalArgumentException("Count must be non-negative!");
+        if (count < 0) throw new IllegalArgumentException(StringLookup.getJavaString(399));
         int stride = Stride.get(generic);
         int cap = Math.max(DEFAULT_CAPACITY, count);
 
@@ -184,7 +185,7 @@ public final class Deque {
     // append value or pointer to back of deque
     public static synchronized void addLast(long dequePtr, long valueOrPointer) {
         checkActive();
-        if (dequePtr == 0L) throw new NullPointerException("Writing to NULL off-heap deque!");
+        if (dequePtr == 0L) throw new NullPointerException(StringLookup.getJavaString(414));
 
         ensureCapacity(dequePtr);
 
@@ -204,7 +205,7 @@ public final class Deque {
     // prepend value or pointer to front of deque
     public static synchronized void addFirst(long dequePtr, long valueOrPointer) {
         checkActive();
-        if (dequePtr == 0L) throw new NullPointerException("Writing to NULL off-heap deque!");
+        if (dequePtr == 0L) throw new NullPointerException(StringLookup.getJavaString(414));
 
         ensureCapacity(dequePtr);
 
@@ -374,7 +375,7 @@ public final class Deque {
         long headerBlock = dequePtr - 8L;
         int type = ForeignMemory.getInt(headerBlock);
         if (type == 0 || !TypeRegister.isArray(type)) {
-            throw new IllegalStateException("Double free or corrupt deque pointer: 0x" + Long.toHexString(dequePtr).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(415) + Long.toHexString(dequePtr).toUpperCase());
         }
 
         long dataBuffer = dataBuffer(dequePtr);

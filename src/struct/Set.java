@@ -11,6 +11,7 @@ import util.Hash;
 
 import java.lang.foreign.Arena;
 
+import nio.StringLookup;
 /**
  * Off-heap unique element hash set implementation.
  */
@@ -43,11 +44,11 @@ public final class Set {
     private Set() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("Set subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(416));
     }
 
     private static void checkValid(long setPtr) {
-        if (setPtr == 0L) throw new NullPointerException("Accessing NULL off-heap set pointer!");
+        if (setPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(417));
     }
 
     // free all subsystem resources
@@ -325,7 +326,7 @@ public final class Set {
         long headerBlock = setPtr - 8L;
         int type = ForeignMemory.getInt(headerBlock);
         if (type == 0 || !TypeRegister.isPointer(type)) {
-            throw new IllegalStateException("Double free or corrupt set pointer: 0x" + Long.toHexString(setPtr).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(418) + Long.toHexString(setPtr).toUpperCase());
         }
 
         long buffer = dataBuffer(setPtr);
