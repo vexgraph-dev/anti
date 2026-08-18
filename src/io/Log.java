@@ -3,8 +3,8 @@ package io;
 import annotation.Draft;
 import annotation.Intention;
 import annotation.Volatile;
+import thread.Atomic;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import nio.ForeignMemory;
 
@@ -59,8 +59,8 @@ public final class Log {
     private static boolean closed;
     private static volatile boolean active;
 
-    private static final AtomicLong appended = new AtomicLong();
-    private static final AtomicLong dropped = new AtomicLong();
+    private static final long APPENDED_PTR = Atomic.allocateLong(0L);
+    private static final long DROPPED_PTR = Atomic.allocateLong(0L);
     private static long writtenRecords;
 
     private static final ConcurrentHashMap<Integer, String> NAMES = new ConcurrentHashMap<>();
@@ -117,11 +117,11 @@ public final class Log {
     }
 
     public static long appended() {
-        return appended.get();
+        return Atomic.getLong(APPENDED_PTR);
     }
 
     public static long dropped() {
-        return dropped.get();
+        return Atomic.getLong(DROPPED_PTR);
     }
 
     public static long written() {
@@ -166,7 +166,7 @@ public final class Log {
         }
         long index = claimSlot();
         if (index < 0L) {
-            dropped.incrementAndGet();
+            Atomic.incrementAtomicOneLong(DROPPED_PTR);
             return;
         }
         int slotIdx = (int) (index & SLOT_MASK);
@@ -179,7 +179,7 @@ public final class Log {
         ForeignMemory.setLong(buffer + base + 40L, v3);
         ForeignMemory.setLong(buffer + base + 48L, v4);
         ForeignMemory.setVolatileInt(buffer + base + 4L, VALID);
-        appended.incrementAndGet();
+        Atomic.incrementAtomicOneLong(APPENDED_PTR);
         LockSupport.unpark(writer);
     }
 
