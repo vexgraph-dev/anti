@@ -1,6 +1,124 @@
 {
   "reflection": [
     {
+      "type": "bit.Bit32",
+      "fields": [
+        {
+          "name": "arrayExpanding128"
+        },
+        {
+          "name": "arrayExpanding32"
+        },
+        {
+          "name": "arrayExpanding512"
+        },
+        {
+          "name": "arrayExpanding8"
+        },
+        {
+          "name": "arrayFreeHead128"
+        },
+        {
+          "name": "arrayFreeHead32"
+        },
+        {
+          "name": "arrayFreeHead512"
+        },
+        {
+          "name": "arrayFreeHead8"
+        },
+        {
+          "name": "matrixExpanding128"
+        },
+        {
+          "name": "matrixExpanding32"
+        },
+        {
+          "name": "matrixExpanding512"
+        },
+        {
+          "name": "matrixExpanding8"
+        },
+        {
+          "name": "matrixFreeHead128"
+        },
+        {
+          "name": "matrixFreeHead32"
+        },
+        {
+          "name": "matrixFreeHead512"
+        },
+        {
+          "name": "matrixFreeHead8"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
+      "type": "bit.Bit64",
+      "fields": [
+        {
+          "name": "arrayExpanding128"
+        },
+        {
+          "name": "arrayExpanding32"
+        },
+        {
+          "name": "arrayExpanding512"
+        },
+        {
+          "name": "arrayExpanding8"
+        },
+        {
+          "name": "arrayFreeHead128"
+        },
+        {
+          "name": "arrayFreeHead32"
+        },
+        {
+          "name": "arrayFreeHead512"
+        },
+        {
+          "name": "arrayFreeHead8"
+        },
+        {
+          "name": "matrixExpanding128"
+        },
+        {
+          "name": "matrixExpanding32"
+        },
+        {
+          "name": "matrixExpanding512"
+        },
+        {
+          "name": "matrixExpanding8"
+        },
+        {
+          "name": "matrixFreeHead128"
+        },
+        {
+          "name": "matrixFreeHead32"
+        },
+        {
+          "name": "matrixFreeHead512"
+        },
+        {
+          "name": "matrixFreeHead8"
+        },
+        {
+          "name": "singletonExpanding"
+        },
+        {
+          "name": "singletonFreeHead"
+        }
+      ]
+    },
+    {
       "type": "java.lang.Boolean",
       "jniAccessible": true,
       "methods": [
@@ -133,6 +251,17 @@
       "type": "java.nio.MappedByteBuffer"
     },
     {
+      "type": "nio.ForeignMemory",
+      "fields": [
+        {
+          "name": "fileSlotMask"
+        },
+        {
+          "name": "mapSlotMask"
+        }
+      ]
+    },
+    {
       "type": "org.lwjgl.system.MemoryBackendUnsafe"
     },
     {
@@ -154,328 +283,33 @@
       ]
     },
     {
-      "type": "bit.Bit8",
-      "fields": [
-        {
-          "name": "arrayExpanding128"
-        },
-        {
-          "name": "arrayExpanding32"
-        },
-        {
-          "name": "arrayExpanding512"
-        },
-        {
-          "name": "arrayExpanding8"
-        },
-        {
-          "name": "arrayFreeHead128"
-        },
-        {
-          "name": "arrayFreeHead32"
-        },
-        {
-          "name": "arrayFreeHead512"
-        },
-        {
-          "name": "arrayFreeHead8"
-        },
-        {
-          "name": "matrixExpanding128"
-        },
-        {
-          "name": "matrixExpanding32"
-        },
-        {
-          "name": "matrixExpanding512"
-        },
-        {
-          "name": "matrixExpanding8"
-        },
-        {
-          "name": "matrixFreeHead128"
-        },
-        {
-          "name": "matrixFreeHead32"
-        },
-        {
-          "name": "matrixFreeHead512"
-        },
-        {
-          "name": "matrixFreeHead8"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "bit.Bit16",
-      "fields": [
-        {
-          "name": "arrayExpanding128"
-        },
-        {
-          "name": "arrayExpanding32"
-        },
-        {
-          "name": "arrayExpanding512"
-        },
-        {
-          "name": "arrayExpanding8"
-        },
-        {
-          "name": "arrayFreeHead128"
-        },
-        {
-          "name": "arrayFreeHead32"
-        },
-        {
-          "name": "arrayFreeHead512"
-        },
-        {
-          "name": "arrayFreeHead8"
-        },
-        {
-          "name": "matrixExpanding128"
-        },
-        {
-          "name": "matrixExpanding32"
-        },
-        {
-          "name": "matrixExpanding512"
-        },
-        {
-          "name": "matrixExpanding8"
-        },
-        {
-          "name": "matrixFreeHead128"
-        },
-        {
-          "name": "matrixFreeHead32"
-        },
-        {
-          "name": "matrixFreeHead512"
-        },
-        {
-          "name": "matrixFreeHead8"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "bit.Bit32",
-      "fields": [
-        {
-          "name": "arrayExpanding128"
-        },
-        {
-          "name": "arrayExpanding32"
-        },
-        {
-          "name": "arrayExpanding512"
-        },
-        {
-          "name": "arrayExpanding8"
-        },
-        {
-          "name": "arrayFreeHead128"
-        },
-        {
-          "name": "arrayFreeHead32"
-        },
-        {
-          "name": "arrayFreeHead512"
-        },
-        {
-          "name": "arrayFreeHead8"
-        },
-        {
-          "name": "matrixExpanding128"
-        },
-        {
-          "name": "matrixExpanding32"
-        },
-        {
-          "name": "matrixExpanding512"
-        },
-        {
-          "name": "matrixExpanding8"
-        },
-        {
-          "name": "matrixFreeHead128"
-        },
-        {
-          "name": "matrixFreeHead32"
-        },
-        {
-          "name": "matrixFreeHead512"
-        },
-        {
-          "name": "matrixFreeHead8"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "bit.Bit64",
-      "fields": [
-        {
-          "name": "arrayExpanding128"
-        },
-        {
-          "name": "arrayExpanding32"
-        },
-        {
-          "name": "arrayExpanding512"
-        },
-        {
-          "name": "arrayExpanding8"
-        },
-        {
-          "name": "arrayFreeHead128"
-        },
-        {
-          "name": "arrayFreeHead32"
-        },
-        {
-          "name": "arrayFreeHead512"
-        },
-        {
-          "name": "arrayFreeHead8"
-        },
-        {
-          "name": "matrixExpanding128"
-        },
-        {
-          "name": "matrixExpanding32"
-        },
-        {
-          "name": "matrixExpanding512"
-        },
-        {
-          "name": "matrixExpanding8"
-        },
-        {
-          "name": "matrixFreeHead128"
-        },
-        {
-          "name": "matrixFreeHead32"
-        },
-        {
-          "name": "matrixFreeHead512"
-        },
-        {
-          "name": "matrixFreeHead8"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "bit.Bit128",
-      "fields": [
-        {
-          "name": "arrayExpanding128"
-        },
-        {
-          "name": "arrayExpanding32"
-        },
-        {
-          "name": "arrayExpanding512"
-        },
-        {
-          "name": "arrayExpanding8"
-        },
-        {
-          "name": "arrayFreeHead128"
-        },
-        {
-          "name": "arrayFreeHead32"
-        },
-        {
-          "name": "arrayFreeHead512"
-        },
-        {
-          "name": "arrayFreeHead8"
-        },
-        {
-          "name": "matrixExpanding128"
-        },
-        {
-          "name": "matrixExpanding32"
-        },
-        {
-          "name": "matrixExpanding512"
-        },
-        {
-          "name": "matrixExpanding8"
-        },
-        {
-          "name": "matrixFreeHead128"
-        },
-        {
-          "name": "matrixFreeHead32"
-        },
-        {
-          "name": "matrixFreeHead512"
-        },
-        {
-          "name": "matrixFreeHead8"
-        },
-        {
-          "name": "singletonExpanding"
-        },
-        {
-          "name": "singletonFreeHead"
-        }
-      ]
-    },
-    {
-      "type": "primitive.string",
-      "fields": [
-        {
-          "name": "largeExpanding"
-        },
-        {
-          "name": "largeFreeHead"
-        },
-        {
-          "name": "mediumExpanding"
-        },
-        {
-          "name": "mediumFreeHead"
-        },
-        {
-          "name": "smallExpanding"
-        },
-        {
-          "name": "smallFreeHead"
-        }
-      ]
-    },
-    {
       "type": "sun.misc.Unsafe",
       "fields": [
         {
           "name": "theUnsafe"
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "window.macOSWindow",
+      "methods": [
+        {
+          "name": "keyTapCallback",
+          "parameterTypes": [
+            "java.lang.foreign.MemorySegment",
+            "int",
+            "java.lang.foreign.MemorySegment",
+            "java.lang.foreign.MemorySegment"
+          ]
         }
       ]
     }
@@ -488,20 +322,48 @@
       "glob": "META-INF/macos/arm64/org/lwjgl/mimalloc/libmimalloc.dylib.sha1"
     },
     {
+      "glob": "META-INF/macos/arm64/org/lwjgl/stb/liblwjgl_stb.dylib.sha1"
+    },
+    {
+      "glob": "StringLookup.ini"
+    },
+    {
       "glob": "macos/arm64/org/lwjgl/liblwjgl.dylib"
     },
     {
       "glob": "macos/arm64/org/lwjgl/mimalloc/libmimalloc.dylib"
     },
     {
+      "glob": "macos/arm64/org/lwjgl/stb/liblwjgl_stb.dylib"
+    },
+    {
+      "glob": "vulkan/spv/darling_panel_frag.spv"
+    },
+    {
+      "glob": "vulkan/spv/darling_panel_vert.spv"
+    },
+    {
       "glob": "vulkan/spv/hello_triangle.frag.spv"
     },
     {
       "glob": "vulkan/spv/hello_triangle.vert.spv"
+    },
+    {
+      "glob": "vulkan/spv/image_quad.frag.spv"
+    },
+    {
+      "glob": "vulkan/spv/image_quad.vert.spv"
     }
   ],
   "foreign": {
     "downcalls": [
+      {
+        "returnType": "jlong",
+        "parameterTypes": [
+          "void*",
+          "jint"
+        ]
+      },
       {
         "returnType": "void",
         "parameterTypes": [
@@ -515,7 +377,21 @@
         "parameterTypes": [
           "void*",
           "void*",
+          "jint"
+        ]
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
+          "void*",
+          "void*",
           "jlong"
+        ]
+      },
+      {
+        "returnType": "jint",
+        "parameterTypes": [
+          "struct(jdouble,jdouble)"
         ]
       },
       {
@@ -526,9 +402,9 @@
         ]
       },
       {
-        "returnType": "jlong",
+        "returnType": "void",
         "parameterTypes": [
-          "void*"
+          "jbyte"
         ]
       },
       {
@@ -553,6 +429,21 @@
       {
         "returnType": "void*",
         "parameterTypes": [
+          "jint",
+          "jint",
+          "jint",
+          "jlong",
+          "void*",
+          "void*"
+        ]
+      },
+      {
+        "returnType": "void",
+        "parameterTypes": []
+      },
+      {
+        "returnType": "void*",
+        "parameterTypes": [
           "void*",
           "void*",
           "jdouble"
@@ -573,13 +464,6 @@
         ]
       },
       {
-        "returnType": "void*",
-        "parameterTypes": [
-          "jint",
-          "void*"
-        ]
-      },
-      {
         "returnType": "void",
         "parameterTypes": [
           "void*",
@@ -595,13 +479,6 @@
           "jlong",
           "jlong",
           "jbyte"
-        ]
-      },
-      {
-        "returnType": "void*",
-        "parameterTypes": [
-          "void*",
-          "jlong"
         ]
       },
       {
@@ -671,6 +548,12 @@
         ]
       },
       {
+        "returnType": "jlong",
+        "parameterTypes": [
+          "jint"
+        ]
+      },
+      {
         "returnType": "void",
         "parameterTypes": [
           "void*",
@@ -706,6 +589,26 @@
           "void*",
           "void*",
           "jbyte"
+        ]
+      },
+      {
+        "returnType": "void",
+        "parameterTypes": [
+          "void*",
+          "jbyte"
+        ]
+      }
+    ],
+    "directUpcalls": [
+      {
+        "class": "window.macOSWindow",
+        "method": "keyTapCallback",
+        "returnType": "void*",
+        "parameterTypes": [
+          "void*",
+          "jint",
+          "void*",
+          "void*"
         ]
       }
     ]
