@@ -205,6 +205,30 @@ public final class Bool {
         ForeignMemory.setVolatileLong(matrixPointer + (index * 8L), targetPointer);
     }
 
+    public static boolean compareAndSet(long pointer, boolean expected, boolean value) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Bool (Class ID " + CLASS_ID + ")");
+        return ForeignMemory.compareAndSetByte(pointer, (byte) (expected ? 1 : 0), (byte) (value ? 1 : 0));
+    }
+
+    public static boolean compareAndSet(long pointer, int index, boolean expected, boolean value) {
+        checkBounds(pointer, index);
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Bool (Class ID " + CLASS_ID + ")");
+        return ForeignMemory.compareAndSetByte(pointer + index, (byte) (expected ? 1 : 0), (byte) (value ? 1 : 0));
+    }
+
+    public static boolean getAndSet(long pointer, boolean value) {
+        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Bool (Class ID " + CLASS_ID + ")");
+        return ForeignMemory.getAndSetByte(pointer, (byte) (value ? 1 : 0)) != 0;
+    }
+
+    public static boolean getAndSet(long pointer, int index, boolean value) {
+        checkBounds(pointer, index);
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Bool (Class ID " + CLASS_ID + ")");
+        return ForeignMemory.getAndSetByte(pointer + index, (byte) (value ? 1 : 0)) != 0;
+    }
+
     // --- UNSAFE VOLATILE VARIANTS ---
 
     @Unsafe
@@ -235,6 +259,26 @@ public final class Bool {
     @Unsafe
     public static void setUnsafeVolatilePointer(long matrixPointer, int index, long targetPointer) {
         ForeignMemory.setUnsafeVolatileLong(matrixPointer + (index * 8L), targetPointer);
+    }
+
+    @Unsafe
+    public static boolean compareAndSetUnsafe(long pointer, boolean expected, boolean value) {
+        return ForeignMemory.compareAndSetByte(pointer, (byte) (expected ? 1 : 0), (byte) (value ? 1 : 0));
+    }
+
+    @Unsafe
+    public static boolean compareAndSetUnsafe(long pointer, int index, boolean expected, boolean value) {
+        return ForeignMemory.compareAndSetByte(pointer + index, (byte) (expected ? 1 : 0), (byte) (value ? 1 : 0));
+    }
+
+    @Unsafe
+    public static boolean getAndSetUnsafe(long pointer, boolean value) {
+        return ForeignMemory.getAndSetByte(pointer, (byte) (value ? 1 : 0)) != 0;
+    }
+
+    @Unsafe
+    public static boolean getAndSetUnsafe(long pointer, int index, boolean value) {
+        return ForeignMemory.getAndSetByte(pointer + index, (byte) (value ? 1 : 0)) != 0;
     }
 
 }
