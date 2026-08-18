@@ -9,6 +9,7 @@ import oop.TypeRegister;
 import struct.Map;
 import struct.Array;
 
+import nio.StringLookup;
 /**
  * Data-Oriented Design (DOD) off-heap Scripting Thread Pool Manager.
  * <p>
@@ -104,7 +105,7 @@ public final class ScriptingThread {
         long queuePtr = getQueue(workerPtr);
 
         Thread worker = Thread.ofPlatform()
-                .name("Anti-ScriptWorker-0x" + Long.toHexString(workerPtr).toUpperCase())
+                .name(StringLookup.getJavaString(1095) + Long.toHexString(workerPtr).toUpperCase())
                 .daemon(true)
                 .start(() -> processQueue(workerPtr, queuePtr));
 

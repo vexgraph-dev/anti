@@ -10,6 +10,7 @@ import struct.Map;
 import struct.Array;
 import window.Window;
 
+import nio.StringLookup;
 /**
  * Data-Oriented Design (DOD) off-heap Draw Thread Pool Manager.
  * 
@@ -147,7 +148,7 @@ public final class DrawThread {
         long queuePtr = getQueue(workerPtr);
 
         Thread worker = Thread.ofPlatform()
-                .name("Anti-DrawWorker-0x" + Long.toHexString(workerPtr).toUpperCase())
+                .name(StringLookup.getJavaString(1115) + Long.toHexString(workerPtr).toUpperCase())
                 .daemon(true)
                 .start(() -> processQueue(workerPtr, queuePtr));
 
@@ -337,14 +338,14 @@ public final class DrawThread {
                             try {
                                 listener.accept(fullscreen);
                             } catch (Throwable t) {
-                                System.out.println("[draw] fullscreen listener failed: " + t);
+                                System.out.println(StringLookup.getJavaString(1116) + t);
                             }
                         }
                     }
                     long contentSize = window.Window.getContentSize(windowPtr);
                     if (contentSize != lastContentSize && contentSize != 0L) {
-                        System.out.println("[window] resize event: "
-                                + ((int) (contentSize >>> 32)) + "x" + (int) (contentSize & 0xFFFFFFFFL));
+                        System.out.println(StringLookup.getJavaString(1117)
+                                + ((int) (contentSize >>> 32)) + StringLookup.getJavaString(676) + (int) (contentSize & 0xFFFFFFFFL));
                         // Option 2: Thread 0 (the event pump) owns the resize now. It
                         // hard-syncs: publishes the size AND blocks until the present
                         // thread has presented at that size. If this poll also published
@@ -400,20 +401,20 @@ public final class DrawThread {
                     double presentFps = (currPresent - lastPresent) / elaps;
                     long totalIterNanos = dbgIterNanos;
                     
-                    if (System.getProperty("anti.debug.present") != null)
-                        System.out.println("[DEBUG] Draw=" + fmt1(drawFps)
-                                + " Present=" + fmt1(presentFps)
-                                + " iterMs=" + (totalIterNanos / 1_000_000)
-                                + " acqMs=" + (vulkan.Renderer.getDbgAcquireNanos() / 1_000_000)
-                                + " relWaitMs=" + (vulkan.Renderer.getDbgReleasedWaitNanos() / 1_000_000)
-                                + " qLockMs=" + (vulkan.Renderer.getDbgQueueLockNanos() / 1_000_000)
-                                + " presBlockMs=" + (vulkan.Renderer.getDbgPresentBlockNanos() / 1_000_000)
-                                + " presSubMs=" + (vulkan.Renderer.getDbgPresentSubmitNanos() / 1_000_000)
-                                + " presCallMs=" + (vulkan.Renderer.getDbgPresentCallNanos() / 1_000_000)
-                                + " pLoops=" + vulkan.Renderer.getDbgPresentThreadLoops()
-                                + " pParkMs=" + (vulkan.Renderer.getDbgPresentThreadParkMs())
-                                + " blitRecMs=" + (vulkan.Renderer.getDbgBlitRecordNanos() / 1_000_000)
-                                + " notReady=" + vulkan.Renderer.getDbgPresentNotReady());
+                    if (System.getProperty(StringLookup.getJavaString(1118)) != null)
+                        System.out.println(StringLookup.getJavaString(1119) + fmt1(drawFps)
+                                + StringLookup.getJavaString(1120) + fmt1(presentFps)
+                                + StringLookup.getJavaString(1121) + (totalIterNanos / 1_000_000)
+                                + StringLookup.getJavaString(1122) + (vulkan.Renderer.getDbgAcquireNanos() / 1_000_000)
+                                + StringLookup.getJavaString(1123) + (vulkan.Renderer.getDbgReleasedWaitNanos() / 1_000_000)
+                                + StringLookup.getJavaString(1124) + (vulkan.Renderer.getDbgQueueLockNanos() / 1_000_000)
+                                + StringLookup.getJavaString(1125) + (vulkan.Renderer.getDbgPresentBlockNanos() / 1_000_000)
+                                + StringLookup.getJavaString(1126) + (vulkan.Renderer.getDbgPresentSubmitNanos() / 1_000_000)
+                                + StringLookup.getJavaString(1127) + (vulkan.Renderer.getDbgPresentCallNanos() / 1_000_000)
+                                + StringLookup.getJavaString(1128) + vulkan.Renderer.getDbgPresentThreadLoops()
+                                + StringLookup.getJavaString(1129) + (vulkan.Renderer.getDbgPresentThreadParkMs())
+                                + StringLookup.getJavaString(1130) + (vulkan.Renderer.getDbgBlitRecordNanos() / 1_000_000)
+                                + StringLookup.getJavaString(1131) + vulkan.Renderer.getDbgPresentNotReady());
                     dbgIterNanos = 0L;
                     vulkan.Renderer.resetDbgCounters();
                     // Publish to the title mailbox; Thread 0's pump applies it (AppKit).
@@ -422,8 +423,8 @@ public final class DrawThread {
                         double avgDrawMs = drawDelta > 0 ? (totalIterNanos / 1_000_000.0) / drawDelta : 0.0;
                         long winSize = windowPtr != 0L ? window.Window.getContentSize(windowPtr) : 0L;
                         window.Window.publishTitle(
-                                "Window | Draw " + fmt1(drawFps) + " FPS (" + fmt2(avgDrawMs) + " ms) | win="
-                                + (int) (winSize >>> 32) + "x" + (int) (winSize & 0xFFFFFFFFL) + " | "
+                                StringLookup.getJavaString(1132) + fmt1(drawFps) + StringLookup.getJavaString(1133) + fmt2(avgDrawMs) + StringLookup.getJavaString(1134)
+                                + (int) (winSize >>> 32) + StringLookup.getJavaString(676) + (int) (winSize & 0xFFFFFFFFL) + StringLookup.getJavaString(1135)
                                 + vulkan.TriangleRenderer.dbgFbRect());
                     }
                     fpsWindowStart = now;
@@ -481,11 +482,11 @@ public final class DrawThread {
 
     private static String fmt1(double d) {
         long rounded = Math.round(d * 10.0);
-        return (rounded / 10) + "." + Math.abs(rounded % 10);
+        return (rounded / 10) + StringLookup.getJavaString(311) + Math.abs(rounded % 10);
     }
 
     private static String fmt2(double d) {
         long rounded = Math.round(d * 100.0);
-        return (rounded / 100) + "." + Math.abs(rounded % 100);
+        return (rounded / 100) + StringLookup.getJavaString(311) + Math.abs(rounded % 100);
     }
 }

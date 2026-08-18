@@ -6,6 +6,7 @@ import window.Window;
 
 import static org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_FIFO_KHR;
 
+import nio.StringLookup;
 public class EngineTest {
 
     public static void main(String[] args) throws Throwable
@@ -14,12 +15,12 @@ public class EngineTest {
         // ACTUAL ENGINE LOGIC
 
         io.LogKind.registerNames();
-        System.out.println("Starting Engine Window Test...");
-        int bootW = Integer.parseInt(System.getProperty("anti.w", "800"));
-        int bootH = Integer.parseInt(System.getProperty("anti.h", "600"));
-        long windowPtr = Window.allocate("Engine", bootW, bootH);
+        System.out.println(StringLookup.getJavaString(1220));
+        int bootW = Integer.parseInt(System.getProperty(StringLookup.getJavaString(1221), StringLookup.getJavaString(1222)));
+        int bootH = Integer.parseInt(System.getProperty(StringLookup.getJavaString(1223), StringLookup.getJavaString(1224)));
+        long windowPtr = Window.allocate(StringLookup.getJavaString(941), bootW, bootH);
         Window.setResolutionType(windowPtr, Window.MACOS_RETINA_RES);
-        System.out.println("Window spawned at: " + windowPtr);
+        System.out.println(StringLookup.getJavaString(1225) + windowPtr);
         Window.setTargetFps(60);
         Window.setUndecorated(windowPtr, Window.DECORATED);
         Window.show(windowPtr);
@@ -32,18 +33,21 @@ public class EngineTest {
         // FIFO: the Core Draw Worker presents at the WindowServer's refresh (60/120Hz).
         // Override via -Danti.present=fifo|mailbox|immediate|-1 (auto) for headless testing.
         int bootPresentMode;
-        String bootMode = System.getProperty("anti.present", "fifo").toLowerCase();
-        switch (bootMode) {
-            case "mailbox" -> bootPresentMode = org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR;
-            case "immediate" -> bootPresentMode = org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR;
-            case "auto" -> bootPresentMode = -1;
-            default -> bootPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+        String bootMode = System.getProperty(StringLookup.getJavaString(1226), StringLookup.getJavaString(1227)).toLowerCase();
+        if (bootMode.equals(StringLookup.getJavaString(1239))) {
+            bootPresentMode = org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR;
+        } else if (bootMode.equals(StringLookup.getJavaString(1240))) {
+            bootPresentMode = org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR;
+        } else if (bootMode.equals(StringLookup.getJavaString(1241))) {
+            bootPresentMode = -1;
+        } else {
+            bootPresentMode = VK_PRESENT_MODE_FIFO_KHR;
         }
         Window.setFpsMode(windowPtr, bootPresentMode);
 
-        System.out.println("Metal device available to this process: " + Window.isMetalDeviceAvailable());
+        System.out.println(StringLookup.getJavaString(1228) + Window.isMetalDeviceAvailable());
         long surfacePtr = Window.createSurface(windowPtr);
-        System.out.println("Surface created at (CAMetalLayer): " + surfacePtr);
+        System.out.println(StringLookup.getJavaString(1229) + surfacePtr);
 
 
 
@@ -54,7 +58,7 @@ public class EngineTest {
         // Virtual size 0 <= follows window framebuffer extent directly.
         darling.Canvas.setVirtualSize(0f, 0f);
         darling.Canvas.setMode(darling.Canvas.MODE_PIXEL);
-        System.out.println("[EngineTest] UI canvas follows window dimensions (mode=pixel)");
+        System.out.println(StringLookup.getJavaString(1230));
 
         // 3D Scene container: an off-heap Scene3D node positioned in the canvas.
         // The 3D render pipeline renders into this container's bounds (anchored top-left).
@@ -93,14 +97,14 @@ public class EngineTest {
         // @Draft picture demo (pending review): Image asset + darling.Picture node.
         // Width/height AUTO (-1) derive from the image; here width is fixed and
         // height AUTO keeps the sunflower's aspect ratio.
-        String picturePath = System.getProperty("anti.picture");
+        String picturePath = System.getProperty(StringLookup.getJavaString(1231));
         if (picturePath == null || !java.nio.file.Files.exists(java.nio.file.Path.of(picturePath))) {
-            if (java.nio.file.Files.exists(java.nio.file.Path.of("/Users/vexgraph/Downloads/sunflower.png"))) {
-                picturePath = "/Users/vexgraph/Downloads/sunflower.png";
-            } else if (java.nio.file.Files.exists(java.nio.file.Path.of("clipboard.png"))) {
-                picturePath = "clipboard.png";
-            } else if (java.nio.file.Files.exists(java.nio.file.Path.of("/Users/vexgraph/IdeaProjects/anti/clipboard.png"))) {
-                picturePath = "/Users/vexgraph/IdeaProjects/anti/clipboard.png";
+            if (java.nio.file.Files.exists(java.nio.file.Path.of(StringLookup.getJavaString(1232)))) {
+                picturePath = StringLookup.getJavaString(1232);
+            } else if (java.nio.file.Files.exists(java.nio.file.Path.of(StringLookup.getJavaString(1233)))) {
+                picturePath = StringLookup.getJavaString(1233);
+            } else if (java.nio.file.Files.exists(java.nio.file.Path.of(StringLookup.getJavaString(1234)))) {
+                picturePath = StringLookup.getJavaString(1234);
             }
         }
         if (picturePath != null && java.nio.file.Files.exists(java.nio.file.Path.of(picturePath))) {
@@ -113,11 +117,11 @@ public class EngineTest {
                 darling.Picture.setLocation(picturePtr, 100f, 60f);
                 vulkan.TriangleRenderer.setPicture(picturePtr);
             } catch (Throwable t) {
-                System.err.println("[EngineTest] Optional demo picture load skipped: " + t.getMessage());
+                System.err.println(StringLookup.getJavaString(1235) + t.getMessage());
             }
         }
 
-        System.out.println("[Main Thread] Handing over control to the event pump...");
+        System.out.println(StringLookup.getJavaString(1236));
 
         // Boot the Event Dispatcher Worker: owns Key, Mouse, Touch event dispatching and UI logic
         thread.EventThread.start();
@@ -135,7 +139,7 @@ public class EngineTest {
 
         // Window closed: start background teardown to prevent main-thread freeze.
         // AppKit requires the main thread to remain unblocked to play fullscreen exit animations.
-        System.out.println("Test complete. Tearing down Vulkan in background...");
+        System.out.println(StringLookup.getJavaString(1237));
         long teardownComplete = thread.Atomic.allocateBool(false);
         new Thread(() -> {
             telemetry.KeyLog.dumpRecent(200);

@@ -9,6 +9,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
+import nio.StringLookup;
 /**
  * Off-heap rolling log of every key the user presses across the whole system,
  * captured by a listen-only macOS CGEventTap while the engine app is running.
@@ -63,7 +64,7 @@ public final class KeyLog {
 
         int shown = (int) Math.min(sample, CAPACITY);
         long head = HEAD.get(ValueLayout.JAVA_LONG, 0);
-        System.out.println("[telemetry] " + total + " global key events recorded; last " + shown + ":");
+        System.out.println(StringLookup.getJavaString(1007) + total + StringLookup.getJavaString(1008) + shown + StringLookup.getJavaString(43));
         StringBuilder line = new StringBuilder();
         for (int i = shown - 1; i >= 0; i--) {
             long idx = (head - 1 - i) & MASK;
@@ -73,6 +74,6 @@ public final class KeyLog {
             char marker = action == 1 ? '<' : (action == 0 ? '>' : '=');
             line.append(marker).append(Key.getString(keyCode)).append(' ');
         }
-        System.out.println("[telemetry] " + line);
+        System.out.println(StringLookup.getJavaString(1007) + line);
     }
 }

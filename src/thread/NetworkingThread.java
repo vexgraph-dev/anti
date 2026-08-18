@@ -10,6 +10,7 @@ import oop.TypeRegister;
 import struct.Map;
 import struct.Array;
 
+import nio.StringLookup;
 /**
  * Data-Oriented Design (DOD) off-heap Networking Thread Pool Manager.
  * <p>
@@ -109,7 +110,7 @@ public final class NetworkingThread {
         long queuePtr = getQueue(workerPtr);
 
         Thread worker = Thread.ofPlatform()
-                .name("Anti-NetWorker-0x" + Long.toHexString(workerPtr).toUpperCase())
+                .name(StringLookup.getJavaString(1114) + Long.toHexString(workerPtr).toUpperCase())
                 .daemon(true)
                 .start(() -> processQueue(workerPtr, queuePtr));
 

@@ -15,6 +15,7 @@ import struct.Map;
 
 import java.util.concurrent.locks.LockSupport;
 
+import nio.StringLookup;
 /**
  * Data-Oriented Design (DOD) off-heap UI Worker Thread Manager.
  *
@@ -159,13 +160,13 @@ public final class UIThread {
         ForeignMemory.setInt(workerPtr, 1); // Set state to RUNNING
 
         Thread worker = Thread.ofPlatform()
-                .name("Anti-UIWorker-0x" + Long.toHexString(workerPtr).toUpperCase())
+                .name(StringLookup.getJavaString(1093) + Long.toHexString(workerPtr).toUpperCase())
                 .daemon(true)
                 .start(() -> {
                     try {
                         processLoop(workerPtr, queuePtr);
                     } catch (Throwable t) {
-                        System.out.println("[UIThread] Worker crashed: " + t.getMessage());
+                        System.out.println(StringLookup.getJavaString(1094) + t.getMessage());
                         t.printStackTrace();
                     } finally {
                         ForeignMemory.setInt(workerPtr, 0); // Mark STOPPED
