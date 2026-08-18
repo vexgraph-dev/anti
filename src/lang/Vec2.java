@@ -2,6 +2,7 @@ package lang;
 
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * Off-Heap 2D Vector representation (x, y) stored in contiguous 8-byte raw native memory.
  * Designed for zero-GC allocation and pure Java FFM performance.
@@ -179,6 +180,6 @@ public final class Vec2
 
     public static String toString(long ptr)
     {
-        return "(" + getX(ptr) + ", " + getY(ptr) + ")";
+        return StringLookup.getJavaString(372) + getX(ptr) + StringLookup.getJavaString(560) + getY(ptr) + StringLookup.getJavaString(18);
     }
 }

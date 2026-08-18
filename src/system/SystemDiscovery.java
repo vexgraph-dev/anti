@@ -13,6 +13,7 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
+import nio.StringLookup;
 /**
  * Pure FFM zero-allocation system query subsystem (bypassing OSHI).
  */
@@ -25,7 +26,7 @@ public class SystemDiscovery {
     
     // int sysctlbyname(const char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen);
     private static final MethodHandle SYSCTL_BY_NAME = linker.downcallHandle(
-            libc.find("sysctlbyname").orElseThrow(),
+            libc.find(StringLookup.getJavaString(566)).orElseThrow(),
             FunctionDescriptor.of(ValueLayout.JAVA_INT, 
                 ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)
     );
@@ -41,47 +42,47 @@ public class SystemDiscovery {
     private static MethodHandle DISPLAY_MODE_RELEASE;
 
     static {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+        if (System.getProperty(StringLookup.getJavaString(143)).toLowerCase().contains(StringLookup.getJavaString(144))) {
             try {
-                cg = SymbolLookup.libraryLookup("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", Arena.global());
+                cg = SymbolLookup.libraryLookup(StringLookup.getJavaString(567), Arena.global());
                 
                 GET_ACTIVE_DISPLAY_LIST = linker.downcallHandle(
-                        cg.find("CGGetActiveDisplayList").orElseThrow(),
+                        cg.find(StringLookup.getJavaString(568)).orElseThrow(),
                         FunctionDescriptor.of(ValueLayout.JAVA_INT,
                                 ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS)
                 );
                 
                 MAIN_DISPLAY_ID = linker.downcallHandle(
-                        cg.find("CGMainDisplayID").orElseThrow(),
+                        cg.find(StringLookup.getJavaString(569)).orElseThrow(),
                         FunctionDescriptor.of(ValueLayout.JAVA_INT)
                 );
                 
                 DISPLAY_PIXELS_WIDE = linker.downcallHandle(
-                        cg.find("CGDisplayPixelsWide").orElseThrow(),
+                        cg.find(StringLookup.getJavaString(570)).orElseThrow(),
                         FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT)
                 );
                 
                 DISPLAY_PIXELS_HIGH = linker.downcallHandle(
-                        cg.find("CGDisplayPixelsHigh").orElseThrow(),
+                        cg.find(StringLookup.getJavaString(571)).orElseThrow(),
                         FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT)
                 );
                 
                 DISPLAY_COPY_DISPLAY_MODE = linker.downcallHandle(
-                        cg.find("CGDisplayCopyDisplayMode").orElseThrow(),
+                        cg.find(StringLookup.getJavaString(572)).orElseThrow(),
                         FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT)
                 );
                 
                 DISPLAY_MODE_GET_REFRESH_RATE = linker.downcallHandle(
-                        cg.find("CGDisplayModeGetRefreshRate").orElseThrow(),
+                        cg.find(StringLookup.getJavaString(573)).orElseThrow(),
                         FunctionDescriptor.of(ValueLayout.JAVA_DOUBLE, ValueLayout.ADDRESS)
                 );
                 
                 DISPLAY_MODE_RELEASE = linker.downcallHandle(
-                        cg.find("CGDisplayModeRelease").orElseThrow(),
+                        cg.find(StringLookup.getJavaString(574)).orElseThrow(),
                         FunctionDescriptor.ofVoid(ValueLayout.ADDRESS)
                 );
             } catch (Throwable t) {
-                System.err.println("Warning: Failed to bind macOS CoreGraphics FFM downcalls: " + t.getMessage());
+                System.err.println(StringLookup.getJavaString(575) + t.getMessage());
             }
         }
     }
@@ -89,7 +90,7 @@ public class SystemDiscovery {
     public static void bootstrap() {
         try (Arena arena = Arena.ofConfined()) {
             // Get RAM (hw.memsize)
-            MemorySegment memsizeName = arena.allocateFrom("hw.memsize");
+            MemorySegment memsizeName = arena.allocateFrom(StringLookup.getJavaString(576));
             MemorySegment memsizeVal = arena.allocate(ValueLayout.JAVA_LONG);
             MemorySegment memsizeLen = arena.allocateFrom(ValueLayout.JAVA_LONG, 8L);
             
@@ -98,7 +99,7 @@ public class SystemDiscovery {
             }
 
             // Get CPU Cores (hw.logicalcpu)
-            MemorySegment cpuName = arena.allocateFrom("hw.logicalcpu");
+            MemorySegment cpuName = arena.allocateFrom(StringLookup.getJavaString(577));
             MemorySegment cpuVal = arena.allocate(ValueLayout.JAVA_INT);
             MemorySegment cpuLen = arena.allocateFrom(ValueLayout.JAVA_LONG, 4L);
             
@@ -108,7 +109,7 @@ public class SystemDiscovery {
             }
 
             // Get Device Model (hw.model)
-            MemorySegment modelName = arena.allocateFrom("hw.model");
+            MemorySegment modelName = arena.allocateFrom(StringLookup.getJavaString(578));
             MemorySegment modelLen = arena.allocateFrom(ValueLayout.JAVA_LONG, 256L);
             MemorySegment modelVal = arena.allocate(256);
             
@@ -154,7 +155,7 @@ public class SystemDiscovery {
                         }
                         
                         // Display Name
-                        String nameStr = "Display-" + displayId;
+                        String nameStr = StringLookup.getJavaString(579) + displayId;
                         DisplayMonitor.setName(monitorPtr, string.allocate(nameStr));
                         
                         // Set in array

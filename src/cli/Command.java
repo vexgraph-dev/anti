@@ -7,6 +7,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 import primitive.string;
 
+import nio.StringLookup;
 @Draft
 @Intention("Off-heap zero-allocation command structure representing a parsed command and its arguments")
 public class Command {
@@ -46,11 +47,11 @@ public class Command {
     }
 
     private static void checkType(long commandPointer) {
-        if (commandPointer == 0L) throw new NullPointerException("Accessing NULL command pointer!");
+        if (commandPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(374));
         int type = type(commandPointer);
         int expected = TypeRegister.FORM_SINGLETON | CLASS_ID;
         if (type != expected) {
-            throw new IllegalArgumentException("Expected Command pointer, but got Type: 0x" + Integer.toHexString(type).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(375) + Integer.toHexString(type).toUpperCase());
         }
     }
 
@@ -71,7 +72,7 @@ public class Command {
         checkType(commandPointer);
         int len = ForeignMemory.getInt(commandPointer + 8L);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Argument index " + index + " out of bounds for size " + len);
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(294) + index + StringLookup.getJavaString(376) + len);
         }
         return ForeignMemory.getLong(commandPointer + 16L + (index * 8L));
     }

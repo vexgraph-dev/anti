@@ -6,6 +6,7 @@ import annotation.Intention;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-Heap Unix DateTime Subsystem.
  * Breaks down epoch milliseconds to UTC calendar fields using Howard Hinnant's standard algorithm.
@@ -63,7 +64,7 @@ public final class DateTime {
 
     @Draft
     public static void setEpochMillis(long ptr, long epochMillis) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         
         ForeignMemory.setLong(ptr, epochMillis);
 
@@ -127,55 +128,55 @@ public final class DateTime {
 
     @Draft
     public static long getEpochMillis(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getLong(ptr);
     }
 
     @Draft
     public static int getYear(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getInt(ptr + 8L);
     }
 
     @Draft
     public static int getMonth(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getInt(ptr + 12L);
     }
 
     @Draft
     public static int getDay(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getInt(ptr + 16L);
     }
 
     @Draft
     public static int getHour(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getInt(ptr + 20L);
     }
 
     @Draft
     public static int getMinute(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getInt(ptr + 24L);
     }
 
     @Draft
     public static int getSecond(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getInt(ptr + 28L);
     }
 
     @Draft
     public static int getMillisecond(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getInt(ptr + 32L);
     }
 
     @Draft
     public static int getDayOfWeek(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getInt(ptr + 36L);
     }
 }

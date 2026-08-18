@@ -4,6 +4,7 @@ import java.lang.StringBuilder;
 import nio.ForeignMemory;
 
 
+import nio.StringLookup;
 /**
  * Off-Heap 4x4 Matrix representation stored in column-major order (16 contiguous 32-bit floats, 64 bytes).
  * Designed for zero-GC allocation, Vulkan/OpenGL graphics pipeline compatibility, and pure Java FFM performance.
@@ -359,18 +360,18 @@ public final class Mat4
 
     public static String toString(long ptr)
     {
-        StringBuilder sb = new StringBuilder("Mat4[\n");
+        StringBuilder sb = new StringBuilder(StringLookup.getJavaString(561));
         for (int r = 0; r < 4; r++)
         {
-            sb.append("  [");
+            sb.append(StringLookup.getJavaString(562));
             for (int c = 0; c < 4; c++)
             {
                 sb.append(get(ptr, r, c));
-                if (c < 3) sb.append(", ");
+                if (c < 3) sb.append(StringLookup.getJavaString(560));
             }
-            sb.append("]\n");
+            sb.append(StringLookup.getJavaString(563));
         }
-        sb.append("]");
+        sb.append(StringLookup.getJavaString(67));
         return sb.toString();
     }
 }

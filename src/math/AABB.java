@@ -4,6 +4,7 @@ import lang.FastMath;
 import lang.Vec3;
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * Off-Heap Axis-Aligned Bounding Box (AABB) stored in 24-byte native memory (Min Vec3 + Max Vec3).
  * Zero-GC allocation for physics collision and ray-box acceleration structures.
@@ -105,6 +106,6 @@ public final class AABB
 
     public static String toString(long ptr)
     {
-        return "AABB[Min: " + Vec3.toString(ptr) + ", Max: " + Vec3.toString(ptr + 12L) + "]";
+        return StringLookup.getJavaString(383) + Vec3.toString(ptr) + StringLookup.getJavaString(384) + Vec3.toString(ptr + 12L) + StringLookup.getJavaString(67);
     }
 }

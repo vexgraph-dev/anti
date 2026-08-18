@@ -3,6 +3,7 @@ package io;
 import annotation.Draft;
 import annotation.Intention;
 
+import nio.StringLookup;
 /**
  * Numeric event kinds for {@link Log}. Payload slots are documented per kind;
  * coordinates are stored as fixed-point (value * 1000) so LogCat output stays readable.
@@ -29,18 +30,18 @@ public interface LogKind {
     int TOUCH_CANCEL = 33;    // v0=touchId
 
     static void registerNames() {
-        Log.setName(RENDER_PRODUCE, "produce");
-        Log.setName(RENDER_PRESENT, "present");
-        Log.setName(RENDER_DROPPED, "drop");
-        Log.setName(KEY_DOWN, "keyDown");
-        Log.setName(KEY_REPEAT, "keyRepeat");
-        Log.setName(KEY_UP, "keyUp");
-        Log.setName(MOUSE_DOWN, "mouseDown");
-        Log.setName(MOUSE_UP, "mouseUp");
-        Log.setName(MOUSE_MOVE, "mouseMove");
-        Log.setName(TOUCH_DOWN, "touchDown");
-        Log.setName(TOUCH_UP, "touchUp");
-        Log.setName(TOUCH_MOVE, "touchMove");
-        Log.setName(TOUCH_CANCEL, "touchCancel");
+        Log.setName(RENDER_PRODUCE, StringLookup.getJavaString(314));
+        Log.setName(RENDER_PRESENT, StringLookup.getJavaString(315));
+        Log.setName(RENDER_DROPPED, StringLookup.getJavaString(316));
+        Log.setName(KEY_DOWN, StringLookup.getJavaString(317));
+        Log.setName(KEY_REPEAT, StringLookup.getJavaString(318));
+        Log.setName(KEY_UP, StringLookup.getJavaString(319));
+        Log.setName(MOUSE_DOWN, StringLookup.getJavaString(320));
+        Log.setName(MOUSE_UP, StringLookup.getJavaString(321));
+        Log.setName(MOUSE_MOVE, StringLookup.getJavaString(322));
+        Log.setName(TOUCH_DOWN, StringLookup.getJavaString(323));
+        Log.setName(TOUCH_UP, StringLookup.getJavaString(324));
+        Log.setName(TOUCH_MOVE, StringLookup.getJavaString(325));
+        Log.setName(TOUCH_CANCEL, StringLookup.getJavaString(326));
     }
 }

@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
+import nio.StringLookup;
 /**
  * Reads and formats binary logs produced by {@link Log}.
  *
@@ -95,8 +96,8 @@ public final class LogParser {
                                       long v0, long v1, long v2, long v3, long v4) {
         double ms = baseTs <= 0L ? 0.0 : (ts - baseTs) / 1_000_000.0;
         long rounded = Math.round(ms * 1000.0);
-        String msStr = (rounded / 1000) + "." + String.valueOf(1000 + Math.abs(rounded % 1000)).substring(1);
-        return msStr + " ms  " + name + "  " + v0 + "  " + v1 + "  " + v2 + "  " + v3 + "  " + v4;
+        String msStr = (rounded / 1000) + StringLookup.getJavaString(311) + String.valueOf(1000 + Math.abs(rounded % 1000)).substring(1);
+        return msStr + StringLookup.getJavaString(312) + name + StringLookup.getJavaString(313) + v0 + StringLookup.getJavaString(313) + v1 + StringLookup.getJavaString(313) + v2 + StringLookup.getJavaString(313) + v3 + StringLookup.getJavaString(313) + v4;
     }
 
     private static int readInt(byte[] b, int off) {

@@ -12,6 +12,7 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
+import nio.StringLookup;
 /**
  * Off-Heap Native High-Resolution Timer Subsystem.
  * Uses native macOS clock downcalls for zero-overhead ticks.
@@ -32,7 +33,7 @@ public final class NanoTime {
         try {
             // CLOCK_MONOTONIC = 6 on macOS
             // clock_gettime_nsec_np returns uint64_t nanoseconds directly
-            mh = stdlib.find("clock_gettime_nsec_np").map(symbol ->
+            mh = stdlib.find(StringLookup.getJavaString(387)).map(symbol ->
                 linker.downcallHandle(symbol, FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT))
             ).orElse(null);
         } catch (Throwable t) {
@@ -100,7 +101,7 @@ public final class NanoTime {
 
     @Draft
     public static void reset(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         long now = getNativeNanos();
         ForeignMemory.setLong(ptr, now);
         ForeignMemory.setLong(ptr + 8L, now);
@@ -111,7 +112,7 @@ public final class NanoTime {
 
     @Draft
     public static void tick(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         long now = getNativeNanos();
         long current = ForeignMemory.getLong(ptr + 16L);
         
@@ -130,7 +131,7 @@ public final class NanoTime {
      */
     @Draft
     public static void tick(long ptr, long clockPtr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         
         long now = getNativeNanos();
         long current = ForeignMemory.getLong(ptr + 16L);
@@ -157,25 +158,25 @@ public final class NanoTime {
 
     @Draft
     public static double getDeltaTime(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getDouble(ptr + 24L);
     }
 
     @Draft
     public static double getTotalTime(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getDouble(ptr + 32L);
     }
 
     @Draft
     public static long getDeltaNanos(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getLong(ptr + 16L) - ForeignMemory.getLong(ptr + 8L);
     }
 
     @Draft
     public static long getElapsedNanos(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getLong(ptr + 16L) - ForeignMemory.getLong(ptr);
     }
 }

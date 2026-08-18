@@ -3,6 +3,7 @@ package math;
 import lang.Vec3;
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * Off-Heap 3D Ray representation (Origin Vec3 + Direction Vec3) stored in contiguous 24-byte native memory.
  * Designed for zero-GC allocation, raytracing, and picking query performance.
@@ -77,6 +78,6 @@ public final class Ray
 
     public static String toString(long ptr)
     {
-        return "Ray[Origin: " + Vec3.toString(ptr) + ", Direction: " + Vec3.toString(ptr + 12L) + "]";
+        return StringLookup.getJavaString(379) + Vec3.toString(ptr) + StringLookup.getJavaString(380) + Vec3.toString(ptr + 12L) + StringLookup.getJavaString(67);
     }
 }

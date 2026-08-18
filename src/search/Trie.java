@@ -9,6 +9,7 @@ import struct.List;
 
 import java.lang.foreign.Arena;
 
+import nio.StringLookup;
 /**
  * Off-heap Trie (Prefix Tree) implementation for zero-GC autocomplete and symbol prefix searches.
  */
@@ -35,7 +36,7 @@ public final class Trie {
     private Trie() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("Trie subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(388));
     }
 
     public static void freeAll() {

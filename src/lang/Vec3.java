@@ -2,6 +2,7 @@ package lang;
 
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * Off-Heap 3D Vector representation (x, y, z) stored in contiguous 12-byte raw native memory.
  * Designed for zero-GC allocation and pure Java FFM performance.
@@ -229,6 +230,6 @@ public final class Vec3
 
     public static String toString(long ptr)
     {
-        return "(" + getX(ptr) + ", " + getY(ptr) + ", " + getZ(ptr) + ")";
+        return StringLookup.getJavaString(372) + getX(ptr) + StringLookup.getJavaString(560) + getY(ptr) + StringLookup.getJavaString(560) + getZ(ptr) + StringLookup.getJavaString(18);
     }
 }

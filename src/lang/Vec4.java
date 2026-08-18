@@ -2,6 +2,7 @@ package lang;
 
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * Off-Heap 4D Vector representation (x, y, z, w) stored in contiguous 16-byte raw native memory.
  * Designed for zero-GC allocation and pure Java FFM performance.
@@ -169,6 +170,6 @@ public final class Vec4
 
     public static String toString(long ptr)
     {
-        return "(" + getX(ptr) + ", " + getY(ptr) + ", " + getZ(ptr) + ", " + getW(ptr) + ")";
+        return StringLookup.getJavaString(372) + getX(ptr) + StringLookup.getJavaString(560) + getY(ptr) + StringLookup.getJavaString(560) + getZ(ptr) + StringLookup.getJavaString(560) + getW(ptr) + StringLookup.getJavaString(18);
     }
 }
