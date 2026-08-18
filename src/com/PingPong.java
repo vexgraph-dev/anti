@@ -6,7 +6,7 @@ import net.HTTPClient;
 import net.HTTPServer;
 import primitive.string;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import thread.Atomic;
 
 /**
  * High-performance, off-heap Ping-Pong communication example.
@@ -42,9 +42,9 @@ public final class PingPong
         System.out.println("[Com Demo] Server running: " + HTTPServer.isRunning(serverPtr));
 
         // 2. Start a background thread to poll for HTTP requests
-        AtomicBoolean running = new AtomicBoolean(true);
+        long running = Atomic.allocateBool(true);
         Thread serverThread = Thread.ofPlatform().name("PingPong-Server-Poll").unstarted(() -> {
-            while (running.get())
+            while (Atomic.getBool(running))
             {
                 long reqPtr = HTTPServer.pollRequest(serverPtr);
                 if (reqPtr != 0L)
@@ -109,13 +109,14 @@ public final class PingPong
         finally
         {
             // 4. Tear down server poll and clean up native handles
-            running.set(false);
+            Atomic.setBool(running, false);
             try
             {
                 serverThread.join();
             }
             catch (InterruptedException ignored) {}
 
+            Atomic.free(running);
             HTTPServer.free(serverPtr);
             if (resPtr != 0L)
             {
