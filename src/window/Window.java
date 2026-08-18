@@ -4,8 +4,8 @@ import annotation.Intention;
 import engine.EngineLoop;
 import annotation.Draft;
 
+import thread.Atomic;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.concurrent.locks.LockSupport.*;
 
@@ -24,8 +24,8 @@ public final class Window {
     private static long titleLastSeq;
 
     /** Serializes AppKit events with Metal-backed Vulkan swapchain operations on macOS. */
-    public static final AtomicBoolean OS_NATIVE_MUTEX =
-            new AtomicBoolean(false);
+    public static final long OS_NATIVE_MUTEX =
+            Atomic.allocateBool(false);
 
     private static final String OS = System.getProperty("os.name").toLowerCase();
     private static final boolean IS_MAC = OS.contains("mac");
@@ -70,13 +70,13 @@ public final class Window {
      * IMMEDIATE honors TARGET_FPS exactly (0 = uncapped); FIFO vsyncs to the display.
      */
     public static void setFpsMode(long pointer, int presentMode) {
-        while (!OS_NATIVE_MUTEX.compareAndSet(false, true)) {
+        while (!Atomic.compareAndSet(OS_NATIVE_MUTEX, false, true)) {
             Thread.onSpinWait();
         }
         try {
             vulkan.TriangleRenderer.setPresentMode(presentMode);
         } finally {
-            OS_NATIVE_MUTEX.set(false);
+            Atomic.setBool(OS_NATIVE_MUTEX, false);
         }
     }
 
@@ -228,13 +228,13 @@ public final class Window {
     /** CORE worker side: request a fullscreen toggle. AppKit animation is main-thread
      *  only, so Thread 0 applies it in applyPendingFullscreen. */
     public static void requestFullscreenToggle() {
-        FULLSCREEN_TOGGLE_REQUEST.set(true);
+        Atomic.setBool(FULLSCREEN_TOGGLE_REQUEST, true);
     }
-    private static final AtomicBoolean FULLSCREEN_TOGGLE_REQUEST = new AtomicBoolean(false);
+    private static final long FULLSCREEN_TOGGLE_REQUEST = Atomic.allocateBool(false);
 
     /** Thread 0 side: apply a pending fullscreen toggle (called from the event pump). */
     private static void applyPendingFullscreen(long pointer) {
-        if (FULLSCREEN_TOGGLE_REQUEST.compareAndSet(true, false)) {
+        if (Atomic.compareAndSet(FULLSCREEN_TOGGLE_REQUEST, true, false)) {
             toggleFullscreen(pointer);
         }
     }
