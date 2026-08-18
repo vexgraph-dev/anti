@@ -191,6 +191,7 @@ public class TypeRegister
     public static final int ID_EVENT_THREAD = 0x00007F; // thread.EventThread class // 127
     public static final int ID_UI_THREAD    = 0x000080; // thread.UIThread class // 128
     public static final int ID_ARGUMENTS    = 0x000081; // primitive.Arguments class // 129
+    public static final int ID_ATOMIC       = 0x000082; // thread.Atomic class // 130
     public static final int CUSTOM_STRUCT = 0x000100; // Base ID for custom structs
     // --- COMBINED BIT-PACKED TYPE CONSTANTS ---
 
@@ -733,5 +734,10 @@ public class TypeRegister
     public static final int ARGUMENTS_SINGLETON = FORM_SINGLETON | ID_ARGUMENTS;
     public static final int ARGUMENTS_ARRAY = FORM_ARRAY | ID_ARGUMENTS;
     public static final int ARGUMENTS_POINTER = FORM_POINTER | ID_ARGUMENTS;
+
+    // thread.Atomic class (off-heap atomics: CAS, volatile, atomic flags)
+    public static final int ATOMIC_SINGLETON = FORM_SINGLETON | ID_ATOMIC;
+    public static final int ATOMIC_ARRAY = FORM_ARRAY | ID_ATOMIC;
+    public static final int ATOMIC_POINTER = FORM_POINTER | ID_ATOMIC;
 
 }
