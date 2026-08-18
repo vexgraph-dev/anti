@@ -13,6 +13,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 import struct.Map;
 
+import nio.StringLookup;
 @Draft
 @Intention("Data-Oriented off-heap manager for CLI I/O polling, patterned after NetworkingThread")
 @Volatile
@@ -101,7 +102,7 @@ public final class ConsoleThread {
         long queuePtr = getQueue(workerPtr);
 
         Thread worker = Thread.ofPlatform()
-                .name("Anti-ConsoleWorker-0x" + Long.toHexString(workerPtr).toUpperCase())
+                .name(StringLookup.getJavaString(1112) + Long.toHexString(workerPtr).toUpperCase())
                 .daemon(true)
                 .start(() -> processLoop(workerPtr, queuePtr));
 
@@ -199,7 +200,7 @@ public final class ConsoleThread {
                     }
                 }
             } catch (Throwable t) {
-                System.err.println("Error in ConsoleThread processLoop: " + t.getMessage());
+                System.err.println(StringLookup.getJavaString(1113) + t.getMessage());
             }
 
             // Sleep a tiny bit to avoid pegging CPU when idle

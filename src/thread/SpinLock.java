@@ -8,6 +8,7 @@ import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-heap Atomic Spinlock based on FFM Memory CAS updates.
  */
@@ -55,7 +56,7 @@ public final class SpinLock {
 
     // spin until lock is acquired (unbounded; use tryLock(lockPtr, timeoutNanos) for deadlock safety)
     public static void lock(long lockPtr) {
-        if (lockPtr == 0L) throw new NullPointerException("Locking NULL spinlock pointer!");
+        if (lockPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1096));
         int ticket = ticket(Thread.currentThread().threadId());
         while (!ForeignMemory.compareAndSetInt(lockPtr, 0, ticket)) {
             Thread.onSpinWait();
@@ -64,13 +65,13 @@ public final class SpinLock {
 
     // try to acquire lock immediately, returns true if successful
     public static boolean tryLock(long lockPtr) {
-        if (lockPtr == 0L) throw new NullPointerException("Locking NULL spinlock pointer!");
+        if (lockPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1096));
         return ForeignMemory.compareAndSetInt(lockPtr, 0, ticket(Thread.currentThread().threadId()));
     }
 
     // try to acquire lock within timeoutNanos; returns false on timeout, never spins forever
     public static boolean tryLock(long lockPtr, long timeoutNanos) {
-        if (lockPtr == 0L) throw new NullPointerException("Locking NULL spinlock pointer!");
+        if (lockPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1096));
         long deadline = System.nanoTime() + timeoutNanos;
         while (!tryLock(lockPtr)) {
             if (timeoutNanos >= 0L && System.nanoTime() >= deadline) return false;
@@ -81,11 +82,11 @@ public final class SpinLock {
 
     // release lock, verifying the calling thread owns it
     public static void unlock(long lockPtr) {
-        if (lockPtr == 0L) throw new NullPointerException("Unlocking NULL spinlock pointer!");
+        if (lockPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1097));
         long owner = Thread.currentThread().threadId();
         int held = ForeignMemory.getVolatileInt(lockPtr);
         if (held != 0 && ownerOf(held) != owner) {
-            throw new IllegalStateException("SpinLock unlock by non-owning thread 0x" + Long.toHexString(owner));
+            throw new IllegalStateException(StringLookup.getJavaString(1098) + Long.toHexString(owner));
         }
         ForeignMemory.setVolatileInt(lockPtr, 0);
     }

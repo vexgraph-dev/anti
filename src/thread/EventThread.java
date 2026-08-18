@@ -11,6 +11,7 @@ import struct.Map;
 
 import java.util.concurrent.locks.LockSupport;
 
+import nio.StringLookup;
 /**
  * Data-Oriented Design (DOD) off-heap Event & UI Thread Manager.
  *
@@ -116,13 +117,13 @@ public final class EventThread {
         ForeignMemory.setInt(workerPtr, 1); // Set state to RUNNING BEFORE starting the thread
 
         Thread worker = Thread.ofPlatform()
-                .name("Anti-EventWorker-0x" + Long.toHexString(workerPtr).toUpperCase())
+                .name(StringLookup.getJavaString(1110) + Long.toHexString(workerPtr).toUpperCase())
                 .daemon(true)
                 .start(() -> {
                     try {
                         processQueue(workerPtr, queuePtr);
                     } catch (Throwable t) {
-                        System.out.println("[EventThread] Worker crashed: " + t.getMessage());
+                        System.out.println(StringLookup.getJavaString(1111) + t.getMessage());
                         t.printStackTrace();
                     } finally {
                         ForeignMemory.setInt(workerPtr, 0); // Mark STOPPED

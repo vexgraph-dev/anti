@@ -8,6 +8,7 @@ import annotation.Volatile;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Zero-GC Off-Heap Atomic Variables & Synchronization Utility.
  * Provides atomic operations (CAS, getAndSet, getAndAdd, spin-waits) on off-heap
@@ -86,22 +87,22 @@ public final class Atomic {
     // =========================================================================
 
     public static boolean getBool(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Reading from NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1103));
         return ForeignMemory.getVolatileByte(ptr) != 0;
     }
 
     public static void setBool(long ptr, boolean value) {
-        if (ptr == 0L) throw new NullPointerException("Writing to NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1104));
         ForeignMemory.setVolatileByte(ptr, (byte) (value ? 1 : 0));
     }
 
     public static boolean compareAndSet(long ptr, boolean expected, boolean value) {
-        if (ptr == 0L) throw new NullPointerException("CAS on NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1105));
         return ForeignMemory.compareAndSetByte(ptr, (byte) (expected ? 1 : 0), (byte) (value ? 1 : 0));
     }
 
     public static boolean getAndSet(long ptr, boolean value) {
-        if (ptr == 0L) throw new NullPointerException("GetAndSet on NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1106));
         return ForeignMemory.getAndSetByte(ptr, (byte) (value ? 1 : 0)) != 0;
     }
 
@@ -110,27 +111,27 @@ public final class Atomic {
     // =========================================================================
 
     public static int getInt(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Reading from NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1103));
         return ForeignMemory.getVolatileInt(ptr);
     }
 
     public static void setInt(long ptr, int value) {
-        if (ptr == 0L) throw new NullPointerException("Writing to NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1104));
         ForeignMemory.setVolatile(ptr, value);
     }
 
     public static boolean compareAndSet(long ptr, int expected, int value) {
-        if (ptr == 0L) throw new NullPointerException("CAS on NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1105));
         return ForeignMemory.compareAndSetInt(ptr, expected, value);
     }
 
     public static int getAndSet(long ptr, int value) {
-        if (ptr == 0L) throw new NullPointerException("GetAndSet on NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1106));
         return ForeignMemory.getAndSetInt(ptr, value);
     }
 
     public static int getAndAdd(long ptr, int delta) {
-        if (ptr == 0L) throw new NullPointerException("GetAndAdd on NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1107));
         return ForeignMemory.getAndAddInt(ptr, delta);
     }
 
@@ -147,27 +148,27 @@ public final class Atomic {
     // =========================================================================
 
     public static long getLong(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Reading from NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1103));
         return ForeignMemory.getVolatileLong(ptr);
     }
 
     public static void setLong(long ptr, long value) {
-        if (ptr == 0L) throw new NullPointerException("Writing to NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1104));
         ForeignMemory.setVolatile(ptr, value);
     }
 
     public static boolean compareAndSet(long ptr, long expected, long value) {
-        if (ptr == 0L) throw new NullPointerException("CAS on NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1105));
         return ForeignMemory.compareAndSetLong(ptr, expected, value);
     }
 
     public static long getAndSet(long ptr, long value) {
-        if (ptr == 0L) throw new NullPointerException("GetAndSet on NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1106));
         return ForeignMemory.getAndSetLong(ptr, value);
     }
 
     public static long getAndAdd(long ptr, long delta) {
-        if (ptr == 0L) throw new NullPointerException("GetAndAdd on NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1107));
         return ForeignMemory.getAndAddLong(ptr, delta);
     }
 
@@ -188,7 +189,7 @@ public final class Atomic {
      * @return the new boolean value after toggling.
      */
     public static boolean toggleAtomic(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Toggling NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1108));
         while (true) {
             boolean cur = getBool(ptr);
             boolean next = !cur;
@@ -262,7 +263,7 @@ public final class Atomic {
      * Spins until the off-heap boolean at ptr equals the target value.
      */
     public static void spinWait(long ptr, boolean targetValue) {
-        if (ptr == 0L) throw new NullPointerException("Spin-wait on NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1109));
         while (getBool(ptr) != targetValue) {
             Thread.onSpinWait();
         }
@@ -273,7 +274,7 @@ public final class Atomic {
      * @return true if target value was reached before timeout, false on timeout.
      */
     public static boolean spinWait(long ptr, boolean targetValue, long timeoutNanos) {
-        if (ptr == 0L) throw new NullPointerException("Spin-wait on NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1109));
         long deadline = System.nanoTime() + timeoutNanos;
         while (getBool(ptr) != targetValue) {
             if (timeoutNanos >= 0L && System.nanoTime() >= deadline) return false;
@@ -286,7 +287,7 @@ public final class Atomic {
      * Spins until the off-heap int at ptr equals the target value.
      */
     public static void spinWait(long ptr, int targetValue) {
-        if (ptr == 0L) throw new NullPointerException("Spin-wait on NULL atomic pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(1109));
         while (getInt(ptr) != targetValue) {
             Thread.onSpinWait();
         }

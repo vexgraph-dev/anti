@@ -11,6 +11,7 @@ import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
 
+import nio.StringLookup;
 /**
  * High-throughput off-heap Ring Buffer queue for inter-thread message dispatching.
  */
@@ -38,7 +39,7 @@ public final class RingBuffer {
     private RingBuffer() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("RingBuffer subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(1099));
     }
 
     private static int nextPowerOfTwo(int value) {
@@ -112,7 +113,7 @@ public final class RingBuffer {
     // push a value or pointer to the ring buffer, returns true if successful
     public static boolean offer(long ringBufferPtr, long valueOrPointer) {
         checkActive();
-        if (ringBufferPtr == 0L) throw new NullPointerException("Writing to NULL off-heap RingBuffer!");
+        if (ringBufferPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1100));
 
         long lockPtr = ringBufferPtr + 24L;
         SpinLock.lock(lockPtr);
@@ -140,7 +141,7 @@ public final class RingBuffer {
     // pop and return the oldest element from the ring buffer, returns 0 if empty
     public static long poll(long ringBufferPtr) {
         checkActive();
-        if (ringBufferPtr == 0L) throw new NullPointerException("Reading from NULL off-heap RingBuffer!");
+        if (ringBufferPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1101));
 
         long lockPtr = ringBufferPtr + 24L;
         SpinLock.lock(lockPtr);
@@ -168,7 +169,7 @@ public final class RingBuffer {
     // retrieve the oldest element without popping it, returns 0 if empty
     public static long peek(long ringBufferPtr) {
         checkActive();
-        if (ringBufferPtr == 0L) throw new NullPointerException("Reading from NULL off-heap RingBuffer!");
+        if (ringBufferPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1101));
 
         long lockPtr = ringBufferPtr + 24L;
         SpinLock.lock(lockPtr);
@@ -237,7 +238,7 @@ public final class RingBuffer {
         long headerBlock = ringBufferPtr - 8L;
         int type = ForeignMemory.getInt(headerBlock);
         if (type == 0 || (type & TypeRegister.MASK_FORM) != TypeRegister.FORM_ARRAY) {
-            throw new IllegalStateException("Double free or corrupt ring buffer pointer: 0x" + Long.toHexString(ringBufferPtr).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(1102) + Long.toHexString(ringBufferPtr).toUpperCase());
         }
 
         long dataBuffer = dataBuffer(ringBufferPtr);

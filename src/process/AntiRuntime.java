@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import nio.StringLookup;
 // this is where the runtime starts, gets the system information
 // the graphics, the setup, everything, before the main class ever gets run
 //
@@ -18,53 +19,53 @@ public class AntiRuntime {
 
     public static void init(String[] args) {
         // 1. Resolve LWJGL native library paths for both JVM and GraalVM AOT execution
-        if (System.getProperty("org.lwjgl.librarypath") == null) {
-            if (System.getProperty("org.graalvm.nativeimage.imagecode") != null) {
+        if (System.getProperty(StringLookup.getJavaString(1206)) == null) {
+            if (System.getProperty(StringLookup.getJavaString(1207)) != null) {
                 String command = ProcessHandle.current().info().command().orElse(null);
                 if (command != null) {
-                    File exeFile = new File(command);
+                    File exeFile = new File(command).getAbsoluteFile();
                     File exeDir = exeFile.getParentFile();
                     if (exeDir != null && exeDir.exists()) {
-                        System.setProperty("org.lwjgl.librarypath", exeDir.getAbsolutePath());
+                        System.setProperty(StringLookup.getJavaString(1206), exeDir.getAbsolutePath());
                     }
                 }
             } else {
-                File localNatives = new File("natives");
+                File localNatives = new File(StringLookup.getJavaString(1208));
                 if (localNatives.exists()) {
-                    System.setProperty("org.lwjgl.librarypath", localNatives.getAbsolutePath());
+                    System.setProperty(StringLookup.getJavaString(1206), localNatives.getAbsolutePath());
                 } else {
-                    File scratchNatives = new File("scratch/natives");
+                    File scratchNatives = new File(StringLookup.getJavaString(1209));
                     if (scratchNatives.exists()) {
-                        System.setProperty("org.lwjgl.librarypath", scratchNatives.getAbsolutePath());
+                        System.setProperty(StringLookup.getJavaString(1206), scratchNatives.getAbsolutePath());
                     }
                 }
             }
         }
 
         // 2. macOS Trampoline: Auto-relaunch with -XstartOnFirstThread if missing (JVM mode only)
-        if (System.getProperty("os.name").toLowerCase().contains("mac")
-                && System.getProperty("java.home") != null
-                && !Boolean.getBoolean("mac.firstThread")) {
+        if (System.getProperty(StringLookup.getJavaString(143)).toLowerCase().contains(StringLookup.getJavaString(144))
+                && System.getProperty(StringLookup.getJavaString(1210)) != null
+                && !Boolean.getBoolean(StringLookup.getJavaString(1211))) {
 
-            System.out.println("[AntiRuntime] macOS Detected: Relaunching JVM with -XstartOnFirstThread...");
+            System.out.println(StringLookup.getJavaString(1212));
 
             List<String> childArgs = new ArrayList<>();
-            childArgs.add(System.getProperty("java.home") + "/bin/java");
-            childArgs.add("--enable-preview");
-            childArgs.add("--enable-native-access=ALL-UNNAMED");
-            childArgs.add("-XstartOnFirstThread");
-            childArgs.add("-Xmx128m"); // Heap kept small for off-heap focus
+            childArgs.add(System.getProperty(StringLookup.getJavaString(1210)) + StringLookup.getJavaString(1213));
+            childArgs.add(StringLookup.getJavaString(1143));
+            childArgs.add(StringLookup.getJavaString(1171));
+            childArgs.add(StringLookup.getJavaString(1172));
+            childArgs.add(StringLookup.getJavaString(1214)); // Heap kept small for off-heap focus
 
             Properties props = System.getProperties();
             for (Map.Entry<Object, Object> e : props.entrySet()) {
                 String key = String.valueOf(e.getKey());
-                if (key.startsWith("anti.")) {
-                    childArgs.add("-D" + key + "=" + String.valueOf(e.getValue()));
+                if (key.startsWith(StringLookup.getJavaString(1215))) {
+                    childArgs.add(StringLookup.getJavaString(1216) + key + StringLookup.getJavaString(462) + String.valueOf(e.getValue()));
                 }
             }
-            childArgs.add("-Dmac.firstThread=true"); // Mark that we've relaunched
-            childArgs.add("-cp");
-            childArgs.add(System.getProperty("java.class.path"));
+            childArgs.add(StringLookup.getJavaString(1173)); // Mark that we've relaunched
+            childArgs.add(StringLookup.getJavaString(1145));
+            childArgs.add(System.getProperty(StringLookup.getJavaString(1217)));
 
             // Use StackWalker to dynamically find the class that called AntiRuntime.init()
             String callerClass = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
@@ -81,10 +82,10 @@ public class AntiRuntime {
                 Process p = pb.start();
                 System.exit(p.waitFor());
             } catch (Exception e) {
-                throw new RuntimeException("AntiRuntime trampoline failed", e);
+                throw new RuntimeException(StringLookup.getJavaString(1218), e);
             }
         }
         
-        System.out.println("[AntiRuntime] Environment fully initialized.");
+        System.out.println(StringLookup.getJavaString(1219));
     }
 }

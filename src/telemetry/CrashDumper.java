@@ -10,6 +10,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.locks.LockSupport;
 
+import nio.StringLookup;
 /**
  * High-performance, zero-overhead telemetry dumper.
  * Tracks off-heap engine telemetry (frame count, last pointer, etc.) using a 1KB native memory block.
@@ -20,7 +21,7 @@ import java.util.concurrent.locks.LockSupport;
 @Intention("Asynchronous off-heap telemetry dumper that flushes status periodically using a daemon thread and captures exceptions")
 public final class CrashDumper
 {
-    private static final String DUMP_FILE_PATH = "crash-dump.txt";
+    private static final String DUMP_FILE_PATH = StringLookup.getJavaString(1009);
 
     // Pre-allocated 1KB off-heap telemetry block
     public static final long TELEMETRY_BLOCK;
@@ -51,7 +52,7 @@ public final class CrashDumper
      */
     public static void init()
     {
-        Thread daemon = Thread.ofPlatform().daemon(true).name("Anti-Telemetry-Daemon").unstarted(() -> {
+        Thread daemon = Thread.ofPlatform().daemon(true).name(StringLookup.getJavaString(1010)).unstarted(() -> {
             while (true)
             {
                 LockSupport.parkNanos(1_000_000_000L); // Park for exactly 1 second
@@ -59,7 +60,7 @@ public final class CrashDumper
             }
         });
         daemon.start();
-        System.out.println("[Telemetry] Asynchronous CrashDumper daemon started.");
+        System.out.println(StringLookup.getJavaString(1011));
     }
 
     /**
@@ -118,8 +119,8 @@ public final class CrashDumper
         if (exception != null)
         {
             java.time.LocalDateTime now = java.time.LocalDateTime.now();
-            java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmmss");
-            filename = "crash-dump_" + now.format(dtf) + ".txt";
+            java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern(StringLookup.getJavaString(1012));
+            filename = StringLookup.getJavaString(1013) + now.format(dtf) + StringLookup.getJavaString(1014);
         }
 
         try (FileOutputStream fos = new FileOutputStream(filename, false))
@@ -133,22 +134,22 @@ public final class CrashDumper
             long allocs = ForeignMemory.getLong(TELEMETRY_BLOCK + OFFSET_ALLOC_COUNT);
 
             StringBuilder sb = new StringBuilder();
-            sb.append("========================================\n");
-            sb.append("         ANTI ENGINE TELEMETRY DUMP     \n");
-            sb.append("========================================\n");
-            sb.append("Engine State Code   : ").append(state).append("\n");
-            sb.append("Frame Count         : ").append(frame).append("\n");
-            sb.append("Last Active Pointer : 0x").append(Long.toHexString(lastPtr).toUpperCase()).append("\n");
-            sb.append("Display Count       : ").append(displayCount).append("\n");
-            sb.append("Active Pipelines    : ").append(pipelines).append("\n");
-            sb.append("Active Threads      : ").append(threads).append("\n");
-            sb.append("Total Allocations   : ").append(allocs).append("\n");
+            sb.append(StringLookup.getJavaString(1015));
+            sb.append(StringLookup.getJavaString(1016));
+            sb.append(StringLookup.getJavaString(1015));
+            sb.append(StringLookup.getJavaString(1017)).append(state).append(StringLookup.getJavaString(102));
+            sb.append(StringLookup.getJavaString(1018)).append(frame).append(StringLookup.getJavaString(102));
+            sb.append(StringLookup.getJavaString(1019)).append(Long.toHexString(lastPtr).toUpperCase()).append(StringLookup.getJavaString(102));
+            sb.append(StringLookup.getJavaString(1020)).append(displayCount).append(StringLookup.getJavaString(102));
+            sb.append(StringLookup.getJavaString(1021)).append(pipelines).append(StringLookup.getJavaString(102));
+            sb.append(StringLookup.getJavaString(1022)).append(threads).append(StringLookup.getJavaString(102));
+            sb.append(StringLookup.getJavaString(1023)).append(allocs).append(StringLookup.getJavaString(102));
 
             if (exception != null)
             {
-                sb.append("\n========================================\n");
-                sb.append("         CAUGHT RUNTIME EXCEPTION       \n");
-                sb.append("========================================\n");
+                sb.append(StringLookup.getJavaString(1024));
+                sb.append(StringLookup.getJavaString(1025));
+                sb.append(StringLookup.getJavaString(1015));
                 StringWriter sw = new StringWriter();
                 try (PrintWriter pw = new PrintWriter(sw))
                 {
