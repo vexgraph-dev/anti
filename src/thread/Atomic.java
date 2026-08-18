@@ -180,7 +180,82 @@ public final class Atomic {
     }
 
     // =========================================================================
-    // 5. SYNCHRONIZATION HELPERS & SPIN WAITS
+    // 5. CONVENIENCE & VALUE MUTATION HELPERS
+    // =========================================================================
+
+    /**
+     * Atomically toggles an off-heap boolean from true to false or false to true.
+     * @return the new boolean value after toggling.
+     */
+    public static boolean toggleAtomic(long ptr) {
+        if (ptr == 0L) throw new NullPointerException("Toggling NULL atomic pointer!");
+        while (true) {
+            boolean cur = getBool(ptr);
+            boolean next = !cur;
+            if (compareAndSet(ptr, cur, next)) {
+                return next;
+            }
+        }
+    }
+
+    /**
+     * Atomically adds delta to an int atomic and returns the new value.
+     */
+    public static int addAtomicValue(long ptr, int delta) {
+        return getAndAdd(ptr, delta) + delta;
+    }
+
+    /**
+     * Atomically adds delta to a long atomic and returns the new value.
+     */
+    public static long addAtomicValue(long ptr, long delta) {
+        return getAndAdd(ptr, delta) + delta;
+    }
+
+    /**
+     * Atomically increments an int atomic by the given delta and returns the new value.
+     */
+    public static int incrementAtomicValue(long ptr, int delta) {
+        return addAtomicValue(ptr, delta);
+    }
+
+    /**
+     * Atomically increments a long atomic by the given delta and returns the new value.
+     */
+    public static long incrementAtomicValue(long ptr, long delta) {
+        return addAtomicValue(ptr, delta);
+    }
+
+    /**
+     * Atomically increments an int atomic by 1 and returns the new value.
+     */
+    public static int incrementAtomicOne(long ptr) {
+        return addAtomicValue(ptr, 1);
+    }
+
+    /**
+     * Atomically increments a long atomic by 1 and returns the new value.
+     */
+    public static long incrementAtomicOneLong(long ptr) {
+        return addAtomicValue(ptr, 1L);
+    }
+
+    /**
+     * Atomically decrements an int atomic by 1 and returns the new value.
+     */
+    public static int decrementAtomicOne(long ptr) {
+        return addAtomicValue(ptr, -1);
+    }
+
+    /**
+     * Atomically decrements a long atomic by 1 and returns the new value.
+     */
+    public static long decrementAtomicOneLong(long ptr) {
+        return addAtomicValue(ptr, -1L);
+    }
+
+    // =========================================================================
+    // 6. SYNCHRONIZATION HELPERS & SPIN WAITS
     // =========================================================================
 
     /**
