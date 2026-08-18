@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 
 import static org.lwjgl.openal.AL10.*;
 
+import nio.StringLookup;
 /**
  * Off-heap WAV audio decoder and loader conforming to the Anti Architecture.
  * Parses RIFF/WAVE binary format headers natively using zero Java heap allocation.
@@ -34,7 +35,7 @@ public final class AudioLoader
         }
         catch (Exception e)
         {
-            throw new APIException("Failed to read WAV file: " + filePath, e);
+            throw new APIException(StringLookup.getJavaString(592) + filePath, e);
         }
 
         // 1. Allocate native memory block to hold the raw file bytes
@@ -49,7 +50,7 @@ public final class AudioLoader
 
             if (riffHeader != 0x46464952 || waveHeader != 0x45564157) // "RIFF" and "WAVE" in little-endian ASCII
             {
-                throw new APIException("Invalid WAV file header format: " + filePath);
+                throw new APIException(StringLookup.getJavaString(593) + filePath);
             }
 
             // 3. Scan RIFF chunks to find "fmt " and "data"
@@ -89,12 +90,12 @@ public final class AudioLoader
 
             if (dataPtr == 0L || dataSize == 0)
             {
-                throw new APIException("WAV file does not contain a valid 'data' chunk: " + filePath);
+                throw new APIException(StringLookup.getJavaString(594) + filePath);
             }
 
             if (audioFormat != 1) // 1 = PCM uncompressed
             {
-                throw new APIException("Unsupported WAV format: only uncompressed PCM is supported.");
+                throw new APIException(StringLookup.getJavaString(595));
             }
 
             // 4. Map WAV format to OpenAL formats
@@ -112,7 +113,7 @@ public final class AudioLoader
 
             if (format == 0)
             {
-                throw new APIException("Unsupported channels (" + numChannels + ") or bits per sample (" + bitsPerSample + ") combination.");
+                throw new APIException(StringLookup.getJavaString(596) + numChannels + StringLookup.getJavaString(597) + bitsPerSample + StringLookup.getJavaString(598));
             }
 
             // 5. Generate and upload OpenAL Buffer
@@ -128,7 +129,7 @@ public final class AudioLoader
             ForeignMemory.setInt(bufferPtr + 8L, format);
             ForeignMemory.setInt(bufferPtr + 12L, dataSize);
 
-            System.out.println("[AudioLoader] Loaded WAV: " + filePath + " (Size: " + dataSize + " bytes, Rate: " + sampleRate + "Hz)");
+            System.out.println(StringLookup.getJavaString(599) + filePath + StringLookup.getJavaString(600) + dataSize + StringLookup.getJavaString(601) + sampleRate + StringLookup.getJavaString(602));
             return bufferPtr;
         }
         finally

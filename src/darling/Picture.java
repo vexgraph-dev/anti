@@ -7,6 +7,7 @@ import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-heap picture node (@Draft): a {@link Container} subclass that renders an
  * {@link image.Image} asset. The layout core lives in Container (payload starts
@@ -102,7 +103,7 @@ public final class Picture {
         if (ptr == 0L) return;
 
         int type = type(ptr);
-        if (type != TYPE_SINGLETON) throw new IllegalStateException("Double free or corrupt Picture pointer: 0x" + java.lang.Long.toHexString(ptr).toUpperCase());
+        if (type != TYPE_SINGLETON) throw new IllegalStateException(StringLookup.getJavaString(626) + java.lang.Long.toHexString(ptr).toUpperCase());
 
         long s = struct(ptr);
         ForeignMemory.freeNative(s);
@@ -110,7 +111,7 @@ public final class Picture {
     }
 
     private static long struct(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL Picture pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(627));
         return ForeignMemory.getLong(ptr);
     }
 
@@ -121,17 +122,17 @@ public final class Picture {
     public static int classId() { return CLASS_ID; }
 
     public static int type(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("type() on NULL Picture pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(628));
         return ForeignMemory.getUnsafeInt(ptr - 8L);
     }
 
     public static int classId(long ptr) { return TypeRegister.getClassId(type(ptr)); }
 
     private static void checkPicture(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL Picture pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(627));
         int cls = classId(ptr);
         if (cls != CLASS_ID)
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(ptr).toUpperCase() + " is Class ID " + cls + ", not a Picture");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(ptr).toUpperCase() + StringLookup.getJavaString(29) + cls + StringLookup.getJavaString(629));
     }
 
     // =========================================================================
@@ -250,7 +251,7 @@ public final class Picture {
      */
     public static void getCrop(long ptr, long outRect) {
         checkPicture(ptr);
-        if (outRect == 0L) throw new NullPointerException("Picture.getCrop() outRect is NULL!");
+        if (outRect == 0L) throw new NullPointerException(StringLookup.getJavaString(630));
 
         if (!hasCrop(ptr)) {
             primitive.Float.set(outRect, 0, 0f);
@@ -314,7 +315,7 @@ public final class Picture {
      */
     public static void resolve(long ptr, float parentX, float parentY, float parentW, float parentH, long outRect) {
         checkPicture(ptr);
-        if (outRect == 0L) throw new NullPointerException("Picture.resolve() outRect is NULL!");
+        if (outRect == 0L) throw new NullPointerException(StringLookup.getJavaString(631));
 
         float w = getWidth(ptr);
         float h = getHeight(ptr);

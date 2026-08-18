@@ -20,6 +20,7 @@ import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
+import nio.StringLookup;
 /**
  * Build utility compiling and packaging server-side modules into executable anti-server.jar.
  */
@@ -41,24 +42,24 @@ public final class ServerJarBuilder {
      * Builds executable standalone server JAR at target output path.
      */
     public static boolean buildServerJar(String outputJarPath, String mainClassName) {
-        Path outDir = Paths.get("out");
+        Path outDir = Paths.get(StringLookup.getJavaString(133));
         if (!Files.exists(outDir)) {
-            System.err.println("Compiled 'out' directory missing. Please compile classes first!");
+            System.err.println(StringLookup.getJavaString(134));
             return false;
         }
 
         Manifest manifest = new Manifest();
-        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
-        manifest.getMainAttributes().put(Attributes.Name.MAIN_CLASS, mainClassName != null ? mainClassName : "net.HTTPServer");
+        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, StringLookup.getJavaString(135));
+        manifest.getMainAttributes().put(Attributes.Name.MAIN_CLASS, mainClassName != null ? mainClassName : StringLookup.getJavaString(136));
 
-        File jarFile = new File(outputJarPath != null ? outputJarPath : "anti-server.jar");
+        File jarFile = new File(outputJarPath != null ? outputJarPath : StringLookup.getJavaString(137));
         try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jarFile), manifest);
              Stream<Path> paths = Files.walk(outDir)) {
 
             paths.filter(Files::isRegularFile)
-                 .filter(p -> p.toString().endsWith(".class"))
+                 .filter(p -> p.toString().endsWith(StringLookup.getJavaString(138)))
                  .forEach(p -> {
-                     String entryName = outDir.relativize(p).toString().replace("\\", "/");
+                     String entryName = outDir.relativize(p).toString().replace(StringLookup.getJavaString(139), StringLookup.getJavaString(40));
                      try {
                          jos.putNextEntry(new JarEntry(entryName));
                          try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(p.toFile()))) {
@@ -66,14 +67,14 @@ public final class ServerJarBuilder {
                          }
                          jos.closeEntry();
                      } catch (IOException e) {
-                         System.err.println("Failed to add JAR entry: " + entryName);
+                         System.err.println(StringLookup.getJavaString(140) + entryName);
                      }
                  });
 
-            System.out.println("SUCCESSFULLY CREATED STANDALONE SERVER JAR -> " + jarFile.getAbsolutePath());
+            System.out.println(StringLookup.getJavaString(141) + jarFile.getAbsolutePath());
             return true;
         } catch (IOException e) {
-            System.err.println("Failed to build server JAR: " + e.getMessage());
+            System.err.println(StringLookup.getJavaString(142) + e.getMessage());
             return false;
         }
     }

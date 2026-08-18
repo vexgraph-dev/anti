@@ -20,6 +20,7 @@ import java.nio.LongBuffer;
 
 import static org.lwjgl.vulkan.VK10.*;
 
+import nio.StringLookup;
 /**
  * Off-heap pool for Vulkan HOST_VISIBLE | HOST_COHERENT GPU audio staging buffers.
  *
@@ -88,7 +89,7 @@ public final class AudioComputeBuffer {
 
             LongBuffer pBuffer = stack.mallocLong(1);
             if (vkCreateBuffer(device, bufInfo, null, pBuffer) != VK_SUCCESS) {
-                throw new RuntimeException("AudioComputeBuffer: vkCreateBuffer failed (size=" + sizeBytes + ")");
+                throw new RuntimeException(StringLookup.getJavaString(608) + sizeBytes + StringLookup.getJavaString(18));
             }
             long vkBuf = pBuffer.get(0);
 
@@ -113,7 +114,7 @@ public final class AudioComputeBuffer {
             LongBuffer pMemory = stack.mallocLong(1);
             if (vkAllocateMemory(device, allocInfo, null, pMemory) != VK_SUCCESS) {
                 vkDestroyBuffer(device, vkBuf, null);
-                throw new RuntimeException("AudioComputeBuffer: vkAllocateMemory failed");
+                throw new RuntimeException(StringLookup.getJavaString(609));
             }
             long vkMem = pMemory.get(0);
 
@@ -125,7 +126,7 @@ public final class AudioComputeBuffer {
             if (vkMapMemory(device, vkMem, 0L, sizeBytes, 0, pMapped) != VK_SUCCESS) {
                 vkFreeMemory(device, vkMem, null);
                 vkDestroyBuffer(device, vkBuf, null);
-                throw new RuntimeException("AudioComputeBuffer: vkMapMemory failed");
+                throw new RuntimeException(StringLookup.getJavaString(610));
             }
             long mappedAddr = pMapped.get(0);
 
@@ -178,6 +179,6 @@ public final class AudioComputeBuffer {
                 return i;
             }
         }
-        throw new RuntimeException("AudioComputeBuffer: no suitable HOST_VISIBLE|HOST_COHERENT memory type found");
+        throw new RuntimeException(StringLookup.getJavaString(611));
     }
 }

@@ -5,6 +5,7 @@ import annotation.Intention;
 import lang.Mat4;
 import primitive.Float;
 
+import nio.StringLookup;
 /**
  * The flat 2D layout root for the darling UI tree (@Draft).
  *
@@ -71,7 +72,7 @@ public final class Canvas {
 
     public static void setMode(int scaleMode) {
         if (scaleMode < MODE_STRETCH || scaleMode > MODE_PIXEL) {
-            throw new IllegalArgumentException("Invalid canvas scale mode " + scaleMode + " (must be 0-2)");
+            throw new IllegalArgumentException(StringLookup.getJavaString(662) + scaleMode + StringLookup.getJavaString(663));
         }
         mode = scaleMode;
     }
@@ -168,8 +169,8 @@ public final class Canvas {
      * sizing (e.g. darling.Picture) keeps working. Writes [x, y, w, h].
      */
     public static void resolveRoot(long nodePtr, float fbW, float fbH, long outRect) {
-        if (nodePtr == 0L) throw new NullPointerException("Canvas.resolveRoot() node is NULL!");
-        if (outRect == 0L) throw new NullPointerException("Canvas.resolveRoot() outRect is NULL!");
+        if (nodePtr == 0L) throw new NullPointerException(StringLookup.getJavaString(664));
+        if (outRect == 0L) throw new NullPointerException(StringLookup.getJavaString(665));
 
         float cw, ch;
         if (mode == MODE_PIXEL) {

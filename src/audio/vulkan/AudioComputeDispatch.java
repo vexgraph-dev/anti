@@ -22,6 +22,7 @@ import org.lwjgl.PointerBuffer;
 
 import static org.lwjgl.vulkan.VK10.*;
 
+import nio.StringLookup;
 /**
  * Orchestrates the full GPU audio mix dispatch cycle:
  *
@@ -161,9 +162,9 @@ public final class AudioComputeDispatch {
      */
     @Volatile
     public void dispatch(int numLayers, float[] gains) {
-        if (destroyed) throw new IllegalStateException("AudioComputeDispatch already destroyed");
+        if (destroyed) throw new IllegalStateException(StringLookup.getJavaString(603));
         if (numLayers < 1 || numLayers > inputSlots.length) {
-            throw new IllegalArgumentException("numLayers must be in [1.." + inputSlots.length + "]");
+            throw new IllegalArgumentException(StringLookup.getJavaString(604) + inputSlots.length + StringLookup.getJavaString(67));
         }
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -249,7 +250,7 @@ public final class AudioComputeDispatch {
                     .pCommandBuffers(pCmd);
 
             if (vkQueueSubmit(computeQueue, submitInfo, fence) != VK_SUCCESS) {
-                throw new RuntimeException("AudioComputeDispatch: vkQueueSubmit failed");
+                throw new RuntimeException(StringLookup.getJavaString(605));
             }
 
             // CPU blocks here until GPU signals the fence — after this returns,
@@ -285,7 +286,7 @@ public final class AudioComputeDispatch {
                     .commandBufferCount(1);
             PointerBuffer pBuf = stack.mallocPointer(1);
             if (vkAllocateCommandBuffers(device, allocInfo, pBuf) != VK_SUCCESS) {
-                throw new RuntimeException("AudioComputeDispatch: failed to allocate command buffer");
+                throw new RuntimeException(StringLookup.getJavaString(606));
             }
             return new VkCommandBuffer(pBuf.get(0), device);
         }
@@ -298,7 +299,7 @@ public final class AudioComputeDispatch {
                     .sType(VK_STRUCTURE_TYPE_FENCE_CREATE_INFO);
             LongBuffer pFence = stack.mallocLong(1);
             if (vkCreateFence(device, createInfo, null, pFence) != VK_SUCCESS) {
-                throw new RuntimeException("AudioComputeDispatch: failed to create fence");
+                throw new RuntimeException(StringLookup.getJavaString(607));
             }
             return pFence.get(0);
         }

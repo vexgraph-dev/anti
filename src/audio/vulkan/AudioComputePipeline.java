@@ -29,6 +29,7 @@ import java.nio.file.Paths;
 
 import static org.lwjgl.vulkan.VK10.*;
 
+import nio.StringLookup;
 /**
  * Manages the Vulkan compute pipeline for GPU-side audio mixing.
  *
@@ -106,7 +107,7 @@ public final class AudioComputePipeline {
      * @param outputSlot  AudioComputeBuffer slot pointer for the master mix output
      */
     public void bind(long[] inputSlots, long outputSlot) {
-        if (destroyed) throw new IllegalStateException("AudioComputePipeline already destroyed");
+        if (destroyed) throw new IllegalStateException(StringLookup.getJavaString(612));
         int count = Math.min(inputSlots.length, MAX_LAYERS);
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkWriteDescriptorSet.Buffer writes = VkWriteDescriptorSet.calloc(count + 1, stack);
@@ -194,7 +195,7 @@ public final class AudioComputePipeline {
         // Load SPIR-V blob off-heap via raw file read
         byte[] spvBytes;
         try { spvBytes = Files.readAllBytes(Paths.get(spvPath)); }
-        catch (IOException e) { throw new RuntimeException("Failed to load audio compute SPIR-V: " + spvPath, e); }
+        catch (IOException e) { throw new RuntimeException(StringLookup.getJavaString(613) + spvPath, e); }
 
         // Copy into a stack ByteBuffer that Vulkan can read from
         ByteBuffer spvBuf = stack.malloc(spvBytes.length);
@@ -206,7 +207,7 @@ public final class AudioComputePipeline {
 
         LongBuffer pModule = stack.mallocLong(1);
         if (vkCreateShaderModule(device, createInfo, null, pModule) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to create audio compute VkShaderModule");
+            throw new RuntimeException(StringLookup.getJavaString(614));
         }
         return pModule.get(0);
     }
@@ -227,7 +228,7 @@ public final class AudioComputePipeline {
 
         LongBuffer pLayout = stack.mallocLong(1);
         if (vkCreateDescriptorSetLayout(device, layoutInfo, null, pLayout) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to create audio compute descriptor set layout");
+            throw new RuntimeException(StringLookup.getJavaString(615));
         }
         return pLayout.get(0);
     }
@@ -247,7 +248,7 @@ public final class AudioComputePipeline {
 
         LongBuffer pLayout = stack.mallocLong(1);
         if (vkCreatePipelineLayout(device, layoutInfo, null, pLayout) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to create audio compute pipeline layout");
+            throw new RuntimeException(StringLookup.getJavaString(616));
         }
         return pLayout.get(0);
     }
@@ -264,7 +265,7 @@ public final class AudioComputePipeline {
 
         LongBuffer pPool = stack.mallocLong(1);
         if (vkCreateDescriptorPool(device, poolInfo, null, pPool) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to create audio compute descriptor pool");
+            throw new RuntimeException(StringLookup.getJavaString(617));
         }
         return pPool.get(0);
     }
@@ -278,7 +279,7 @@ public final class AudioComputePipeline {
 
         LongBuffer pSet = stack.mallocLong(1);
         if (vkAllocateDescriptorSets(device, allocInfo, pSet) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to allocate audio compute descriptor set");
+            throw new RuntimeException(StringLookup.getJavaString(618));
         }
         return pSet.get(0);
     }
@@ -295,7 +296,7 @@ public final class AudioComputePipeline {
                 .sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
                 .stage(VK_SHADER_STAGE_COMPUTE_BIT)
                 .module(shaderModule)
-                .pName(stack.UTF8("main"));
+                .pName(stack.UTF8(StringLookup.getJavaString(619)));
 
         VkComputePipelineCreateInfo.Buffer pipelineInfo = VkComputePipelineCreateInfo.calloc(1, stack)
                 .sType(VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO)
@@ -304,7 +305,7 @@ public final class AudioComputePipeline {
 
         LongBuffer pPipeline = stack.mallocLong(1);
         if (vkCreateComputePipelines(device, pipelineCache, pipelineInfo, null, pPipeline) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to create audio compute VkPipeline");
+            throw new RuntimeException(StringLookup.getJavaString(620));
         }
         vkDestroyPipelineCache(device, pipelineCache, null);
         return pPipeline.get(0);

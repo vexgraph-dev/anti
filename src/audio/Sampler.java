@@ -9,6 +9,7 @@ import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Metadata entity representing a single track sampler or voice layer.
  * The engine pointer's data slot stores a pointer to an off-heap struct holding
@@ -83,7 +84,7 @@ public final class Sampler
         long base = pointer - 8L;
         int type = ForeignMemory.getInt(base);
         if(type != TYPE_SINGLETON) {
-            throw new IllegalStateException("Invalid Sampler pointer: 0x" + Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(586) + Long.toHexString(pointer).toUpperCase());
         }
 
         long struct = ForeignMemory.getLong(pointer);

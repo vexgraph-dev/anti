@@ -7,6 +7,7 @@ import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-heap 3D scene. Structural subclass of {@link Scene}: the layout core
  * (Container), the background color + tree (Panel), and the virtual size/mode
@@ -53,7 +54,7 @@ public final class Scene3D {
         if (ptr == 0L) return;
 
         int type = type(ptr);
-        if (type != TYPE_SINGLETON) throw new IllegalStateException("Double free or corrupt Scene3D pointer: 0x" + java.lang.Long.toHexString(ptr).toUpperCase());
+        if (type != TYPE_SINGLETON) throw new IllegalStateException(StringLookup.getJavaString(632) + java.lang.Long.toHexString(ptr).toUpperCase());
 
         long s = struct(ptr);
         ForeignMemory.freeNative(s);
@@ -61,7 +62,7 @@ public final class Scene3D {
     }
 
     private static long struct(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL Scene3D pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(633));
         return ForeignMemory.getLong(ptr);
     }
 
@@ -70,12 +71,12 @@ public final class Scene3D {
     // =========================================================================
 
     public static int type(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("type() on NULL Scene3D pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(634));
         return ForeignMemory.getUnsafeInt(ptr - 8L);
     }
 
     public static int length(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("length() on NULL Scene3D pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(635));
         return ForeignMemory.getUnsafeInt(ptr - 4L);
     }
 
@@ -84,9 +85,9 @@ public final class Scene3D {
     public static int classId(long ptr) { return TypeRegister.getClassId(type(ptr)); }
 
     private static void checkScene3D(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL Scene3D pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(633));
         if (!TypeRegister.isA(classId(ptr), CLASS_ID))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(ptr).toUpperCase() + " is Class ID " + classId(ptr) + ", expected Scene3D (or subclass)");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(ptr).toUpperCase() + StringLookup.getJavaString(29) + classId(ptr) + StringLookup.getJavaString(636));
     }
 
     // =========================================================================

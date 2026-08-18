@@ -9,6 +9,7 @@ import lang.Vec4;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-heap layout base for every darling UI node. Flat struct, zero-GC,
  * registered in oop.TypeRegister like every other engine type. It owns the
@@ -142,7 +143,7 @@ public final class Container {
         if (ptr == 0L) return;
 
         int type = type(ptr);
-        if (type != TYPE_SINGLETON) throw new IllegalStateException("Double free or corrupt Container pointer: 0x" + java.lang.Long.toHexString(ptr).toUpperCase());
+        if (type != TYPE_SINGLETON) throw new IllegalStateException(StringLookup.getJavaString(637) + java.lang.Long.toHexString(ptr).toUpperCase());
 
         long s = ForeignMemory.getLong(ptr);
         if (s != 0L) ForeignMemory.freeNative(s);
@@ -150,7 +151,7 @@ public final class Container {
     }
 
     private static long struct(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL Container pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(638));
         return ForeignMemory.getLong(ptr);
     }
 
@@ -161,12 +162,12 @@ public final class Container {
     public static int classId() { return CLASS_ID; }
 
     public static int type(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("type() on NULL Container pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(639));
         return ForeignMemory.getUnsafeInt(ptr - 8L);
     }
 
     public static int length(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("length() on NULL Container pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(640));
         return ForeignMemory.getUnsafeInt(ptr - 4L);
     }
 
@@ -177,22 +178,22 @@ public final class Container {
      * Container (e.g. Panel), since subclass payloads extend this layout.
      */
     private static void checkContainer(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL Container pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(638));
         int cls = classId(ptr);
         if (!TypeRegister.isA(cls, CLASS_ID))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(ptr).toUpperCase() + " is Class ID " + cls + ", not a Container (or subclass)");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(ptr).toUpperCase() + StringLookup.getJavaString(29) + cls + StringLookup.getJavaString(641));
     }
 
     private static void checkParentAnchor(int anchor) {
-        if (anchor < PARENT_ANCHOR_MIN || anchor > PARENT_ANCHOR_MAX) throw new IllegalArgumentException("Invalid parent anchor " + anchor + " (must be 0-8)");
+        if (anchor < PARENT_ANCHOR_MIN || anchor > PARENT_ANCHOR_MAX) throw new IllegalArgumentException(StringLookup.getJavaString(642) + anchor + StringLookup.getJavaString(643));
     }
 
     private static void checkSelfAnchor(int anchor) {
-        if (anchor < SELF_ANCHOR_MIN || anchor > SELF_ANCHOR_MAX) throw new IllegalArgumentException("Invalid self anchor " + anchor + " (must be 0-3)");
+        if (anchor < SELF_ANCHOR_MIN || anchor > SELF_ANCHOR_MAX) throw new IllegalArgumentException(StringLookup.getJavaString(644) + anchor + StringLookup.getJavaString(645));
     }
 
     private static void checkPivotReference(int pivot) {
-        if (pivot < PIVOT_REFERENCE_MIN || pivot > PIVOT_REFERENCE_MAX) throw new IllegalArgumentException("Invalid pivot reference " + pivot + " (must be 0-4)");
+        if (pivot < PIVOT_REFERENCE_MIN || pivot > PIVOT_REFERENCE_MAX) throw new IllegalArgumentException(StringLookup.getJavaString(646) + pivot + StringLookup.getJavaString(647));
     }
 
     // =========================================================================
@@ -425,7 +426,7 @@ public final class Container {
      */
     static void resolveSized(long ptr, float w, float h, float parentX, float parentY, float parentW, float parentH, long outRect) {
         checkContainer(ptr);
-        if (outRect == 0L) throw new NullPointerException("resolve() outRect is NULL!");
+        if (outRect == 0L) throw new NullPointerException(StringLookup.getJavaString(648));
 
         float sx = getScaleWidth(ptr), sy = getScaleHeight(ptr);
         float sw = w * sx, sh = h * sy;
