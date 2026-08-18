@@ -4,6 +4,7 @@ import java.lang.foreign.*;
 import annotation.PlatformExclusive;
 import annotation.Draft;
 
+import nio.StringLookup;
 /**
  * Pure Win32 FFM backend for the Window system.
  * (Skeleton ready for implementation)
@@ -19,8 +20,8 @@ final class windowsWindow {
     static {
         SymbolLookup user32 = null;
         try {
-            if (System.getProperty("os.name").toLowerCase().contains("win")) {
-                user32 = SymbolLookup.libraryLookup("user32.dll", Arena.global());
+            if (System.getProperty(StringLookup.getJavaString(143)).toLowerCase().contains(StringLookup.getJavaString(453))) {
+                user32 = SymbolLookup.libraryLookup(StringLookup.getJavaString(666), Arena.global());
             }
         } catch (Throwable t) {
             // Ignore if not on Windows

@@ -18,6 +18,7 @@ import oop.TypeRegister;
 import bit.Bit64;
 
 
+import nio.StringLookup;
 @Draft
 public final class VKPipeline {
 
@@ -87,9 +88,9 @@ public final class VKPipeline {
     }
 
     public static long getPointer(long matrixPointer, int index) { 
-        if (matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
         if (!isPointer(matrixPointer)) {
-            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
         checkBounds(matrixPointer, index);
         return ForeignMemory.getLong(matrixPointer + (index * 8L)); 
@@ -123,19 +124,19 @@ public final class VKPipeline {
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
-        if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
         if (!isPointer(matrixPointer)) {
-            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
         checkBounds(matrixPointer, index);
         ForeignMemory.setLong(matrixPointer + (index * 8L), targetPointer); 
     }
 
     private static void checkBounds(long pointer, int index) {
-        if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(33));
         int len = length(pointer);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap long length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(834) + len + StringLookup.getJavaString(36) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(37) + Integer.toHexString(type(pointer)).toUpperCase() + StringLookup.getJavaString(18));
         }
     }
 
@@ -207,7 +208,7 @@ public final class VKPipeline {
 
     @Volatile
     public static long getPointerVolatile(long matrixPointer, int index) {
-        if(matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
         checkBounds(matrixPointer, index);
         return ForeignMemory.getVolatileLong(matrixPointer + (index * 8L));
     }
@@ -220,7 +221,7 @@ public final class VKPipeline {
 
     @Volatile
     public static void setPointerVolatile(long matrixPointer, int index, long targetPointer) {
-        if(matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
         checkBounds(matrixPointer, index);
         ForeignMemory.setVolatileLong(matrixPointer + (index * 8L), targetPointer);
     }
@@ -268,7 +269,7 @@ public final class VKPipeline {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             LongBuffer pPipelines = stack.mallocLong(1);
             if (vkCreateGraphicsPipelines(device, pipelineCache, createInfo, null, pPipelines) != VK_SUCCESS) {
-                throw new RuntimeException("Failed to create VKPipeline!");
+                throw new RuntimeException(StringLookup.getJavaString(839));
             }
             set(enginePtr, pPipelines.get(0));
         }

@@ -43,6 +43,7 @@ import java.nio.file.Path;
 
 import static org.lwjgl.vulkan.VK10.*;
 
+import nio.StringLookup;
 /**
  * First forward-rendering slice for the Hello Triangle path.
  * Owns the swapchain-dependent render attachments and frame synchronization.
@@ -63,7 +64,7 @@ public final class TriangleRenderer {
     private static int offscreenWidth;
     private static int offscreenHeight;
     private static boolean initialized;
-    private static final boolean staticBackground = System.getProperty("anti.static") != null;
+    private static final boolean staticBackground = System.getProperty(StringLookup.getJavaString(858)) != null;
     private static int offscreenImageCount;
 
     // --- TEXTURED PICTURE (@Draft, pending review) ---
@@ -162,12 +163,12 @@ public final class TriangleRenderer {
             renderPass = RenderPass.create(device, createInfo);
         }
 
-        vertexShader = createShaderModule("hello_triangle.vert.spv");
-        fragmentShader = createShaderModule("hello_triangle.frag.spv");
+        vertexShader = createShaderModule(StringLookup.getJavaString(859));
+        fragmentShader = createShaderModule(StringLookup.getJavaString(860));
         createGraphicsPipeline();
 
-        darlingPanelVertexShader = createShaderModule("darling_panel_vert.spv");
-        darlingPanelFragmentShader = createShaderModule("darling_panel_frag.spv");
+        darlingPanelVertexShader = createShaderModule(StringLookup.getJavaString(861));
+        darlingPanelFragmentShader = createShaderModule(StringLookup.getJavaString(862));
         createDarlingPanelPipeline();
 
         commandPool = CommandPool.create(device, Vulkan.getGraphicsQueueFamilyIndex());
@@ -177,7 +178,7 @@ public final class TriangleRenderer {
         Renderer.init(device, commandPool, blitCommandPool, offscreenImageCount);
         recordCommandBuffers();
         initialized = true;
-        System.out.println("Hello Triangle graphics pipeline ready.");
+        System.out.println(StringLookup.getJavaString(863));
     }
 
     /**
@@ -189,12 +190,12 @@ public final class TriangleRenderer {
         if (!initialized) return;
         var device = Vulkan.getDevice();
         pictureNode = picturePtr;
-        imageQuadVertexShader = createShaderModule("image_quad.vert.spv");
-        imageQuadFragmentShader = createShaderModule("image_quad.frag.spv");
+        imageQuadVertexShader = createShaderModule(StringLookup.getJavaString(864));
+        imageQuadFragmentShader = createShaderModule(StringLookup.getJavaString(865));
         createImageQuadPipeline();
         long imagePtr = darling.Picture.getImage(pictureNode);
-        System.out.println("Picture node set: img=" + (imagePtr != 0L
-                ? (image.Image.getWidth(imagePtr) + "x" + image.Image.getHeight(imagePtr)) : "none"));
+        System.out.println(StringLookup.getJavaString(866) + (imagePtr != 0L
+                ? (image.Image.getWidth(imagePtr) + StringLookup.getJavaString(676) + image.Image.getHeight(imagePtr)) : StringLookup.getJavaString(867)));
     }
 
     /**
@@ -204,13 +205,13 @@ public final class TriangleRenderer {
      * offscreen attachments are sized to the scene.
      */
     public static void setScene(long scenePtr) {
-        if (scenePtr == 0L) throw new IllegalArgumentException("Scene pointer must not be NULL");
+        if (scenePtr == 0L) throw new IllegalArgumentException(StringLookup.getJavaString(868));
         sceneNode = scenePtr;
         if (darling.Scene.classId(scenePtr) == darling.Scene3D.CLASS_ID) {
             scene3DNode = scenePtr;
         }
-        System.out.println("Scene node set: class=" + darling.Scene.classId(scenePtr)
-                + " virtual=" + darling.Scene.getVirtualWidth(scenePtr) + "x"
+        System.out.println(StringLookup.getJavaString(869) + darling.Scene.classId(scenePtr)
+                + StringLookup.getJavaString(870) + darling.Scene.getVirtualWidth(scenePtr) + StringLookup.getJavaString(676)
                 + darling.Scene.getVirtualHeight(scenePtr));
     }
 
@@ -230,9 +231,9 @@ public final class TriangleRenderer {
         }
         offscreenWidth = w;
         offscreenHeight = h;
-        System.out.println("[offscreen] target=" + w + "x" + h
-                + " swapchain=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight()
-                + " dpi=" + (boundWindowPtr != 0L ? (float) window.Window.getBackingScaleFactor(boundWindowPtr) : 1.0f));
+        System.out.println(StringLookup.getJavaString(871) + w + StringLookup.getJavaString(676) + h
+                + StringLookup.getJavaString(872) + Vulkan.getSwapchainWidth() + StringLookup.getJavaString(676) + Vulkan.getSwapchainHeight()
+                + StringLookup.getJavaString(873) + (boundWindowPtr != 0L ? (float) window.Window.getBackingScaleFactor(boundWindowPtr) : 1.0f));
 
         offscreenImages = Long.allocateArray(offscreenImageCount);
         framebuffers = Long.allocateArray(offscreenImageCount);
@@ -311,7 +312,7 @@ public final class TriangleRenderer {
             createOffscreenAttachments(device);
             recordCommandBuffers();
             Renderer.resetInFlight();
-            System.out.println("TriangleRenderer rebuilt for present mode: " + mode);
+            System.out.println(StringLookup.getJavaString(874) + mode);
         } finally {
             Renderer.resumePresent();
             Renderer.resumeProducer();
@@ -330,8 +331,8 @@ public final class TriangleRenderer {
             // vkDeviceWaitIdle(device); // REMOVED FOR SEAMLESS LIVE RESIZE
             Vulkan.resizeSwapchain(width, height);
             Renderer.resetInFlight();
-            System.out.println("TriangleRenderer resized to " + width + "x" + height
-                    + " (offscreen " + offscreenWidth + "x" + offscreenHeight + " pinned)");
+            System.out.println(StringLookup.getJavaString(875) + width + StringLookup.getJavaString(676) + height
+                    + StringLookup.getJavaString(876) + offscreenWidth + StringLookup.getJavaString(676) + offscreenHeight + StringLookup.getJavaString(877));
         } finally {
             Renderer.resumePresent();
             Renderer.resumeProducer();
@@ -339,25 +340,25 @@ public final class TriangleRenderer {
     }
 
     private static long createShaderModule(String name) {
-        String resourcePath = "/vulkan/spv/" + name;
+        String resourcePath = StringLookup.getJavaString(878) + name;
         try (InputStream in = TriangleRenderer.class.getResourceAsStream(resourcePath)) {
             if (in != null) {
                 byte[] bytes = in.readAllBytes();
-                System.out.println("Loading triangle shader module from classpath: " + resourcePath);
+                System.out.println(StringLookup.getJavaString(879) + resourcePath);
                 return buildShaderModule(name, bytes);
             }
         } catch (IOException ignored) {
         }
-        Path sourcePath = Path.of("src", "vulkan", "spv", name);
+        Path sourcePath = Path.of(StringLookup.getJavaString(880), StringLookup.getJavaString(881), StringLookup.getJavaString(882), name);
         if (!Files.exists(sourcePath)) {
-            sourcePath = Path.of("out", "production", "anti", "vulkan", "spv", name);
+            sourcePath = Path.of(StringLookup.getJavaString(133), StringLookup.getJavaString(883), StringLookup.getJavaString(299), StringLookup.getJavaString(881), StringLookup.getJavaString(882), name);
         }
         try {
             byte[] bytes = Files.readAllBytes(sourcePath);
-            System.out.println("Loading triangle shader module: " + name);
+            System.out.println(StringLookup.getJavaString(884) + name);
             return buildShaderModule(name, bytes);
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to load triangle shader: " + sourcePath, e);
+            throw new IllegalStateException(StringLookup.getJavaString(885) + sourcePath, e);
         }
     }
 
@@ -366,18 +367,18 @@ public final class TriangleRenderer {
             ByteBuffer code = MemoryUtil.memAlloc(bytes.length).put(bytes).flip();
             try {
                 long module = VKShaderModule.create(Vulkan.getDevice(), code);
-                System.out.println("Triangle shader module ready: " + name);
+                System.out.println(StringLookup.getJavaString(886) + name);
                 return module;
             } finally {
                 MemoryUtil.memFree(code);
             }
         } catch (Exception e) {
-            throw new IllegalStateException("Unable to build triangle shader module: " + name, e);
+            throw new IllegalStateException(StringLookup.getJavaString(887) + name, e);
         }
     }
 
     @Intention("this is how we handle things with autocloseables, methinks.")
-    private static void createGraphicsPipeline() {        System.out.println("Creating Hello Triangle graphics pipeline...");
+    private static void createGraphicsPipeline() {        System.out.println(StringLookup.getJavaString(888));
         try(
             MemoryStack stack = MemoryStack.stackPush();
 
@@ -395,10 +396,10 @@ public final class TriangleRenderer {
 
             info0.stage(VK_SHADER_STAGE_VERTEX_BIT)
                 .module(VKShaderModule.get(vertexShader))
-                .pName(stack.UTF8("main"));
+                .pName(stack.UTF8(StringLookup.getJavaString(619)));
             info1.stage(VK_SHADER_STAGE_FRAGMENT_BIT)
                 .module(VKShaderModule.get(fragmentShader))
-                .pName(stack.UTF8("main"));
+                .pName(stack.UTF8(StringLookup.getJavaString(619)));
 
             VkPipelineVertexInputStateCreateInfo vertexInput = VkPipelineVertexInputStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
@@ -464,7 +465,7 @@ public final class TriangleRenderer {
                     .subpass(0);
 
             pipeline = VKPipeline.createGraphicsPipeline(Vulkan.getDevice(), VK_NULL_HANDLE, pipelineInfo);
-            System.out.println("Hello Triangle graphics pipeline created.");
+            System.out.println(StringLookup.getJavaString(889));
         }
     }
 
@@ -475,7 +476,7 @@ public final class TriangleRenderer {
      */
     @Intention("Second pipeline draws the image quad at the Panel's resolved rect.")
     private static void createImageQuadPipeline() {
-        System.out.println("Creating Image Quad (texture) pipeline...");
+        System.out.println(StringLookup.getJavaString(890));
         try (
             MemoryStack stack = MemoryStack.stackPush();
 
@@ -489,10 +490,10 @@ public final class TriangleRenderer {
         ) {
             info0.stage(VK_SHADER_STAGE_VERTEX_BIT)
                 .module(VKShaderModule.get(imageQuadVertexShader))
-                .pName(stack.UTF8("main"));
+                .pName(stack.UTF8(StringLookup.getJavaString(619)));
             info1.stage(VK_SHADER_STAGE_FRAGMENT_BIT)
                 .module(VKShaderModule.get(imageQuadFragmentShader))
-                .pName(stack.UTF8("main"));
+                .pName(stack.UTF8(StringLookup.getJavaString(619)));
 
             imageQuadSetLayout = image.Image.getDescriptorSetLayout(darling.Picture.getImage(pictureNode));
 
@@ -559,7 +560,7 @@ public final class TriangleRenderer {
                     .subpass(0);
 
             imageQuadPipeline = VKPipeline.createGraphicsPipeline(Vulkan.getDevice(), VK_NULL_HANDLE, pipelineInfo);
-            System.out.println("Image Quad (texture) pipeline created.");
+            System.out.println(StringLookup.getJavaString(891));
         }
     }
 
@@ -580,10 +581,10 @@ public final class TriangleRenderer {
         ) {
             info0.stage(VK_SHADER_STAGE_VERTEX_BIT)
                 .module(VKShaderModule.get(darlingPanelVertexShader))
-                .pName(stack.UTF8("main"));
+                .pName(stack.UTF8(StringLookup.getJavaString(619)));
             info1.stage(VK_SHADER_STAGE_FRAGMENT_BIT)
                 .module(VKShaderModule.get(darlingPanelFragmentShader))
-                .pName(stack.UTF8("main"));
+                .pName(stack.UTF8(StringLookup.getJavaString(619)));
 
             VkPipelineVertexInputStateCreateInfo vertexInput = VkPipelineVertexInputStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
@@ -653,7 +654,7 @@ public final class TriangleRenderer {
                     .subpass(0);
 
             darlingPanelPipeline = VKPipeline.createGraphicsPipeline(Vulkan.getDevice(), VK_NULL_HANDLE, pipelineInfo);
-            System.out.println("Darling Panel pipeline created.");
+            System.out.println(StringLookup.getJavaString(892));
         }
     }
 
@@ -765,8 +766,8 @@ public final class TriangleRenderer {
         if (fbW != lastLoggedW || fbH != lastLoggedH
                 || rx != lastLoggedRectX || ry != lastLoggedRectY
                 || rw != lastLoggedRectRW || rh != lastLoggedRectRH) {
-            System.out.println("[resize] fb=" + fbW + "x" + fbH
-                    + " rect=(" + rx + "," + ry + "," + rw + "," + rh + ")");
+            System.out.println(StringLookup.getJavaString(893) + fbW + StringLookup.getJavaString(676) + fbH
+                    + StringLookup.getJavaString(894) + rx + StringLookup.getJavaString(62) + ry + StringLookup.getJavaString(62) + rw + StringLookup.getJavaString(62) + rh + StringLookup.getJavaString(18));
             lastLoggedW = fbW; lastLoggedH = fbH;
             lastLoggedRectX = rx; lastLoggedRectY = ry;
             lastLoggedRectRW = rw; lastLoggedRectRH = rh;
@@ -775,15 +776,15 @@ public final class TriangleRenderer {
 
     /** Debug: one-line fb size + resolved picture rect for the window-title readout. */
     public static String dbgFbRect() {
-        return "fb=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight()
-                + " rect=(" + lastLoggedRectX + "," + lastLoggedRectY + ","
-                + lastLoggedRectRW + "," + lastLoggedRectRH + ")";
+        return StringLookup.getJavaString(895) + Vulkan.getSwapchainWidth() + StringLookup.getJavaString(676) + Vulkan.getSwapchainHeight()
+                + StringLookup.getJavaString(894) + lastLoggedRectX + StringLookup.getJavaString(62) + lastLoggedRectY + StringLookup.getJavaString(62)
+                + lastLoggedRectRW + StringLookup.getJavaString(62) + lastLoggedRectRH + StringLookup.getJavaString(18);
     }
 
     @Intention("this comment is for determining the background color")
     static void recordCommandBuffer(long commandBuffer, int imageIndex, float time) {
         if (commandBuffer == VK_NULL_HANDLE) {
-            throw new IllegalStateException("Triangle command buffer handle is NULL at index " + imageIndex);
+            throw new IllegalStateException(StringLookup.getJavaString(896) + imageIndex);
         }
 
         // -Danti.static=1 renders a static background (time pinned to 0) so the "stretch
@@ -841,7 +842,7 @@ public final class TriangleRenderer {
         ) {
             org.lwjgl.vulkan.VkCommandBuffer command = new org.lwjgl.vulkan.VkCommandBuffer(commandBuffer, Vulkan.getDevice());
             if (vkBeginCommandBuffer(command, beginInfo) != VK_SUCCESS) {
-                throw new IllegalStateException("Failed to begin triangle command buffer.");
+                throw new IllegalStateException(StringLookup.getJavaString(897));
             }
 
             float dpi = boundWindowPtr != 0L ? (float) window.Window.getBackingScaleFactor(boundWindowPtr) : 1.0f;
@@ -948,19 +949,19 @@ public final class TriangleRenderer {
                 float winW = (dpi > 0f) ? (currentW / dpi) : currentW;
                 float winH = (dpi > 0f) ? (currentH / dpi) : currentH;
 
-                if (System.getProperty("anti.debug.panel") != null) {
+                if (System.getProperty(StringLookup.getJavaString(898)) != null) {
                     long dbgRect = Vec4.allocate();
                     try {
                         long node = rootUiNode != 0L ? rootUiNode : sceneNode;
                         darling.Container.resolve(node, 0f, 0f, winW, winH, dbgRect);
                         float rx = Vec4.getX(dbgRect), ry = Vec4.getY(dbgRect);
                         float rw = Vec4.getZ(dbgRect), rh = Vec4.getW(dbgRect);
-                        System.out.println("[panel] win=" + currentW + "x" + currentH
-                                + " canvas=" + winW + "x" + winH
-                                + " rect(canvas)=(" + rx + "," + ry + "," + rw + "," + rh + ")"
-                                + " rect(px)=(" + (int) Math.round(rx * dpi) + "," + (int) Math.round(ry * dpi) + ","
-                                + (int) Math.round(rw * dpi) + "," + (int) Math.round(rh * dpi) + ")"
-                                + " offscreen=" + offscreenWidth + "x" + offscreenHeight);
+                        System.out.println(StringLookup.getJavaString(899) + currentW + StringLookup.getJavaString(676) + currentH
+                                + StringLookup.getJavaString(900) + winW + StringLookup.getJavaString(676) + winH
+                                + StringLookup.getJavaString(901) + rx + StringLookup.getJavaString(62) + ry + StringLookup.getJavaString(62) + rw + StringLookup.getJavaString(62) + rh + StringLookup.getJavaString(18)
+                                + StringLookup.getJavaString(902) + (int) Math.round(rx * dpi) + StringLookup.getJavaString(62) + (int) Math.round(ry * dpi) + StringLookup.getJavaString(62)
+                                + (int) Math.round(rw * dpi) + StringLookup.getJavaString(62) + (int) Math.round(rh * dpi) + StringLookup.getJavaString(18)
+                                + StringLookup.getJavaString(903) + offscreenWidth + StringLookup.getJavaString(676) + offscreenHeight);
                     } finally {
                         Vec4.free(dbgRect);
                     }
@@ -990,7 +991,7 @@ public final class TriangleRenderer {
             vkCmdEndRenderPass(command);
 
             if (vkEndCommandBuffer(command) != VK_SUCCESS) {
-                throw new IllegalStateException("Failed to end triangle command buffer.");
+                throw new IllegalStateException(StringLookup.getJavaString(904));
             }
         }
     }

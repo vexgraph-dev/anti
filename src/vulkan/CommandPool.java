@@ -16,6 +16,7 @@ import oop.TypeRegister;
 import bit.Bit64;
 
 
+import nio.StringLookup;
 public final class CommandPool {
 
     @Required
@@ -84,16 +85,16 @@ public final class CommandPool {
     }
 
     public static long getPointer(long matrixPointer, int index) { 
-        if (matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
         if (!isPointer(matrixPointer)) {
-            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
         checkBounds(matrixPointer, index);
         return ForeignMemory.getLong(matrixPointer + (index * 8L)); 
     }
 
     public static void set(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         ForeignMemory.setLong(pointer, value);
     }
 
@@ -104,40 +105,40 @@ public final class CommandPool {
 
     @Volatile
     public static long getVolatile(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return ForeignMemory.getVolatileLong(pointer);
     }
 
     @Volatile
     public static void setVolatile(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         ForeignMemory.setVolatileLong(pointer, value);
     }
 
     public static boolean compareAndSet(long pointer, long expected, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return ForeignMemory.compareAndSetLong(pointer, expected, value);
     }
 
     public static long getAndSet(long pointer, long value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return ForeignMemory.getAndSetLong(pointer, value);
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
-        if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
         if (!isPointer(matrixPointer)) {
-            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
         checkBounds(matrixPointer, index);
         ForeignMemory.setLong(matrixPointer + (index * 8L), targetPointer); 
     }
 
     private static void checkBounds(long pointer, int index) {
-        if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(33));
         int len = length(pointer);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap long length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(834) + len + StringLookup.getJavaString(36) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(37) + Integer.toHexString(type(pointer)).toUpperCase() + StringLookup.getJavaString(18));
         }
     }
 
@@ -209,7 +210,7 @@ public final class CommandPool {
 
     @Volatile
     public static long getPointerVolatile(long matrixPointer, int index) {
-        if(matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
         checkBounds(matrixPointer, index);
         return ForeignMemory.getVolatileLong(matrixPointer + (index * 8L));
     }
@@ -222,7 +223,7 @@ public final class CommandPool {
 
     @Volatile
     public static void setPointerVolatile(long matrixPointer, int index, long targetPointer) {
-        if(matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
         checkBounds(matrixPointer, index);
         ForeignMemory.setVolatileLong(matrixPointer + (index * 8L), targetPointer);
     }
@@ -275,7 +276,7 @@ public final class CommandPool {
 
             LongBuffer pCommandPool = stack.mallocLong(1);
             if (vkCreateCommandPool(device, poolInfo, null, pCommandPool) != VK_SUCCESS) {
-                throw new RuntimeException("Failed to create Vulkan CommandPool!");
+                throw new RuntimeException(StringLookup.getJavaString(929));
             }
             set(enginePtr, pCommandPool.get(0));
         }

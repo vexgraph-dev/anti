@@ -18,6 +18,7 @@ import static org.lwjgl.vulkan.KHRSwapchain.*;
 import static org.lwjgl.vulkan.VK10.*;
 import static org.lwjgl.vulkan.VK12.*;
 
+import nio.StringLookup;
 /**
  * Pure pointer-based FFM Vulkan Bootstrap via LWJGL native endpoints.
  * ZERO object allocations during runtime. MemoryStack used strictly during initialization.
@@ -55,7 +56,7 @@ public final class Vulkan {
      *                              present mode to use, falling back to FIFO if unsupported.
      */
     public static void initVulkan(long caMetalLayer, int windowWidth, int windowHeight, int presentModePreference) {
-        System.out.println("Booting Hardcore Vulkan Subsystem...");
+        System.out.println(StringLookup.getJavaString(931));
         configureValidationLoader();
         try (MemoryStack stack = MemoryStack.stackPush()) {
             initInstance(stack);
@@ -74,7 +75,7 @@ public final class Vulkan {
             throw e;
         }
         applyLayerSync();
-        System.out.println("Vulkan Swapchain ready.");
+        System.out.println(StringLookup.getJavaString(932));
     }
 
     /** Releases every Vulkan resource created so far. Safe on partially-initialized state. */
@@ -108,20 +109,20 @@ public final class Vulkan {
     }
 
     private static void configureValidationLoader() {
-        if (!java.lang.System.getProperty("os.name").toLowerCase().contains("mac")) return;
+        if (!java.lang.System.getProperty(StringLookup.getJavaString(143)).toLowerCase().contains(StringLookup.getJavaString(144))) return;
         if (Configuration.VULKAN_LIBRARY_NAME.get() != null) return;
 
-        String override = java.lang.System.getProperty("anti.vulkan.loader");
+        String override = java.lang.System.getProperty(StringLookup.getJavaString(933));
         if (override == null || override.isBlank()) {
-            if (java.nio.file.Files.exists(java.nio.file.Path.of("/opt/homebrew/lib/libvulkan.1.dylib"))) {
-                override = "/opt/homebrew/lib/libvulkan.1.dylib";
-            } else if (java.nio.file.Files.exists(java.nio.file.Path.of("/usr/local/lib/libvulkan.1.dylib"))) {
-                override = "/usr/local/lib/libvulkan.1.dylib";
+            if (java.nio.file.Files.exists(java.nio.file.Path.of(StringLookup.getJavaString(934)))) {
+                override = StringLookup.getJavaString(934);
+            } else if (java.nio.file.Files.exists(java.nio.file.Path.of(StringLookup.getJavaString(935)))) {
+                override = StringLookup.getJavaString(935);
             }
         }
         if (override != null && !override.isBlank()) {
             Configuration.VULKAN_LIBRARY_NAME.set(override);
-            System.out.println("Using Vulkan loader: " + override);
+            System.out.println(StringLookup.getJavaString(936) + override);
         }
     }
 
@@ -198,7 +199,7 @@ public final class Vulkan {
             initSwapchain(stack, swapchainWidth, swapchainHeight, mode);
         }
         applyLayerSync();
-        System.out.println("Vulkan swapchain recreated with present mode: " + mode);
+        System.out.println(StringLookup.getJavaString(937) + mode);
     }
 
     /** Recreates the swapchain at a new size, keeping the current present mode. Must be called with the device idle and free attachments first. */
@@ -213,7 +214,7 @@ public final class Vulkan {
             initSwapchain(stack, width, height, presentMode);
         }
         applyLayerSync();
-        System.out.println("Vulkan swapchain resized to " + width + "x" + height);
+        System.out.println(StringLookup.getJavaString(938) + width + StringLookup.getJavaString(676) + height);
     }
 
     /** Propagates the swapchain vsync state onto the CAMetalLayer (displaySyncEnabled). */
@@ -227,14 +228,14 @@ public final class Vulkan {
         // VK_EXT_debug_utils may be advertised by the validation layer rather than
         // by the bare loader, so do not reject the layer based on global extension
         // enumeration before the layer is enabled.
-        boolean validationEnabled = hasInstanceLayer(stack, "VK_LAYER_KHRONOS_validation");
-        boolean portabilityEnabled = hasInstanceExtension(stack, "VK_KHR_portability_enumeration");
+        boolean validationEnabled = hasInstanceLayer(stack, StringLookup.getJavaString(939));
+        boolean portabilityEnabled = hasInstanceExtension(stack, StringLookup.getJavaString(940));
 
         VkApplicationInfo appInfo = VkApplicationInfo.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_APPLICATION_INFO)
-                .pApplicationName(stack.UTF8("Engine"))
+                .pApplicationName(stack.UTF8(StringLookup.getJavaString(941)))
                 .applicationVersion(VK_MAKE_VERSION(1, 0, 0))
-                .pEngineName(stack.UTF8("Engine"))
+                .pEngineName(stack.UTF8(StringLookup.getJavaString(941)))
                 .engineVersion(VK_MAKE_VERSION(1, 0, 0))
                 .apiVersion(VK_API_VERSION_1_2);
 
@@ -249,7 +250,7 @@ public final class Vulkan {
             extensions.put(stack.UTF8(VK_EXT_DEBUG_UTILS_EXTENSION_NAME));
         }
         if (portabilityEnabled) {
-            extensions.put(stack.UTF8("VK_KHR_portability_enumeration"));
+            extensions.put(stack.UTF8(StringLookup.getJavaString(940)));
         }
         extensions.flip();
 
@@ -267,14 +268,14 @@ public final class Vulkan {
                 try(VkDebugUtilsMessengerCallbackDataEXT debug = VkDebugUtilsMessengerCallbackDataEXT.create(data))
                 {
                     String message = debug.pMessageString();
-                    String level = (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0 ? "ERROR"
-                            : (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0 ? "WARNING"
-                              : (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0 ? "INFO" : "VERBOSE";
-                    System.err.println("[Vulkan " + level + "] " + message);
+                    String level = (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0 ? StringLookup.getJavaString(942)
+                            : (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0 ? StringLookup.getJavaString(943)
+                              : (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0 ? StringLookup.getJavaString(944) : StringLookup.getJavaString(945);
+                    System.err.println(StringLookup.getJavaString(946) + level + StringLookup.getJavaString(947) + message);
                 }
                 catch(Exception e)
                 {
-                    throw new RuntimeException("Debugging error located with text: " + e);
+                    throw new RuntimeException(StringLookup.getJavaString(948) + e);
                 }
                 return VK_FALSE;
             });
@@ -294,13 +295,13 @@ public final class Vulkan {
 
         PointerBuffer layers = stack.mallocPointer(validationEnabled ? 1 : 0);
         if (validationEnabled) {
-            layers.put(stack.UTF8("VK_LAYER_KHRONOS_validation")).flip();
+            layers.put(stack.UTF8(StringLookup.getJavaString(939))).flip();
         }
         createInfo.ppEnabledLayerNames(layers);
 
         PointerBuffer pInstance = stack.mallocPointer(1);
         if (VK10.vkCreateInstance(createInfo, null, pInstance) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to create Vulkan Instance.");
+            throw new RuntimeException(StringLookup.getJavaString(949));
         }
         instance = new VkInstance(pInstance.get(0), createInfo);
 
@@ -317,12 +318,12 @@ public final class Vulkan {
                     .pfnUserCallback(debugCallback);
             LongBuffer pMessenger = stack.mallocLong(1);
             if (vkCreateDebugUtilsMessengerEXT(instance, debugCreateInfo, null, pMessenger) != VK_SUCCESS) {
-                throw new RuntimeException("Failed to create Vulkan debug messenger.");
+                throw new RuntimeException(StringLookup.getJavaString(950));
             }
             debugMessenger = pMessenger.get(0);
-            System.out.println("Vulkan validation enabled.");
+            System.out.println(StringLookup.getJavaString(951));
         } else {
-            System.out.println("Vulkan validation unavailable: VK_LAYER_KHRONOS_validation or VK_EXT_debug_utils not found.");
+            System.out.println(StringLookup.getJavaString(952));
         }
     }
 
@@ -367,7 +368,7 @@ public final class Vulkan {
 
         LongBuffer pSurface = stack.mallocLong(1);
         if (EXTMetalSurface.vkCreateMetalSurfaceEXT(instance, createInfo, null, pSurface) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to create Metal Surface.");
+            throw new RuntimeException(StringLookup.getJavaString(953));
         }
         surface = pSurface.get(0);
     }
@@ -375,7 +376,7 @@ public final class Vulkan {
     private static void initDevice(MemoryStack stack) {
         java.nio.IntBuffer pDeviceCount = stack.mallocInt(1);
         VK10.vkEnumeratePhysicalDevices(instance, pDeviceCount, null);
-        if (pDeviceCount.get(0) == 0) throw new RuntimeException("No Vulkan physical devices found!");
+        if (pDeviceCount.get(0) == 0) throw new RuntimeException(StringLookup.getJavaString(954));
 
         PointerBuffer pDevices = stack.mallocPointer(pDeviceCount.get(0));
         VK10.vkEnumeratePhysicalDevices(instance, pDeviceCount, pDevices);
@@ -391,8 +392,8 @@ public final class Vulkan {
         graphicsQueueFamilyIndex = -1;
         presentQueueFamilyIndex = -1;
         for (int i = 0; i < qCount.get(0); i++) {
-            System.out.println("[Vulkan] Queue family " + i + ": flags=" + queueProps.get(i).queueFlags()
-                    + " count=" + queueProps.get(i).queueCount());
+            System.out.println(StringLookup.getJavaString(955) + i + StringLookup.getJavaString(956) + queueProps.get(i).queueFlags()
+                    + StringLookup.getJavaString(957) + queueProps.get(i).queueCount());
             if ((queueProps.get(i).queueFlags() & VK_QUEUE_GRAPHICS_BIT) == 0) continue;
             java.nio.IntBuffer supported = stack.mallocInt(1);
             vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, supported);
@@ -403,7 +404,7 @@ public final class Vulkan {
             }
         }
         if (graphicsQueueFamilyIndex < 0) {
-            throw new RuntimeException("No queue family supports both graphics and presentation.");
+            throw new RuntimeException(StringLookup.getJavaString(958));
         }
 
         VkDeviceQueueCreateInfo.Buffer queueCreateInfo = VkDeviceQueueCreateInfo.calloc(1, stack)
@@ -424,11 +425,11 @@ public final class Vulkan {
                 .sType(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
                 .pNext(bindlessFeatures.address());
 
-        boolean portabilitySupported = hasDeviceExtension(physicalDevice, stack, "VK_KHR_portability_subset");
+        boolean portabilitySupported = hasDeviceExtension(physicalDevice, stack, StringLookup.getJavaString(959));
         PointerBuffer extensions = stack.mallocPointer(portabilitySupported ? 2 : 1);
         extensions.put(stack.UTF8(VK_KHR_SWAPCHAIN_EXTENSION_NAME));
         if (portabilitySupported) {
-            extensions.put(stack.UTF8("VK_KHR_portability_subset"));
+            extensions.put(stack.UTF8(StringLookup.getJavaString(959)));
         }
         extensions.flip();
 
@@ -440,7 +441,7 @@ public final class Vulkan {
 
         PointerBuffer pDevice = stack.mallocPointer(1);
         if (VK10.vkCreateDevice(physicalDevice, createInfo, null, pDevice) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to create Logical Device.");
+            throw new RuntimeException(StringLookup.getJavaString(960));
         }
         device = new VkDevice(pDevice.get(0), physicalDevice, createInfo);
 
@@ -474,7 +475,7 @@ public final class Vulkan {
                 chosenColorSpace = fmt.colorSpace();
             }
         }
-        if (chosenFormat == 0) throw new RuntimeException("No supported surface formats found!");
+        if (chosenFormat == 0) throw new RuntimeException(StringLookup.getJavaString(961));
         swapchainFormat = chosenFormat;
 
         // Query supported present modes to find the best low-latency/un-throttled mode
@@ -482,8 +483,8 @@ public final class Vulkan {
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, modeCount, null);
         java.nio.IntBuffer modes = stack.mallocInt(modeCount.get(0));
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, modeCount, modes);
-        StringBuilder modeList = new StringBuilder("Supported present modes:");
-        for (int i = 0; i < modeCount.get(0); i++) modeList.append(" ").append(modes.get(i));
+        StringBuilder modeList = new StringBuilder(StringLookup.getJavaString(962));
+        for (int i = 0; i < modeCount.get(0); i++) modeList.append(StringLookup.getJavaString(77)).append(modes.get(i));
         System.out.println(modeList);
 
         int chosenMode;
@@ -516,11 +517,11 @@ public final class Vulkan {
         }
         presentMode = chosenMode;
         String modeLabel;
-        if (chosenMode == VK_PRESENT_MODE_FIFO_KHR) modeLabel = " (FIFO/vsync)";
-        else if (chosenMode == VK_PRESENT_MODE_MAILBOX_KHR) modeLabel = " (MAILBOX/uncapped)";
-        else if (chosenMode == VK_PRESENT_MODE_IMMEDIATE_KHR) modeLabel = " (IMMEDIATE/uncapped)";
-        else modeLabel = " (unknown/" + chosenMode + ")";
-        System.out.println("Vulkan present mode chosen: " + chosenMode + modeLabel);
+        if (chosenMode == VK_PRESENT_MODE_FIFO_KHR) modeLabel = StringLookup.getJavaString(963);
+        else if (chosenMode == VK_PRESENT_MODE_MAILBOX_KHR) modeLabel = StringLookup.getJavaString(964);
+        else if (chosenMode == VK_PRESENT_MODE_IMMEDIATE_KHR) modeLabel = StringLookup.getJavaString(965);
+        else modeLabel = StringLookup.getJavaString(966) + chosenMode + StringLookup.getJavaString(18);
+        System.out.println(StringLookup.getJavaString(967) + chosenMode + modeLabel);
 
         // Pass the current swapchain as oldSwapchain so the driver can hand over the
         // surface safely; destroying it before the new swapchain exists leaves the
@@ -545,7 +546,7 @@ public final class Vulkan {
 
         LongBuffer pSwapchain = stack.mallocLong(1);
         if (KHRSwapchain.vkCreateSwapchainKHR(device, createInfo, null, pSwapchain) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to create Swapchain.");
+            throw new RuntimeException(StringLookup.getJavaString(909));
         }
         swapchain = pSwapchain.get(0);
         
@@ -564,12 +565,12 @@ public final class Vulkan {
 
         java.nio.IntBuffer pImageCount = stack.mallocInt(1);
         if (KHRSwapchain.vkGetSwapchainImagesKHR(device, swapchain, pImageCount, null) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to query Vulkan swapchain image count.");
+            throw new RuntimeException(StringLookup.getJavaString(968));
         }
         swapchainImageCount = pImageCount.get(0);
         LongBuffer images = stack.mallocLong(swapchainImageCount);
         if (KHRSwapchain.vkGetSwapchainImagesKHR(device, swapchain, pImageCount, images) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to retrieve Vulkan swapchain images.");
+            throw new RuntimeException(StringLookup.getJavaString(969));
         }
 
         swapchainImages = Long.allocateArray(swapchainImageCount);

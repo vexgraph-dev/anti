@@ -4,6 +4,7 @@ import java.lang.foreign.*;
 import annotation.PlatformExclusive;
 import annotation.Draft;
 
+import nio.StringLookup;
 /**
  * Pure Linux/X11 FFM backend for the Window system.
  * (Skeleton ready for implementation)
@@ -19,9 +20,9 @@ final class linuxWindow {
     static {
         SymbolLookup libX11 = null;
         try {
-            String os = System.getProperty("os.name").toLowerCase();
-            if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                libX11 = SymbolLookup.libraryLookup("libX11.so.6", Arena.global());
+            String os = System.getProperty(StringLookup.getJavaString(143)).toLowerCase();
+            if (os.contains(StringLookup.getJavaString(667)) || os.contains(StringLookup.getJavaString(668)) || os.contains(StringLookup.getJavaString(669))) {
+                libX11 = SymbolLookup.libraryLookup(StringLookup.getJavaString(670), Arena.global());
             }
         } catch (Throwable t) {
             // Ignore if not on Linux

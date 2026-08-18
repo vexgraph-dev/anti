@@ -19,6 +19,7 @@ import java.nio.LongBuffer;
 
 import static org.lwjgl.vulkan.VK10.*;
 
+import nio.StringLookup;
 /**
  * Textured image factory (@Draft). Decodes + resizes an image file with STB,
  * uploads it into a device-local VkImage through a host-visible staging buffer,
@@ -63,7 +64,7 @@ public final class VKTexture {
         if (pointer == 0L) return;
         int type = ForeignMemory.getInt(pointer - 8L);
         if (type == 0 || !TypeRegister.isSingleton(type)) {
-            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(121) + java.lang.Long.toHexString(pointer).toUpperCase());
         }
         long struct = ForeignMemory.getLong(pointer);
         if (struct != 0L) {
@@ -76,7 +77,7 @@ public final class VKTexture {
 
     private static long struct(long enginePtr) {
         long struct = ForeignMemory.getLong(enginePtr);
-        if (struct == 0L) throw new IllegalStateException("VKTexture pointer not initialized: 0x" + java.lang.Long.toHexString(enginePtr).toUpperCase());
+        if (struct == 0L) throw new IllegalStateException(StringLookup.getJavaString(844) + java.lang.Long.toHexString(enginePtr).toUpperCase());
         return struct;
     }
 
@@ -139,7 +140,7 @@ public final class VKTexture {
             int[] w = new int[1], h = new int[1], channels = new int[1];
             ByteBuffer pixels = STBImage.stbi_load(path, w, h, channels, 4);
             if (pixels == null) {
-                throw new IllegalStateException("VKTexture: failed to decode " + path + ": " + STBImage.stbi_failure_reason());
+                throw new IllegalStateException(StringLookup.getJavaString(845) + path + StringLookup.getJavaString(846) + STBImage.stbi_failure_reason());
             }
             boolean stbiOwned = true;
             try {
@@ -194,7 +195,7 @@ public final class VKTexture {
                 return i;
             }
         }
-        throw new RuntimeException("VKTexture: no suitable host-visible memory type found");
+        throw new RuntimeException(StringLookup.getJavaString(847));
     }
 
     private static int findDeviceLocalMemoryType(VkDevice device, int typeBits, MemoryStack stack) {
@@ -206,7 +207,7 @@ public final class VKTexture {
                 return i;
             }
         }
-        throw new RuntimeException("VKTexture: no suitable device-local memory type found");
+        throw new RuntimeException(StringLookup.getJavaString(848));
     }
 
     private static void createImage(VkDevice device, VkQueue queue, int family, long struct, int width, int height, ByteBuffer rgba) {
@@ -229,7 +230,7 @@ public final class VKTexture {
 
             LongBuffer pImage = stack.mallocLong(1);
             if (vkCreateImage(device, imageInfo, null, pImage) != VK_SUCCESS) {
-                throw new RuntimeException("VKTexture: failed to create image");
+                throw new RuntimeException(StringLookup.getJavaString(849));
             }
             long image = pImage.get(0);
 
@@ -267,7 +268,7 @@ public final class VKTexture {
                         .sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
                         .flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
                 if (vkBeginCommandBuffer(cmd, beginInfo) != VK_SUCCESS) {
-                    throw new RuntimeException("VKTexture: failed to begin transfer command buffer");
+                    throw new RuntimeException(StringLookup.getJavaString(850));
                 }
 
                 VkImageMemoryBarrier.Buffer toTransfer = VkImageMemoryBarrier.malloc(1, stack)
@@ -323,14 +324,14 @@ public final class VKTexture {
                         0, null, null, toShader);
 
                 if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
-                    throw new RuntimeException("VKTexture: failed to end transfer command buffer");
+                    throw new RuntimeException(StringLookup.getJavaString(851));
                 }
 
                 VkSubmitInfo submitInfo = VkSubmitInfo.calloc(stack)
                         .sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
                         .pCommandBuffers(stack.pointers(cmdHandle));
                 if (vkQueueSubmit(queue, submitInfo, Fence.get(fencePtr)) != VK_SUCCESS) {
-                    throw new RuntimeException("VKTexture: failed to submit transfer");
+                    throw new RuntimeException(StringLookup.getJavaString(852));
                 }
                 vkWaitForFences(device, Fence.get(fencePtr), true, Long.MAX_VALUE);
             } finally {
@@ -378,7 +379,7 @@ public final class VKTexture {
                     .maxLod(1.0f);
             LongBuffer pSampler = stack.mallocLong(1);
             if (vkCreateSampler(device, info, null, pSampler) != VK_SUCCESS) {
-                throw new RuntimeException("VKTexture: failed to create sampler");
+                throw new RuntimeException(StringLookup.getJavaString(853));
             }
             return pSampler.get(0);
         }
@@ -396,7 +397,7 @@ public final class VKTexture {
                     .pBindings(VkDescriptorSetLayoutBinding.calloc(1, stack).put(0, binding));
             LongBuffer pLayout = stack.mallocLong(1);
             if (vkCreateDescriptorSetLayout(device, info, null, pLayout) != VK_SUCCESS) {
-                throw new RuntimeException("VKTexture: failed to create descriptor set layout");
+                throw new RuntimeException(StringLookup.getJavaString(854));
             }
             return pLayout.get(0);
         }
@@ -413,7 +414,7 @@ public final class VKTexture {
                     .pPoolSizes(VkDescriptorPoolSize.calloc(1, stack).put(0, size));
             LongBuffer pPool = stack.mallocLong(1);
             if (vkCreateDescriptorPool(device, info, null, pPool) != VK_SUCCESS) {
-                throw new RuntimeException("VKTexture: failed to create descriptor pool");
+                throw new RuntimeException(StringLookup.getJavaString(855));
             }
             return pPool.get(0);
         }
@@ -431,7 +432,7 @@ public final class VKTexture {
 
             LongBuffer pSet = stack.mallocLong(1);
             if (vkAllocateDescriptorSets(device, allocInfo, pSet) != VK_SUCCESS) {
-                throw new RuntimeException("VKTexture: failed to allocate descriptor set");
+                throw new RuntimeException(StringLookup.getJavaString(856));
             }
             long set = pSet.get(0);
 

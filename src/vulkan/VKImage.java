@@ -18,6 +18,7 @@ import java.nio.LongBuffer;
 
 import static org.lwjgl.vulkan.VK10.*;
 
+import nio.StringLookup;
 /**
  * Off-screen color image factory. Creates a device-local VkImage bound to its
  * own memory and a matching image view, so the engine can render into a private
@@ -54,7 +55,7 @@ public final class VKImage {
         if (pointer == 0L) return;
         int type = ForeignMemory.getInt(pointer - 8L);
         if (type == 0 || !TypeRegister.isSingleton(type)) {
-            throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(121) + java.lang.Long.toHexString(pointer).toUpperCase());
         }
         long struct = ForeignMemory.getLong(pointer);
         if (struct != 0L) {
@@ -90,7 +91,7 @@ public final class VKImage {
                 return i;
             }
         }
-        throw new RuntimeException("VKImage: no suitable device-local memory type found");
+        throw new RuntimeException(StringLookup.getJavaString(906));
     }
 
     /**
@@ -118,7 +119,7 @@ public final class VKImage {
 
             LongBuffer pImage = stack.mallocLong(1);
             if (vkCreateImage(device, imageInfo, null, pImage) != VK_SUCCESS) {
-                throw new RuntimeException("Failed to create off-screen VkImage!");
+                throw new RuntimeException(StringLookup.getJavaString(907));
             }
             long image = pImage.get(0);
 

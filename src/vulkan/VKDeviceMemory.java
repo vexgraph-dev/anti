@@ -20,6 +20,7 @@ import bit.Bit64;
 import primitive.Long;
 
 
+import nio.StringLookup;
 @Draft
 public final class VKDeviceMemory {
 
@@ -89,9 +90,9 @@ public final class VKDeviceMemory {
     }
 
     public static long getPointer(long matrixPointer, int index) { 
-        if (matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
         if (!isPointer(matrixPointer)) {
-            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
         checkBounds(matrixPointer, index);
         return ForeignMemory.getLong(matrixPointer + (index * 8L)); 
@@ -125,19 +126,19 @@ public final class VKDeviceMemory {
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
-        if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
         if (!isPointer(matrixPointer)) {
-            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
         checkBounds(matrixPointer, index);
         ForeignMemory.setLong(matrixPointer + (index * 8L), targetPointer); 
     }
 
     private static void checkBounds(long pointer, int index) {
-        if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(33));
         int len = length(pointer);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap long length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(834) + len + StringLookup.getJavaString(36) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(37) + Integer.toHexString(type(pointer)).toUpperCase() + StringLookup.getJavaString(18));
         }
     }
 
@@ -209,7 +210,7 @@ public final class VKDeviceMemory {
 
     @Volatile
     public static long getPointerVolatile(long matrixPointer, int index) {
-        if(matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
         checkBounds(matrixPointer, index);
         return ForeignMemory.getVolatileLong(matrixPointer + (index * 8L));
     }
@@ -222,7 +223,7 @@ public final class VKDeviceMemory {
 
     @Volatile
     public static void setPointerVolatile(long matrixPointer, int index, long targetPointer) {
-        if(matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
         checkBounds(matrixPointer, index);
         ForeignMemory.setVolatileLong(matrixPointer + (index * 8L), targetPointer);
     }
@@ -275,7 +276,7 @@ public final class VKDeviceMemory {
 
             LongBuffer pMemory = stack.mallocLong(1);
             if (vkAllocateMemory(device, allocInfo, null, pMemory) != VK_SUCCESS) {
-                throw new RuntimeException("Failed to allocate VKDeviceMemory!");
+                throw new RuntimeException(StringLookup.getJavaString(840));
             }
             set(enginePtr, pMemory.get(0));
         }
@@ -288,7 +289,7 @@ public final class VKDeviceMemory {
         long vkBuffer = VKBuffer.get(engineBufferPtr);
         
         if (vkBindBufferMemory(device, vkBuffer, vkMemory, offset) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to bind VKBuffer to VKDeviceMemory!");
+            throw new RuntimeException(StringLookup.getJavaString(841));
         }
     }
 
@@ -297,7 +298,7 @@ public final class VKDeviceMemory {
         if (enginePtr == 0L || vkImage == 0L) return;
         long vkMemory = get(enginePtr);
         if (vkBindImageMemory(device, vkImage, vkMemory, offset) != VK_SUCCESS) {
-            throw new RuntimeException("Failed to bind VKImage to VKDeviceMemory!");
+            throw new RuntimeException(StringLookup.getJavaString(842));
         }
     }
 
@@ -307,7 +308,7 @@ public final class VKDeviceMemory {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             PointerBuffer pData = stack.mallocPointer(1);
             if (vkMapMemory(device, vkMemory, offset, size, 0, pData) != VK_SUCCESS) {
-                throw new RuntimeException("Failed to map VKDeviceMemory!");
+                throw new RuntimeException(StringLookup.getJavaString(843));
             }
             return pData.get(0);
         }
