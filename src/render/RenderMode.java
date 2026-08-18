@@ -3,6 +3,7 @@ package render;
 import annotation.Draft;
 import annotation.Intention;
 
+import nio.StringLookup;
 /**
  * Defines the rendering pipeline strategy (Forward, Deferred, Tile-Based Deferred, Clustered Forward).
  * Configures Vulkan RenderPass subpasses and off-heap attachment memory flags accordingly.
@@ -16,7 +17,7 @@ public enum RenderMode {
      * Single render pass rendering geometry directly with lit shaders.
      * Best for simple scenes, alpha transparency, and low-end hardware.
      */
-    FORWARD(0, "Forward"),
+    FORWARD(0, StringLookup.getJavaString(350)),
 
     /**
      * Classic Desktop Deferred Rendering.
@@ -24,7 +25,7 @@ public enum RenderMode {
      * Pass 2: Screen-space deferred lighting shader pass reading G-Buffer textures.
      * Best for desktop dGPUs (NVIDIA / AMD) with high VRAM bandwidth and hundreds of dynamic lights.
      */
-    DEFERRED(1, "Deferred"),
+    DEFERRED(1, StringLookup.getJavaString(351)),
 
     /**
      * Apple Silicon UMA Tile-Based Deferred Rendering (TBDR).
@@ -32,17 +33,17 @@ public enum RenderMode {
      * G-Buffer and Depth attachments are flagged as LAZILY_ALLOCATED + TRANSIENT_ATTACHMENT.
      * Attachments live 100% inside GPU on-chip SRAM tile cache and are never written back to RAM.
      */
-    TILE_BASED_DEFERRED(2, "Tile-Based Deferred (TBDR)"),
+    TILE_BASED_DEFERRED(2, StringLookup.getJavaString(352)),
 
     // prebuilt
     @Draft
-    VISIBILITY(4, "Visibility"),
+    VISIBILITY(4, StringLookup.getJavaString(353)),
 
     @Draft
-    TEMPORAL(5, "temporal"),
+    TEMPORAL(5, StringLookup.getJavaString(354)),
 
     @Draft
-    POINT_BASED(6, "point-based"),
+    POINT_BASED(6, StringLookup.getJavaString(355)),
 
 
     /**
@@ -51,7 +52,7 @@ public enum RenderMode {
      * Forward Pass: Shaders lookup light index lists from off-heap cluster buffers.
      * Best for handling thousands of dynamic lights with alpha blending support on all platforms.
      */
-    CLUSTERED_FORWARD(3, "Clustered Forward");
+    CLUSTERED_FORWARD(3, StringLookup.getJavaString(356));
 
 
 
@@ -111,8 +112,8 @@ public enum RenderMode {
      * Automatically selects the optimal default rendering pipeline mode for the current operating system and GPU architecture.
      */
     public static RenderMode autoSelect() {
-        String os = System.getProperty("os.name").toLowerCase();
-        if (os.contains("mac")) {
+        String os = System.getProperty(StringLookup.getJavaString(143)).toLowerCase();
+        if (os.contains(StringLookup.getJavaString(144))) {
             return TILE_BASED_DEFERRED; // Apple Silicon UMA TBDR optimization
         }
         return DEFERRED; // Desktop dGPU default

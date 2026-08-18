@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 
 import static java.util.concurrent.locks.LockSupport.*;
 
+import nio.StringLookup;
 /**
  * Static pointer-handler wrapper for Native Windows.
  * Follows the primitive value-class structure and routes pointers to the correct OS backend.
@@ -27,10 +28,10 @@ public final class Window {
     public static final long OS_NATIVE_MUTEX =
             Atomic.allocateBool(false);
 
-    private static final String OS = System.getProperty("os.name").toLowerCase();
-    private static final boolean IS_MAC = OS.contains("mac");
-    private static final boolean IS_WIN = OS.contains("win");
-    private static final boolean IS_LINUX = OS.contains("nix") || OS.contains("nux") || OS.contains("aix");
+    private static final String OS = System.getProperty(StringLookup.getJavaString(143)).toLowerCase();
+    private static final boolean IS_MAC = OS.contains(StringLookup.getJavaString(144));
+    private static final boolean IS_WIN = OS.contains(StringLookup.getJavaString(453));
+    private static final boolean IS_LINUX = OS.contains(StringLookup.getJavaString(667)) || OS.contains(StringLookup.getJavaString(668)) || OS.contains(StringLookup.getJavaString(669));
 
     /** Explicit FPS cap (0 = auto / uncapped). Forces parking even in fullscreen IMMEDIATE mode. */
     public static volatile int TARGET_FPS;
@@ -136,8 +137,8 @@ public final class Window {
                     if (!MINIMIZED_VIOLATION_FLAGGED) {
                         MINIMIZED_VIOLATION_FLAGGED = true;
                         throw new IllegalStateException(
-                            "Can't run at " + cap + " FPS while minimized: the minimized limiter "
-                            + "caps at " + MINIMIZED_FPS + " FPS. Lower TARGET_FPS or raise MINIMIZED_FPS."
+                            StringLookup.getJavaString(825) + cap + StringLookup.getJavaString(826)
+                            + StringLookup.getJavaString(827) + MINIMIZED_FPS + StringLookup.getJavaString(828)
                         );
                     }
                 }
@@ -158,7 +159,7 @@ public final class Window {
     }
 
     public static long allocate() {
-        return allocate("Anti Engine", 1280, 720);
+        return allocate(StringLookup.getJavaString(706), 1280, 720);
     }
 
     public static long allocate(String title) {
@@ -170,7 +171,7 @@ public final class Window {
         if (IS_MAC) ptr = macOSWindow.allocate(width, height);
         else if (IS_WIN) ptr = windowsWindow.allocate(width, height);
         else if (IS_LINUX) ptr = linuxWindow.allocate(width, height);
-        else throw new UnsupportedOperationException("Unsupported OS: " + OS);
+        else throw new UnsupportedOperationException(StringLookup.getJavaString(829) + OS);
 
         if (ptr != 0) {
             setTitle(ptr, title);
@@ -411,9 +412,9 @@ public final class Window {
         if (IS_MAC) {
             return macOSWindow.getClipboardString();
         } else if (IS_WIN) {
-            return ""; // windowsWindow.getClipboardString();
+            return StringLookup.getJavaString(0); // windowsWindow.getClipboardString();
         } else {
-            return ""; // linuxWindow.getClipboardString();
+            return StringLookup.getJavaString(0); // linuxWindow.getClipboardString();
         }
     }
 
@@ -616,7 +617,7 @@ public final class Window {
         // presentOnce(), so the FIFO vblank sleep happens on the worker, never here.
         // This thread spins as fast as the CPU allows, shoving high-precision
         // keyboard/mouse timestamps into the lock-free input RingBuffers.
-        System.out.println("[Main Thread] Event pump engaged: Thread 0 parked, woken by AppKit events.");
+        System.out.println(StringLookup.getJavaString(830));
         long lastContentSize = 0L; // force an initial sync: swapchain may have booted smaller than the window
         long pumpIter = 0L;
         while (!shouldClose(pointer)) {
@@ -633,9 +634,9 @@ public final class Window {
             if (contentSize != 0L && contentSize != lastContentSize) {
                 int cw = (int) (contentSize >>> 32);
                 int ch = (int) (contentSize & 0xFFFFFFFFL);
-                if (System.getProperty("anti.debug.resize") != null) {
-                    System.out.println("[pump] Thread0 detected contentSize " + cw + "x" + ch
-                            + " (last=" + ((int) (lastContentSize >>> 32)) + "x" + (int) (lastContentSize & 0xFFFFFFFFL) + ")");
+                if (System.getProperty(StringLookup.getJavaString(792)) != null) {
+                    System.out.println(StringLookup.getJavaString(831) + cw + StringLookup.getJavaString(676) + ch
+                            + StringLookup.getJavaString(832) + ((int) (lastContentSize >>> 32)) + StringLookup.getJavaString(676) + (int) (lastContentSize & 0xFFFFFFFFL) + StringLookup.getJavaString(18));
                 }
                 syncResize(cw, ch);
                 lastContentSize = contentSize;
@@ -643,6 +644,6 @@ public final class Window {
 
             waitEvents(pointer); // bounded block: ~16ms cadence when idle, instant wake on input
         }
-        System.out.println("[Main Thread] Window closed. Releasing Thread 0.");
+        System.out.println(StringLookup.getJavaString(833));
     }
 }

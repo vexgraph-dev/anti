@@ -12,6 +12,7 @@ import input.Key;
 import input.Mouse;
 import input.Touch;
 
+import nio.StringLookup;
 /**
  * Pure macOS FFM backend for the Window system.
  */
@@ -104,45 +105,45 @@ final class macOSWindow {
         StructLayout cgRect, cgSize;
 
         try {
-            objcLib = SymbolLookup.libraryLookup("libobjc.A.dylib", Arena.global());
+            objcLib = SymbolLookup.libraryLookup(StringLookup.getJavaString(671), Arena.global());
             
             try {
-                SymbolLookup.libraryLookup("/System/Library/Frameworks/AppKit.framework/AppKit", Arena.global());
-                SymbolLookup.libraryLookup("/System/Library/Frameworks/QuartzCore.framework/QuartzCore", Arena.global());
-                SymbolLookup metalLib = SymbolLookup.libraryLookup("/System/Library/Frameworks/Metal.framework/Metal", Arena.global());
-                SymbolLookup coreGraphics = SymbolLookup.libraryLookup("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", Arena.global());
-                SymbolLookup coreFoundation = SymbolLookup.libraryLookup("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", Arena.global());
+                SymbolLookup.libraryLookup(StringLookup.getJavaString(672), Arena.global());
+                SymbolLookup.libraryLookup(StringLookup.getJavaString(673), Arena.global());
+                SymbolLookup metalLib = SymbolLookup.libraryLookup(StringLookup.getJavaString(674), Arena.global());
+                SymbolLookup coreGraphics = SymbolLookup.libraryLookup(StringLookup.getJavaString(567), Arena.global());
+                SymbolLookup coreFoundation = SymbolLookup.libraryLookup(StringLookup.getJavaString(675), Arena.global());
 
-                CG_MAIN_DISPLAY_ID = LINKER.downcallHandle(coreGraphics.find("CGMainDisplayID").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_INT));
-                CG_DISPLAY_PIXELS_WIDE = LINKER.downcallHandle(coreGraphics.find("CGDisplayPixelsWide").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
-                CG_DISPLAY_PIXELS_HIGH = LINKER.downcallHandle(coreGraphics.find("CGDisplayPixelsHigh").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+                CG_MAIN_DISPLAY_ID = LINKER.downcallHandle(coreGraphics.find(StringLookup.getJavaString(569)).orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_INT));
+                CG_DISPLAY_PIXELS_WIDE = LINKER.downcallHandle(coreGraphics.find(StringLookup.getJavaString(570)).orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+                CG_DISPLAY_PIXELS_HIGH = LINKER.downcallHandle(coreGraphics.find(StringLookup.getJavaString(571)).orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
                 StructLayout cgPoint = MemoryLayout.structLayout(
-                    ValueLayout.JAVA_DOUBLE.withName("x"),
-                    ValueLayout.JAVA_DOUBLE.withName("y")
+                    ValueLayout.JAVA_DOUBLE.withName(StringLookup.getJavaString(676)),
+                    ValueLayout.JAVA_DOUBLE.withName(StringLookup.getJavaString(677))
                 );
-                CG_ASSOCIATE_MOUSE = LINKER.downcallHandle(coreGraphics.find("CGAssociateMouseAndMouseCursorPosition").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.JAVA_BYTE));
-                CG_WARP_MOUSE_CURSOR = LINKER.downcallHandle(coreGraphics.find("CGWarpMouseCursorPosition").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_INT, cgPoint));
-                CG_EVENT_TAP_CREATE = LINKER.downcallHandle(coreGraphics.find("CGEventTapCreate").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-                CG_EVENT_TAP_ENABLE = LINKER.downcallHandle(coreGraphics.find("CGEventTapEnable").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_BYTE));
-                CG_EVENT_GET_INTEGER_VALUE_FIELD = LINKER.downcallHandle(coreGraphics.find("CGEventGetIntegerValueField").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-                CF_MACH_PORT_CREATE_RUN_LOOP_SOURCE = LINKER.downcallHandle(coreFoundation.find("CFMachPortCreateRunLoopSource").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
-                CF_RUN_LOOP_GET_CURRENT = LINKER.downcallHandle(coreFoundation.find("CFRunLoopGetCurrent").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS));
-                CF_RUN_LOOP_ADD_SOURCE = LINKER.downcallHandle(coreFoundation.find("CFRunLoopAddSource").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-                CF_RUN_LOOP_RUN = LINKER.downcallHandle(coreFoundation.find("CFRunLoopRun").orElseThrow(), FunctionDescriptor.ofVoid());
-                CF_RUN_LOOP_STOP = LINKER.downcallHandle(coreFoundation.find("CFRunLoopStop").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
-                CF_STRING_CREATE_WITH_CSTRING = LINKER.downcallHandle(coreFoundation.find("CFStringCreateWithCString").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-                CF_RELEASE = LINKER.downcallHandle(coreFoundation.find("CFRelease").orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+                CG_ASSOCIATE_MOUSE = LINKER.downcallHandle(coreGraphics.find(StringLookup.getJavaString(678)).orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.JAVA_BYTE));
+                CG_WARP_MOUSE_CURSOR = LINKER.downcallHandle(coreGraphics.find(StringLookup.getJavaString(679)).orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_INT, cgPoint));
+                CG_EVENT_TAP_CREATE = LINKER.downcallHandle(coreGraphics.find(StringLookup.getJavaString(680)).orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+                CG_EVENT_TAP_ENABLE = LINKER.downcallHandle(coreGraphics.find(StringLookup.getJavaString(681)).orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_BYTE));
+                CG_EVENT_GET_INTEGER_VALUE_FIELD = LINKER.downcallHandle(coreGraphics.find(StringLookup.getJavaString(682)).orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+                CF_MACH_PORT_CREATE_RUN_LOOP_SOURCE = LINKER.downcallHandle(coreFoundation.find(StringLookup.getJavaString(683)).orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+                CF_RUN_LOOP_GET_CURRENT = LINKER.downcallHandle(coreFoundation.find(StringLookup.getJavaString(684)).orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS));
+                CF_RUN_LOOP_ADD_SOURCE = LINKER.downcallHandle(coreFoundation.find(StringLookup.getJavaString(685)).orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+                CF_RUN_LOOP_RUN = LINKER.downcallHandle(coreFoundation.find(StringLookup.getJavaString(686)).orElseThrow(), FunctionDescriptor.ofVoid());
+                CF_RUN_LOOP_STOP = LINKER.downcallHandle(coreFoundation.find(StringLookup.getJavaString(687)).orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+                CF_STRING_CREATE_WITH_CSTRING = LINKER.downcallHandle(coreFoundation.find(StringLookup.getJavaString(688)).orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+                CF_RELEASE = LINKER.downcallHandle(coreFoundation.find(StringLookup.getJavaString(689)).orElseThrow(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
                 metalCreateSystemDefaultDevice = LINKER.downcallHandle(
-                    metalLib.find("MTLCreateSystemDefaultDevice").orElseThrow(),
+                    metalLib.find(StringLookup.getJavaString(690)).orElseThrow(),
                     FunctionDescriptor.of(ValueLayout.ADDRESS)
                 );
             } catch (Throwable t) {
-                throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                throw new macOSWindowException(StringLookup.getJavaString(691), t);
             }
 
-            MemorySegment getClassSym = objcLib.find("objc_getClass").orElseThrow();
-            MemorySegment selRegNameSym = objcLib.find("sel_registerName").orElseThrow();
-            MemorySegment msgSendSym = objcLib.find("objc_msgSend").orElseThrow();
+            MemorySegment getClassSym = objcLib.find(StringLookup.getJavaString(692)).orElseThrow();
+            MemorySegment selRegNameSym = objcLib.find(StringLookup.getJavaString(693)).orElseThrow();
+            MemorySegment msgSendSym = objcLib.find(StringLookup.getJavaString(694)).orElseThrow();
 
             getClass = LINKER.downcallHandle(getClassSym, FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
             selRegName = LINKER.downcallHandle(selRegNameSym, FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
@@ -154,8 +155,8 @@ final class macOSWindow {
             msgSendPtrLongPtr = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
             
             cgSize = MemoryLayout.structLayout(
-                ValueLayout.JAVA_DOUBLE.withName("width"),
-                ValueLayout.JAVA_DOUBLE.withName("height")
+                ValueLayout.JAVA_DOUBLE.withName(StringLookup.getJavaString(695)),
+                ValueLayout.JAVA_DOUBLE.withName(StringLookup.getJavaString(696))
             );
             
             msgSendPtrSize = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, cgSize));
@@ -180,10 +181,10 @@ final class macOSWindow {
             msgSendPointRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(cgSize, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
             cgRect = MemoryLayout.structLayout(
-                ValueLayout.JAVA_DOUBLE.withName("x"),
-                ValueLayout.JAVA_DOUBLE.withName("y"),
-                ValueLayout.JAVA_DOUBLE.withName("width"),
-                ValueLayout.JAVA_DOUBLE.withName("height")
+                ValueLayout.JAVA_DOUBLE.withName(StringLookup.getJavaString(676)),
+                ValueLayout.JAVA_DOUBLE.withName(StringLookup.getJavaString(677)),
+                ValueLayout.JAVA_DOUBLE.withName(StringLookup.getJavaString(695)),
+                ValueLayout.JAVA_DOUBLE.withName(StringLookup.getJavaString(696))
             );
             msgSendRectRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(cgRect, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
             msgSendDoubleRet = LINKER.downcallHandle(msgSendSym, FunctionDescriptor.of(ValueLayout.JAVA_DOUBLE, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
@@ -194,7 +195,7 @@ final class macOSWindow {
                 cgRect, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE
             ));
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
         
         OBJC_LIB = objcLib;
@@ -276,31 +277,31 @@ final class macOSWindow {
         if (OBJC_GET_CLASS == null) return 0L;
         try {
             try (Arena arena = Arena.ofConfined()) {
-                MemorySegment nsAppClass = getObjcClass(arena, "NSApplication");
-                MemorySegment sharedAppSel = getSel(arena, "sharedApplication");
+                MemorySegment nsAppClass = getObjcClass(arena, StringLookup.getJavaString(697));
+                MemorySegment sharedAppSel = getSel(arena, StringLookup.getJavaString(698));
                 MemorySegment app = (MemorySegment) MSG_SEND_PTR.invoke(nsAppClass, sharedAppSel);
 
-                MemorySegment setActivationPolicySel = getSel(arena, "setActivationPolicy:");
+                MemorySegment setActivationPolicySel = getSel(arena, StringLookup.getJavaString(699));
                 MSG_SEND_INT.invoke(app, setActivationPolicySel, 0L);
                 
-                MemorySegment finishLaunchingSel = getSel(arena, "finishLaunching");
+                MemorySegment finishLaunchingSel = getSel(arena, StringLookup.getJavaString(700));
                 MSG_SEND_VOID.invoke(app, finishLaunchingSel);
 
-                MemorySegment nsProcessInfoClass = getObjcClass(arena, "NSProcessInfo");
-                MemorySegment processInfoSel = getSel(arena, "processInfo");
+                MemorySegment nsProcessInfoClass = getObjcClass(arena, StringLookup.getJavaString(701));
+                MemorySegment processInfoSel = getSel(arena, StringLookup.getJavaString(702));
                 MemorySegment processInfo = (MemorySegment) MSG_SEND_PTR.invoke(nsProcessInfoClass, processInfoSel);
 
-                MemorySegment nsStringClass = getObjcClass(arena, "NSString");
-                MemorySegment allocSelStr = getSel(arena, "alloc");
-                MemorySegment initWithUTF8StringSel = getSel(arena, "initWithUTF8String:");
+                MemorySegment nsStringClass = getObjcClass(arena, StringLookup.getJavaString(703));
+                MemorySegment allocSelStr = getSel(arena, StringLookup.getJavaString(704));
+                MemorySegment initWithUTF8StringSel = getSel(arena, StringLookup.getJavaString(705));
                 MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, allocSelStr);
-                MemorySegment nameStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, initWithUTF8StringSel, arena.allocateFrom("Anti Engine"));
+                MemorySegment nameStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, initWithUTF8StringSel, arena.allocateFrom(StringLookup.getJavaString(706)));
 
-                MemorySegment setProcessNameSel = getSel(arena, "setProcessName:");
+                MemorySegment setProcessNameSel = getSel(arena, StringLookup.getJavaString(707));
                 MSG_SEND_VOID_PTR.invoke(processInfo, setProcessNameSel, nameStr);
 
-                MemorySegment nsWindowClass = getObjcClass(arena, "NSWindow");
-                MemorySegment allocSel = getSel(arena, "alloc");
+                MemorySegment nsWindowClass = getObjcClass(arena, StringLookup.getJavaString(708));
+                MemorySegment allocSel = getSel(arena, StringLookup.getJavaString(704));
                 MemorySegment windowAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsWindowClass, allocSel);
 
                 MemorySegment rect = arena.allocate(CG_RECT);
@@ -313,12 +314,12 @@ final class macOSWindow {
                 
                 long backingStore = 2;
 
-                MemorySegment initWithContentRectSel = getSel(arena, "initWithContentRect:styleMask:backing:defer:");
+                MemorySegment initWithContentRectSel = getSel(arena, StringLookup.getJavaString(709));
                 MemorySegment window = (MemorySegment) MSG_SEND_INIT_WINDOW.invoke(windowAlloc, initWithContentRectSel, rect, styleMask, backingStore, (byte)0);
 
                 // NSWindowCollectionBehaviorFullScreenPrimary = 1 << 7: the green zoom button
                 // enters native fullscreen, keeping it in sync with toggleFullscreen.
-                MemorySegment setCollectionBehaviorSel = getSel(arena, "setCollectionBehavior:");
+                MemorySegment setCollectionBehaviorSel = getSel(arena, StringLookup.getJavaString(710));
                 MSG_SEND_INT.invoke(window, setCollectionBehaviorSel, 128L);
 
                 // macOS's live-resize "content preservation" caches the last-drawn
@@ -326,25 +327,25 @@ final class macOSWindow {
                 // whole-window magnification is exactly the "stretch" seen on pinned
                 // pixel content. Disable it: during live resize the window shows only
                 // what we actually draw (pinned/clipped), never a scaled snapshot.
-                MemorySegment setPreservesContentSel = getSel(arena, "setPreservesContentDuringLiveResize:");
+                MemorySegment setPreservesContentSel = getSel(arena, StringLookup.getJavaString(711));
                 MSG_SEND_BOOL.invoke(window, setPreservesContentSel, (byte)0);
 
-                MemorySegment centerSel = getSel(arena, "center");
+                MemorySegment centerSel = getSel(arena, StringLookup.getJavaString(712));
                 MSG_SEND_VOID.invoke(window, centerSel);
                 
                 // Enable trackpad touch events on the window's content view
-                MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "contentView"));
-                MemorySegment setAcceptsTouchEventsSel = getSel(arena, "setAcceptsTouchEvents:");
+                MemorySegment contentView = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, StringLookup.getJavaString(713)));
+                MemorySegment setAcceptsTouchEventsSel = getSel(arena, StringLookup.getJavaString(714));
                 MSG_SEND_BOOL.invoke(contentView, setAcceptsTouchEventsSel, (byte)1);
 
                 // Explicitly allow indirect (trackpad) touch event types (NSTouchTypeMaskIndirect = 2)
-                MemorySegment setAllowedTouchTypesSel = getSel(arena, "setAllowedTouchTypes:");
+                MemorySegment setAllowedTouchTypesSel = getSel(arena, StringLookup.getJavaString(715));
                 MSG_SEND_INT.invoke(contentView, setAllowedTouchTypesSel, 2L);
 
                 return window.address();
             }
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -352,29 +353,29 @@ final class macOSWindow {
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment nsStringClass = getObjcClass(arena, "NSString");
-            MemorySegment allocSel = getSel(arena, "alloc");
-            MemorySegment initWithUTF8StringSel = getSel(arena, "initWithUTF8String:");
+            MemorySegment nsStringClass = getObjcClass(arena, StringLookup.getJavaString(703));
+            MemorySegment allocSel = getSel(arena, StringLookup.getJavaString(704));
+            MemorySegment initWithUTF8StringSel = getSel(arena, StringLookup.getJavaString(705));
             
             MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, allocSel);
             MemorySegment titleStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, initWithUTF8StringSel, arena.allocateFrom(title));
             
-            MemorySegment setTitleSel = getSel(arena, "setTitle:");
+            MemorySegment setTitleSel = getSel(arena, StringLookup.getJavaString(716));
             MSG_SEND_VOID_PTR.invoke(window, setTitleSel, titleStr);
 
             // macOS 15+ re-reveals the native title view whenever the title string
             // changes, even when titleVisibility is hidden. Re-apply the hidden state
             // for FullSizeContentView (NAKED/borderless) windows, mirroring the
             // Ghostty didSet guard.
-            long mask = (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, "styleMask"));
+            long mask = (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, StringLookup.getJavaString(717)));
             if ((mask & STYLE_FULL_SIZE_CONTENT) != 0) {
-                MemorySegment setTitlebarAppearsTransparentSel = getSel(arena, "setTitlebarAppearsTransparent:");
+                MemorySegment setTitlebarAppearsTransparentSel = getSel(arena, StringLookup.getJavaString(718));
                 MSG_SEND_BOOL.invoke(window, setTitlebarAppearsTransparentSel, (byte)1);
-                MemorySegment setTitleVisibilitySel = getSel(arena, "setTitleVisibility:");
+                MemorySegment setTitleVisibilitySel = getSel(arena, StringLookup.getJavaString(719));
                 MSG_SEND_INT.invoke(window, setTitleVisibilitySel, 1L); // NSWindowTitleHidden
             }
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -382,7 +383,7 @@ final class macOSWindow {
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment setContentSizeSel = getSel(arena, "setContentSize:");
+            MemorySegment setContentSizeSel = getSel(arena, StringLookup.getJavaString(720));
             
             MemorySegment size = arena.allocate(CG_SIZE);
             size.set(ValueLayout.JAVA_DOUBLE, 0, width);
@@ -390,7 +391,7 @@ final class macOSWindow {
             
             MSG_SEND_PTR_SIZE.invoke(window, setContentSizeSel, size);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -405,14 +406,14 @@ final class macOSWindow {
      */
     private static void activateApp() {
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment nsRunningAppClass = getObjcClass(arena, "NSRunningApplication");
-            MemorySegment currentApplicationSel = getSel(arena, "currentApplication");
+            MemorySegment nsRunningAppClass = getObjcClass(arena, StringLookup.getJavaString(721));
+            MemorySegment currentApplicationSel = getSel(arena, StringLookup.getJavaString(722));
             MemorySegment runningApp = (MemorySegment) MSG_SEND_PTR.invoke(nsRunningAppClass, currentApplicationSel);
             if (runningApp == null || runningApp.address() == 0L) return;
-            MemorySegment activateWithOptionsSel = getSel(arena, "activateWithOptions:");
+            MemorySegment activateWithOptionsSel = getSel(arena, StringLookup.getJavaString(723));
             MSG_SEND_BOOL_RET_LONG.invoke(runningApp, activateWithOptionsSel, 3L);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -422,14 +423,14 @@ final class macOSWindow {
             MemorySegment window = MemorySegment.ofAddress(pointer);
             if (visible) {
                 activateApp(); // before makeKeyAndOrderFront so the key window sticks
-                MemorySegment makeKeyAndOrderFrontSel = getSel(arena, "makeKeyAndOrderFront:");
+                MemorySegment makeKeyAndOrderFrontSel = getSel(arena, StringLookup.getJavaString(724));
                 MSG_SEND_PTR_PTR.invoke(window, makeKeyAndOrderFrontSel, MemorySegment.NULL);
             } else {
-                MemorySegment orderOutSel = getSel(arena, "orderOut:");
+                MemorySegment orderOutSel = getSel(arena, StringLookup.getJavaString(725));
                 MSG_SEND_PTR_PTR.invoke(window, orderOutSel, MemorySegment.NULL);
             }
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -439,13 +440,13 @@ final class macOSWindow {
             MemorySegment window = MemorySegment.ofAddress(pointer);
             
             // Get screen height to invert Y axis to top-left origin
-            MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
-            MemorySegment mainScreenSel = getSel(arena, "mainScreen");
+            MemorySegment nsScreenClass = getObjcClass(arena, StringLookup.getJavaString(726));
+            MemorySegment mainScreenSel = getSel(arena, StringLookup.getJavaString(727));
             MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, mainScreenSel);
-            MemorySegment screenRect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, getSel(arena, "frame"));
+            MemorySegment screenRect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, getSel(arena, StringLookup.getJavaString(728)));
             double screenHeight = screenRect.get(ValueLayout.JAVA_DOUBLE, 24);
             
-            MemorySegment setFrameTopLeftPointSel = getSel(arena, "setFrameTopLeftPoint:");
+            MemorySegment setFrameTopLeftPointSel = getSel(arena, StringLookup.getJavaString(729));
             
             MemorySegment point = arena.allocate(CG_SIZE); // Reusing 2-double layout
             point.set(ValueLayout.JAVA_DOUBLE, 0, x);
@@ -453,7 +454,7 @@ final class macOSWindow {
             
             MSG_SEND_PTR_SIZE.invoke(window, setFrameTopLeftPointSel, point);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -461,12 +462,12 @@ final class macOSWindow {
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment setSharingTypeSel = getSel(arena, "setSharingType:");
+            MemorySegment setSharingTypeSel = getSel(arena, StringLookup.getJavaString(730));
             // NSWindowSharingNone = 0, NSWindowSharingReadOnly = 1
             long sharingType = enabled ? 0L : 1L;
             MSG_SEND_INT.invoke(window, setSharingTypeSel, sharingType);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -475,11 +476,11 @@ final class macOSWindow {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
             
-            MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "contentView"));
+            MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, StringLookup.getJavaString(713)));
             
-            MemorySegment caMetalLayerClass = getObjcClass(arena, "CAMetalLayer");
-            MemorySegment allocSel = getSel(arena, "alloc");
-            MemorySegment initSel = getSel(arena, "init");
+            MemorySegment caMetalLayerClass = getObjcClass(arena, StringLookup.getJavaString(731));
+            MemorySegment allocSel = getSel(arena, StringLookup.getJavaString(704));
+            MemorySegment initSel = getSel(arena, StringLookup.getJavaString(732));
             MemorySegment layerAlloc = (MemorySegment) MSG_SEND_PTR.invoke(caMetalLayerClass, allocSel);
             MemorySegment metalLayer = (MemorySegment) MSG_SEND_PTR.invoke(layerAlloc, initSel);
             
@@ -488,37 +489,37 @@ final class macOSWindow {
             // presents during a live drag, the OS would otherwise SCALE the last stale
             // drawable to the new layer bounds — that scale is the whole-frame "stretch"
             // seen on pixel content. TopLeft keeps every pixel where the frame drew it.
-            MemorySegment nsStringClass = getObjcClass(arena, "NSString");
-            MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, getSel(arena, "alloc"));
-            MemorySegment gravityStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, getSel(arena, "initWithUTF8String:"), arena.allocateFrom("topLeft"));
-            MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, "setContentsGravity:"), gravityStr);
+            MemorySegment nsStringClass = getObjcClass(arena, StringLookup.getJavaString(703));
+            MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, getSel(arena, StringLookup.getJavaString(704)));
+            MemorySegment gravityStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, getSel(arena, StringLookup.getJavaString(705)), arena.allocateFrom(StringLookup.getJavaString(733)));
+            MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, StringLookup.getJavaString(734)), gravityStr);
 
             // Resolution scaling: RETINA uses native hardware backingScaleFactor for crispness;
             // POINT forces 1.0 (1 drawable px = 1 point).
             double scale = 1.0;
             if (resolutionType == RESOLUTION_RETINA) {
-                MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+                MemorySegment backingScaleFactorSel = getSel(arena, StringLookup.getJavaString(735));
                 scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
                 if (scale <= 0.0) scale = 1.0;
             }
-            MSG_SEND_PTR_DOUBLE.invoke(metalLayer, getSel(arena, "setContentsScale:"), scale);
-            System.out.println("[macOSWindow] contentsScale=" + scale + " (" + (resolutionType == RESOLUTION_RETINA ? "retina native" : "point 1:1") + ")");
+            MSG_SEND_PTR_DOUBLE.invoke(metalLayer, getSel(arena, StringLookup.getJavaString(736)), scale);
+            System.out.println(StringLookup.getJavaString(737) + scale + StringLookup.getJavaString(370) + (resolutionType == RESOLUTION_RETINA ? StringLookup.getJavaString(738) : StringLookup.getJavaString(739)) + StringLookup.getJavaString(18));
 
             // Painted opaque behind the drawable so a frozen-surface window reveal during a
             // live drag clips to engine-dark instead of showing the desktop.
             try {
-                MemorySegment nsColorClass = getObjcClass(arena, "NSColor");
-                MemorySegment blackColor = (MemorySegment) MSG_SEND_PTR.invoke(nsColorClass, getSel(arena, "blackColor"));
-                MemorySegment cgColor = (MemorySegment) MSG_SEND_PTR.invoke(blackColor, getSel(arena, "CGColor"));
-                MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, "setBackgroundColor:"), cgColor);
+                MemorySegment nsColorClass = getObjcClass(arena, StringLookup.getJavaString(740));
+                MemorySegment blackColor = (MemorySegment) MSG_SEND_PTR.invoke(nsColorClass, getSel(arena, StringLookup.getJavaString(741)));
+                MemorySegment cgColor = (MemorySegment) MSG_SEND_PTR.invoke(blackColor, getSel(arena, StringLookup.getJavaString(742)));
+                MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, StringLookup.getJavaString(743)), cgColor);
             } catch (Throwable t) {
-                System.out.println("[macOSWindow] backing layer background color not set: " + t);
+                System.out.println(StringLookup.getJavaString(744) + t);
             }
 
-MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
+MemorySegment setWantsLayerSel = getSel(arena, StringLookup.getJavaString(745));
             MSG_SEND_BOOL.invoke(view, setWantsLayerSel, (byte)1);
 
-            MemorySegment setLayerSel = getSel(arena, "setLayer:");
+            MemorySegment setLayerSel = getSel(arena, StringLookup.getJavaString(746));
             MSG_SEND_PTR_PTR.invoke(view, setLayerSel, metalLayer);
 
             // Tell the VIEW how to place its layer while the window live-resizes. On a
@@ -526,7 +527,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             // placement (ScaleAxesIndependently = 0) stretches stale frames. Forcing
             // NSViewLayerContentsPlacementTopLeft = 11 keeps the pinned content at the
             // top-left at native scale, never scaling it to the new bounds.
-            MemorySegment setPlacementSel = getSel(arena, "setLayerContentsPlacement:");
+            MemorySegment setPlacementSel = getSel(arena, StringLookup.getJavaString(747));
             MSG_SEND_INT.invoke(view, setPlacementSel, 11L);
 
             // glitchless-resize recipe (thume.ca / CAMetalLayer live-resize): without these
@@ -542,18 +543,18 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             // until a resize forces AppKit to commit. vkQueuePresentKHR already paces to
             // vsync, so the sync CA would otherwise provide is redundant.
             // CAAutoresizingMask: kCALayerWidthSizable=2 | kCALayerHeightSizable=16.
-            MSG_SEND_INT.invoke(metalLayer, getSel(arena, "setAutoresizingMask:"), 2L | 16L);
-            MSG_SEND_BOOL.invoke(metalLayer, getSel(arena, "setNeedsDisplayOnBoundsChange:"), (byte)1);
-            MSG_SEND_BOOL.invoke(metalLayer, getSel(arena, "setAllowsNextDrawableTimeout:"), (byte)0);
+            MSG_SEND_INT.invoke(metalLayer, getSel(arena, StringLookup.getJavaString(748)), 2L | 16L);
+            MSG_SEND_BOOL.invoke(metalLayer, getSel(arena, StringLookup.getJavaString(749)), (byte)1);
+            MSG_SEND_BOOL.invoke(metalLayer, getSel(arena, StringLookup.getJavaString(750)), (byte)0);
 
             // NSViewLayerContentsRedrawDuringViewResize = 2: keep the view's layer being
             // repainted on every resize tick instead of the default (never) which lets
             // AppKit leave the layer stale/black mid-drag.
-            MSG_SEND_INT.invoke(view, getSel(arena, "setLayerContentsRedrawPolicy:"), 2L);
+            MSG_SEND_INT.invoke(view, getSel(arena, StringLookup.getJavaString(751)), 2L);
 
             return metalLayer.address();
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -561,12 +562,12 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment metalLayer = MemorySegment.ofAddress(pointer);
-            MemorySegment nsStringClass = getObjcClass(arena, "NSString");
-            MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, getSel(arena, "alloc"));
-            MemorySegment gravityStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, getSel(arena, "initWithUTF8String:"), arena.allocateFrom("topLeft"));
-            MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, "setContentsGravity:"), gravityStr);
+            MemorySegment nsStringClass = getObjcClass(arena, StringLookup.getJavaString(703));
+            MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, getSel(arena, StringLookup.getJavaString(704)));
+            MemorySegment gravityStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, getSel(arena, StringLookup.getJavaString(705)), arena.allocateFrom(StringLookup.getJavaString(733)));
+            MSG_SEND_PTR_PTR.invoke(metalLayer, getSel(arena, StringLookup.getJavaString(734)), gravityStr);
         } catch (Throwable t) {
-            System.out.println("[macOSWindow] setSurfaceGravityTopLeft failed: " + t);
+            System.out.println(StringLookup.getJavaString(752) + t);
         }
     }
 
@@ -575,21 +576,21 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "contentView"));
+            MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, StringLookup.getJavaString(713)));
             if (view == null || view.address() == 0L) return;
-            MemorySegment layer = (MemorySegment) MSG_SEND_PTR.invoke(view, getSel(arena, "layer"));
+            MemorySegment layer = (MemorySegment) MSG_SEND_PTR.invoke(view, getSel(arena, StringLookup.getJavaString(753)));
             if (layer != null && layer.address() != 0L) {
                 double scale = 1.0;
                 if (resolutionType == RESOLUTION_RETINA) {
-                    MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+                    MemorySegment backingScaleFactorSel = getSel(arena, StringLookup.getJavaString(735));
                     scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
                     if (scale <= 0.0) scale = 1.0;
                 }
-                MSG_SEND_PTR_DOUBLE.invoke(layer, getSel(arena, "setContentsScale:"), scale);
-                System.out.println("[macOSWindow] setResolutionType: " + (type == RESOLUTION_RETINA ? "RETINA" : "POINT") + " (scale=" + scale + ")");
+                MSG_SEND_PTR_DOUBLE.invoke(layer, getSel(arena, StringLookup.getJavaString(736)), scale);
+                System.out.println(StringLookup.getJavaString(754) + (type == RESOLUTION_RETINA ? StringLookup.getJavaString(755) : StringLookup.getJavaString(756)) + StringLookup.getJavaString(757) + scale + StringLookup.getJavaString(18));
             }
         } catch (Throwable t) {
-            System.out.println("[macOSWindow] setResolutionType failed: " + t);
+            System.out.println(StringLookup.getJavaString(758) + t);
         }
     }
 
@@ -601,11 +602,11 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (resolutionType == RESOLUTION_POINT) return 1.0;
         if (pointer == 0L || OBJC_GET_CLASS == null) {
             try (Arena arena = Arena.ofConfined()) {
-                MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
-                MemorySegment mainScreenSel = getSel(arena, "mainScreen");
+                MemorySegment nsScreenClass = getObjcClass(arena, StringLookup.getJavaString(726));
+                MemorySegment mainScreenSel = getSel(arena, StringLookup.getJavaString(727));
                 MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, mainScreenSel);
                 if (mainScreen == null || mainScreen.address() == 0L) return 1.0;
-                MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+                MemorySegment backingScaleFactorSel = getSel(arena, StringLookup.getJavaString(735));
                 double scale = (double) MSG_SEND_DOUBLE_RET.invoke(mainScreen, backingScaleFactorSel);
                 return scale > 0.0 ? scale : 1.0;
             } catch (Throwable t) {
@@ -614,7 +615,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         }
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+            MemorySegment backingScaleFactorSel = getSel(arena, StringLookup.getJavaString(735));
             double scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
             return scale > 0.0 ? scale : 1.0;
         } catch (Throwable t) {
@@ -635,9 +636,9 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             MemorySegment size = arena.allocate(CG_SIZE);
             size.set(ValueLayout.JAVA_DOUBLE, 0, width);
             size.set(ValueLayout.JAVA_DOUBLE, 8, height);
-            MSG_SEND_PTR_SIZE.invoke(metalLayer, getSel(arena, "setDrawableSize:"), size);
+            MSG_SEND_PTR_SIZE.invoke(metalLayer, getSel(arena, StringLookup.getJavaString(759)), size);
         } catch (Throwable t) {
-            System.out.println("[macOSWindow] setDrawableSize failed: " + t);
+            System.out.println(StringLookup.getJavaString(760) + t);
         }
     }
     
@@ -645,15 +646,15 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            long currentStyle = (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, "styleMask"));
+            long currentStyle = (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, StringLookup.getJavaString(717)));
             boolean isCurrentlyFullscreen = (currentStyle & STYLE_FULL_SCREEN) != 0;
             
             if (fullscreen != isCurrentlyFullscreen) {
-                MemorySegment toggleFullScreenSel = getSel(arena, "toggleFullScreen:");
+                MemorySegment toggleFullScreenSel = getSel(arena, StringLookup.getJavaString(761));
                 MSG_SEND_VOID_PTR.invoke(window, toggleFullScreenSel, MemorySegment.NULL);
             }
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -661,10 +662,10 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment centerSel = getSel(arena, "center");
+            MemorySegment centerSel = getSel(arena, StringLookup.getJavaString(712));
             MSG_SEND_VOID.invoke(window, centerSel);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -673,15 +674,15 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (OBJC_GET_CLASS == null) return;
         if (cursorVisible == visible) return;
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment nsCursorClass = getObjcClass(arena, "NSCursor");
+            MemorySegment nsCursorClass = getObjcClass(arena, StringLookup.getJavaString(762));
             if (visible) {
-                MSG_SEND_VOID.invoke(nsCursorClass, getSel(arena, "unhide"));
+                MSG_SEND_VOID.invoke(nsCursorClass, getSel(arena, StringLookup.getJavaString(763)));
             } else {
-                MSG_SEND_VOID.invoke(nsCursorClass, getSel(arena, "hide"));
+                MSG_SEND_VOID.invoke(nsCursorClass, getSel(arena, StringLookup.getJavaString(764)));
             }
             cursorVisible = visible;
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -710,7 +711,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                 // Window frame is already in global screen coordinates (points,
                 // bottom-left origin); CGWarpMouseCursorPosition wants the same global
                 // space. Center of the window is what the lock keeps alive.
-                MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, window, getSel(arena, "frame"));
+                MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, window, getSel(arena, StringLookup.getJavaString(728)));
                 double x = rect.get(ValueLayout.JAVA_DOUBLE, 0);
                 double y = rect.get(ValueLayout.JAVA_DOUBLE, 8);
                 double w = rect.get(ValueLayout.JAVA_DOUBLE, 16);
@@ -734,7 +735,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                 setCursorVisible(true);
             }
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow cursor lock Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(765), t);
         }
     }
 
@@ -750,7 +751,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             lockPoint.set(ValueLayout.JAVA_DOUBLE, 8, lockCenterY);
             CG_WARP_MOUSE_CURSOR.invoke(lockPoint);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow cursor recenter Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(766), t);
         }
     }
 
@@ -786,7 +787,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (CG_EVENT_TAP_CREATE == null || keyTapRunning) return;
         try {
             MethodHandle callbackHandle = MethodHandles.lookup().findStatic(
-                    macOSWindow.class, "keyTapCallback",
+                    macOSWindow.class, StringLookup.getJavaString(767),
                     MethodType.methodType(MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class, MemorySegment.class));
             FunctionDescriptor callbackDesc = FunctionDescriptor.of(
                     ValueLayout.ADDRESS, // returns CGEventRef
@@ -800,7 +801,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             MemorySegment tap = (MemorySegment) CG_EVENT_TAP_CREATE.invoke(
                     TAP_PLACE_HEAD, TAP_PLACE_HEAD, TAP_OPTION_LISTEN_ONLY, TAP_KEY_MASK, keyTapStub, MemorySegment.NULL);
             if (tap == null || tap.address() == 0L) {
-                System.out.println("[telemetry] CGEventTapCreate failed (check Input Monitoring permission under System Settings -> Privacy & Security -> Input Monitoring).");
+                System.out.println(StringLookup.getJavaString(768));
                 return;
             }
             keyTapPort = tap;
@@ -810,13 +811,13 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
 
             // CFRunLoopAddSource needs a real CFStringRef mode; NULL crashes with
             // "CFHash() called with NULL" inside __CFRunLoopCopyMode.
-            MemorySegment modeCStr = Arena.global().allocateFrom("kCFRunLoopDefaultMode");
+            MemorySegment modeCStr = Arena.global().allocateFrom(StringLookup.getJavaString(769));
             MemorySegment mode = (MemorySegment) CF_STRING_CREATE_WITH_CSTRING.invoke(
                     MemorySegment.NULL, modeCStr, 0x08000100);
             keyTapMode = mode;
 
             // Private run loop: drains the tap without touching Thread 0.
-            keyTapThread = Thread.ofPlatform().name("Anti-KeyTap").daemon(true).start(() -> {
+            keyTapThread = Thread.ofPlatform().name(StringLookup.getJavaString(770)).daemon(true).start(() -> {
                 try {
                     MemorySegment rl = (MemorySegment) CF_RUN_LOOP_GET_CURRENT.invoke();
                     keyTapRunLoop = rl;
@@ -824,14 +825,14 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                     CG_EVENT_TAP_ENABLE.invoke(tap, (byte) 1);
                     CF_RUN_LOOP_RUN.invoke();
                 } catch (Throwable t) {
-                    System.out.println("[telemetry] key tap run loop failed: " + t);
+                    System.out.println(StringLookup.getJavaString(771) + t);
                 }
             });
 
             keyTapRunning = true;
-            System.out.println("[telemetry] System-wide key recording active (listen-only, Input Monitoring permission). Press keys anywhere.");
+            System.out.println(StringLookup.getJavaString(772));
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow key telemetry Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(773), t);
         }
     }
 
@@ -854,7 +855,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                 if (keyTapMode != null) CF_RELEASE.invoke(keyTapMode);
             }
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow key telemetry stop Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(774), t);
         } finally {
             keyTapRunning = false;
             keyTapPort = null;
@@ -886,39 +887,39 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
     public static void setClipboardString(String text) {
         if (OBJC_GET_CLASS == null || text == null) return;
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment nsPasteboardClass = getObjcClass(arena, "NSPasteboard");
-            MemorySegment pasteboard = (MemorySegment) MSG_SEND_PTR.invoke(nsPasteboardClass, getSel(arena, "generalPasteboard"));
-            MSG_SEND_LONG_RET.invoke(pasteboard, getSel(arena, "clearContents"));
+            MemorySegment nsPasteboardClass = getObjcClass(arena, StringLookup.getJavaString(775));
+            MemorySegment pasteboard = (MemorySegment) MSG_SEND_PTR.invoke(nsPasteboardClass, getSel(arena, StringLookup.getJavaString(776)));
+            MSG_SEND_LONG_RET.invoke(pasteboard, getSel(arena, StringLookup.getJavaString(777)));
             
-            MemorySegment nsStringClass = getObjcClass(arena, "NSString");
-            MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, getSel(arena, "alloc"));
-            MemorySegment nameStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, getSel(arena, "initWithUTF8String:"), arena.allocateFrom(text));
+            MemorySegment nsStringClass = getObjcClass(arena, StringLookup.getJavaString(703));
+            MemorySegment strAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, getSel(arena, StringLookup.getJavaString(704)));
+            MemorySegment nameStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(strAlloc, getSel(arena, StringLookup.getJavaString(705)), arena.allocateFrom(text));
             
-            MemorySegment typeStr = arena.allocateFrom("public.utf8-plain-text");
-            MSG_SEND_BOOL_RET_PTR_PTR.invoke(pasteboard, getSel(arena, "setString:forType:"), nameStr, typeStr);
+            MemorySegment typeStr = arena.allocateFrom(StringLookup.getJavaString(778));
+            MSG_SEND_BOOL_RET_PTR_PTR.invoke(pasteboard, getSel(arena, StringLookup.getJavaString(779)), nameStr, typeStr);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
     public static String getClipboardString() {
-        if (OBJC_GET_CLASS == null) return "";
+        if (OBJC_GET_CLASS == null) return StringLookup.getJavaString(0);
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment nsPasteboardClass = getObjcClass(arena, "NSPasteboard");
-            MemorySegment pasteboard = (MemorySegment) MSG_SEND_PTR.invoke(nsPasteboardClass, getSel(arena, "generalPasteboard"));
+            MemorySegment nsPasteboardClass = getObjcClass(arena, StringLookup.getJavaString(775));
+            MemorySegment pasteboard = (MemorySegment) MSG_SEND_PTR.invoke(nsPasteboardClass, getSel(arena, StringLookup.getJavaString(776)));
             
-            MemorySegment typeStr = arena.allocateFrom("public.utf8-plain-text");
-            MemorySegment nsStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(pasteboard, getSel(arena, "stringForType:"), typeStr);
+            MemorySegment typeStr = arena.allocateFrom(StringLookup.getJavaString(778));
+            MemorySegment nsStr = (MemorySegment) MSG_SEND_PTR_PTR.invoke(pasteboard, getSel(arena, StringLookup.getJavaString(780)), typeStr);
             
             if (nsStr != null && nsStr.address() != 0) {
-                MemorySegment utf8 = (MemorySegment) MSG_SEND_PTR.invoke(nsStr, getSel(arena, "UTF8String"));
+                MemorySegment utf8 = (MemorySegment) MSG_SEND_PTR.invoke(nsStr, getSel(arena, StringLookup.getJavaString(781)));
                 if (utf8 != null && utf8.address() != 0) {
                     return utf8.getString(0);
                 }
             }
-            return "";
+            return StringLookup.getJavaString(0);
         } catch (Throwable t) {
-            return "";
+            return StringLookup.getJavaString(0);
         }
     }
 
@@ -926,17 +927,17 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (pointer == 0L || OBJC_GET_CLASS == null) return true;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment isVisibleSel = getSel(arena, "isVisible");
+            MemorySegment isVisibleSel = getSel(arena, StringLookup.getJavaString(782));
             byte visible = (byte) MSG_SEND_BOOL_RET.invoke(window, isVisibleSel);
             
             if (visible == 0) {
-                MemorySegment isMiniaturizedSel = getSel(arena, "isMiniaturized");
+                MemorySegment isMiniaturizedSel = getSel(arena, StringLookup.getJavaString(783));
                 byte minimized = (byte) MSG_SEND_BOOL_RET.invoke(window, isMiniaturizedSel);
                 return minimized == 0;
             }
             return false;
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -944,11 +945,11 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (pointer == 0L || OBJC_GET_CLASS == null) return false;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment isMiniaturizedSel = getSel(arena, "isMiniaturized");
+            MemorySegment isMiniaturizedSel = getSel(arena, StringLookup.getJavaString(783));
             byte minimized = (byte) MSG_SEND_BOOL_RET.invoke(window, isMiniaturizedSel);
             return minimized != 0;
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -956,7 +957,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (pointer == 0L || OBJC_GET_CLASS == null) return false;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment inLiveResizeSel = getSel(arena, "inLiveResize");
+            MemorySegment inLiveResizeSel = getSel(arena, StringLookup.getJavaString(784));
             byte inLiveResize = (byte) MSG_SEND_BOOL_RET.invoke(window, inLiveResizeSel);
             return inLiveResize != 0;
         } catch (Throwable t) {
@@ -969,11 +970,11 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
             // NSWindowStyleMaskFullScreen = 1 << 14
-            MemorySegment styleMaskSel = getSel(arena, "styleMask");
+            MemorySegment styleMaskSel = getSel(arena, StringLookup.getJavaString(717));
             long mask = (long) MSG_SEND_LONG_RET.invoke(window, styleMaskSel);
             return (mask & (1L << 14)) != 0;
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -981,10 +982,10 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment toggleFullScreenSel = getSel(arena, "toggleFullScreen:");
+            MemorySegment toggleFullScreenSel = getSel(arena, StringLookup.getJavaString(761));
             MSG_SEND_VOID_PTR.invoke(window, toggleFullScreenSel, MemorySegment.NULL);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -993,9 +994,9 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
     private static long getStyleMask(long pointer) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            return (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, "styleMask"));
+            return (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, StringLookup.getJavaString(717)));
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -1012,10 +1013,10 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             long mask = getStyleMask(pointer);
             if ((mask & STYLE_FULL_SCREEN) != 0) return; // AppKit owns the mask in fullscreen
             long next = (mask & ~clearBits) | addBits;
-            MemorySegment setStyleMaskSel = getSel(arena, "setStyleMask:");
+            MemorySegment setStyleMaskSel = getSel(arena, StringLookup.getJavaString(785));
             MSG_SEND_INT.invoke(window, setStyleMaskSel, next);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -1048,13 +1049,13 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            long behavior = (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, "collectionBehavior"));
+            long behavior = (long) MSG_SEND_LONG_RET.invoke(window, getSel(arena, StringLookup.getJavaString(786)));
             if (enabled) behavior |= 128L;
             else behavior &= ~128L;
-            MemorySegment setCollectionBehaviorSel = getSel(arena, "setCollectionBehavior:");
+            MemorySegment setCollectionBehaviorSel = getSel(arena, StringLookup.getJavaString(710));
             MSG_SEND_INT.invoke(window, setCollectionBehaviorSel, behavior);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -1080,28 +1081,28 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                         STYLE_TITLED | STYLE_CLOSABLE | STYLE_MINIATURIZABLE | STYLE_RESIZABLE;
             };
 
-            MemorySegment setStyleMaskSel = getSel(arena, "setStyleMask:");
+            MemorySegment setStyleMaskSel = getSel(arena, StringLookup.getJavaString(785));
             MSG_SEND_INT.invoke(window, setStyleMaskSel, next);
 
             boolean transparent = mode == UNDECORATED_NAKED;
-            MemorySegment setTitlebarAppearsTransparentSel = getSel(arena, "setTitlebarAppearsTransparent:");
+            MemorySegment setTitlebarAppearsTransparentSel = getSel(arena, StringLookup.getJavaString(718));
             MSG_SEND_BOOL.invoke(window, setTitlebarAppearsTransparentSel, (byte) (transparent ? 1 : 0));
 
-            MemorySegment setTitleVisibilitySel = getSel(arena, "setTitleVisibility:");
+            MemorySegment setTitleVisibilitySel = getSel(arena, StringLookup.getJavaString(719));
             MSG_SEND_INT.invoke(window, setTitleVisibilitySel, transparent ? 1L : 0L); // NSWindowTitleHidden / Visible
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
     /** Hard minimum content size for resizable windows. */
     public static void setMinSize(long pointer, int width, int height) {
-        setSizeSelector(pointer, "setMinSize:", width, height);
+        setSizeSelector(pointer, StringLookup.getJavaString(787), width, height);
     }
 
     /** Hard maximum content size for resizable windows. */
     public static void setMaxSize(long pointer, int width, int height) {
-        setSizeSelector(pointer, "setMaxSize:", width, height);
+        setSizeSelector(pointer, StringLookup.getJavaString(788), width, height);
     }
 
     private static void setSizeSelector(long pointer, String selector, int width, int height) {
@@ -1113,16 +1114,16 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             size.set(ValueLayout.JAVA_DOUBLE, 8, height);
             MSG_SEND_PTR_SIZE.invoke(window, getSel(arena, selector), size);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
     public static long getMinSize(long pointer) {
-        return getSizeSelector(pointer, "minSize");
+        return getSizeSelector(pointer, StringLookup.getJavaString(789));
     }
 
     public static long getMaxSize(long pointer) {
-        return getSizeSelector(pointer, "maxSize");
+        return getSizeSelector(pointer, StringLookup.getJavaString(790));
     }
 
     private static long getSizeSelector(long pointer, String selector) {
@@ -1134,7 +1135,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             int h = (int) Math.round(size.get(ValueLayout.JAVA_DOUBLE, 8));
             return ((long) w << 32) | (h & 0xFFFFFFFFL);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -1143,10 +1144,10 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (layerPointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment layer = MemorySegment.ofAddress(layerPointer);
-            MemorySegment setDisplaySyncSel = getSel(arena, "setDisplaySyncEnabled:");
+            MemorySegment setDisplaySyncSel = getSel(arena, StringLookup.getJavaString(791));
             MSG_SEND_BOOL.invoke(layer, setDisplaySyncSel, (byte) (enabled ? 1 : 0));
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -1156,16 +1157,16 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
 
-            MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, "contentView"));
+            MemorySegment view = (MemorySegment) MSG_SEND_PTR.invoke(window, getSel(arena, StringLookup.getJavaString(713)));
             if (view == null || view.address() == 0L) return 0L;
 
-            MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, view, getSel(arena, "frame"));
+            MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, view, getSel(arena, StringLookup.getJavaString(728)));
             double ptsW = rect.get(ValueLayout.JAVA_DOUBLE, 16);
             double ptsH = rect.get(ValueLayout.JAVA_DOUBLE, 24);
 
             double scale = 1.0;
             if (resolutionType == RESOLUTION_RETINA) {
-                MemorySegment backingScaleFactorSel = getSel(arena, "backingScaleFactor");
+                MemorySegment backingScaleFactorSel = getSel(arena, StringLookup.getJavaString(735));
                 scale = (double) MSG_SEND_DOUBLE_RET.invoke(window, backingScaleFactorSel);
                 if (scale <= 0.0) scale = 1.0;
             }
@@ -1175,7 +1176,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             if (w <= 0 || h <= 0) return 0L;
             return ((long) w << 32) | (h & 0xFFFFFFFFL);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -1195,13 +1196,13 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             // offscreen never falls below what the window can actually be resized to.
             if (OBJC_GET_CLASS != null) {
                 try (Arena arena = Arena.ofConfined()) {
-                    MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
-                    MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, getSel(arena, "mainScreen"));
+                    MemorySegment nsScreenClass = getObjcClass(arena, StringLookup.getJavaString(726));
+                    MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, getSel(arena, StringLookup.getJavaString(727)));
                     if (mainScreen != null && mainScreen.address() != 0L) {
-                        MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, getSel(arena, "frame"));
+                        MemorySegment rect = (MemorySegment) MSG_SEND_RECT_RET.invoke(arena, mainScreen, getSel(arena, StringLookup.getJavaString(728)));
                         double fw = rect.get(ValueLayout.JAVA_DOUBLE, 16);
                         double fh = rect.get(ValueLayout.JAVA_DOUBLE, 24);
-                        double frameBsf = (double) MSG_SEND_DOUBLE_RET.invoke(mainScreen, getSel(arena, "backingScaleFactor"));
+                        double frameBsf = (double) MSG_SEND_DOUBLE_RET.invoke(mainScreen, getSel(arena, StringLookup.getJavaString(735)));
                         if (frameBsf > 0.0) bsf = frameBsf;
                         if (w < Math.round(fw * frameBsf)) w = Math.round(fw * frameBsf);
                         if (h < Math.round(fh * frameBsf)) h = Math.round(fh * frameBsf);
@@ -1214,25 +1215,25 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                 w = Math.round(w / div);
                 h = Math.round(h / div);
             }
-            if (System.getProperty("anti.debug.resize") != null) {
-                System.out.println("[screen] backing=" + w + "x" + h + " (displayPixels="
-                        + (long) CG_DISPLAY_PIXELS_WIDE.invokeExact(displayId) + "x"
-                        + (long) CG_DISPLAY_PIXELS_HIGH.invokeExact(displayId) + " bsf=" + bsf + ")");
+            if (System.getProperty(StringLookup.getJavaString(792)) != null) {
+                System.out.println(StringLookup.getJavaString(793) + w + StringLookup.getJavaString(676) + h + StringLookup.getJavaString(794)
+                        + (long) CG_DISPLAY_PIXELS_WIDE.invokeExact(displayId) + StringLookup.getJavaString(676)
+                        + (long) CG_DISPLAY_PIXELS_HIGH.invokeExact(displayId) + StringLookup.getJavaString(795) + bsf + StringLookup.getJavaString(18));
             }
             return (w << 32) | (h & 0xFFFFFFFFL);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception in getScreenBackingSize", t);
+            throw new macOSWindowException(StringLookup.getJavaString(796), t);
         }
     }
 
     public static int getDisplayRefreshRate() {
         if (OBJC_GET_CLASS == null) return 60;
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment nsScreenClass = getObjcClass(arena, "NSScreen");
-            MemorySegment mainScreenSel = getSel(arena, "mainScreen");
+            MemorySegment nsScreenClass = getObjcClass(arena, StringLookup.getJavaString(726));
+            MemorySegment mainScreenSel = getSel(arena, StringLookup.getJavaString(727));
             MemorySegment mainScreen = (MemorySegment) MSG_SEND_PTR.invoke(nsScreenClass, mainScreenSel);
             if (mainScreen == null || mainScreen.address() == 0L) return 60;
-            MemorySegment maxFpsSel = getSel(arena, "maximumFramesPerSecond");
+            MemorySegment maxFpsSel = getSel(arena, StringLookup.getJavaString(797));
             long rate = (long) MSG_SEND_LONG_RET.invoke(mainScreen, maxFpsSel);
             return rate > 0 ? (int) rate : 60;
         } catch (Throwable t) {
@@ -1243,13 +1244,13 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
     public static void waitEvents(long pointer) {
         if (OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment nsAppClass = getObjcClass(arena, "NSApplication");
-            MemorySegment sharedAppSel = getSel(arena, "sharedApplication");
+            MemorySegment nsAppClass = getObjcClass(arena, StringLookup.getJavaString(697));
+            MemorySegment sharedAppSel = getSel(arena, StringLookup.getJavaString(698));
             MemorySegment app = (MemorySegment) MSG_SEND_PTR.invoke(nsAppClass, sharedAppSel);
 
-            MemorySegment nsStringClass = getObjcClass(arena, "NSString");
-            MemorySegment allocSel = getSel(arena, "alloc");
-            MemorySegment initWithUTF8StringSel = getSel(arena, "initWithUTF8String:");
+            MemorySegment nsStringClass = getObjcClass(arena, StringLookup.getJavaString(703));
+            MemorySegment allocSel = getSel(arena, StringLookup.getJavaString(704));
+            MemorySegment initWithUTF8StringSel = getSel(arena, StringLookup.getJavaString(705));
             
             MemorySegment modeAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, allocSel);
             // During a live drag AppKit enters modal event tracking
@@ -1259,41 +1260,41 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             // one — CFRunLoopRunSpecific rejects it), so poll the tracking mode
             // while live-resizing instead.
             boolean live = isLiveResize(pointer);
-            MemorySegment runLoopMode = (MemorySegment) MSG_SEND_PTR_PTR.invoke(modeAlloc, initWithUTF8StringSel, arena.allocateFrom(live ? "NSEventTrackingRunLoopMode" : "kCFRunLoopDefaultMode"));
+            MemorySegment runLoopMode = (MemorySegment) MSG_SEND_PTR_PTR.invoke(modeAlloc, initWithUTF8StringSel, arena.allocateFrom(live ? StringLookup.getJavaString(798) : StringLookup.getJavaString(769)));
 
-            MemorySegment nsDateClass = getObjcClass(arena, "NSDate");
-            MemorySegment dateWithTimeIntervalSel = getSel(arena, "dateWithTimeIntervalSinceNow:");
-            MemorySegment distantPastSel = getSel(arena, "distantPast");
+            MemorySegment nsDateClass = getObjcClass(arena, StringLookup.getJavaString(799));
+            MemorySegment dateWithTimeIntervalSel = getSel(arena, StringLookup.getJavaString(800));
+            MemorySegment distantPastSel = getSel(arena, StringLookup.getJavaString(801));
             MemorySegment distantPast = (MemorySegment) MSG_SEND_PTR.invoke(nsDateClass, distantPastSel);
 
-            MemorySegment nextEventSel = getSel(arena, "nextEventMatchingMask:untilDate:inMode:dequeue:");
-            MemorySegment sendEventSel = getSel(arena, "sendEvent:");
-            MemorySegment updateWindowsSel = getSel(arena, "updateWindows");
-            MemorySegment typeSel = getSel(arena, "type");
-            MemorySegment keyCodeSel = getSel(arena, "keyCode");
-            MemorySegment scrollingDeltaXSel = getSel(arena, "scrollingDeltaX");
-            MemorySegment scrollingDeltaYSel = getSel(arena, "scrollingDeltaY");
-            MemorySegment charactersSel = getSel(arena, "characters");
-            MemorySegment magnificationSel = getSel(arena, "magnification");
-            MemorySegment utf8StringSel = getSel(arena, "UTF8String");
+            MemorySegment nextEventSel = getSel(arena, StringLookup.getJavaString(802));
+            MemorySegment sendEventSel = getSel(arena, StringLookup.getJavaString(803));
+            MemorySegment updateWindowsSel = getSel(arena, StringLookup.getJavaString(804));
+            MemorySegment typeSel = getSel(arena, StringLookup.getJavaString(805));
+            MemorySegment keyCodeSel = getSel(arena, StringLookup.getJavaString(806));
+            MemorySegment scrollingDeltaXSel = getSel(arena, StringLookup.getJavaString(807));
+            MemorySegment scrollingDeltaYSel = getSel(arena, StringLookup.getJavaString(808));
+            MemorySegment charactersSel = getSel(arena, StringLookup.getJavaString(809));
+            MemorySegment magnificationSel = getSel(arena, StringLookup.getJavaString(810));
+            MemorySegment utf8StringSel = getSel(arena, StringLookup.getJavaString(781));
 
             // Touch selectors
-            MemorySegment touchesMatchingPhaseSel = getSel(arena, "touchesMatchingPhase:inView:");
-            MemorySegment countSel = getSel(arena, "count");
-            MemorySegment allObjectsSel = getSel(arena, "allObjects");
-            MemorySegment objectAtIndexSel = getSel(arena, "objectAtIndex:");
-            MemorySegment identitySel = getSel(arena, "identity");
-            MemorySegment phaseSel = getSel(arena, "phase");
-            MemorySegment normalizedPositionSel = getSel(arena, "normalizedPosition");
-            MemorySegment isRestingSel = getSel(arena, "isResting");
+            MemorySegment touchesMatchingPhaseSel = getSel(arena, StringLookup.getJavaString(811));
+            MemorySegment countSel = getSel(arena, StringLookup.getJavaString(812));
+            MemorySegment allObjectsSel = getSel(arena, StringLookup.getJavaString(813));
+            MemorySegment objectAtIndexSel = getSel(arena, StringLookup.getJavaString(814));
+            MemorySegment identitySel = getSel(arena, StringLookup.getJavaString(815));
+            MemorySegment phaseSel = getSel(arena, StringLookup.getJavaString(816));
+            MemorySegment normalizedPositionSel = getSel(arena, StringLookup.getJavaString(817));
+            MemorySegment isRestingSel = getSel(arena, StringLookup.getJavaString(818));
 
             // Selectors used per-event; hoisted out of the hot loop so no segment
             // is allocated while draining a burst of input events.
-            MemorySegment buttonNumberSel = getSel(arena, "buttonNumber");
-            MemorySegment locationInWindowSel = getSel(arena, "locationInWindow");
-            MemorySegment windowSel = getSel(arena, "window");
-            MemorySegment contentViewSel = getSel(arena, "contentView");
-            MemorySegment frameSel = getSel(arena, "frame");
+            MemorySegment buttonNumberSel = getSel(arena, StringLookup.getJavaString(819));
+            MemorySegment locationInWindowSel = getSel(arena, StringLookup.getJavaString(820));
+            MemorySegment windowSel = getSel(arena, StringLookup.getJavaString(821));
+            MemorySegment contentViewSel = getSel(arena, StringLookup.getJavaString(713));
+            MemorySegment frameSel = getSel(arena, StringLookup.getJavaString(728));
 
             long NSAnyEventMask = -1L;
 
@@ -1345,7 +1346,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
                             button = (int) btnNum;
                         } catch (Throwable t) {
-                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                            throw new macOSWindowException(StringLookup.getJavaString(691), t);
                         }
                     }
                     if (button != -1) Mouse.pushButtonEvent(button, 1, 250_000_000L);
@@ -1356,7 +1357,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
                             button = (int) btnNum;
                         } catch (Throwable t) {
-                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                            throw new macOSWindowException(StringLookup.getJavaString(691), t);
                         }
                     }
                     if (button != -1) Mouse.pushButtonEvent(button, 0, 250_000_000L);
@@ -1365,11 +1366,11 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                         // Cursor locked: AppKit reports a constant location with actual
                         // deltas. Feed the relative movement so cameras track direction.
                         try {
-                            double ddx = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, "deltaX"));
-                            double ddy = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, "deltaY"));
+                            double ddx = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, StringLookup.getJavaString(822)));
+                            double ddy = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, StringLookup.getJavaString(823)));
                             Mouse.pushMoveDeltaEvent(ddx, ddy);
                         } catch (Throwable t) {
-                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                            throw new macOSWindowException(StringLookup.getJavaString(691), t);
                         }
                         continue;
                     }
@@ -1407,7 +1408,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                             Mouse.pushDragEvent(button, x, y);
                         }
                     } catch (Throwable t) {
-                        throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                        throw new macOSWindowException(StringLookup.getJavaString(691), t);
                     }
                 } else if (eventType == 29 || eventType == 19 || eventType == 20) { // Touch events
                     try {
@@ -1471,7 +1472,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                         
                         Mouse.pushMoveEvent(x, y);
                     } catch (Throwable t) {
-                        throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                        throw new macOSWindowException(StringLookup.getJavaString(691), t);
                     }
                 }
 
@@ -1480,7 +1481,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             
             MSG_SEND_VOID.invoke(app, updateWindowsSel);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -1496,39 +1497,39 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
     public static void pollEvents() {
         if (OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment nsAppClass = getObjcClass(arena, "NSApplication");
-            MemorySegment sharedAppSel = getSel(arena, "sharedApplication");
+            MemorySegment nsAppClass = getObjcClass(arena, StringLookup.getJavaString(697));
+            MemorySegment sharedAppSel = getSel(arena, StringLookup.getJavaString(698));
             MemorySegment app = (MemorySegment) MSG_SEND_PTR.invoke(nsAppClass, sharedAppSel);
 
-            MemorySegment nsStringClass = getObjcClass(arena, "NSString");
-            MemorySegment allocSel = getSel(arena, "alloc");
-            MemorySegment initWithUTF8StringSel = getSel(arena, "initWithUTF8String:");
+            MemorySegment nsStringClass = getObjcClass(arena, StringLookup.getJavaString(703));
+            MemorySegment allocSel = getSel(arena, StringLookup.getJavaString(704));
+            MemorySegment initWithUTF8StringSel = getSel(arena, StringLookup.getJavaString(705));
             
             MemorySegment modeAlloc = (MemorySegment) MSG_SEND_PTR.invoke(nsStringClass, allocSel);
-            MemorySegment runLoopMode = (MemorySegment) MSG_SEND_PTR_PTR.invoke(modeAlloc, initWithUTF8StringSel, arena.allocateFrom("kCFRunLoopDefaultMode"));
+            MemorySegment runLoopMode = (MemorySegment) MSG_SEND_PTR_PTR.invoke(modeAlloc, initWithUTF8StringSel, arena.allocateFrom(StringLookup.getJavaString(769)));
 
-            MemorySegment nextEventSel = getSel(arena, "nextEventMatchingMask:untilDate:inMode:dequeue:");
-            MemorySegment sendEventSel = getSel(arena, "sendEvent:");
-            MemorySegment updateWindowsSel = getSel(arena, "updateWindows");
-            MemorySegment typeSel = getSel(arena, "type");
-            MemorySegment keyCodeSel = getSel(arena, "keyCode");
-            MemorySegment scrollingDeltaXSel = getSel(arena, "scrollingDeltaX");
-            MemorySegment scrollingDeltaYSel = getSel(arena, "scrollingDeltaY");
-            MemorySegment charactersSel = getSel(arena, "characters");
-            MemorySegment magnificationSel = getSel(arena, "magnification");
-            MemorySegment utf8StringSel = getSel(arena, "UTF8String");
+            MemorySegment nextEventSel = getSel(arena, StringLookup.getJavaString(802));
+            MemorySegment sendEventSel = getSel(arena, StringLookup.getJavaString(803));
+            MemorySegment updateWindowsSel = getSel(arena, StringLookup.getJavaString(804));
+            MemorySegment typeSel = getSel(arena, StringLookup.getJavaString(805));
+            MemorySegment keyCodeSel = getSel(arena, StringLookup.getJavaString(806));
+            MemorySegment scrollingDeltaXSel = getSel(arena, StringLookup.getJavaString(807));
+            MemorySegment scrollingDeltaYSel = getSel(arena, StringLookup.getJavaString(808));
+            MemorySegment charactersSel = getSel(arena, StringLookup.getJavaString(809));
+            MemorySegment magnificationSel = getSel(arena, StringLookup.getJavaString(810));
+            MemorySegment utf8StringSel = getSel(arena, StringLookup.getJavaString(781));
 
             long NSAnyEventMask = -1L;
 
-            MemorySegment nsDateClass = getObjcClass(arena, "NSDate");
-            MemorySegment distantPastSel = getSel(arena, "distantPast");
+            MemorySegment nsDateClass = getObjcClass(arena, StringLookup.getJavaString(799));
+            MemorySegment distantPastSel = getSel(arena, StringLookup.getJavaString(801));
             MemorySegment distantPast = (MemorySegment) MSG_SEND_PTR.invoke(nsDateClass, distantPastSel);
 
-            MemorySegment buttonNumberSel = getSel(arena, "buttonNumber");
-            MemorySegment locationInWindowSel = getSel(arena, "locationInWindow");
-            MemorySegment windowSel = getSel(arena, "window");
-            MemorySegment contentViewSel = getSel(arena, "contentView");
-            MemorySegment frameSel = getSel(arena, "frame");
+            MemorySegment buttonNumberSel = getSel(arena, StringLookup.getJavaString(819));
+            MemorySegment locationInWindowSel = getSel(arena, StringLookup.getJavaString(820));
+            MemorySegment windowSel = getSel(arena, StringLookup.getJavaString(821));
+            MemorySegment contentViewSel = getSel(arena, StringLookup.getJavaString(713));
+            MemorySegment frameSel = getSel(arena, StringLookup.getJavaString(728));
 
             while (true) {
                 int button = 0;
@@ -1573,7 +1574,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
                             button = (int) btnNum;
                         } catch (Throwable t) {
-                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                            throw new macOSWindowException(StringLookup.getJavaString(691), t);
                         }
                     }
                     if (button != -1) Mouse.pushButtonEvent(button, 1, 250_000_000L);
@@ -1584,7 +1585,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                             long btnNum = (long) MSG_SEND_LONG_RET.invoke(event, buttonNumberSel);
                             button = (int) btnNum;
                         } catch (Throwable t) {
-                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                            throw new macOSWindowException(StringLookup.getJavaString(691), t);
                         }
                     }
                     if (button != -1) Mouse.pushButtonEvent(button, 0, 250_000_000L);
@@ -1593,11 +1594,11 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                         // Cursor locked: AppKit reports a constant location with actual
                         // deltas. Feed the relative movement so cameras track direction.
                         try {
-                            double ddx = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, "deltaX"));
-                            double ddy = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, "deltaY"));
+                            double ddx = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, StringLookup.getJavaString(822)));
+                            double ddy = (double) MSG_SEND_DOUBLE_RET.invoke(event, getSel(arena, StringLookup.getJavaString(823)));
                             Mouse.pushMoveDeltaEvent(ddx, ddy);
                         } catch (Throwable t) {
-                            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                            throw new macOSWindowException(StringLookup.getJavaString(691), t);
                         }
                         continue;
                     }
@@ -1634,7 +1635,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                             Mouse.pushDragEvent(dragButton, x, y);
                         }
                     } catch (Throwable t) {
-                        throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                        throw new macOSWindowException(StringLookup.getJavaString(691), t);
                     }
                 }
                 
@@ -1656,7 +1657,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
                         }
                         Mouse.pushDragEvent(button, x, y);
                     } catch (Throwable t) {
-                        throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+                        throw new macOSWindowException(StringLookup.getJavaString(691), t);
                     }
                 }
 
@@ -1665,7 +1666,7 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
             
             MSG_SEND_VOID.invoke(app, updateWindowsSel);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 
@@ -1673,10 +1674,10 @@ MemorySegment setWantsLayerSel = getSel(arena, "setWantsLayer:");
         if (pointer == 0L || OBJC_GET_CLASS == null) return;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment window = MemorySegment.ofAddress(pointer);
-            MemorySegment closeSel = getSel(arena, "close");
+            MemorySegment closeSel = getSel(arena, StringLookup.getJavaString(824));
             MSG_SEND_VOID.invoke(window, closeSel);
         } catch (Throwable t) {
-            throw new macOSWindowException("CRITICAL: macOSWindow FFM Exception", t);
+            throw new macOSWindowException(StringLookup.getJavaString(691), t);
         }
     }
 }

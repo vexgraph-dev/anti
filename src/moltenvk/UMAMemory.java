@@ -7,6 +7,7 @@ import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 import static org.lwjgl.vulkan.VK10.*;
 
+import nio.StringLookup;
 /**
  * Handles Apple Silicon Unified Memory Architecture (UMA) optimizations via MoltenVK.
  */
@@ -41,6 +42,6 @@ public final class UMAMemory {
         }
         
         memProperties.free();
-        throw new macOSWindowException("Failed to find optimal UMA memory type on this Mac!");
+        throw new macOSWindowException(StringLookup.getJavaString(582));
     }
 }

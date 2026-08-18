@@ -31,6 +31,7 @@ import primitive.Long;
 import static org.lwjgl.vulkan.KHRSwapchain.*;
 import static org.lwjgl.vulkan.VK10.*;
 
+import nio.StringLookup;
 @Draft
 public final class Renderer {
 
@@ -114,9 +115,9 @@ public final class Renderer {
         syncResizeH = h;
         syncResizeRequestedGen = gen;
         pendingResize = ((long) w << 32) | (h & 0xFFFFFFFFL);
-        if (System.getProperty("anti.debug.resize") != null) {
-            System.out.println("[syncResize] request gen=" + gen + " size=" + w + "x" + h
-                    + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+        if (System.getProperty(StringLookup.getJavaString(792)) != null) {
+            System.out.println(StringLookup.getJavaString(910) + gen + StringLookup.getJavaString(911) + w + StringLookup.getJavaString(676) + h
+                    + StringLookup.getJavaString(912) + Vulkan.getSwapchainWidth() + StringLookup.getJavaString(676) + Vulkan.getSwapchainHeight());
         }
         if (liveResize) {
             // Mid-drag: don't hold Thread 0. The present thread defers the rebuild
@@ -127,11 +128,11 @@ public final class Renderer {
         while (syncResizeDoneGen < gen && java.lang.System.nanoTime() < deadline) {
             LockSupport.parkNanos(50_000L);
         }
-        if (System.getProperty("anti.debug.resize") != null) {
+        if (System.getProperty(StringLookup.getJavaString(792)) != null) {
             if (syncResizeDoneGen < gen) {
-                System.out.println("[syncResize] TIMEOUT waiting for present at " + w + "x" + h);
+                System.out.println(StringLookup.getJavaString(913) + w + StringLookup.getJavaString(676) + h);
             } else {
-                System.out.println("[syncResize] acked gen=" + gen + " at " + w + "x" + h);
+                System.out.println(StringLookup.getJavaString(914) + gen + StringLookup.getJavaString(915) + w + StringLookup.getJavaString(676) + h);
             }
         }
     }
@@ -346,7 +347,7 @@ public final class Renderer {
                     counterAdd(CTR_DBG_PRESENT_THREAD_PARK_MS, (java.lang.System.nanoTime() - tPark) / 1_000_000L);
                 }
             }
-        }, "Core-Present");
+        }, StringLookup.getJavaString(916));
         presentThread.setDaemon(true);
         presentThread.start();
     }
@@ -396,7 +397,7 @@ public final class Renderer {
                 } else {
                     long tR0 = java.lang.System.nanoTime();
                     if (vkWaitForFences(device, stack.longs(releasedF), true, java.lang.Long.MAX_VALUE) != VK_SUCCESS) {
-                        throw new IllegalStateException("produce: released fence wait failed");
+                        throw new IllegalStateException(StringLookup.getJavaString(917));
                     }
                     counterAdd(CTR_DBG_RELEASED_WAIT_NANOS, java.lang.System.nanoTime() - tR0);
                     vkResetFences(device, stack.longs(releasedF, drawF));
@@ -416,7 +417,7 @@ public final class Renderer {
                     sub0.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
                             .pCommandBuffers(stack.pointers(drawCb));
                     if (VK10.vkQueueSubmit(q, sub, drawF) != VK_SUCCESS) {
-                        throw new IllegalStateException("produce: draw submit failed");
+                        throw new IllegalStateException(StringLookup.getJavaString(918));
                     }
                 } finally {
                     unlockQueue();
@@ -481,9 +482,9 @@ public final class Renderer {
                     deferredResizeW = w;
                     deferredResizeH = h;
                 }
-                if (System.getProperty("anti.debug.resize") != null) {
-                    System.out.println("[resizeBlock] deferred=" + deferredResizeW + "x" + deferredResizeH
-                            + " (live drag) currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+                if (System.getProperty(StringLookup.getJavaString(792)) != null) {
+                    System.out.println(StringLookup.getJavaString(919) + deferredResizeW + StringLookup.getJavaString(676) + deferredResizeH
+                            + StringLookup.getJavaString(920) + Vulkan.getSwapchainWidth() + StringLookup.getJavaString(676) + Vulkan.getSwapchainHeight());
                 }
             } else if (dragEnded) {
                 if (resize == 0L) {
@@ -492,18 +493,18 @@ public final class Renderer {
                 }
                 deferredResizeW = -1;
                 deferredResizeH = -1;
-                if (System.getProperty("anti.debug.resize") != null) {
-                    System.out.println("[resizeBlock] resize=" + w + "x" + h + " invalidated=" + invalidated
-                            + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+                if (System.getProperty(StringLookup.getJavaString(792)) != null) {
+                    System.out.println(StringLookup.getJavaString(921) + w + StringLookup.getJavaString(676) + h + StringLookup.getJavaString(922) + invalidated
+                            + StringLookup.getJavaString(912) + Vulkan.getSwapchainWidth() + StringLookup.getJavaString(676) + Vulkan.getSwapchainHeight());
                 }
                 if (w != Vulkan.getSwapchainWidth() || h != Vulkan.getSwapchainHeight() || invalidated) {
                     Vulkan.resizeSwapchain(w, h);
                     resetInFlight();
                 }
             } else {
-                if (System.getProperty("anti.debug.resize") != null) {
-                    System.out.println("[resizeBlock] resize=" + w + "x" + h + " invalidated=" + invalidated
-                            + " currentSwap=" + Vulkan.getSwapchainWidth() + "x" + Vulkan.getSwapchainHeight());
+                if (System.getProperty(StringLookup.getJavaString(792)) != null) {
+                    System.out.println(StringLookup.getJavaString(921) + w + StringLookup.getJavaString(676) + h + StringLookup.getJavaString(922) + invalidated
+                            + StringLookup.getJavaString(912) + Vulkan.getSwapchainWidth() + StringLookup.getJavaString(676) + Vulkan.getSwapchainHeight());
                 }
                 if (w == Vulkan.getSwapchainWidth() && h == Vulkan.getSwapchainHeight()) {
                     swapchainInvalidated = false;
@@ -547,7 +548,7 @@ public final class Renderer {
         ) {
             long tW0 = java.lang.System.nanoTime();
             if (vkWaitForFences(device, stack.longs(drawF), true, java.lang.Long.MAX_VALUE) != VK_SUCCESS) {
-                throw new IllegalStateException("present: draw fence wait failed");
+                throw new IllegalStateException(StringLookup.getJavaString(923));
             }
             counterAdd(CTR_DBG_PRESENT_BLOCK_NANOS, java.lang.System.nanoTime() - tW0);
 
@@ -577,7 +578,7 @@ public final class Renderer {
                     return PRESENT_RETRY;
                 }
                 if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) {
-                    throw new IllegalStateException("present: acquire failed: " + acquireResult);
+                    throw new IllegalStateException(StringLookup.getJavaString(924) + acquireResult);
                 }
 
                 int imgIndex = imageIndex.get(0);
@@ -605,14 +606,14 @@ public final class Renderer {
                 try {
                     long tS0 = java.lang.System.nanoTime();
                     if (VK10.vkQueueSubmit(q, submits, releasedF) != VK_SUCCESS) {
-                        throw new IllegalStateException("present: blit submit failed");
+                        throw new IllegalStateException(StringLookup.getJavaString(925));
                     }
                     counterAdd(CTR_DBG_PRESENT_SUBMIT_NANOS, java.lang.System.nanoTime() - tS0);
                     long tP0 = java.lang.System.nanoTime();
                     int pres = vkQueuePresentKHR(q, presentInfo);
                     counterAdd(CTR_DBG_PRESENT_CALL_NANOS, java.lang.System.nanoTime() - tP0);
                     if (pres != VK_SUCCESS && pres != VK_SUBOPTIMAL_KHR && pres != VK_ERROR_OUT_OF_DATE_KHR) {
-                        throw new IllegalStateException("present: present failed: " + pres);
+                        throw new IllegalStateException(StringLookup.getJavaString(926) + pres);
                     }
                     if (pres == VK_ERROR_OUT_OF_DATE_KHR) {
                         if (!liveResize) {
@@ -659,7 +660,7 @@ public final class Renderer {
             VkImageSubresourceRange post0Range = post0.subresourceRange()
         ) {
             if (vkBeginCommandBuffer(command, beginInfo) != VK_SUCCESS) {
-                throw new IllegalStateException("Failed to begin blit command buffer.");
+                throw new IllegalStateException(StringLookup.getJavaString(927));
             }
 
             long swapchainImage = Long.get(Vulkan.getSwapchainImages(), imgIndex);
@@ -752,7 +753,7 @@ public final class Renderer {
                     0, null, null, post);
 
             if (vkEndCommandBuffer(command) != VK_SUCCESS) {
-                throw new IllegalStateException("Failed to end blit command buffer.");
+                throw new IllegalStateException(StringLookup.getJavaString(928));
             }
         }
     }
