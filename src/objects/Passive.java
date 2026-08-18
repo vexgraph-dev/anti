@@ -13,6 +13,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
+import nio.StringLookup;
 @Draft
 @Intention("[definition]")
 public class Passive
@@ -75,13 +76,13 @@ public class Passive
 
     public static long getValue(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         long getFunc = ForeignMemory.getLong(struct(ptr) + 8L);
         if (getFunc != 0L) {
             try {
                 return (long) GET_INVOKER.bindTo(MemorySegment.ofAddress(getFunc)).invokeExact();
             } catch (Throwable t) {
-                throw new RuntimeException("Failed to invoke getFunction: " + t.getMessage(), t);
+                throw new RuntimeException(StringLookup.getJavaString(363) + t.getMessage(), t);
             }
         }
         return ForeignMemory.getLong(struct(ptr));
@@ -89,13 +90,13 @@ public class Passive
 
     public static void setValue(long ptr, long value)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         long setFunc = ForeignMemory.getLong(struct(ptr) + 16L);
         if (setFunc != 0L) {
             try {
                 SET_INVOKER.bindTo(MemorySegment.ofAddress(setFunc)).invokeExact(value);
             } catch (Throwable t) {
-                throw new RuntimeException("Failed to invoke setFunction: " + t.getMessage(), t);
+                throw new RuntimeException(StringLookup.getJavaString(364) + t.getMessage(), t);
             }
         } else {
             ForeignMemory.setLong(struct(ptr), value);

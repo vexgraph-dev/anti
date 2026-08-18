@@ -11,6 +11,7 @@ import struct.List;
 
 import java.lang.foreign.Arena;
 
+import nio.StringLookup;
 /**
  * Off-heap Uniform 2D Spatial Grid Partitioning Array implementation.
  */
@@ -37,11 +38,11 @@ public final class GridArray {
     private GridArray() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("GridArray subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(1073));
     }
 
     private static void checkValid(long gridPtr) {
-        if (gridPtr == 0L) throw new NullPointerException("Accessing NULL off-heap GridArray pointer!");
+        if (gridPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1074));
     }
 
     // free all subsystem resources
@@ -57,8 +58,8 @@ public final class GridArray {
     // create a new off-heap 2D spatial grid
     public static long instant(float cellWidth, int resX, int resY, float minBoundsX, float minBoundsY) {
         checkActive();
-        if (cellWidth <= 0.0f) throw new IllegalArgumentException("cellWidth must be positive!");
-        if (resX <= 0 || resY <= 0) throw new IllegalArgumentException("Resolution must be positive!");
+        if (cellWidth <= 0.0f) throw new IllegalArgumentException(StringLookup.getJavaString(1075));
+        if (resX <= 0 || resY <= 0) throw new IllegalArgumentException(StringLookup.getJavaString(1076));
 
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
         long userPtr = headerBlock + 8L;
@@ -227,7 +228,7 @@ public final class GridArray {
     public static synchronized void getAll(long gridPtr, long resultListPtr) {
         checkActive();
         checkValid(gridPtr);
-        if (resultListPtr == 0L) throw new NullPointerException("Result List pointer cannot be NULL!");
+        if (resultListPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1077));
 
         int rx = resX(gridPtr);
         int ry = resY(gridPtr);
@@ -269,7 +270,7 @@ public final class GridArray {
     public static synchronized void query(long gridPtr, float minX, float minY, float maxX, float maxY, long resultListPtr) {
         checkActive();
         checkValid(gridPtr);
-        if (resultListPtr == 0L) throw new NullPointerException("Result List pointer cannot be NULL!");
+        if (resultListPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(1077));
 
         int rx = resX(gridPtr);
         int ry = resY(gridPtr);
@@ -306,7 +307,7 @@ public final class GridArray {
         long headerBlock = gridPtr - 8L;
         int type = ForeignMemory.getInt(headerBlock);
         if (type == 0 || (type & TypeRegister.MASK_FORM) != TypeRegister.FORM_ARRAY) {
-            throw new IllegalStateException("Double free or corrupt GridArray pointer: 0x" + Long.toHexString(gridPtr).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(1078) + Long.toHexString(gridPtr).toUpperCase());
         }
 
         int rx = resX(gridPtr);

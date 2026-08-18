@@ -7,6 +7,7 @@ import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 @Draft
 @Intention("just an object that cannot be put in a file for serialized work")
 public class Transient
@@ -43,19 +44,19 @@ public class Transient
 
     public static long get(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getVolatileLong(ptr);
     }
 
     public static void set(long ptr, long value)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         ForeignMemory.setVolatileLong(ptr, value);
     }
 
     public static boolean compareAndSet(long ptr, long expected, long value)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.compareAndSetLong(ptr, expected, value);
     }
 

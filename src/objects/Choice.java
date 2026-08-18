@@ -6,6 +6,7 @@ import annotation.Required;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 @Draft
 @Intention("[definition]")
 public class Choice
@@ -69,20 +70,20 @@ public class Choice
 
     public static long getObject(long ptr, int index)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         int len = length(ptr);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Choice index " + index + " out of bounds: " + len);
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(361) + index + StringLookup.getJavaString(362) + len);
         }
         return ForeignMemory.getLong(ptr + (index * 16L));
     }
 
     public static long getCallback(long ptr, int index)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         int len = length(ptr);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Choice index " + index + " out of bounds: " + len);
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(361) + index + StringLookup.getJavaString(362) + len);
         }
         return ForeignMemory.getLong(ptr + (index * 16L) + 8L);
     }

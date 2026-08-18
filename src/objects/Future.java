@@ -7,6 +7,7 @@ import bit.Bit64;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 @Draft
 @Intention("[definition]")
 public class Future
@@ -60,13 +61,13 @@ public class Future
 
     public static long get(long ptr)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getLong(struct(ptr) + 8L);
     }
 
     public static boolean setDesiredValue(long ptr, long value)
     {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         if (ForeignMemory.compareAndSetByte(struct(ptr), (byte) 0, (byte) 1)) {
             ForeignMemory.setLong(struct(ptr) + 8L, value);
             return true;
