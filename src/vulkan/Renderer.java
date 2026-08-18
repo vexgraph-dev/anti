@@ -19,8 +19,10 @@ import org.lwjgl.vulkan.VkQueue;
 import org.lwjgl.vulkan.VkSubmitInfo;
 import org.lwjgl.vulkan.VK10;
 import nio.ForeignMemory;
+import thread.Atomic;
 import thread.RingBuffer;
 import thread.SpinLock;
+import window.Window;
 
 import java.nio.IntBuffer;
 import java.util.concurrent.locks.LockSupport;
@@ -549,7 +551,7 @@ public final class Renderer {
             }
             counterAdd(CTR_DBG_PRESENT_BLOCK_NANOS, java.lang.System.nanoTime() - tW0);
 
-            while (!window.Window.OS_NATIVE_MUTEX.compareAndSet(false, true)) {
+            while (!Atomic.compareAndSet(Window.OS_NATIVE_MUTEX, false, true)) {
                 Thread.onSpinWait();
             }
             try {
@@ -627,7 +629,7 @@ public final class Renderer {
                 ackSyncResize();
                 return PRESENT_DONE;
             } finally {
-                window.Window.OS_NATIVE_MUTEX.set(false);
+                Atomic.setBool(Window.OS_NATIVE_MUTEX, false);
             }
         }
     }
