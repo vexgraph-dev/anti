@@ -105,26 +105,29 @@ public class ForeignMemory {
 
         try {
             MALLOC_HANDLE = linker.downcallHandle(
-                    stdlib.find("malloc").orElseThrow(),
+                    stdlib.find(bootString('m', 'a', 'l', 'l', 'o', 'c')).orElseThrow(),
                     FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)
             );
 
             FREE_HANDLE = linker.downcallHandle(
-                    stdlib.find("free").orElseThrow(),
+                    stdlib.find(bootString('f', 'r', 'e', 'e')).orElseThrow(),
                     FunctionDescriptor.ofVoid(ValueLayout.ADDRESS)
             );
         } catch (Throwable t) {
             throw new ExceptionInInitializerError(t);
         }
 
-        String tracking = java.lang.System.getProperty("anti.native-memory-tracking", "true");
-        NATIVE_TRACKING = !"false".equalsIgnoreCase(tracking) && !"off".equalsIgnoreCase(tracking);
-        NATIVE_TRACKING_STRICT = !"warn".equalsIgnoreCase(tracking);
-        NATIVE_TRACKING_CALL_SITES = "leaks".equalsIgnoreCase(tracking);
+        String tracking = java.lang.System.getProperty(
+                bootString('a', 'n', 't', 'i', '.', 'n', 'a', 't', 'i', 'v', 'e', '-', 'm', 'e', 'm', 'o', 'r', 'y', '-', 't', 'r', 'a', 'c', 'k', 'i', 'n', 'g'),
+                bootString('t', 'r', 'u', 'e'));
+        NATIVE_TRACKING = !bootString('f', 'a', 'l', 's', 'e').equalsIgnoreCase(tracking)
+                && !bootString('o', 'f', 'f').equalsIgnoreCase(tracking);
+        NATIVE_TRACKING_STRICT = !bootString('w', 'a', 'r', 'n').equalsIgnoreCase(tracking);
+        NATIVE_TRACKING_CALL_SITES = bootString('l', 'e', 'a', 'k', 's').equalsIgnoreCase(tracking);
         if (NATIVE_TRACKING_CALL_SITES) {
             ALLOC_SITE_COUNTS = new java.util.concurrent.ConcurrentHashMap<>();
             ALLOC_ADDR_SITES = new java.util.concurrent.ConcurrentHashMap<>();
-            System.out.println("[ForeignMemory] call-site leak tracking armed");
+            System.out.println(bootString('[', 'F', 'o', 'r', 'e', 'i', 'g', 'n', 'M', 'e', 'm', 'o', 'r', 'y', ']', ' ', 'c', 'a', 'l', 'l', '-', 's', 'i', 't', 'e', ' ', 'l', 'e', 'a', 'k', ' ', 't', 'r', 'a', 'c', 'k', 'i', 'n', 'g', ' ', 'a', 'r', 'm', 'e', 'd'));
         } else {
             ALLOC_SITE_COUNTS = null;
             ALLOC_ADDR_SITES = null;
@@ -136,7 +139,8 @@ public class ForeignMemory {
                 MemorySegment.ofAddress(table).reinterpret((long) ALLOC_SLOTS * 8L).fill((byte) 0);
                 ALLOC_REGISTRY = table;
             } catch (Throwable t) {
-                throw new ExceptionInInitializerError("Failed to allocate native allocation registry: " + t);
+                throw new ExceptionInInitializerError(
+                        bootString('F', 'a', 'i', 'l', 'e', 'd', ' ', 't', 'o', ' ', 'a', 'l', 'l', 'o', 'c', 'a', 't', 'e', ' ', 'n', 'a', 't', 'i', 'v', 'e', ' ', 'a', 'l', 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n', ' ', 'r', 'e', 'g', 'i', 's', 't', 'r', 'y', ':', ' ') + t);
             }
         } else {
             ALLOC_REGISTRY = 0L;
@@ -144,8 +148,14 @@ public class ForeignMemory {
 
         if (NATIVE_TRACKING_CALL_SITES) {
             Runtime.getRuntime().addShutdownHook(
-                    new Thread(ForeignMemory::dumpAllocationLeaks, "anti-native-leak-report"));
+                    new Thread(ForeignMemory::dumpAllocationLeaks,
+                            bootString('a', 'n', 't', 'i', '-', 'n', 'a', 't', 'i', 'v', 'e', '-', 'l', 'e', 'a', 'k', '-', 'r', 'e', 'p', 'o', 'r', 't')));
         }
+    }
+
+    /** Builds a runtime String from explicit chars (bootstrap-safe, no StringLookup dependency, no constant-pool literals). */
+    private static String bootString(char... chars) {
+        return new String(chars);
     }
 
     private static int registrySlot(long address) {
@@ -162,7 +172,7 @@ public class ForeignMemory {
             }
             i = (i + 1) & ALLOC_MASK;
         }
-        throw new IllegalStateException("Native allocation registry exhausted (" + ALLOC_SLOTS + " live allocations)!");
+        throw new IllegalStateException(StringLookup.getJavaString(979) + ALLOC_SLOTS + StringLookup.getJavaString(980));
     }
 
     private static boolean untrackAllocation(long address) {
@@ -191,26 +201,26 @@ public class ForeignMemory {
             }
             return addr;
         } catch (Throwable t) {
-            throw new OutOfMemoryError("Native malloc failed for size: " + bytes);
+            throw new OutOfMemoryError(StringLookup.getJavaString(981) + bytes);
         }
     }
 
     public static void freeNative(long address) {
         if (address == 0L)
-            throw new RuntimeException("cant free a null pointer silly!");
+            throw new RuntimeException(StringLookup.getJavaString(982));
         if (NATIVE_TRACKING) {
             if (untrackAllocation(address)) {
                 if (NATIVE_TRACKING_CALL_SITES) releaseAllocationSite(address);
             } else if (NATIVE_TRACKING_STRICT) {
-                throw new RuntimeException("Double-free or untracked native free at 0x" + java.lang.Long.toHexString(address));
+                throw new RuntimeException(StringLookup.getJavaString(983) + java.lang.Long.toHexString(address));
             } else {
-                System.err.println("[ForeignMemory] WARNING: double-free or untracked native free at 0x" + java.lang.Long.toHexString(address));
+                System.err.println(StringLookup.getJavaString(984) + java.lang.Long.toHexString(address));
             }
         }
         try {
             FREE_HANDLE.invokeExact(MemorySegment.ofAddress(address));
         } catch (Throwable t) {
-            throw new RuntimeException("Native free failed for address: " + address, t);
+            throw new RuntimeException(StringLookup.getJavaString(985) + address, t);
         }
     }
 
@@ -236,13 +246,13 @@ public class ForeignMemory {
             while (it.hasNext()) {
                 java.lang.StackWalker.StackFrame f = it.next();
                 String cn = f.getClassName();
-                if (cn.startsWith("java.") || cn.startsWith("jdk.") || cn.startsWith("nio.ForeignMemory"))
+                if (cn.startsWith(StringLookup.getJavaString(986)) || cn.startsWith(StringLookup.getJavaString(987)) || cn.startsWith(StringLookup.getJavaString(988)))
                     continue;
-                String line = f.getLineNumber() > 0 ? ":" + f.getLineNumber() : "";
-                return cn + "." + f.getMethodName() + "("
-                        + (f.getFileName() != null ? f.getFileName() : "?") + line + ")";
+                String line = f.getLineNumber() > 0 ? StringLookup.getJavaString(43) + f.getLineNumber() : StringLookup.getJavaString(0);
+                return cn + StringLookup.getJavaString(311) + f.getMethodName() + StringLookup.getJavaString(372)
+                        + (f.getFileName() != null ? f.getFileName() : StringLookup.getJavaString(989)) + line + StringLookup.getJavaString(18);
             }
-            return "unknown";
+            return StringLookup.getJavaString(990);
         });
     }
 
@@ -268,7 +278,7 @@ public class ForeignMemory {
     /** Prints every allocation site that still holds live native memory, biggest first. */
     public static void dumpAllocationLeaks() {
         if (!NATIVE_TRACKING_CALL_SITES) {
-            System.out.println("[ForeignMemory] call-site leak report disabled; rerun with -Danti.native-memory-tracking=leaks");
+            System.out.println(StringLookup.getJavaString(991));
             return;
         }
         java.util.ArrayList<java.util.Map.Entry<String, long[]>> live = new java.util.ArrayList<>();
@@ -281,12 +291,12 @@ public class ForeignMemory {
             }
         }
         live.sort((a, b) -> java.lang.Long.compare(b.getValue()[1], a.getValue()[1]));
-        System.out.println("=== Native allocation leak report: " + totalCount + " live allocations, " + totalBytes + " bytes ===");
+        System.out.println(StringLookup.getJavaString(992) + totalCount + StringLookup.getJavaString(993) + totalBytes + StringLookup.getJavaString(994));
         for (java.util.Map.Entry<String, long[]> e : live) {
             long[] v = e.getValue();
-            System.out.println("  " + v[0] + " allocs  " + v[1] + " bytes  " + e.getKey());
+            System.out.println(StringLookup.getJavaString(313) + v[0] + StringLookup.getJavaString(995) + v[1] + StringLookup.getJavaString(996) + e.getKey());
         }
-        if (live.isEmpty()) System.out.println("  (none - clean teardown)");
+        if (live.isEmpty()) System.out.println(StringLookup.getJavaString(997));
     }
 
     /** Number of currently live native allocations (0 when tracking is disabled). */
@@ -303,18 +313,18 @@ public class ForeignMemory {
     /** Prints every live native allocation for leak analysis (tracking must be enabled). */
     public static void dumpAllocations() {
         if (!NATIVE_TRACKING) {
-            System.out.println("[ForeignMemory] allocation tracking disabled (-Danti.native-memory-tracking=false)");
+            System.out.println(StringLookup.getJavaString(998));
             return;
         }
         long count = 0L;
         for (int i = 0; i < ALLOC_SLOTS; i++) {
             long cur = (long) LONG_VH.getVolatile(GLOBAL_MEMORY, ALLOC_REGISTRY + i * 8L);
             if (cur != 0L && cur != ALLOC_TOMBSTONE) {
-                System.out.println("[ForeignMemory] live allocation: 0x" + java.lang.Long.toHexString(cur));
+                System.out.println(StringLookup.getJavaString(999) + java.lang.Long.toHexString(cur));
                 count++;
             }
         }
-        System.out.println("[ForeignMemory] total live allocations: " + count);
+        System.out.println(StringLookup.getJavaString(1000) + count);
     }
 
     // =========================================================================
@@ -357,7 +367,7 @@ public class ForeignMemory {
 
     /** Copies length bytes from off-heap into a heap byte[]. Bridge-only helper (heap boundary is allowed at platform/API edges). */
     public static byte[] getBytes(long srcAddress, int length) {
-        if (srcAddress == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (srcAddress == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         byte[] dest = new byte[length];
         if (length > 0) {
             MemorySegment.copy(GLOBAL_MEMORY, ValueLayout.JAVA_BYTE, srcAddress, dest, 0, length);
@@ -366,12 +376,12 @@ public class ForeignMemory {
     }
 
     public static byte getByte(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_BYTE, address);
     }
 
     public static void setByte(long address, byte value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         GLOBAL_MEMORY.set(ValueLayout.JAVA_BYTE, address, value);
     }
 
@@ -380,12 +390,12 @@ public class ForeignMemory {
     }
 
     public static short getShort(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_SHORT, address);
     }
 
     public static void setShort(long address, short value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         GLOBAL_MEMORY.set(ValueLayout.JAVA_SHORT, address, value);
     }
 
@@ -394,12 +404,12 @@ public class ForeignMemory {
     }
 
     public static int getInt(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_INT, address);
     }
 
     public static void setInt(long address, int value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         GLOBAL_MEMORY.set(ValueLayout.JAVA_INT, address, value);
     }
 
@@ -408,12 +418,12 @@ public class ForeignMemory {
     }
 
     public static long getLong(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_LONG, address);
     }
 
     public static void setLong(long address, long value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         GLOBAL_MEMORY.set(ValueLayout.JAVA_LONG, address, value);
     }
 
@@ -422,12 +432,12 @@ public class ForeignMemory {
     }
 
     public static float getFloat(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_FLOAT, address);
     }
 
     public static void setFloat(long address, float value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         GLOBAL_MEMORY.set(ValueLayout.JAVA_FLOAT, address, value);
     }
 
@@ -436,12 +446,12 @@ public class ForeignMemory {
     }
 
     public static double getDouble(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_DOUBLE, address);
     }
 
     public static void setDouble(long address, double value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         GLOBAL_MEMORY.set(ValueLayout.JAVA_DOUBLE, address, value);
     }
 
@@ -450,12 +460,12 @@ public class ForeignMemory {
     }
 
     public static long getAddress(long address) {
-        if (address == 0L) throw new NullPointerException("Reading address from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(1001));
         return GLOBAL_MEMORY.get(ValueLayout.ADDRESS, address).address();
     }
 
     public static void setAddress(long address, long targetAddress) {
-        if (address == 0L) throw new NullPointerException("Writing address to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(1002));
         GLOBAL_MEMORY.set(ValueLayout.ADDRESS, address, MemorySegment.ofAddress(targetAddress));
     }
 
@@ -465,57 +475,57 @@ public class ForeignMemory {
     }
 
     public static short getShortUnaligned(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_SHORT_UNALIGNED, address);
     }
 
     public static void setShortUnaligned(long address, short value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         GLOBAL_MEMORY.set(ValueLayout.JAVA_SHORT_UNALIGNED, address, value);
     }
 
     public static int getIntUnaligned(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_INT_UNALIGNED, address);
     }
 
     public static void setIntUnaligned(long address, int value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         GLOBAL_MEMORY.set(ValueLayout.JAVA_INT_UNALIGNED, address, value);
     }
 
     public static long getLongUnaligned(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_LONG_UNALIGNED, address);
     }
 
     public static void setLongUnaligned(long address, long value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         GLOBAL_MEMORY.set(ValueLayout.JAVA_LONG_UNALIGNED, address, value);
     }
 
     public static float getFloatUnaligned(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_FLOAT_UNALIGNED, address);
     }
 
     public static void setFloatUnaligned(long address, float value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         GLOBAL_MEMORY.set(ValueLayout.JAVA_FLOAT_UNALIGNED, address, value);
     }
 
     public static double getDoubleUnaligned(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return GLOBAL_MEMORY.get(ValueLayout.JAVA_DOUBLE_UNALIGNED, address);
     }
 
     public static void setDoubleUnaligned(long address, double value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         GLOBAL_MEMORY.set(ValueLayout.JAVA_DOUBLE_UNALIGNED, address, value);
     }
 
     public static boolean compareAndSetByte(long address, byte expected, byte value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         long alignedAddr = address & ~3L;
         int shift = (int) (address & 3L) * 8;
         int mask = 0xFF << shift;
@@ -534,7 +544,7 @@ public class ForeignMemory {
     }
 
     public static boolean compareAndSetShort(long address, short expected, short value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         long alignedAddr = address & ~3L;
         int shift = (int) (address & 3L) * 8;
         int mask = 0xFFFF << shift;
@@ -554,7 +564,7 @@ public class ForeignMemory {
 
 
     public static short getAndSetShort(long address, short value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         long alignedAddr = address & ~3L;
         int shift = (int) (address & 3L) * 8;
         int mask = 0xFFFF << shift;
@@ -570,7 +580,7 @@ public class ForeignMemory {
     }
 
     public static byte getAndSetByte(long address, byte value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         long alignedAddr = address & ~3L;
         int shift = (int) (address & 3L) * 8;
         int mask = 0xFF << shift;
@@ -586,64 +596,64 @@ public class ForeignMemory {
     }
 
     public static boolean compareAndSetInt(long address, int expected, int value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (boolean) INT_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
     }
 
     public static int getAndSetInt(long address, int value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (int) INT_VH.getAndSet(GLOBAL_MEMORY, address, value);
     }
 
     @Volatile
     public static int getAndAddInt(long address, int delta) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (int) INT_VH.getAndAdd(GLOBAL_MEMORY, address, delta);
     }
 
     public static boolean compareAndSetLong(long address, long expected, long value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (boolean) LONG_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
     }
 
     public static long getAndSetLong(long address, long value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (long) LONG_VH.getAndSet(GLOBAL_MEMORY, address, value);
     }
 
     @Volatile
     public static long getAndAddLong(long address, long delta) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (long) LONG_VH.getAndAdd(GLOBAL_MEMORY, address, delta);
     }
 
     public static long getAndBitwiseOrLong(long address, long mask) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (long) LONG_VH.getAndBitwiseOr(GLOBAL_MEMORY, address, mask);
     }
 
     public static long getAndBitwiseAndLong(long address, long mask) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (long) LONG_VH.getAndBitwiseAnd(GLOBAL_MEMORY, address, mask);
     }
 
     public static boolean compareAndSetFloat(long address, float expected, float value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (boolean) FLOAT_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
     }
 
     public static float getAndSetFloat(long address, float value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (float) FLOAT_VH.getAndSet(GLOBAL_MEMORY, address, value);
     }
 
     public static boolean compareAndSetDouble(long address, double expected, double value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (boolean) DOUBLE_VH.compareAndSet(GLOBAL_MEMORY, address, expected, value);
     }
 
     public static double getAndSetDouble(long address, double value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         return (double) DOUBLE_VH.getAndSet(GLOBAL_MEMORY, address, value);
     }
 
@@ -747,13 +757,13 @@ public class ForeignMemory {
 
     @Volatile
     public static byte getVolatileByte(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return (byte) BYTE_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
     @Volatile
     public static void setVolatileByte(long address, byte value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         BYTE_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
 
@@ -764,13 +774,13 @@ public class ForeignMemory {
 
     @Volatile
     public static short getVolatileShort(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return (short) SHORT_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
     @Volatile
     public static void setVolatileShort(long address, short value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         SHORT_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
 
@@ -781,13 +791,13 @@ public class ForeignMemory {
 
     @Volatile
     public static int getVolatileInt(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return (int) INT_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
     @Volatile
     public static void setVolatileInt(long address, int value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         INT_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
 
@@ -798,13 +808,13 @@ public class ForeignMemory {
 
     @Volatile
     public static long getVolatileLong(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return (long) LONG_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
     @Volatile
     public static void setVolatileLong(long address, long value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         LONG_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
 
@@ -815,13 +825,13 @@ public class ForeignMemory {
 
     @Volatile
     public static float getVolatileFloat(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return (float) FLOAT_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
     @Volatile
     public static void setVolatileFloat(long address, float value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         FLOAT_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
 
@@ -832,13 +842,13 @@ public class ForeignMemory {
 
     @Volatile
     public static double getVolatileDouble(long address) {
-        if (address == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         return (double) DOUBLE_VH.getVolatile(GLOBAL_MEMORY, address);
     }
 
     @Volatile
     public static void setVolatileDouble(long address, double value) {
-        if (address == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
+        if (address == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
         DOUBLE_VH.setVolatile(GLOBAL_MEMORY, address, value);
     }
 
@@ -985,7 +995,7 @@ public class ForeignMemory {
     static {
         try {
             FILE_SLOT_MASK_VH = MethodHandles.lookup()
-                    .findStaticVarHandle(ForeignMemory.class, "fileSlotMask", long.class);
+                    .findStaticVarHandle(ForeignMemory.class, bootString('f', 'i', 'l', 'e', 'S', 'l', 'o', 't', 'M', 'a', 's', 'k'), long.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -995,7 +1005,7 @@ public class ForeignMemory {
     public static long fileOpen(String path, int mode) {
         if (path == null) return 0L;
         int slot = allocFileSlot();
-        if (slot < 0) throw new IllegalStateException("File handle registry exhausted (64 open files max)");
+        if (slot < 0) throw new IllegalStateException(StringLookup.getJavaString(1004));
         try {
             Path p = Path.of(path);
             if ((mode & FILE_MODE_CREATE) != 0) {
@@ -1112,7 +1122,7 @@ public class ForeignMemory {
     static {
         try {
             MAP_SLOT_MASK_VH = MethodHandles.lookup()
-                    .findStaticVarHandle(ForeignMemory.class, "mapSlotMask", long.class);
+                    .findStaticVarHandle(ForeignMemory.class, bootString('m', 'a', 'p', 'S', 'l', 'o', 't', 'M', 'a', 's', 'k'), long.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -1122,7 +1132,7 @@ public class ForeignMemory {
     public static long mapFile(String path, long offset, long size, boolean readOnly) {
         if (path == null || size <= 0L) return 0L;
         int slot = allocMapSlot();
-        if (slot < 0) throw new IllegalStateException("Mapped-file registry exhausted (64 maps max)");
+        if (slot < 0) throw new IllegalStateException(StringLookup.getJavaString(1006));
         Arena arena = null;
         try {
             arena = Arena.ofConfined();
