@@ -12,7 +12,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.atomic.AtomicLong;
+import thread.Atomic;
 
 /**
  * Cryptographically secure off-heap PRNG backed by OS entropy sources.
@@ -28,7 +28,7 @@ public final class SecureRandom {
     public static final int TYPE_SECURE_RANDOM = TypeRegister.FORM_SINGLETON | CLASS_ID;
 
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
-    private static final AtomicLong SEED_SOURCE = new AtomicLong(System.nanoTime() ^ 0x9E3779B97F4A7C15L);
+    private static final long SEED_SOURCE = Atomic.allocateLong(System.nanoTime() ^ 0x9E3779B97F4A7C15L);
 
     static {
         // Seed from OS entropy (/dev/urandom) if available
@@ -42,7 +42,7 @@ public final class SecureRandom {
                                | (((long) seed[2] & 255) << 40) | (((long) seed[3] & 255) << 32)
                                | (((long) seed[4] & 255) << 24) | (((long) seed[5] & 255) << 16)
                                | (((long) seed[6] & 255) << 8)  | ((long) seed[7] & 255);
-                        SEED_SOURCE.set(s ^ System.nanoTime());
+                        Atomic.setLong(SEED_SOURCE, s ^ System.nanoTime());
                     }
                 }
             }
@@ -82,7 +82,7 @@ public final class SecureRandom {
 
     // SplitMix64 generator from atomic seed
     public static long nextLong() {
-        long z = SEED_SOURCE.addAndGet(0x9E3779B97F4A7C15L);
+        long z = Atomic.addAtomicValue(SEED_SOURCE, 0x9E3779B97F4A7C15L);
         z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
         z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
         return z ^ (z >>> 31);
