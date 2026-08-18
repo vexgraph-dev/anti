@@ -2,6 +2,7 @@ package lang;
 
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * Off-Heap Quaternion representation (x, y, z, w) stored in 16-byte contiguous native memory.
  * Designed for zero-GC orientation tracking, rotations, slerp, and conversion to Mat4.
@@ -215,11 +216,11 @@ public final class Quaternion
     @Override
     public String toString()
     {
-        return "Quaternion(off-heap)";
+        return StringLookup.getJavaString(564);
     }
 
     public static String toString(long ptr)
     {
-        return "Quat[" + getX(ptr) + ", " + getY(ptr) + ", " + getZ(ptr) + ", " + getW(ptr) + "]";
+        return StringLookup.getJavaString(565) + getX(ptr) + StringLookup.getJavaString(560) + getY(ptr) + StringLookup.getJavaString(560) + getZ(ptr) + StringLookup.getJavaString(560) + getW(ptr) + StringLookup.getJavaString(67);
     }
 }

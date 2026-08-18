@@ -6,6 +6,7 @@ import io.LogParser;
 
 import java.io.File;
 
+import nio.StringLookup;
 /**
  * Read-side of {@link Log} for the CLI. Plain Java entry points a console
  * loop calls; no off-heap command allocation on this path.
@@ -18,14 +19,14 @@ public final class LogCommands {
 
     public static String stat(String path) {
         if (!LogParser.isLogFile(path)) {
-            return "not a log file: " + path;
+            return StringLookup.getJavaString(366) + path;
         }
         long n = LogParser.count(path);
         File f = new File(path);
-        return "log: " + path
-            + "\n  records: " + n
-            + "\n  bytes: " + f.length()
-            + " (" + (f.length() - LogParser.HEADER_BYTES) + " payload)";
+        return StringLookup.getJavaString(367) + path
+            + StringLookup.getJavaString(368) + n
+            + StringLookup.getJavaString(369) + f.length()
+            + StringLookup.getJavaString(370) + (f.length() - LogParser.HEADER_BYTES) + StringLookup.getJavaString(371);
     }
 
     /** Prints formatted records to stdout, newest-last. limit < 0 prints everything. */
@@ -46,7 +47,7 @@ public final class LogCommands {
                 kind, ts, base[0], Log.name(kind), v0, v1, v2, v3, v4));
         });
         if (limit >= 0 && shown[0] < total[0]) {
-            System.out.println("(" + (total[0] - shown[0]) + " more)");
+            System.out.println(StringLookup.getJavaString(372) + (total[0] - shown[0]) + StringLookup.getJavaString(373));
         }
     }
 }

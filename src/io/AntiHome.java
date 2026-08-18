@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import nio.StringLookup;
 /**
  * Per-user "anti" home layout, created once so the engine always has a stable
  * place to write before any subsystem touches the disk. Lives in {@code io} so
@@ -21,10 +22,10 @@ import java.nio.file.Path;
 @Intention("Bootstrap the ~/anti directory tree once so Log, projects, and future bakery tooling have a canonical home before they run. Installer-facing via ensure().")
 public final class AntiHome {
 
-    private static final String ROOT_NAME = "anti";
-    private static final String PROJECTS_NAME = "projects";
-    private static final String LOGS_NAME = "logs";
-    private static final String PLACEHOLDER_NAME = "placeholder";
+    private static final String ROOT_NAME = StringLookup.getJavaString(299);
+    private static final String PROJECTS_NAME = StringLookup.getJavaString(300);
+    private static final String LOGS_NAME = StringLookup.getJavaString(301);
+    private static final String PLACEHOLDER_NAME = StringLookup.getJavaString(302);
 
     private static volatile boolean ensured;
 
@@ -32,7 +33,7 @@ public final class AntiHome {
     }
 
     public static String root() {
-        return dir("");
+        return dir(StringLookup.getJavaString(0));
     }
 
     public static String projects() {
@@ -48,7 +49,7 @@ public final class AntiHome {
     }
 
     private static String dir(String sub) {
-        return Path.of(System.getProperty("user.home"), ROOT_NAME, sub).toString();
+        return Path.of(System.getProperty(StringLookup.getJavaString(303)), ROOT_NAME, sub).toString();
     }
 
     /** Creates the full layout; idempotent. Returns true when every dir exists. */
@@ -71,6 +72,6 @@ public final class AntiHome {
     /** Default log file: ~/anti/logs/engine.bin (truncated every run by FileWriter). */
     public static String defaultLogPath() {
         ensure();
-        return Path.of(logs(), "engine.bin").toString();
+        return Path.of(logs(), StringLookup.getJavaString(304)).toString();
     }
 }

@@ -8,6 +8,7 @@ import oop.TypeRegister;
 import objects.Probable;
 import objects.ProbableObjects;
 
+import nio.StringLookup;
 /**
  * Off-Heap Pseudo-Random Number Generator (PRNG) Subsystem.
  * Provides state-updating PRNG operations.
@@ -79,7 +80,7 @@ public final class Random {
 
     @Draft
     public static long nextLong(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         
         long seed = ForeignMemory.getLong(ptr);
         int currentInteger = ForeignMemory.getInt(ptr + 8L);
@@ -123,7 +124,7 @@ public final class Random {
 
     @Draft
     public static boolean getWeight(long ptr, int weight, int total) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         if (total <= 0) return false;
         if (weight >= total) return true;
         if (weight <= 0) return false;
@@ -133,7 +134,7 @@ public final class Random {
 
     @Draft
     public static long sample(long ptr, long probablePtr) {
-        if (probablePtr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (probablePtr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         int weight = Probable.getWeight(probablePtr);
         int total = Probable.getTotal(probablePtr);
         if (getWeight(ptr, weight, total)) {
@@ -144,7 +145,7 @@ public final class Random {
 
     @Draft
     public static long probablePool(long ptr, long probableObjectsPtr) {
-        if (probableObjectsPtr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (probableObjectsPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         int count = ProbableObjects.size(probableObjectsPtr);
         if (count == 0) return 0L;
 

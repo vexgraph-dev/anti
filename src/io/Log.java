@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.LockSupport;
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * Zero-GC off-heap binary logger.
  *
@@ -68,8 +69,8 @@ public final class Log {
     private static final byte[] COPY = new byte[RECORD_BYTES];
 
     static {
-        String prop = System.getProperty("anti.log");
-        boolean enabled = prop == null || !"off".equalsIgnoreCase(prop);
+        String prop = System.getProperty(StringLookup.getJavaString(305));
+        boolean enabled = prop == null || !StringLookup.getJavaString(306).equalsIgnoreCase(prop);
         if (prop == null || prop.isEmpty()) {
             prop = AntiHome.defaultLogPath();
         }
@@ -84,13 +85,13 @@ public final class Log {
             if (fileReady) {
                 file.write(HEADER, 0, HEADER.length);
             } else {
-                System.err.println("[anti.log] cannot open log file: " + PATH);
+                System.err.println(StringLookup.getJavaString(307) + PATH);
             }
             running = true;
-            writer = new Thread(Log::writerLoop, "anti-log-writer");
+            writer = new Thread(Log::writerLoop, StringLookup.getJavaString(308));
             writer.setDaemon(true);
             writer.start();
-            Runtime.getRuntime().addShutdownHook(new Thread(Log::flushAndClose, "anti-log-flush"));
+            Runtime.getRuntime().addShutdownHook(new Thread(Log::flushAndClose, StringLookup.getJavaString(309)));
         }
     }
 
@@ -137,7 +138,7 @@ public final class Log {
 
     public static String name(int kind) {
         String n = NAMES.get(kind);
-        return n != null ? n : ("kind" + kind);
+        return n != null ? n : (StringLookup.getJavaString(310) + kind);
     }
 
     public static void append(int kind) {

@@ -7,6 +7,7 @@ import annotation.Volatile;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-Heap Clock Subsystem.
  * Tracks game/virtual simulation time with support for scaling and pausing.
@@ -65,7 +66,7 @@ public final class Clock {
 
     @Draft
     public static void tick(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         
         long now = System.currentTimeMillis();
         long lastReal = ForeignMemory.getLong(ptr + 16L);
@@ -85,37 +86,37 @@ public final class Clock {
 
     @Draft
     public static void setTimeScale(long ptr, double scale) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         ForeignMemory.setDouble(ptr, scale);
     }
 
     @Draft
     public static double getTimeScale(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getDouble(ptr);
     }
 
     @Draft
     public static void setPaused(long ptr, boolean paused) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         ForeignMemory.setLong(ptr + 32L, paused ? 1L : 0L);
     }
 
     @Draft
     public static boolean isPaused(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getLong(ptr + 32L) != 0L;
     }
 
     @Draft
     public static long getVirtualTimeMillis(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getLong(ptr + 24L);
     }
 
     @Draft
     public static void reset(long ptr) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         long now = System.currentTimeMillis();
         ForeignMemory.setLong(ptr + 8L, now);
         ForeignMemory.setLong(ptr + 16L, now);

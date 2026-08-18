@@ -7,6 +7,7 @@ import java.lang.StringBuilder;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
+import nio.StringLookup;
 public final class System {
 
     static {
@@ -14,12 +15,12 @@ public final class System {
         telemetry.CrashDumper.init();
 
         // base operating system and memory thingies
-        String osName = java.lang.System.getProperty("os.name").toLowerCase();
-        long osNamePtr = string.allocate(java.lang.System.getProperty("os.name"));
-        long osArchPtr = string.allocate(java.lang.System.getProperty("os.arch"));
-        long deviceModelPtr = string.allocate(isMobileOrHandheld() ? "Handheld/Mobile" : "Desktop");
+        String osName = java.lang.System.getProperty(StringLookup.getJavaString(143)).toLowerCase();
+        long osNamePtr = string.allocate(java.lang.System.getProperty(StringLookup.getJavaString(143)));
+        long osArchPtr = string.allocate(java.lang.System.getProperty(StringLookup.getJavaString(425)));
+        long deviceModelPtr = string.allocate(isMobileOrHandheld() ? StringLookup.getJavaString(426) : StringLookup.getJavaString(427));
 
-        String rawCpu = java.lang.System.getenv("PROCESSOR_IDENTIFIER");
+        String rawCpu = java.lang.System.getenv(StringLookup.getJavaString(428));
         int cores = Runtime.getRuntime().availableProcessors();
         int threads = cores * 2;
 
@@ -42,12 +43,12 @@ public final class System {
             freeMemory = Runtime.getRuntime().freeMemory();
         }
 
-        long cpuBrandPtr = string.allocate(rawCpu != null ? rawCpu : java.lang.System.getProperty("os.arch"));
+        long cpuBrandPtr = string.allocate(rawCpu != null ? rawCpu : java.lang.System.getProperty(StringLookup.getJavaString(425)));
 
         long totalStorage = 0;
         long availableStorage = 0;
         try {
-            java.io.File root = new java.io.File("/");
+            java.io.File root = new java.io.File(StringLookup.getJavaString(40));
             totalStorage = root.getTotalSpace();
             availableStorage = root.getFreeSpace();
         } catch (Throwable ignored) {}
@@ -69,86 +70,86 @@ public final class System {
         // ==========================================
         // 3. DYNAMIC GRAPHICS & RUNTIME TARGET PROBING
         // ==========================================
-        String detectedGpuName = osName.contains("mac") ? "Apple Metal GPU (UMA)" : "Software Rasterizer";
+        String detectedGpuName = osName.contains(StringLookup.getJavaString(144)) ? StringLookup.getJavaString(429) : StringLookup.getJavaString(430);
         String primaryGraphicsApi;
-        boolean unifiedMemoryArchitecture = osName.contains("mac");
+        boolean unifiedMemoryArchitecture = osName.contains(StringLookup.getJavaString(144));
         long physicalVramTotal = 0L;
 
-        boolean hasVulkanSdk = java.lang.System.getenv("VULKAN_SDK") != null || java.lang.System.getenv("VK_LAYER_PATH") != null;
-        String vulkanApiVersion = "0.0.0";
-        String vulkanDriverVersion = "None";
+        boolean hasVulkanSdk = java.lang.System.getenv(StringLookup.getJavaString(431)) != null || java.lang.System.getenv(StringLookup.getJavaString(432)) != null;
+        String vulkanApiVersion = StringLookup.getJavaString(433);
+        String vulkanDriverVersion = StringLookup.getJavaString(434);
         boolean vkValidationLayers = hasVulkanSdk;
 
         boolean hasMetalRuntime = false;
         boolean isAppleSiliconGpu = false;
         int appleGpuFamilyTier = 0;
-        String appleSiliconChipModel = "None";
-        String metalVersionString = "0.0.0";
+        String appleSiliconChipModel = StringLookup.getJavaString(434);
+        String metalVersionString = StringLookup.getJavaString(433);
 
         boolean dynamicDx12Supported = false;
         int d3dFeatureLevel = 0;
         boolean agilitySdkPresent = false;
 
-        if (osName.contains("mac")) {
+        if (osName.contains(StringLookup.getJavaString(144))) {
             hasMetalRuntime = true;
-            primaryGraphicsApi = "Metal";
+            primaryGraphicsApi = StringLookup.getJavaString(435);
 
-            String arch = java.lang.System.getProperty("os.arch").toLowerCase();
-            if (arch.contains("aarch64") || arch.contains("arm64")) {
+            String arch = java.lang.System.getProperty(StringLookup.getJavaString(425)).toLowerCase();
+            if (arch.contains(StringLookup.getJavaString(436)) || arch.contains(StringLookup.getJavaString(437))) {
                 isAppleSiliconGpu = true;
                 unifiedMemoryArchitecture = true;
                 physicalVramTotal = totalMemory;
             }
 
-            String hardwareProfile = executeNativeCommand("system_profiler", "SPHardwareDataType");
-            for (String line : hardwareProfile.split("\n")) {
-                if (line.contains("Chip:")) {
-                    appleSiliconChipModel = line.split(":", 2)[1].trim();
+            String hardwareProfile = executeNativeCommand(StringLookup.getJavaString(438), StringLookup.getJavaString(439));
+            for (String line : hardwareProfile.split(StringLookup.getJavaString(102))) {
+                if (line.contains(StringLookup.getJavaString(440))) {
+                    appleSiliconChipModel = line.split(StringLookup.getJavaString(43), 2)[1].trim();
                     detectedGpuName = appleSiliconChipModel;
-                    if (appleSiliconChipModel.contains("M1")) {
+                    if (appleSiliconChipModel.contains(StringLookup.getJavaString(441))) {
                         appleGpuFamilyTier = 7;
-                        metalVersionString = "Metal 3.0 Native";
-                    } else if (appleSiliconChipModel.contains("M2")) {
+                        metalVersionString = StringLookup.getJavaString(442);
+                    } else if (appleSiliconChipModel.contains(StringLookup.getJavaString(443))) {
                         appleGpuFamilyTier = 8;
-                        metalVersionString = "Metal 3.0 Native";
-                    } else if (appleSiliconChipModel.contains("A18 Pro") || appleSiliconChipModel.contains("M3") || appleSiliconChipModel.contains("M4")) {
+                        metalVersionString = StringLookup.getJavaString(442);
+                    } else if (appleSiliconChipModel.contains(StringLookup.getJavaString(444)) || appleSiliconChipModel.contains(StringLookup.getJavaString(445)) || appleSiliconChipModel.contains(StringLookup.getJavaString(446))) {
                         appleGpuFamilyTier = 9;
-                        metalVersionString = "Metal 3.1 Native (Apple Family 9)";
-                    } else if (appleSiliconChipModel.contains("A19 Pro") || appleSiliconChipModel.contains("M5")) {
+                        metalVersionString = StringLookup.getJavaString(447);
+                    } else if (appleSiliconChipModel.contains(StringLookup.getJavaString(448)) || appleSiliconChipModel.contains(StringLookup.getJavaString(449))) {
                         appleGpuFamilyTier = 10;
-                        metalVersionString = "Metal 3.2 Native (Apple Family 10)";
+                        metalVersionString = StringLookup.getJavaString(450);
                     } else {
                         appleGpuFamilyTier = 6;
-                        metalVersionString = "Metal 2.4 Legacy";
+                        metalVersionString = StringLookup.getJavaString(451);
                     }
                     break;
                 }
             }
-            if (metalVersionString.equals("0.0.0")) metalVersionString = "Metal 3.1 Native";
+            if (metalVersionString.equals(StringLookup.getJavaString(433))) metalVersionString = StringLookup.getJavaString(452);
 
-        } else if (osName.contains("win")) {
+        } else if (osName.contains(StringLookup.getJavaString(453))) {
             dynamicDx12Supported = true;
-            primaryGraphicsApi = "DirectX 12";
+            primaryGraphicsApi = StringLookup.getJavaString(454);
 
-            String wmicOutput = executeNativeCommand("wmic", "path", "win32_VideoController", "get", "Name,AdapterRAM", "/value");
-            for (String line : wmicOutput.split("\n")) {
+            String wmicOutput = executeNativeCommand(StringLookup.getJavaString(455), StringLookup.getJavaString(456), StringLookup.getJavaString(457), StringLookup.getJavaString(458), StringLookup.getJavaString(459), StringLookup.getJavaString(460));
+            for (String line : wmicOutput.split(StringLookup.getJavaString(102))) {
                 line = line.trim();
-                if (line.startsWith("Name=")) {
-                    detectedGpuName = line.split("=", 2)[1].trim();
-                } else if (line.startsWith("AdapterRAM=")) {
+                if (line.startsWith(StringLookup.getJavaString(461))) {
+                    detectedGpuName = line.split(StringLookup.getJavaString(462), 2)[1].trim();
+                } else if (line.startsWith(StringLookup.getJavaString(463))) {
                     try {
-                        physicalVramTotal = Long.parseLong(line.split("=", 2)[1].trim());
+                        physicalVramTotal = Long.parseLong(line.split(StringLookup.getJavaString(462), 2)[1].trim());
                     } catch (Exception ignored) {}
                 }
             }
             String lowerGpu = detectedGpuName.toLowerCase();
-            if (lowerGpu.contains("intel") || lowerGpu.contains("amd radeon graphics") || lowerGpu.contains("vega")) {
+            if (lowerGpu.contains(StringLookup.getJavaString(464)) || lowerGpu.contains(StringLookup.getJavaString(465)) || lowerGpu.contains(StringLookup.getJavaString(466))) {
                 unifiedMemoryArchitecture = true;
                 if (physicalVramTotal == 0) physicalVramTotal = totalMemory / 4;
             }
             d3dFeatureLevel = 0xC200;
         } else {
-            primaryGraphicsApi = "OpenGL Fallback";
+            primaryGraphicsApi = StringLookup.getJavaString(467);
         }
 
         // Set Vulkan Static State
@@ -182,7 +183,7 @@ public final class System {
         GraphicsInfo.setPrimaryGraphicsApi(string.allocate(primaryGraphicsApi));
         GraphicsInfo.setUnifiedMemoryEnabled(unifiedMemoryArchitecture);
         GraphicsInfo.setComputeShadersEnabled(true);
-        GraphicsInfo.setMeshShadersEnabled(appleGpuFamilyTier >= 9 || osName.contains("win"));
+        GraphicsInfo.setMeshShadersEnabled(appleGpuFamilyTier >= 9 || osName.contains(StringLookup.getJavaString(453)));
         GraphicsInfo.setHardwareRayTracingEnabled(appleGpuFamilyTier >= 9);
         GraphicsInfo.setInstancedIndexedEnabled(true);
         GraphicsInfo.setMaxTextureSize(4096);
@@ -195,10 +196,10 @@ public final class System {
         GraphicsInfo.setDiscreteGpuEnabled(!unifiedMemoryArchitecture);
         GraphicsInfo.setHdrMaxLuminance(0.0f);
         GraphicsInfo.setHdrMinLuminance(0.0f);
-        GraphicsInfo.setSurfaceColorSpace(string.allocate("sRGB"));
+        GraphicsInfo.setSurfaceColorSpace(string.allocate(StringLookup.getJavaString(468)));
 
         // Set Audio Static State
-        AudioInfo.setAudioDeviceName(string.allocate("Primary Audio Driver"));
+        AudioInfo.setAudioDeviceName(string.allocate(StringLookup.getJavaString(469)));
         AudioInfo.setAvailableAudioDevices(new AudioDevice[0]);
         AudioInfo.setSampleRates(new int[]{48000});
         AudioInfo.setCurrentSampleRate(48000);
@@ -208,7 +209,7 @@ public final class System {
         AudioInfo.setAudioOutputLatency(10.0f);
 
         // Set Video Static State
-        VideoInfo.setSupportedVideoCodecs(new long[]{string.allocate("H264")});
+        VideoInfo.setSupportedVideoCodecs(new long[]{string.allocate(StringLookup.getJavaString(470))});
         VideoInfo.setHardwareDecodingSupported(true);
         VideoInfo.setHardwareEncodingSupported(false);
         VideoInfo.setHdrVideoPlaybackSupported(false);
@@ -217,12 +218,12 @@ public final class System {
         // Set Performance Static State
         PerformanceInfo.setGpuTimestampPeriod(1.0f);
         PerformanceInfo.setVariableRateShadingSupported(false);
-        PerformanceInfo.setVrsSurfaceProperties(string.allocate("Not Supported"));
+        PerformanceInfo.setVrsSurfaceProperties(string.allocate(StringLookup.getJavaString(471)));
         PerformanceInfo.setDynamicResolutionScaleSupported(false);
         PerformanceInfo.setThermalMitigationLevel(0);
         PerformanceInfo.setPowerSavingModeActive(false);
 
-        String batteryStatusStr = "AC Powered";
+        String batteryStatusStr = StringLookup.getJavaString(472);
         float batteryLevelVal = 1.0f;
 
         // Set Hardware Static State
@@ -249,13 +250,13 @@ public final class System {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    output.append(line).append("\n");
+                    output.append(line).append(StringLookup.getJavaString(102));
                 }
             }
             process.waitFor();
             return output.toString();
         } catch (Exception e) {
-            return ""; 
+            return StringLookup.getJavaString(0); 
         }
     }
 
@@ -285,8 +286,8 @@ public final class System {
     }
 
     private static boolean isMobileOrHandheld() {
-        String os = java.lang.System.getProperty("os.name").toLowerCase();
-        return os.contains("android") || os.contains("ios");
+        String os = java.lang.System.getProperty(StringLookup.getJavaString(143)).toLowerCase();
+        return os.contains(StringLookup.getJavaString(473)) || os.contains(StringLookup.getJavaString(474));
     }
 
     // ==========================================
@@ -294,73 +295,73 @@ public final class System {
     // ==========================================
     public static String getSystem() {
         StringBuilder sb = new StringBuilder();
-        sb.append("==================================================\n");
-        sb.append("         CORE ENGINE HARDWARE PROFILE             \n");
-        sb.append("==================================================\n\n");
+        sb.append(StringLookup.getJavaString(475));
+        sb.append(StringLookup.getJavaString(476));
+        sb.append(StringLookup.getJavaString(477));
 
-        sb.append("[HARDWARE SPECIFICATIONS]\n");
-        sb.append("  - OS: ").append(string.get(HardwareInfo.getOperatingSystem())).append("\n");
-        sb.append("  - Arch: ").append(string.get(HardwareInfo.getSystemArchitecture())).append("\n");
-        sb.append("  - Model Class: ").append(string.get(HardwareInfo.getDeviceModel())).append("\n");
-        sb.append("  - CPU: ").append(string.get(HardwareInfo.getCpuBrand())).append("\n");
-        sb.append("  - Cores / Threads: ").append(HardwareInfo.getCpuCoreCount()).append(" / ").append(HardwareInfo.getCpuThreadCount()).append("\n");
-        sb.append("  - RAM Total: ").append(HardwareInfo.getRamTotal() / 1024 / 1024).append(" MB\n");
-        sb.append("  - RAM Available: ").append(HardwareInfo.getRamAvailable() / 1024 / 1024).append(" MB\n");
-        sb.append("  - Heap Allocated / Max: ").append(HardwareInfo.getJavaHeapSize() / 1024 / 1024).append(" MB / ").append(HardwareInfo.getJavaHeapMax() / 1024 / 1024).append(" MB\n");
-        sb.append("  - Storage Total / Available: ").append(HardwareInfo.getStorageTotalSpace() / 1024 / 1024 / 1024).append(" GB / ").append(HardwareInfo.getStorageAvailableSpace() / 1024 / 1024 / 1024).append(" GB\n");
-        sb.append("  - Battery Level: ").append(HardwareInfo.getBatteryLevel() * 100).append("% (").append(string.get(HardwareInfo.getBatteryStatus())).append(")\n\n");
+        sb.append(StringLookup.getJavaString(478));
+        sb.append(StringLookup.getJavaString(479)).append(string.get(HardwareInfo.getOperatingSystem())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(480)).append(string.get(HardwareInfo.getSystemArchitecture())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(481)).append(string.get(HardwareInfo.getDeviceModel())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(482)).append(string.get(HardwareInfo.getCpuBrand())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(483)).append(HardwareInfo.getCpuCoreCount()).append(StringLookup.getJavaString(484)).append(HardwareInfo.getCpuThreadCount()).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(485)).append(HardwareInfo.getRamTotal() / 1024 / 1024).append(StringLookup.getJavaString(486));
+        sb.append(StringLookup.getJavaString(487)).append(HardwareInfo.getRamAvailable() / 1024 / 1024).append(StringLookup.getJavaString(486));
+        sb.append(StringLookup.getJavaString(488)).append(HardwareInfo.getJavaHeapSize() / 1024 / 1024).append(StringLookup.getJavaString(489)).append(HardwareInfo.getJavaHeapMax() / 1024 / 1024).append(StringLookup.getJavaString(486));
+        sb.append(StringLookup.getJavaString(490)).append(HardwareInfo.getStorageTotalSpace() / 1024 / 1024 / 1024).append(StringLookup.getJavaString(491)).append(HardwareInfo.getStorageAvailableSpace() / 1024 / 1024 / 1024).append(StringLookup.getJavaString(492));
+        sb.append(StringLookup.getJavaString(493)).append(HardwareInfo.getBatteryLevel() * 100).append(StringLookup.getJavaString(494)).append(string.get(HardwareInfo.getBatteryStatus())).append(StringLookup.getJavaString(495));
 
-        sb.append("[DISPLAY TOPOLOGY]\n");
-        sb.append("  - Detected Monitors: ").append(DisplayInfo.getMonitorCount()).append("\n");
-        sb.append("\n");
+        sb.append(StringLookup.getJavaString(496));
+        sb.append(StringLookup.getJavaString(497)).append(DisplayInfo.getMonitorCount()).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(102));
 
-        sb.append("[GRAPHICS DEVICE CAPABILITIES]\n");
-        sb.append("  - GPU: ").append(string.get(GraphicsInfo.getGpuName())).append("\n");
-        sb.append("  - Vendor / Device ID: 0x").append(Integer.toHexString(GraphicsInfo.getGpuVendorId())).append(" / 0x").append(Integer.toHexString(GraphicsInfo.getGpuDeviceId())).append("\n");
-        sb.append("  - Active System API: ").append(string.get(GraphicsInfo.getPrimaryGraphicsApi())).append("\n");
-        sb.append("  - Unified Memory Architecture (UMA): ").append(GraphicsInfo.getUnifiedMemoryEnabled() ? "Yes (Shared Pool)" : "No (Discrete VRAM Heap)").append("\n");
-        sb.append("  - Max Texture Size: ").append(GraphicsInfo.getMaxTextureSize()).append("\n");
-        sb.append("  - Hardware Ray Tracing: ").append(GraphicsInfo.getHardwareRayTracingEnabled() ? "Yes" : "No").append("\n");
-        sb.append("  - Mesh Shaders: ").append(GraphicsInfo.getMeshShadersEnabled() ? "Yes" : "No").append("\n");
-        sb.append("  - Compute Shaders: ").append(GraphicsInfo.getComputeShadersEnabled() ? "Yes" : "No").append("\n");
-        sb.append("  - Physical VRAM Total / Available: ").append(GraphicsInfo.getVramTotal() / 1024 / 1024).append(" MB / ").append(GraphicsInfo.getVramAvailable() / 1024 / 1024).append(" MB\n\n");
+        sb.append(StringLookup.getJavaString(498));
+        sb.append(StringLookup.getJavaString(499)).append(string.get(GraphicsInfo.getGpuName())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(500)).append(Integer.toHexString(GraphicsInfo.getGpuVendorId())).append(StringLookup.getJavaString(501)).append(Integer.toHexString(GraphicsInfo.getGpuDeviceId())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(502)).append(string.get(GraphicsInfo.getPrimaryGraphicsApi())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(503)).append(GraphicsInfo.getUnifiedMemoryEnabled() ? StringLookup.getJavaString(504) : StringLookup.getJavaString(505)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(506)).append(GraphicsInfo.getMaxTextureSize()).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(507)).append(GraphicsInfo.getHardwareRayTracingEnabled() ? StringLookup.getJavaString(508) : StringLookup.getJavaString(509)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(510)).append(GraphicsInfo.getMeshShadersEnabled() ? StringLookup.getJavaString(508) : StringLookup.getJavaString(509)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(511)).append(GraphicsInfo.getComputeShadersEnabled() ? StringLookup.getJavaString(508) : StringLookup.getJavaString(509)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(512)).append(GraphicsInfo.getVramTotal() / 1024 / 1024).append(StringLookup.getJavaString(489)).append(GraphicsInfo.getVramAvailable() / 1024 / 1024).append(StringLookup.getJavaString(513));
 
-        sb.append("  [Vulkan Sub-System Instance]\n");
-        sb.append("    * Vulkan SDK Installed: ").append(VulkanInstanceInfo.getVulkanSdkInstalled() ? "Yes" : "No").append("\n");
-        sb.append("    * Runtime API Version: ").append(string.get(VulkanInstanceInfo.getVulkanVersion())).append("\n");
-        sb.append("    * Device Driver Build: ").append(string.get(VulkanInstanceInfo.getApiDriversVersion())).append("\n");
-        sb.append("    * OS Memory Budget Allocation: ").append(VulkanInstanceInfo.getVulkanTotalMemoryBudget() / 1024 / 1024).append(" MB\n");
-        sb.append("    * Sub-allocator Active Usage: ").append(VulkanInstanceInfo.getVulkanCurrentMemoryUsage() / 1024 / 1024).append(" MB\n");
-        sb.append("    * Validation Status Layers: ").append(VulkanInstanceInfo.getValidationLayersEnabled() ? "Active Debug Profile" : "Disabled (Release)").append("\n\n");
+        sb.append(StringLookup.getJavaString(514));
+        sb.append(StringLookup.getJavaString(515)).append(VulkanInstanceInfo.getVulkanSdkInstalled() ? StringLookup.getJavaString(508) : StringLookup.getJavaString(509)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(516)).append(string.get(VulkanInstanceInfo.getVulkanVersion())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(517)).append(string.get(VulkanInstanceInfo.getApiDriversVersion())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(518)).append(VulkanInstanceInfo.getVulkanTotalMemoryBudget() / 1024 / 1024).append(StringLookup.getJavaString(486));
+        sb.append(StringLookup.getJavaString(519)).append(VulkanInstanceInfo.getVulkanCurrentMemoryUsage() / 1024 / 1024).append(StringLookup.getJavaString(486));
+        sb.append(StringLookup.getJavaString(520)).append(VulkanInstanceInfo.getValidationLayersEnabled() ? StringLookup.getJavaString(521) : StringLookup.getJavaString(522)).append(StringLookup.getJavaString(523));
 
-        sb.append("  [Apple Metal Sub-System Instance]\n");
-        sb.append("    * Metal Framework Present: ").append(MetalInstanceInfo.getMetalRuntimeAvailable() ? "Yes" : "No").append("\n");
-        sb.append("    * Architecture Class: ").append(MetalInstanceInfo.getIsAppleSilicon() ? "Apple Silicon SoC" : "Legacy Intel Mac Hardware").append("\n");
-        sb.append("    * Processor Chip Silicon Model: ").append(string.get(MetalInstanceInfo.getAppleChipModel())).append("\n");
-        sb.append("    * Hardware Feature Set: Apple GPU Family ").append(MetalInstanceInfo.getAppleGpuFamily()).append("\n");
-        sb.append("    * Metal Dynamic API Version: ").append(string.get(MetalInstanceInfo.getMetalVersion())).append("\n");
-        sb.append("    * Argument Binding Layouts: ").append(MetalInstanceInfo.getArgumentBuffersSupported() ? "Tier 2/Supported" : "Unsupported").append("\n");
-        sb.append("    * Ray Tracing Execution Tier: ").append(MetalInstanceInfo.getRayTracingTierSupported() ? "Hardware Accelerated Cores" : "None/Compute Polling").append("\n\n");
+        sb.append(StringLookup.getJavaString(524));
+        sb.append(StringLookup.getJavaString(525)).append(MetalInstanceInfo.getMetalRuntimeAvailable() ? StringLookup.getJavaString(508) : StringLookup.getJavaString(509)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(526)).append(MetalInstanceInfo.getIsAppleSilicon() ? StringLookup.getJavaString(527) : StringLookup.getJavaString(528)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(529)).append(string.get(MetalInstanceInfo.getAppleChipModel())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(530)).append(MetalInstanceInfo.getAppleGpuFamily()).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(531)).append(string.get(MetalInstanceInfo.getMetalVersion())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(532)).append(MetalInstanceInfo.getArgumentBuffersSupported() ? StringLookup.getJavaString(533) : StringLookup.getJavaString(534)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(535)).append(MetalInstanceInfo.getRayTracingTierSupported() ? StringLookup.getJavaString(536) : StringLookup.getJavaString(537)).append(StringLookup.getJavaString(523));
 
-        sb.append("  [DirectX Sub-System Instance]\n");
-        sb.append("    * DX12 API Supported: ").append(DirectXInstanceInfo.getDirectX12Supported() ? "Yes" : "No").append("\n");
-        sb.append("    * Direct3D Core Feature Level: 0x").append(Integer.toHexString(DirectXInstanceInfo.getFeatureLevel())).append("\n");
-        sb.append("    * Runtime Engine Agility SDK: ").append(DirectXInstanceInfo.getAgilitySdkPresent() ? "Linked / Loaded" : "Missing / Stale").append("\n");
-        sb.append("    * High Tier Shader Program compilation: ").append(DirectXInstanceInfo.getShaderModel6_xSupported() ? "Shader Model 6.x Early Native" : "Legacy Direct3D Layer").append("\n\n");
+        sb.append(StringLookup.getJavaString(538));
+        sb.append(StringLookup.getJavaString(539)).append(DirectXInstanceInfo.getDirectX12Supported() ? StringLookup.getJavaString(508) : StringLookup.getJavaString(509)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(540)).append(Integer.toHexString(DirectXInstanceInfo.getFeatureLevel())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(541)).append(DirectXInstanceInfo.getAgilitySdkPresent() ? StringLookup.getJavaString(542) : StringLookup.getJavaString(543)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(544)).append(DirectXInstanceInfo.getShaderModel6_xSupported() ? StringLookup.getJavaString(545) : StringLookup.getJavaString(546)).append(StringLookup.getJavaString(523));
 
-        sb.append("[AUDIO LATENCY PIPELINE]\n");
-        sb.append("  - Device Target: ").append(string.get(AudioInfo.getAudioDeviceName())).append("\n");
-        sb.append("  - Channels / Native Rate: ").append(AudioInfo.getAudioChannelCount()).append(" / ").append(AudioInfo.getCurrentSampleRate()).append("Hz\n");
-        sb.append("  - Output Hardware Latency: ").append(AudioInfo.getAudioOutputLatency()).append(" ms\n");
-        sb.append("  - Spatial Audio: ").append(AudioInfo.getSpatialAudioSupported() ? "Yes" : "No").append("\n\n");
+        sb.append(StringLookup.getJavaString(547));
+        sb.append(StringLookup.getJavaString(548)).append(string.get(AudioInfo.getAudioDeviceName())).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(549)).append(AudioInfo.getAudioChannelCount()).append(StringLookup.getJavaString(484)).append(AudioInfo.getCurrentSampleRate()).append(StringLookup.getJavaString(550));
+        sb.append(StringLookup.getJavaString(551)).append(AudioInfo.getAudioOutputLatency()).append(StringLookup.getJavaString(552));
+        sb.append(StringLookup.getJavaString(553)).append(AudioInfo.getSpatialAudioSupported() ? StringLookup.getJavaString(508) : StringLookup.getJavaString(509)).append(StringLookup.getJavaString(523));
 
-        sb.append("[REAL-TIME EXECUTION METRICS]\n");
-        sb.append("  - GPU Timestamp Period: ").append(PerformanceInfo.getGpuTimestampPeriod()).append(" ns/tick\n");
-        sb.append("  - Variable Rate Shading: ").append(PerformanceInfo.getVariableRateShadingSupported() ? "Yes" : "No").append("\n");
-        sb.append("  - Power Saving Mode Active: ").append(PerformanceInfo.getPowerSavingModeActive() ? "Yes" : "No").append("\n");
-        sb.append("  - OS Thermal Throttle State: Level ").append(PerformanceInfo.getThermalMitigationLevel()).append("\n");
+        sb.append(StringLookup.getJavaString(554));
+        sb.append(StringLookup.getJavaString(555)).append(PerformanceInfo.getGpuTimestampPeriod()).append(StringLookup.getJavaString(556));
+        sb.append(StringLookup.getJavaString(557)).append(PerformanceInfo.getVariableRateShadingSupported() ? StringLookup.getJavaString(508) : StringLookup.getJavaString(509)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(558)).append(PerformanceInfo.getPowerSavingModeActive() ? StringLookup.getJavaString(508) : StringLookup.getJavaString(509)).append(StringLookup.getJavaString(102));
+        sb.append(StringLookup.getJavaString(559)).append(PerformanceInfo.getThermalMitigationLevel()).append(StringLookup.getJavaString(102));
 
-        sb.append("==================================================\n");
+        sb.append(StringLookup.getJavaString(475));
         return sb.toString();
     }
 }

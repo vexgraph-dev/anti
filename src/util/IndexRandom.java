@@ -6,6 +6,7 @@ import annotation.Intention;
 import nio.ForeignMemory;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-Heap Stateless Deterministic Index-Based PRNG Subsystem.
  * Computes deterministic pseudo-random values using (ptr, index) contexts
@@ -35,7 +36,7 @@ IndexRandom {
 
     @Draft
     public static long nextLong(long ptr, int index) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         long seed = ForeignMemory.getLong(ptr);
         return deterministicHash(seed, ptr, index);
     }
@@ -68,7 +69,7 @@ IndexRandom {
 
     @Draft
     public static float nextFractalFloat(long ptr, int index) {
-        if (ptr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (ptr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         long seed = ForeignMemory.getLong(ptr);
         float value = 0.0f;
         float amplitude = 1.0f;
@@ -88,7 +89,7 @@ IndexRandom {
     @Draft
     public static double nextFractalDouble(long ptr, int index) {
         if (ptr == 0L)
-            throw new NullPointerException("Accessing NULL off-heap pointer!");
+            throw new NullPointerException(StringLookup.getJavaString(27));
         long seed = ForeignMemory.getLong(ptr);
         double value = 0.0;
         double amplitude = 1.0;

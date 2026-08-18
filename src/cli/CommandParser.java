@@ -3,6 +3,7 @@ package cli;
 import annotation.Draft;
 import primitive.string;
 
+import nio.StringLookup;
 @Draft
 public class CommandParser {
 
@@ -14,7 +15,7 @@ public class CommandParser {
         raw = raw.trim();
         if (raw.isEmpty()) return 0L;
 
-        String[] parts = raw.split("\\s+");
+        String[] parts = raw.split(StringLookup.getJavaString(365));
         if (parts.length == 0 || parts[0].isEmpty()) return 0L;
 
         long namePtr = string.allocate(parts[0]);

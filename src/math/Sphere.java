@@ -4,6 +4,7 @@ import lang.FastMath;
 import lang.Vec3;
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * Off-Heap Bounding Sphere representation (Center Vec3 + Radius float) stored in 16-byte native memory.
  * Designed for zero-GC allocation, raytracing, and bounding volume hierarchy (BVH) testing.
@@ -92,6 +93,6 @@ public final class Sphere
 
     public static String toString(long ptr)
     {
-        return "Sphere[Center: " + Vec3.toString(ptr) + ", Radius: " + getRadius(ptr) + "]";
+        return StringLookup.getJavaString(381) + Vec3.toString(ptr) + StringLookup.getJavaString(382) + getRadius(ptr) + StringLookup.getJavaString(67);
     }
 }

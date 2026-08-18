@@ -4,6 +4,7 @@ import lang.FastMath;
 import lang.Vec3;
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * Off-Heap 3D Plane representation (Normal Vec3 + Distance float d) stored in 16-byte native memory.
  * Equation: Normal . P + Distance = 0.
@@ -80,6 +81,6 @@ public final class Plane
 
     public static String toString(long ptr)
     {
-        return "Plane[Normal: " + Vec3.toString(ptr) + ", Distance: " + getDistance(ptr) + "]";
+        return StringLookup.getJavaString(385) + Vec3.toString(ptr) + StringLookup.getJavaString(386) + getDistance(ptr) + StringLookup.getJavaString(67);
     }
 }

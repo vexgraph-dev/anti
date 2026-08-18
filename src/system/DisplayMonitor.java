@@ -7,6 +7,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 import primitive.string;
 
+import nio.StringLookup;
 @Draft
 @Intention("Off-heap zero-allocation display monitor struct representation")
 public final class DisplayMonitor {
@@ -30,11 +31,11 @@ public final class DisplayMonitor {
     }
 
     private static void checkType(long monitorPtr) {
-        if (monitorPtr == 0L) throw new NullPointerException("Accessing NULL DisplayMonitor pointer!");
+        if (monitorPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(580));
         int type = ForeignMemory.getInt(monitorPtr - 8L);
         int expected = TypeRegister.FORM_SINGLETON | CLASS_ID;
         if (type != expected) {
-            throw new IllegalArgumentException("Expected DisplayMonitor pointer, but got Type: 0x" + Integer.toHexString(type).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(581) + Integer.toHexString(type).toUpperCase());
         }
     }
 

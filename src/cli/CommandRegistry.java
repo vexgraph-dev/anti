@@ -11,6 +11,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
+import nio.StringLookup;
 @Draft
 public class CommandRegistry {
 
@@ -44,11 +45,11 @@ public class CommandRegistry {
                 MemorySegment targetSegment = MemorySegment.ofAddress(targetPtr);
                 INVOKER.bindTo(targetSegment).invokeExact(parsedCommandPointer);
             } catch (Throwable t) {
-                System.err.println("Failed to execute command target pointer: " + t.getMessage());
+                System.err.println(StringLookup.getJavaString(377) + t.getMessage());
             }
         } else {
             String name = string.get(namePtr);
-            System.out.println("Unknown command: " + name);
+            System.out.println(StringLookup.getJavaString(378) + name);
         }
     }
 

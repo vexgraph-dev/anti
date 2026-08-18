@@ -5,6 +5,7 @@ import annotation.Required;
 import annotation.Intention;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-Heap Stateless Calendar calculations helper.
  * Provides pure static utilities to perform date additions and queries on DateTime structures.
@@ -66,7 +67,7 @@ public final class Calendar {
 
     @Draft
     public static void addDays(long dateTimePtr, int days) {
-        if (dateTimePtr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (dateTimePtr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         long currentMillis = DateTime.getEpochMillis(dateTimePtr);
         long newMillis = currentMillis + ((long) days * 86_400_000L);
         DateTime.setEpochMillis(dateTimePtr, newMillis);
@@ -74,7 +75,7 @@ public final class Calendar {
 
     @Draft
     public static void addMonths(long dateTimePtr, int months) {
-        if (dateTimePtr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (dateTimePtr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         
         // Since month calculation is variable, we extract fields, shift month/year, and recalculate epoch.
         int year = DateTime.getYear(dateTimePtr);
@@ -101,7 +102,7 @@ public final class Calendar {
 
     @Draft
     public static void addYears(long dateTimePtr, int years) {
-        if (dateTimePtr == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (dateTimePtr == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         
         int year = DateTime.getYear(dateTimePtr);
         int month = DateTime.getMonth(dateTimePtr);
