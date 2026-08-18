@@ -5,6 +5,8 @@ import annotation.Intention;
 import annotation.Required;
 import thread.Atomic;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 
@@ -58,29 +60,45 @@ public final class StringLookup {
             handle = ForeignMemory.fileOpen(String.valueOf(altPath), ForeignMemory.FILE_MODE_READ);
         }
 
-        if (handle == 0L) {
-            // Initialize minimal fallback table containing empty string at ID 0
-            initEmptyTable(DEFAULT_INITIAL_CAPACITY);
-            ForeignMemory.setVolatileByte(ACTIVE_PTR, (byte) 1);
-            ForeignMemory.setVolatileInt(BOOT_GUARD_PTR, 2);
-            return;
-        }
-
-        long fileSize = ForeignMemory.fileSize(handle);
-        if (fileSize <= 0L) {
+        // Bundle fallback: GraalVM native-image embeds StringLookup.ini as a
+        // classpath resource (see build_native.sh -H:IncludeResources). When the
+        // binary is launched via Finder, CWD is "/" so no filesystem file exists;
+        // load the bundled bytes so the off-heap table still populates.
+        long rawBuf = 0L;
+        long readBytes = 0L;
+        if (handle != 0L) {
+            long fileSize = ForeignMemory.fileSize(handle);
+            if (fileSize <= 0L) {
+                ForeignMemory.fileClose(handle);
+                initEmptyTable(DEFAULT_INITIAL_CAPACITY);
+                ForeignMemory.setVolatileByte(ACTIVE_PTR, (byte) 1);
+                ForeignMemory.setVolatileInt(BOOT_GUARD_PTR, 2);
+                return;
+            }
+            rawBuf = ForeignMemory.allocateNative(fileSize + 1L);
+            readBytes = ForeignMemory.fileRead(handle, rawBuf, fileSize);
             ForeignMemory.fileClose(handle);
-            initEmptyTable(DEFAULT_INITIAL_CAPACITY);
-            ForeignMemory.setVolatileByte(ACTIVE_PTR, (byte) 1);
-            ForeignMemory.setVolatileInt(BOOT_GUARD_PTR, 2);
-            return;
+        } else {
+            byte[] bundled = null;
+            try (InputStream in = StringLookup.class.getResourceAsStream("/StringLookup.ini")) {
+                if (in != null) {
+                    bundled = in.readAllBytes();
+                }
+            } catch (IOException ignored) {
+            }
+            if (bundled != null && bundled.length > 0) {
+                rawBuf = ForeignMemory.allocateNative((long) bundled.length + 1L);
+                for (int k = 0; k < bundled.length; k++) {
+                    ForeignMemory.setByte(rawBuf + k, bundled[k]);
+                }
+                readBytes = bundled.length;
+            }
         }
 
-        long rawBuf = ForeignMemory.allocateNative(fileSize + 1L);
-        long readBytes = ForeignMemory.fileRead(handle, rawBuf, fileSize);
-        ForeignMemory.fileClose(handle);
-
-        if (readBytes <= 0L) {
-            ForeignMemory.freeNative(rawBuf);
+        if (rawBuf == 0L || readBytes <= 0L) {
+            if (rawBuf != 0L) {
+                ForeignMemory.freeNative(rawBuf);
+            }
             initEmptyTable(DEFAULT_INITIAL_CAPACITY);
             ForeignMemory.setVolatileByte(ACTIVE_PTR, (byte) 1);
             ForeignMemory.setVolatileInt(BOOT_GUARD_PTR, 2);
