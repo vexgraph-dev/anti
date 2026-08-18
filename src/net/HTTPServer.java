@@ -16,6 +16,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 
+import nio.StringLookup;
 /**
  * Off-heap zero-GC non-blocking HTTP server operating on raw long memory pointer handles.
  */
@@ -110,15 +111,15 @@ public final class HTTPServer {
             buf.get(bytes);
             String rawReq = new String(bytes, StandardCharsets.UTF_8);
 
-            String[] lines = rawReq.split("\r\n");
+            String[] lines = rawReq.split(StringLookup.getJavaString(50));
             if (lines.length == 0) {
                 sc.close();
                 return 0L;
             }
 
-            String[] reqParts = lines[0].split(" ");
-            String method = reqParts.length > 0 ? reqParts[0] : "GET";
-            String uri = reqParts.length > 1 ? reqParts[1] : "/";
+            String[] reqParts = lines[0].split(StringLookup.getJavaString(77));
+            String method = reqParts.length > 0 ? reqParts[0] : StringLookup.getJavaString(59);
+            String uri = reqParts.length > 1 ? reqParts[1] : StringLookup.getJavaString(40);
 
             long reqBlock = ForeignMemory.allocateNative(48);
             long reqPtr = reqBlock + 8L;
@@ -160,14 +161,14 @@ public final class HTTPServer {
         if (sc == null) return false;
 
         try {
-            String body = responseBody != null ? responseBody : "";
+            String body = responseBody != null ? responseBody : StringLookup.getJavaString(0);
             byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
 
-            String statusText = (statusCode == 200) ? "OK" : (statusCode == 404) ? "Not Found" : "Internal Server Error";
-            String httpHeader = "HTTP/1.1 " + statusCode + " " + statusText + "\r\n" +
-                    "Content-Type: text/plain\r\n" +
-                    "Content-Length: " + bodyBytes.length + "\r\n" +
-                    "Connection: close\r\n\r\n";
+            String statusText = (statusCode == 200) ? StringLookup.getJavaString(78) : (statusCode == 404) ? StringLookup.getJavaString(79) : StringLookup.getJavaString(80);
+            String httpHeader = StringLookup.getJavaString(81) + statusCode + StringLookup.getJavaString(77) + statusText + StringLookup.getJavaString(50) +
+                    StringLookup.getJavaString(82) +
+                    StringLookup.getJavaString(83) + bodyBytes.length + StringLookup.getJavaString(50) +
+                    StringLookup.getJavaString(84);
 
             ByteBuffer buf = ByteBuffer.allocateDirect(httpHeader.length() + bodyBytes.length);
             buf.put(httpHeader.getBytes(StandardCharsets.UTF_8));

@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import nio.StringLookup;
 /**
  * On-the-fly programmatic compiler and macOS App packager for the Anti Engine.
  * Supports on-the-fly JVM compilation, jpackage JVM .app bundling, and GraalVM Native Image AOT compilation.
@@ -18,7 +19,7 @@ import java.nio.file.Paths;
 @Intention("Programmatic Java compilation engine and automated macOS .app packager for JVM and GraalVM AOT targets.")
 public final class AOTCompiler {
 
-    private static final String DEFAULT_PROJECT_DIR = "/Users/vexgraph/IdeaProjects/anti";
+    private static final String DEFAULT_PROJECT_DIR = StringLookup.getJavaString(1136);
 
     private AOTCompiler() {}
 
@@ -31,43 +32,43 @@ public final class AOTCompiler {
     public static boolean compileOnTheFly(String targetTestClass) {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {
-            System.err.println("[AOTCompiler] JDK SystemJavaCompiler is unavailable!");
+            System.err.println(StringLookup.getJavaString(1137));
             return false;
         }
 
         try {
-            Path outPath = Paths.get(DEFAULT_PROJECT_DIR, "out");
+            Path outPath = Paths.get(DEFAULT_PROJECT_DIR, StringLookup.getJavaString(133));
             Files.createDirectories(outPath);
 
-            Path scratchFile = Paths.get(DEFAULT_PROJECT_DIR, "scratch", targetTestClass + ".java");
+            Path scratchFile = Paths.get(DEFAULT_PROJECT_DIR, StringLookup.getJavaString(1138), targetTestClass + StringLookup.getJavaString(1139));
 
             // Gather all src .java files
-            Path srcPath = Paths.get(DEFAULT_PROJECT_DIR, "src");
+            Path srcPath = Paths.get(DEFAULT_PROJECT_DIR, StringLookup.getJavaString(880));
             var srcFiles = Files.walk(srcPath)
-                    .filter(p -> p.toString().endsWith(".java"))
+                    .filter(p -> p.toString().endsWith(StringLookup.getJavaString(1139)))
                     .map(Path::toString)
                     .toList();
 
             // Dynamically scan and build classpath string for javax.tools compiler
             StringBuilder cpBuilder = new StringBuilder();
             cpBuilder.append(outPath.toAbsolutePath());
-            Path libPath = Paths.get(DEFAULT_PROJECT_DIR, "lib");
+            Path libPath = Paths.get(DEFAULT_PROJECT_DIR, StringLookup.getJavaString(1140));
             if (Files.exists(libPath)) {
                 try (var jars = Files.walk(libPath)) {
-                    jars.filter(p -> p.toString().endsWith(".jar"))
+                    jars.filter(p -> p.toString().endsWith(StringLookup.getJavaString(1141)))
                         .forEach(p -> cpBuilder.append(File.pathSeparator).append(p.toAbsolutePath()));
                 }
             }
 
-            String currentRelease = System.getProperty("java.specification.version");
+            String currentRelease = System.getProperty(StringLookup.getJavaString(1142));
 
             var arguments = new java.util.ArrayList<String>();
-            arguments.add("--enable-preview");
-            arguments.add("-source");
+            arguments.add(StringLookup.getJavaString(1143));
+            arguments.add(StringLookup.getJavaString(1144));
             arguments.add(currentRelease);
-            arguments.add("-cp");
+            arguments.add(StringLookup.getJavaString(1145));
             arguments.add(cpBuilder.toString());
-            arguments.add("-d");
+            arguments.add(StringLookup.getJavaString(1146));
             arguments.add(outPath.toAbsolutePath().toString());
 
             arguments.addAll(srcFiles);
@@ -77,14 +78,14 @@ public final class AOTCompiler {
 
             int exitCode = compiler.run(null, null, null, arguments.toArray(new String[0]));
             if (exitCode == 0) {
-                System.out.println("[AOTCompiler] On-the-fly compilation of " + targetTestClass + " succeeded!");
+                System.out.println(StringLookup.getJavaString(1147) + targetTestClass + StringLookup.getJavaString(1148));
                 return true;
             } else {
-                System.err.println("[AOTCompiler] On-the-fly compilation failed with exit code: " + exitCode);
+                System.err.println(StringLookup.getJavaString(1149) + exitCode);
                 return false;
             }
         } catch (IOException e) {
-            System.err.println("[AOTCompiler] Compilation IO Exception: " + e.getMessage());
+            System.err.println(StringLookup.getJavaString(1150) + e.getMessage());
             return false;
         }
     }
@@ -97,41 +98,41 @@ public final class AOTCompiler {
      * @param appName Output app name (e.g. "AntiEngine-JVM")
      */
     public static boolean buildJPackageApp(String mainClass, String appName) {
-        System.out.println("[AOTCompiler] Starting jpackage .app bundle build for " + appName + "...");
+        System.out.println(StringLookup.getJavaString(1151) + appName + StringLookup.getJavaString(1152));
         if (!compileOnTheFly(mainClass)) {
             return false;
         }
 
         try {
-            Path distDir = Paths.get(DEFAULT_PROJECT_DIR, "out", "dist");
+            Path distDir = Paths.get(DEFAULT_PROJECT_DIR, StringLookup.getJavaString(133), StringLookup.getJavaString(1153));
             Files.createDirectories(distDir);
 
             // Step 1: Create JAR
             ProcessBuilder jarPb = new ProcessBuilder(
-                "jar", "--create",
-                "--file", "out/engine.jar",
-                "--main-class", mainClass,
-                "-C", "out", "."
+                StringLookup.getJavaString(1154), StringLookup.getJavaString(1155),
+                StringLookup.getJavaString(1156), StringLookup.getJavaString(1157),
+                StringLookup.getJavaString(1158), mainClass,
+                StringLookup.getJavaString(1159), StringLookup.getJavaString(133), StringLookup.getJavaString(311)
             );
             jarPb.directory(new File(DEFAULT_PROJECT_DIR));
             if (jarPb.start().waitFor() != 0) {
-                System.err.println("[AOTCompiler] Failed to package engine.jar");
+                System.err.println(StringLookup.getJavaString(1160));
                 return false;
             }
 
             // Step 2: Run jpackage
             ProcessBuilder pb = new ProcessBuilder(
-                "jpackage",
-                "--name", appName,
-                "--input", "out",
-                "--main-jar", "engine.jar",
-                "--main-class", mainClass,
-                "--dest", "out/dist",
-                "--type", "app-image",
-                "--java-options", "--enable-preview",
-                "--java-options", "--enable-native-access=ALL-UNNAMED",
-                "--java-options", "-XstartOnFirstThread",
-                "--java-options", "-Dmac.firstThread=true"
+                StringLookup.getJavaString(1161),
+                StringLookup.getJavaString(1162), appName,
+                StringLookup.getJavaString(1163), StringLookup.getJavaString(133),
+                StringLookup.getJavaString(1164), StringLookup.getJavaString(1165),
+                StringLookup.getJavaString(1158), mainClass,
+                StringLookup.getJavaString(1166), StringLookup.getJavaString(1167),
+                StringLookup.getJavaString(1168), StringLookup.getJavaString(1169),
+                StringLookup.getJavaString(1170), StringLookup.getJavaString(1143),
+                StringLookup.getJavaString(1170), StringLookup.getJavaString(1171),
+                StringLookup.getJavaString(1170), StringLookup.getJavaString(1172),
+                StringLookup.getJavaString(1170), StringLookup.getJavaString(1173)
             );
             pb.directory(new File(DEFAULT_PROJECT_DIR));
             pb.inheritIO();
@@ -139,15 +140,15 @@ public final class AOTCompiler {
             int exitCode = pb.start().waitFor();
             if (exitCode == 0) {
                 // Ad-hoc local code sign
-                ProcessBuilder signPb = new ProcessBuilder("codesign", "--force", "--deep", "--sign", "-", "out/dist/" + appName + ".app");
+                ProcessBuilder signPb = new ProcessBuilder(StringLookup.getJavaString(1174), StringLookup.getJavaString(1175), StringLookup.getJavaString(1176), StringLookup.getJavaString(1177), StringLookup.getJavaString(150), StringLookup.getJavaString(1178) + appName + StringLookup.getJavaString(1179));
                 signPb.directory(new File(DEFAULT_PROJECT_DIR));
                 signPb.start().waitFor();
 
-                System.out.println("[AOTCompiler] SUCCESS! Built " + appName + ".app at out/dist/" + appName + ".app");
+                System.out.println(StringLookup.getJavaString(1180) + appName + StringLookup.getJavaString(1181) + appName + StringLookup.getJavaString(1179));
                 return true;
             }
         } catch (Exception e) {
-            System.err.println("[AOTCompiler] Error building jpackage .app: " + e.getMessage());
+            System.err.println(StringLookup.getJavaString(1182) + e.getMessage());
         }
         return false;
     }
@@ -160,80 +161,59 @@ public final class AOTCompiler {
      * @param appName Output app name (e.g. "AntiEngine-Native")
      */
     public static boolean buildNativeImageApp(String mainClass, String appName) {
-        System.out.println("[AOTCompiler] Starting GraalVM Native Image compilation for " + appName + "...");
+        System.out.println(StringLookup.getJavaString(1183) + appName + StringLookup.getJavaString(1152));
         if (!compileOnTheFly(mainClass)) {
             return false;
         }
 
         try {
             String binaryName = appName.toLowerCase();
-            Path outPath = Paths.get(DEFAULT_PROJECT_DIR, "out");
-            Path distDir = Paths.get(DEFAULT_PROJECT_DIR, "out", "dist");
+            Path outPath = Paths.get(DEFAULT_PROJECT_DIR, StringLookup.getJavaString(133));
+            Path distDir = Paths.get(DEFAULT_PROJECT_DIR, StringLookup.getJavaString(133), StringLookup.getJavaString(1153));
             Files.createDirectories(distDir);
 
             // Step 1: Execute native-image AOT compiler
             ProcessBuilder nativePb = new ProcessBuilder(
-                "native-image",
-                "--enable-preview",
-                "--enable-native-access=ALL-UNNAMED",
-                "-H:+ForeignAPISupport",
-                "-cp", "out:lib/lwjgl-release-3.4.2-custom/*",
+                StringLookup.getJavaString(1184),
+                StringLookup.getJavaString(1143),
+                StringLookup.getJavaString(1171),
+                StringLookup.getJavaString(1185),
+                StringLookup.getJavaString(1145), StringLookup.getJavaString(1186),
                 mainClass,
-                "-o", "out/" + binaryName
+                StringLookup.getJavaString(1187), StringLookup.getJavaString(1188) + binaryName
             );
             nativePb.directory(new File(DEFAULT_PROJECT_DIR));
             nativePb.inheritIO();
 
             int exitCode = nativePb.start().waitFor();
             if (exitCode != 0) {
-                System.err.println("[AOTCompiler] native-image compilation failed!");
+                System.err.println(StringLookup.getJavaString(1189));
                 return false;
             }
 
             // Step 2: Construct .app bundle directory
-            Path appPath = distDir.resolve(appName + ".app");
-            Path macOsDir = appPath.resolve("Contents/MacOS");
-            Path resourcesDir = appPath.resolve("Contents/Resources");
+            Path appPath = distDir.resolve(appName + StringLookup.getJavaString(1179));
+            Path macOsDir = appPath.resolve(StringLookup.getJavaString(1190));
+            Path resourcesDir = appPath.resolve(StringLookup.getJavaString(1191));
             Files.createDirectories(macOsDir);
             Files.createDirectories(resourcesDir);
 
             Files.copy(outPath.resolve(binaryName), macOsDir.resolve(binaryName), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
             // Step 3: Write Info.plist
-            String plistContent = """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-                <plist version="1.0">
-                <dict>
-                    <key>CFBundleExecutable</key>
-                    <string>%s</string>
-                    <key>CFBundleIdentifier</key>
-                    <string>com.vexgraph.anti</string>
-                    <key>CFBundleName</key>
-                    <string>%s</string>
-                    <key>CFBundlePackageType</key>
-                    <string>APPL</string>
-                    <key>CFBundleShortVersionString</key>
-                    <string>1.0</string>
-                    <key>LSMinimumSystemVersion</key>
-                    <string>12.0</string>
-                    <key>NSHighResolutionCapable</key>
-                    <true/>
-                </dict>
-                </plist>
-                """.formatted(binaryName, appName);
+            String plistContent = StringLookup.getJavaString(1192).formatted(binaryName, appName);
 
-            Files.writeString(appPath.resolve("Contents/Info.plist"), plistContent);
+            Files.writeString(appPath.resolve(StringLookup.getJavaString(1193)), plistContent);
 
             // Step 4: Ad-hoc code sign
-            ProcessBuilder signPb = new ProcessBuilder("codesign", "--force", "--deep", "--sign", "-", appPath.toString());
+            ProcessBuilder signPb = new ProcessBuilder(StringLookup.getJavaString(1174), StringLookup.getJavaString(1175), StringLookup.getJavaString(1176), StringLookup.getJavaString(1177), StringLookup.getJavaString(150), appPath.toString());
             signPb.directory(new File(DEFAULT_PROJECT_DIR));
             signPb.start().waitFor();
 
-            System.out.println("[AOTCompiler] SUCCESS! Built GraalVM Native .app at " + appPath);
+            System.out.println(StringLookup.getJavaString(1194) + appPath);
             return true;
         } catch (Exception e) {
-            System.err.println("[AOTCompiler] Error building Native Image .app: " + e.getMessage());
+            System.err.println(StringLookup.getJavaString(1195) + e.getMessage());
         }
         return false;
     }

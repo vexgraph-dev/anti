@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Objects;
 
+import nio.StringLookup;
 @Draft
 @Intention("Pure native FFM libcurl HTTP client operating directly on raw long off-heap memory pointers with zero Java heap allocations")
 public final class HTTPClient {
@@ -74,13 +75,13 @@ public final class HTTPClient {
             Linker linker = Linker.nativeLinker();
             SymbolLookup lookup = findLibcurlSymbolLookup(linker);
 
-            MemorySegment initSym = lookup.find("curl_easy_init").orElse(null);
-            MemorySegment setoptSym = lookup.find("curl_easy_setopt").orElse(null);
-            MemorySegment performSym = lookup.find("curl_easy_perform").orElse(null);
-            MemorySegment cleanupSym = lookup.find("curl_easy_cleanup").orElse(null);
-            MemorySegment getinfoSym = lookup.find("curl_easy_getinfo").orElse(null);
-            MemorySegment slistAppendSym = lookup.find("curl_slist_append").orElse(null);
-            MemorySegment slistFreeSym = lookup.find("curl_slist_free_all").orElse(null);
+            MemorySegment initSym = lookup.find(StringLookup.getJavaString(85)).orElse(null);
+            MemorySegment setoptSym = lookup.find(StringLookup.getJavaString(86)).orElse(null);
+            MemorySegment performSym = lookup.find(StringLookup.getJavaString(87)).orElse(null);
+            MemorySegment cleanupSym = lookup.find(StringLookup.getJavaString(88)).orElse(null);
+            MemorySegment getinfoSym = lookup.find(StringLookup.getJavaString(89)).orElse(null);
+            MemorySegment slistAppendSym = lookup.find(StringLookup.getJavaString(90)).orElse(null);
+            MemorySegment slistFreeSym = lookup.find(StringLookup.getJavaString(91)).orElse(null);
 
             if (initSym != null && setoptSym != null && performSym != null && cleanupSym != null) {
                 init = linker.downcallHandle(initSym, FunctionDescriptor.of(ValueLayout.ADDRESS));
@@ -101,7 +102,7 @@ public final class HTTPClient {
 
                 MethodHandle writeCbMethod = MethodHandles.lookup().findStatic(
                         HTTPClient.class,
-                        "writeCallback",
+                        StringLookup.getJavaString(92),
                         MethodType.methodType(long.class, MemorySegment.class, long.class, long.class, MemorySegment.class)
                 );
                 FunctionDescriptor writeCbDesc = FunctionDescriptor.of(
@@ -117,7 +118,7 @@ public final class HTTPClient {
         }
         catch (Throwable NOT_ignored)
         {
-            throw new RuntimeException("WHAT THE HECK IS THIS SILENT EXCEPTION ????? anyways, its at " + NOT_ignored);
+            throw new RuntimeException(StringLookup.getJavaString(93) + NOT_ignored);
         }
 
         curl_easy_init = init;
@@ -134,9 +135,9 @@ public final class HTTPClient {
 
     private static SymbolLookup findLibcurlSymbolLookup(Linker linker) {
         String[] libNames = new String[] {
-                "libcurl.4.dylib", "libcurl.dylib", "/usr/lib/libcurl.4.dylib",
-                "libcurl.so.4", "libcurl.so",
-                "libcurl-4.dll", "libcurl.dll", "curl"
+                StringLookup.getJavaString(94), StringLookup.getJavaString(95), StringLookup.getJavaString(96),
+                StringLookup.getJavaString(97), StringLookup.getJavaString(98),
+                StringLookup.getJavaString(99), StringLookup.getJavaString(100), StringLookup.getJavaString(101)
         };
         for (String lib : libNames) {
             try {
@@ -188,32 +189,32 @@ public final class HTTPClient {
 
     public static long get(long urlPtr) {
         if (urlPtr == 0L) return 0L;
-        return executeNative("GET", urlPtr, 0L, 0L);
+        return executeNative(StringLookup.getJavaString(59), urlPtr, 0L, 0L);
     }
 
     public static long post(long urlPtr, long bodyPtr) {
         if (urlPtr == 0L) return 0L;
-        return executeNative("POST", urlPtr, 0L, bodyPtr);
+        return executeNative(StringLookup.getJavaString(56), urlPtr, 0L, bodyPtr);
     }
 
     @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     public static long request(long methodPtr, long urlPtr, long bodyPtr) {
         if (urlPtr == 0L) return 0L;
-        String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
+        String method = methodPtr != 0L ? string.get(methodPtr) : StringLookup.getJavaString(59);
         return executeNative(method, urlPtr, 0L, bodyPtr, 0L);
     }
 
     @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     public static long request(long methodPtr, long urlPtr, long headersPtr, long bodyPtr) {
         if (urlPtr == 0L) return 0L;
-        String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
+        String method = methodPtr != 0L ? string.get(methodPtr) : StringLookup.getJavaString(59);
         return executeNative(method, urlPtr, headersPtr, bodyPtr, 0L);
     }
 
     @Intention("Uses java.lang.String for testing/convenience. In production, use off-heap primitive.string instead.")
     public static long request(long methodPtr, long urlPtr, long headersPtr, long bodyPtr, long bodyLen) {
         if (urlPtr == 0L) return 0L;
-        String method = methodPtr != 0L ? string.get(methodPtr) : "GET";
+        String method = methodPtr != 0L ? string.get(methodPtr) : StringLookup.getJavaString(59);
         return executeNative(method, urlPtr, headersPtr, bodyPtr, bodyLen);
     }
 
@@ -244,7 +245,7 @@ public final class HTTPClient {
         long urlPtr = string.allocate(urlStr);
         long headersPtr = headersStr != null ? string.allocate(headersStr) : 0L;
         long bodyPtr = bodyStr != null ? string.allocate(bodyStr) : 0L;
-        long res = executeNative(method != null ? method : "GET", urlPtr, headersPtr, bodyPtr);
+        long res = executeNative(method != null ? method : StringLookup.getJavaString(59), urlPtr, headersPtr, bodyPtr);
         string.free(urlPtr);
         if (headersPtr != 0L) string.free(headersPtr);
         if (bodyPtr != 0L) string.free(bodyPtr);
@@ -282,7 +283,7 @@ public final class HTTPClient {
             if (headersPtr != 0L && curl_slist_append != null) {
                 String headersStr = string.get(headersPtr);
                 if (headersStr != null && !headersStr.isEmpty()) {
-                    String[] lines = headersStr.split("\n");
+                    String[] lines = headersStr.split(StringLookup.getJavaString(102));
                     try (Arena tempArena = Arena.ofConfined()) {
                         for (String line : lines) {
                             if (!line.trim().isEmpty()) {
@@ -292,9 +293,9 @@ public final class HTTPClient {
                         }
                     }
                 }
-            } else if ("POST".equalsIgnoreCase(method) && curl_slist_append != null) {
+            } else if (StringLookup.getJavaString(56).equalsIgnoreCase(method) && curl_slist_append != null) {
                 try (Arena tempArena = Arena.ofConfined()) {
-                    MemorySegment defaultHeaderSeg = tempArena.allocateFrom("Content-Type: application/json");
+                    MemorySegment defaultHeaderSeg = tempArena.allocateFrom(StringLookup.getJavaString(103));
                     slistHead = (MemorySegment) curl_slist_append.invokeExact(slistHead, defaultHeaderSeg);
                 }
             }
@@ -305,12 +306,12 @@ public final class HTTPClient {
 
             // 4. Set Custom Method & Post Fields
             long size = bodyLen > 0L ? bodyLen : (bodyPtr != 0L ? (long) string.length(bodyPtr) : 0L);
-            if ("POST".equalsIgnoreCase(method)) {
+            if (StringLookup.getJavaString(56).equalsIgnoreCase(method)) {
                 curl_easy_setopt_long.invokeExact(curl, CURLOPT_POSTFIELDSIZE, size);
                 if (bodyPtr != 0L) {
                     curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_POSTFIELDS, MemorySegment.ofAddress(bodyPtr));
                 }
-            } else if (!"GET".equalsIgnoreCase(method)) {
+            } else if (!StringLookup.getJavaString(59).equalsIgnoreCase(method)) {
                 try (Arena tempArena = Arena.ofConfined()) {
                     MemorySegment methodSeg = tempArena.allocateFrom(method);
                     curl_easy_setopt_ptr.invokeExact(curl, CURLOPT_CUSTOMREQUEST, methodSeg);
@@ -386,7 +387,7 @@ public final class HTTPClient {
             if (headersPtr != 0L) {
                 String headersStr = string.get(headersPtr);
                 if (headersStr != null && !headersStr.isEmpty()) {
-                    String[] lines = headersStr.split("\n");
+                    String[] lines = headersStr.split(StringLookup.getJavaString(102));
                     for (String line : lines) {
                         int idx = line.indexOf(':');
                         if (idx > 0) {
@@ -394,11 +395,11 @@ public final class HTTPClient {
                         }
                     }
                 }
-            } else if ("POST".equalsIgnoreCase(method)) {
-                builder.header("Content-Type", "application/json");
+            } else if (StringLookup.getJavaString(56).equalsIgnoreCase(method)) {
+                builder.header(StringLookup.getJavaString(104), StringLookup.getJavaString(105));
             }
 
-            if ("POST".equalsIgnoreCase(method) && bodyPtr != 0L) {
+            if (StringLookup.getJavaString(56).equalsIgnoreCase(method) && bodyPtr != 0L) {
                 long len = bodyLen > 0L ? bodyLen : (long) string.length(bodyPtr);
                 byte[] bytes = new byte[(int) len];
                 for (int i = 0; i < (int) len; i++) {

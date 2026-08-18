@@ -7,6 +7,7 @@ import annotation.Volatile;
 import lang.Vec3;
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * Memory mapper for an off-heap Physics Body struct.
  * Stride is exactly 64 bytes (8 longs), aligning perfectly with CPU cache lines.
@@ -34,7 +35,7 @@ public final class PhysicsBody
     {
         if (ptr == 0L)
         {
-            throw new NullPointerException("Accessing NULL physics body pointer!");
+            throw new NullPointerException(StringLookup.getJavaString(1026));
         }
     }
 

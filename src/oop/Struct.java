@@ -8,6 +8,7 @@ import annotation.Required;
 import annotation.Volatile;
 import nio.ForeignMemory;
 
+import nio.StringLookup;
 /**
  * Off-heap generic dynamic struct layout manager.
  */
@@ -63,7 +64,7 @@ public final class Struct {
 
     public static synchronized int construct(int... fieldClassIds) {
         if (nextStructId > MAX_STRUCTS) {
-            throw new IllegalStateException("Struct ID space exhausted: at most " + MAX_STRUCTS + " structs can be constructed");
+            throw new IllegalStateException(StringLookup.getJavaString(327) + MAX_STRUCTS + StringLookup.getJavaString(328));
         }
         int id = TypeRegister.CUSTOM_STRUCT + nextStructId++;
         define(id, fieldClassIds);
@@ -84,10 +85,10 @@ public final class Struct {
     public static synchronized void define(int generic, int... fieldClassIds) {
         int index = generic - TypeRegister.CUSTOM_STRUCT;
         if (index < 0 || index >= MAX_STRUCTS) {
-            throw new IllegalArgumentException("Struct ID " + generic + " must map to index between 0 and " + (MAX_STRUCTS - 1));
+            throw new IllegalArgumentException(StringLookup.getJavaString(329) + generic + StringLookup.getJavaString(330) + (MAX_STRUCTS - 1));
         }
         if (fieldClassIds == null || fieldClassIds.length == 0) {
-            throw new IllegalArgumentException("Fields layout cannot be empty!");
+            throw new IllegalArgumentException(StringLookup.getJavaString(331));
         }
 
         long slot = REGISTRY_BASE + (index * SLOT_SIZE);
@@ -123,26 +124,26 @@ public final class Struct {
     private static void checkFieldType(int generic, int fieldIndex, int expectedClassId) {
         int index = generic - TypeRegister.CUSTOM_STRUCT;
         if (index < 0 || index >= MAX_STRUCTS) {
-            throw new IllegalArgumentException("Invalid Struct ID " + generic);
+            throw new IllegalArgumentException(StringLookup.getJavaString(332) + generic);
         }
         long slot = REGISTRY_BASE + (index * SLOT_SIZE);
         int fieldsCount = ForeignMemory.getInt(slot + 4L);
         long fieldTypesPtr = ForeignMemory.getVolatileLong(slot + 8L);
 
         if (fieldTypesPtr == 0L) {
-            throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
+            throw new IllegalArgumentException(StringLookup.getJavaString(333) + Integer.toHexString(generic).toUpperCase() + StringLookup.getJavaString(334));
         }
         if (fieldIndex < 0 || fieldIndex >= fieldsCount) {
-            throw new IndexOutOfBoundsException("Field index " + fieldIndex + " out of bounds for struct (fields count: " + fieldsCount + ")");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(335) + fieldIndex + StringLookup.getJavaString(336) + fieldsCount + StringLookup.getJavaString(18));
         }
         int classId = ForeignMemory.getInt(fieldTypesPtr + fieldIndex * 4L);
         if (classId != expectedClassId) {
-            throw new IllegalArgumentException("Type mismatch: expected field class ID 0x" + Integer.toHexString(expectedClassId).toUpperCase() + " but found 0x" + Integer.toHexString(classId).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(337) + Integer.toHexString(expectedClassId).toUpperCase() + StringLookup.getJavaString(338) + Integer.toHexString(classId).toUpperCase());
         }
     }
 
     private static int getStructIdFromPointer(long userPtr) {
-        if (userPtr == 0L) throw new NullPointerException("Accessing NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(339));
         int type = ForeignMemory.getInt(userPtr - 8L);
         return TypeRegister.getClassId(type);
     }
@@ -177,7 +178,7 @@ public final class Struct {
         int offset = getOffset(generic, fieldIndex);
         int length = ForeignMemory.getInt(userPtr - 4L);
         if (elementIndex < 0 || elementIndex >= length) {
-            throw new IndexOutOfBoundsException("Struct element index " + elementIndex + " out of bounds (length: " + length + ")");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(340) + elementIndex + StringLookup.getJavaString(341) + length + StringLookup.getJavaString(18));
         }
         if (TypeRegister.isStructSOA(type)) {
             int fieldStride = Stride.get(fieldClassId);
@@ -191,7 +192,7 @@ public final class Struct {
     // Level 1: Allocate a single struct (Singleton)
     public static long allocateSingleton(int generic) {
         int stride = getStride(generic);
-        if (stride == 0) throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
+        if (stride == 0) throw new IllegalArgumentException(StringLookup.getJavaString(333) + Integer.toHexString(generic).toUpperCase() + StringLookup.getJavaString(334));
         int fieldsCount = getFieldsCount(generic);
 
         long metadataSize = (16L + fieldsCount * 4L + 7L) & ~7L;
@@ -229,8 +230,8 @@ public final class Struct {
     // Allocate an array of structs in AoS (Array of Structs) layout
     public static long allocateAOS(int generic, int length) {
         int stride = getStride(generic);
-        if (stride == 0) throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
-        if (length <= 0) throw new IllegalArgumentException("Array length must be positive!");
+        if (stride == 0) throw new IllegalArgumentException(StringLookup.getJavaString(333) + Integer.toHexString(generic).toUpperCase() + StringLookup.getJavaString(334));
+        if (length <= 0) throw new IllegalArgumentException(StringLookup.getJavaString(342));
         int fieldsCount = getFieldsCount(generic);
 
         long metadataSize = (16L + fieldsCount * 4L + 7L) & ~7L;
@@ -264,8 +265,8 @@ public final class Struct {
     // Allocate an array of structs in SoA (Struct of Arrays) layout
     public static long allocateSOA(int generic, int length) {
         int stride = getStride(generic);
-        if (stride == 0) throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
-        if (length <= 0) throw new IllegalArgumentException("Array length must be positive!");
+        if (stride == 0) throw new IllegalArgumentException(StringLookup.getJavaString(333) + Integer.toHexString(generic).toUpperCase() + StringLookup.getJavaString(334));
+        if (length <= 0) throw new IllegalArgumentException(StringLookup.getJavaString(342));
         int fieldsCount = getFieldsCount(generic);
 
         long metadataSize = (16L + fieldsCount * 4L + 7L) & ~7L;
@@ -299,8 +300,8 @@ public final class Struct {
     // Level 3: Allocate a pointer array (Matrix) of custom structs (FORM_POINTER | generic)
     public static long allocateMatrix(int generic, int length) {
         int stride = getStride(generic);
-        if (stride == 0) throw new IllegalArgumentException("Struct ID 0x" + Integer.toHexString(generic).toUpperCase() + " is not defined!");
-        if (length <= 0) throw new IllegalArgumentException("Matrix length must be positive!");
+        if (stride == 0) throw new IllegalArgumentException(StringLookup.getJavaString(333) + Integer.toHexString(generic).toUpperCase() + StringLookup.getJavaString(334));
+        if (length <= 0) throw new IllegalArgumentException(StringLookup.getJavaString(343));
 
         long bufferBytes = (long) length * 8L;
         long block = ForeignMemory.allocateNative(8L + bufferBytes);
@@ -318,28 +319,28 @@ public final class Struct {
 
     // get pointer at index in struct pointer array (matrix)
     public static long getPointer(long userPtr, int index) {
-        if (userPtr == 0L) throw new NullPointerException("Accessing NULL off-heap struct matrix pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(344));
         int type = ForeignMemory.getInt(userPtr - 8L);
         if (!TypeRegister.isPointer(type)) {
-            throw new IllegalArgumentException("Expected pointer array (matrix) form but found 0x" + Integer.toHexString(type).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(345) + Integer.toHexString(type).toUpperCase());
         }
         int length = ForeignMemory.getInt(userPtr - 4L);
         if (index < 0 || index >= length) {
-            throw new IndexOutOfBoundsException("Matrix index " + index + " out of bounds (length: " + length + ")");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(346) + index + StringLookup.getJavaString(341) + length + StringLookup.getJavaString(18));
         }
         return ForeignMemory.getLong(userPtr + (long) index * 8L);
     }
 
     // set pointer at index in struct pointer array (matrix)
     public static void setPointer(long userPtr, int index, long targetPointer) {
-        if (userPtr == 0L) throw new NullPointerException("Accessing NULL off-heap struct matrix pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(344));
         int type = ForeignMemory.getInt(userPtr - 8L);
         if (!TypeRegister.isPointer(type)) {
-            throw new IllegalArgumentException("Expected pointer array (matrix) form but found 0x" + Integer.toHexString(type).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(345) + Integer.toHexString(type).toUpperCase());
         }
         int length = ForeignMemory.getInt(userPtr - 4L);
         if (index < 0 || index >= length) {
-            throw new IndexOutOfBoundsException("Matrix index " + index + " out of bounds (length: " + length + ")");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(346) + index + StringLookup.getJavaString(341) + length + StringLookup.getJavaString(18));
         }
         ForeignMemory.setLong(userPtr + (long) index * 8L, targetPointer);
     }
@@ -349,7 +350,7 @@ public final class Struct {
         if (userPtr == 0L) return;
         int type = ForeignMemory.getInt(userPtr - 8L);
         if (type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) {
-            throw new IllegalStateException("Double free or corrupt struct pointer: 0x" + Long.toHexString(userPtr).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(347) + Long.toHexString(userPtr).toUpperCase());
         }
         int generic = TypeRegister.getClassId(type);
         long block;
@@ -1756,7 +1757,7 @@ public final class Struct {
     // ==========================================
 
     public static void setString(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setString(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     public static void setString(int generic, long userPtr, int fieldIndex, long value) {
@@ -1775,7 +1776,7 @@ public final class Struct {
     }
 
     public static void setString(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setString(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     public static void setString(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
@@ -1797,7 +1798,7 @@ public final class Struct {
 
     @Volatile
     public static void setStringVolatile(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setStringVolatile(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     @Volatile
@@ -1820,7 +1821,7 @@ public final class Struct {
 
     @Volatile
     public static void setStringVolatile(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setStringVolatile(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     @Volatile
@@ -1943,7 +1944,7 @@ public final class Struct {
     // ==========================================
 
     public static void setBrain(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setBrain(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     public static void setBrain(int generic, long userPtr, int fieldIndex, long value) {
@@ -1962,7 +1963,7 @@ public final class Struct {
     }
 
     public static void setBrain(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setBrain(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     public static void setBrain(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
@@ -1984,7 +1985,7 @@ public final class Struct {
 
     @Volatile
     public static void setBrainVolatile(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setBrainVolatile(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     @Volatile
@@ -2007,7 +2008,7 @@ public final class Struct {
 
     @Volatile
     public static void setBrainVolatile(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setBrainVolatile(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     @Volatile
@@ -2130,7 +2131,7 @@ public final class Struct {
     // ==========================================
 
     public static void setIntFloat(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setIntFloat(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     public static void setIntFloat(int generic, long userPtr, int fieldIndex, long value) {
@@ -2149,7 +2150,7 @@ public final class Struct {
     }
 
     public static void setIntFloat(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setIntFloat(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     public static void setIntFloat(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
@@ -2171,7 +2172,7 @@ public final class Struct {
 
     @Volatile
     public static void setIntFloatVolatile(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setIntFloatVolatile(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     @Volatile
@@ -2194,7 +2195,7 @@ public final class Struct {
 
     @Volatile
     public static void setIntFloatVolatile(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setIntFloatVolatile(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     @Volatile
@@ -2317,7 +2318,7 @@ public final class Struct {
     // ==========================================
 
     public static void setLongFloat(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setLongFloat(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     public static void setLongFloat(int generic, long userPtr, int fieldIndex, long value) {
@@ -2336,7 +2337,7 @@ public final class Struct {
     }
 
     public static void setLongFloat(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setLongFloat(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     public static void setLongFloat(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
@@ -2358,7 +2359,7 @@ public final class Struct {
 
     @Volatile
     public static void setLongFloatVolatile(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setLongFloatVolatile(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     @Volatile
@@ -2381,7 +2382,7 @@ public final class Struct {
 
     @Volatile
     public static void setLongFloatVolatile(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setLongFloatVolatile(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     @Volatile
@@ -2504,7 +2505,7 @@ public final class Struct {
     // ==========================================
 
     public static void setIntDouble(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setIntDouble(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     public static void setIntDouble(int generic, long userPtr, int fieldIndex, long value) {
@@ -2523,7 +2524,7 @@ public final class Struct {
     }
 
     public static void setIntDouble(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setIntDouble(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     public static void setIntDouble(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
@@ -2545,7 +2546,7 @@ public final class Struct {
 
     @Volatile
     public static void setIntDoubleVolatile(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setIntDoubleVolatile(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     @Volatile
@@ -2568,7 +2569,7 @@ public final class Struct {
 
     @Volatile
     public static void setIntDoubleVolatile(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setIntDoubleVolatile(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     @Volatile
@@ -2691,7 +2692,7 @@ public final class Struct {
     // ==========================================
 
     public static void setLongDouble(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setLongDouble(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     public static void setLongDouble(int generic, long userPtr, int fieldIndex, long value) {
@@ -2710,7 +2711,7 @@ public final class Struct {
     }
 
     public static void setLongDouble(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setLongDouble(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     public static void setLongDouble(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
@@ -2732,7 +2733,7 @@ public final class Struct {
 
     @Volatile
     public static void setLongDoubleVolatile(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setLongDoubleVolatile(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     @Volatile
@@ -2755,7 +2756,7 @@ public final class Struct {
 
     @Volatile
     public static void setLongDoubleVolatile(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setLongDoubleVolatile(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     @Volatile
@@ -2878,7 +2879,7 @@ public final class Struct {
     // ==========================================
 
     public static void setFixed32(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setFixed32(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     public static void setFixed32(int generic, long userPtr, int fieldIndex, long value) {
@@ -2897,7 +2898,7 @@ public final class Struct {
     }
 
     public static void setFixed32(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setFixed32(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     public static void setFixed32(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
@@ -2919,7 +2920,7 @@ public final class Struct {
 
     @Volatile
     public static void setFixed32Volatile(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setFixed32Volatile(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     @Volatile
@@ -2942,7 +2943,7 @@ public final class Struct {
 
     @Volatile
     public static void setFixed32Volatile(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setFixed32Volatile(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     @Volatile
@@ -3065,7 +3066,7 @@ public final class Struct {
     // ==========================================
 
     public static void setFixed64(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setFixed64(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     public static void setFixed64(int generic, long userPtr, int fieldIndex, long value) {
@@ -3084,7 +3085,7 @@ public final class Struct {
     }
 
     public static void setFixed64(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setFixed64(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     public static void setFixed64(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
@@ -3106,7 +3107,7 @@ public final class Struct {
 
     @Volatile
     public static void setFixed64Volatile(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setFixed64Volatile(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     @Volatile
@@ -3129,7 +3130,7 @@ public final class Struct {
 
     @Volatile
     public static void setFixed64Volatile(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setFixed64Volatile(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     @Volatile
@@ -3252,7 +3253,7 @@ public final class Struct {
     // ==========================================
 
     public static void setBool(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setBool(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     public static void setBool(int generic, long userPtr, int fieldIndex, long value) {
@@ -3271,7 +3272,7 @@ public final class Struct {
     }
 
     public static void setBool(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setBool(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     public static void setBool(int generic, long userPtr, int elementIndex, int fieldIndex, long value) {
@@ -3293,7 +3294,7 @@ public final class Struct {
 
     @Volatile
     public static void setBoolVolatile(long userPtr, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct pointer!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(348));
         setBoolVolatile(getStructIdFromPointer(userPtr), userPtr, fieldIndex, value);
     }
     @Volatile
@@ -3316,7 +3317,7 @@ public final class Struct {
 
     @Volatile
     public static void setBoolVolatile(long userPtr, int elementIndex, int fieldIndex, long value) {
-        if (userPtr == 0L) throw new NullPointerException("Writing to NULL off-heap struct array!");
+        if (userPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(349));
         setBoolVolatile(getStructIdFromPointer(userPtr), userPtr, elementIndex, fieldIndex, value);
     }
     @Volatile

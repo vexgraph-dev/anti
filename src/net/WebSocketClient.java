@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Random;
 
+import nio.StringLookup;
 /**
  * Off-heap zero-GC WebSocket client operating on raw long memory pointer handles.
  */
@@ -82,9 +83,9 @@ public final class WebSocketClient {
 
         try {
             URI uri = URI.create(uriStr);
-            String host = uri.getHost() != null ? uri.getHost() : "localhost";
-            int port = uri.getPort() > 0 ? uri.getPort() : ("wss".equalsIgnoreCase(uri.getScheme()) ? 443 : 80);
-            String path = (uri.getPath() != null && !uri.getPath().isEmpty()) ? uri.getPath() : "/";
+            String host = uri.getHost() != null ? uri.getHost() : StringLookup.getJavaString(39);
+            int port = uri.getPort() > 0 ? uri.getPort() : (StringLookup.getJavaString(46).equalsIgnoreCase(uri.getScheme()) ? 443 : 80);
+            String path = (uri.getPath() != null && !uri.getPath().isEmpty()) ? uri.getPath() : StringLookup.getJavaString(40);
 
             SocketChannel sc = SocketChannel.open();
             sc.connect(new InetSocketAddress(host, port));
@@ -94,12 +95,12 @@ public final class WebSocketClient {
             RNG.nextBytes(keyBytes);
             String secKey = Base64.getEncoder().encodeToString(keyBytes);
 
-            String handshakeReq = "GET " + path + " HTTP/1.1\r\n" +
-                    "Host: " + host + ":" + port + "\r\n" +
-                    "Upgrade: websocket\r\n" +
-                    "Connection: Upgrade\r\n" +
-                    "Sec-WebSocket-Key: " + secKey + "\r\n" +
-                    "Sec-WebSocket-Version: 13\r\n\r\n";
+            String handshakeReq = StringLookup.getJavaString(47) + path + StringLookup.getJavaString(48) +
+                    StringLookup.getJavaString(49) + host + StringLookup.getJavaString(43) + port + StringLookup.getJavaString(50) +
+                    StringLookup.getJavaString(51) +
+                    StringLookup.getJavaString(52) +
+                    StringLookup.getJavaString(53) + secKey + StringLookup.getJavaString(50) +
+                    StringLookup.getJavaString(54);
 
             sc.write(ByteBuffer.wrap(handshakeReq.getBytes(StandardCharsets.UTF_8)));
 
@@ -115,7 +116,7 @@ public final class WebSocketClient {
             respBuf.get(respBytes);
             String handshakeResp = new String(respBytes, StandardCharsets.UTF_8);
 
-            if (handshakeResp.contains("101 Switching Protocols")) {
+            if (handshakeResp.contains(StringLookup.getJavaString(55))) {
                 sc.configureBlocking(false);
                 Map.putObject(CHANNEL_MAP_PTR, wsPtr, sc);
                 ForeignMemory.setInt(wsPtr, 1); // State = CONNECTED

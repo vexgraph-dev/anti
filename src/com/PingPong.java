@@ -8,6 +8,7 @@ import primitive.string;
 
 import thread.Atomic;
 
+import nio.StringLookup;
 /**
  * High-performance, off-heap Ping-Pong communication example.
  * Bootstraps an asynchronous local HTTPServer, polls for /ping requests,
@@ -18,7 +19,7 @@ import thread.Atomic;
 public final class PingPong
 {
     private static final int PORT = 12345;
-    private static final String PING_URL = "http://127.0.0.1:" + PORT + "/ping";
+    private static final String PING_URL = StringLookup.getJavaString(1196) + PORT + StringLookup.getJavaString(1197);
 
     private PingPong() {}
 
@@ -28,22 +29,22 @@ public final class PingPong
      */
     public static boolean runDemo()
     {
-        System.out.println("[Com Demo] Initializing PingPong Server on port: " + PORT);
+        System.out.println(StringLookup.getJavaString(1198) + PORT);
 
         // 1. Initialize HTTPServer instance handle off-heap
         long serverPtr = HTTPServer.invoke(PORT);
         if (!HTTPServer.start(serverPtr))
         {
-            System.err.println("[Com Demo ERROR] Failed to start HTTPServer on port: " + PORT);
+            System.err.println(StringLookup.getJavaString(1199) + PORT);
             HTTPServer.free(serverPtr);
             return false;
         }
 
-        System.out.println("[Com Demo] Server running: " + HTTPServer.isRunning(serverPtr));
+        System.out.println(StringLookup.getJavaString(1200) + HTTPServer.isRunning(serverPtr));
 
         // 2. Start a background thread to poll for HTTP requests
         long running = Atomic.allocateBool(true);
-        Thread serverThread = Thread.ofPlatform().name("PingPong-Server-Poll").unstarted(() -> {
+        Thread serverThread = Thread.ofPlatform().name(StringLookup.getJavaString(1201)).unstarted(() -> {
             while (Atomic.getBool(running))
             {
                 long reqPtr = HTTPServer.pollRequest(serverPtr);
@@ -52,14 +53,14 @@ public final class PingPong
                     long uriPtr = HTTPServer.getRequestUri(reqPtr);
                     String uri = string.get(uriPtr);
 
-                    if ("/ping".equals(uri))
+                    if (StringLookup.getJavaString(1197).equals(uri))
                     {
                         // Respond with "pong"
-                        HTTPServer.sendResponse(reqPtr, 200, "pong");
+                        HTTPServer.sendResponse(reqPtr, 200, StringLookup.getJavaString(1202));
                     }
                     else
                     {
-                        HTTPServer.sendResponse(reqPtr, 404, "Not Found");
+                        HTTPServer.sendResponse(reqPtr, 404, StringLookup.getJavaString(79));
                     }
                 }
                 
@@ -83,23 +84,23 @@ public final class PingPong
             // Give server a fraction of a second to spin up
             Thread.sleep(50);
 
-            System.out.println("[Com Demo] Dispatching native libcurl GET request to: " + PING_URL);
+            System.out.println(StringLookup.getJavaString(1203) + PING_URL);
 
             // 3. Perform a GET request to the local server
             resPtr = HTTPClient.get(PING_URL);
             if (resPtr != 0L)
             {
                 String responseText = string.get(resPtr);
-                System.out.println("[Com Demo] Response received: " + responseText);
+                System.out.println(StringLookup.getJavaString(1204) + responseText);
                 
-                if ("pong".equals(responseText))
+                if (StringLookup.getJavaString(1202).equals(responseText))
                 {
                     success = true;
                 }
             }
             else
             {
-                System.err.println("[Com Demo ERROR] libcurl returned null response.");
+                System.err.println(StringLookup.getJavaString(1205));
             }
         }
         catch (Exception e)

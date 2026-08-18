@@ -8,6 +8,7 @@ import lang.Vec4;
 import primitive.Arguments;
 import primitive.Int;
 
+import nio.StringLookup;
 /**
  * Math language-pack adapters. Every method here is a uniform bound method:
  *
@@ -84,7 +85,7 @@ public final class BindingsMath {
     /** Stores a value into a primitive.Int; returns the pointer. */
     public static long intSet(long argsPtr, long argCount) {
         long p = Arguments.getPointer(argsPtr, 0);
-        if (p == 0L) throw new NullPointerException("int.set on NULL primitive.Int pointer!");
+        if (p == 0L) throw new NullPointerException(StringLookup.getJavaString(1030));
         Int.set(p, (int) Arguments.get(argsPtr, 1));
         return p;
     }

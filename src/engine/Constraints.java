@@ -1,5 +1,6 @@
 package engine;
 
+import nio.StringLookup;
 /**
  * Architectural Engine Constraints and Resource Limits.
  * Defines static final defaults based on an 8 GB system memory baseline,
@@ -166,15 +167,15 @@ public final class Constraints
 
     public static String getSummary()
     {
-        return "Engine Constraints Summary:\n" +
-            "  - Max Entities:            " + maxEntities + "\n" +
-            "  - Max Triangles:           " + maxTriangles + "\n" +
-            "  - Max Textures:            " + maxTextures + "\n" +
-            "  - Max Shaders:             " + maxShaders + "\n" +
-            "  - Max Lights:              " + maxLights + "\n" +
-            "  - Max Audio Sources:       " + maxAudioSources + "\n" +
-            "  - Max Draw Calls / Frame:  " + maxDrawCallsPerFrame + "\n" +
-            "  - Max Off-Heap RAM:        " + (maxOffHeapMemoryBytes / (1024 * 1024)) + " MB\n" +
-            "  - Max Worker Threads:      " + maxThreads;
+        return StringLookup.getJavaString(1083) +
+            StringLookup.getJavaString(1084) + maxEntities + StringLookup.getJavaString(102) +
+            StringLookup.getJavaString(1085) + maxTriangles + StringLookup.getJavaString(102) +
+            StringLookup.getJavaString(1086) + maxTextures + StringLookup.getJavaString(102) +
+            StringLookup.getJavaString(1087) + maxShaders + StringLookup.getJavaString(102) +
+            StringLookup.getJavaString(1088) + maxLights + StringLookup.getJavaString(102) +
+            StringLookup.getJavaString(1089) + maxAudioSources + StringLookup.getJavaString(102) +
+            StringLookup.getJavaString(1090) + maxDrawCallsPerFrame + StringLookup.getJavaString(102) +
+            StringLookup.getJavaString(1091) + (maxOffHeapMemoryBytes / (1024 * 1024)) + StringLookup.getJavaString(486) +
+            StringLookup.getJavaString(1092) + maxThreads;
     }
 }

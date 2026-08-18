@@ -9,6 +9,7 @@ import primitive.string;
 
 import java.nio.charset.StandardCharsets;
 
+import nio.StringLookup;
 @Draft
 @Intention("Off-heap zero-GC JSON parser and compiler operating on raw long memory pointers with zero Java heap allocations")
 public final class JSON {
@@ -21,12 +22,12 @@ public final class JSON {
     // --- OFF-HEAP JSON COMPILER / BUILDER ---
 
     public static long createObject() {
-        long ptr = string.allocate("{");
+        long ptr = string.allocate(StringLookup.getJavaString(60));
         return ptr;
     }
 
     public static long createArray() {
-        long ptr = string.allocate("[");
+        long ptr = string.allocate(StringLookup.getJavaString(61));
         return ptr;
     }
 
@@ -47,19 +48,19 @@ public final class JSON {
 
         long resPtr = objPtr;
         if (hasEntries) {
-            resPtr = string.append(resPtr, ",");
+            resPtr = string.append(resPtr, StringLookup.getJavaString(62));
         }
 
-        resPtr = string.append(resPtr, "\"");
+        resPtr = string.append(resPtr, StringLookup.getJavaString(63));
         resPtr = string.append(resPtr, keyPtr);
-        resPtr = string.append(resPtr, "\":");
+        resPtr = string.append(resPtr, StringLookup.getJavaString(64));
 
         if (valPtr != 0L) {
-            resPtr = string.append(resPtr, "\"");
+            resPtr = string.append(resPtr, StringLookup.getJavaString(63));
             resPtr = string.append(resPtr, valPtr);
-            resPtr = string.append(resPtr, "\"");
+            resPtr = string.append(resPtr, StringLookup.getJavaString(63));
         } else {
-            resPtr = string.append(resPtr, "null");
+            resPtr = string.append(resPtr, StringLookup.getJavaString(65));
         }
 
         return resPtr;
@@ -86,7 +87,7 @@ public final class JSON {
     }
 
     public static long putObject(long objPtr, String key, long childObjPtr) {
-        if (childObjPtr == 0L) return putRaw(objPtr, key, "null");
+        if (childObjPtr == 0L) return putRaw(objPtr, key, StringLookup.getJavaString(65));
         long finalizedChild = build(childObjPtr);
         long res = putRaw(objPtr, key, string.get(finalizedChild));
         string.free(finalizedChild);
@@ -94,7 +95,7 @@ public final class JSON {
     }
 
     public static long putArray(long objPtr, String key, long arrayPtr) {
-        if (arrayPtr == 0L) return putRaw(objPtr, key, "null");
+        if (arrayPtr == 0L) return putRaw(objPtr, key, StringLookup.getJavaString(65));
         long finalizedArray = buildArray(arrayPtr);
         long res = putRaw(objPtr, key, string.get(finalizedArray));
         string.free(finalizedArray);
@@ -108,13 +109,13 @@ public final class JSON {
 
         long resPtr = objPtr;
         if (hasEntries) {
-            resPtr = string.append(resPtr, ",");
+            resPtr = string.append(resPtr, StringLookup.getJavaString(62));
         }
 
-        resPtr = string.append(resPtr, "\"");
+        resPtr = string.append(resPtr, StringLookup.getJavaString(63));
         resPtr = string.append(resPtr, key);
-        resPtr = string.append(resPtr, "\":");
-        resPtr = string.append(resPtr, rawValueStr != null ? rawValueStr : "null");
+        resPtr = string.append(resPtr, StringLookup.getJavaString(64));
+        resPtr = string.append(resPtr, rawValueStr != null ? rawValueStr : StringLookup.getJavaString(65));
 
         return resPtr;
     }
@@ -126,12 +127,12 @@ public final class JSON {
 
         long resPtr = arrayPtr;
         if (hasEntries) {
-            resPtr = string.append(resPtr, ",");
+            resPtr = string.append(resPtr, StringLookup.getJavaString(62));
         }
 
-        resPtr = string.append(resPtr, "\"");
+        resPtr = string.append(resPtr, StringLookup.getJavaString(63));
         resPtr = string.append(resPtr, elementStr);
-        resPtr = string.append(resPtr, "\"");
+        resPtr = string.append(resPtr, StringLookup.getJavaString(63));
         return resPtr;
     }
 
@@ -142,7 +143,7 @@ public final class JSON {
 
         long resPtr = arrayPtr;
         if (hasEntries) {
-            resPtr = string.append(resPtr, ",");
+            resPtr = string.append(resPtr, StringLookup.getJavaString(62));
         }
 
         resPtr = string.append(resPtr, elementPtr);
@@ -151,12 +152,12 @@ public final class JSON {
 
     public static long build(long builderPtr) {
         if (builderPtr == 0L) return 0L;
-        return string.append(builderPtr, "}");
+        return string.append(builderPtr, StringLookup.getJavaString(66));
     }
 
     public static long buildArray(long builderPtr) {
         if (builderPtr == 0L) return 0L;
-        return string.append(builderPtr, "]");
+        return string.append(builderPtr, StringLookup.getJavaString(67));
     }
 
     public static void free(long jsonPtr) {
@@ -169,7 +170,7 @@ public final class JSON {
 
     public static long get(long jsonPtr, String path) {
         if (jsonPtr == 0L || path == null || path.isEmpty()) return 0L;
-        String[] keys = path.split("\\.");
+        String[] keys = path.split(StringLookup.getJavaString(68));
         long currentPtr = jsonPtr;
         long extractedPtr = 0L;
 
@@ -527,7 +528,7 @@ public final class JSON {
                                 ForeignMemory.copy(jsonObjPtr + keyStart, resultPtr, keyLen);
                                 ForeignMemory.setByte(resultPtr + keyLen, (byte) 0);
                             } else {
-                                resultPtr = string.append(resultPtr, ",");
+                                resultPtr = string.append(resultPtr, StringLookup.getJavaString(62));
                                 long tempKey = string.allocateUninitialized(keyLen);
                                 ForeignMemory.copy(jsonObjPtr + keyStart, tempKey, keyLen);
                                 ForeignMemory.setByte(tempKey + keyLen, (byte) 0);
@@ -567,16 +568,16 @@ public final class JSON {
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             switch (c) {
-                case '"':  sb.append("\\\""); break;
-                case '\\': sb.append("\\\\"); break;
-                case '\b': sb.append("\\b");  break;
-                case '\f': sb.append("\\f");  break;
-                case '\n': sb.append("\\n");  break;
-                case '\r': sb.append("\\r");  break;
-                case '\t': sb.append("\\t");  break;
+                case '"':  sb.append(StringLookup.getJavaString(69)); break;
+                case '\\': sb.append(StringLookup.getJavaString(70)); break;
+                case '\b': sb.append(StringLookup.getJavaString(71));  break;
+                case '\f': sb.append(StringLookup.getJavaString(72));  break;
+                case '\n': sb.append(StringLookup.getJavaString(73));  break;
+                case '\r': sb.append(StringLookup.getJavaString(74));  break;
+                case '\t': sb.append(StringLookup.getJavaString(75));  break;
                 default:
                     if (c < 0x20) {
-                        sb.append("\\u");
+                        sb.append(StringLookup.getJavaString(76));
                         int code = (int) c;
                         sb.append(Character.forDigit((code >> 12) & 0xF, 16));
                         sb.append(Character.forDigit((code >> 8) & 0xF, 16));

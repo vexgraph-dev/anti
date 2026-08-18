@@ -7,6 +7,7 @@ import event.MouseEvent;
 import thread.RingBuffer;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 public final class Mouse {
 
     public static final int LEFT = 0;
@@ -239,10 +240,10 @@ public final class Mouse {
 
     public static String getString(int button) {
         return switch(button) {
-            case 0 -> "Left";
-            case 1 -> "Right";
-            case 2 -> "Middle";
-            default -> "Button " + (button + 1);
+            case 0 -> StringLookup.getJavaString(153);
+            case 1 -> StringLookup.getJavaString(154);
+            case 2 -> StringLookup.getJavaString(155);
+            default -> StringLookup.getJavaString(156) + (button + 1);
         };
     }
 }
