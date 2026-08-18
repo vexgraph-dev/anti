@@ -10,6 +10,7 @@ import nio.ForeignMemory;
 import oop.Stride;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Off-heap dynamic stride-based array implementation.
  */
@@ -30,14 +31,14 @@ public final class Array {
     private Array() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("Array subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(407));
     }
 
     private static void checkBounds(long arrayPtr, int index) {
-        if (arrayPtr == 0L) throw new NullPointerException("Accessing NULL off-heap array pointer!");
+        if (arrayPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(408));
         int len = size(arrayPtr);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for array size " + len);
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(409) + len);
         }
     }
 
@@ -54,7 +55,7 @@ public final class Array {
     // allocate array with pre-allocated items/slots initialized to size count
     public static synchronized long allocate(int generic, int count) {
         checkActive();
-        if (count < 0) throw new IllegalArgumentException("Count must be non-negative!");
+        if (count < 0) throw new IllegalArgumentException(StringLookup.getJavaString(399));
         int stride = Stride.get(generic);
 
         long headerBlock = ForeignMemory.allocateNative(HEADER_SIZE);
@@ -199,7 +200,7 @@ public final class Array {
         long headerBlock = arrayPtr - 8L;
         int type = ForeignMemory.getInt(headerBlock);
         if (type == 0 || !TypeRegister.isArray(type)) {
-            throw new IllegalStateException("Double free or corrupt array pointer: 0x" + Long.toHexString(arrayPtr).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(410) + Long.toHexString(arrayPtr).toUpperCase());
         }
 
         long dataBuffer = dataBuffer(arrayPtr);

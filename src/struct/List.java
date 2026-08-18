@@ -12,6 +12,7 @@ import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
 
+import nio.StringLookup;
 /**
  * Off-heap dynamic stride-based list implementation.
  */
@@ -39,14 +40,14 @@ public final class List {
     private List() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("List subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(394));
     }
 
     private static void checkBounds(long listPtr, int index) {
-        if (listPtr == 0L) throw new NullPointerException("Accessing NULL off-heap list pointer!");
+        if (listPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(395));
         int len = size(listPtr);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for list size " + len);
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(396) + len);
         }
     }
 
@@ -93,7 +94,7 @@ public final class List {
     // append value or pointer to list
     public static synchronized void add(long listPtr, long valueOrPointer) {
         checkActive();
-        if (listPtr == 0L) throw new NullPointerException("Writing to NULL off-heap list!");
+        if (listPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(397));
 
         int count = size(listPtr);
         int cap = capacity(listPtr);
@@ -295,7 +296,7 @@ public final class List {
         long headerBlock = listPtr - 8L;
         int type = ForeignMemory.getInt(headerBlock);
         if (type == 0 || !TypeRegister.isArray(type)) {
-            throw new IllegalStateException("Double free or corrupt list pointer: 0x" + Long.toHexString(listPtr).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(398) + Long.toHexString(listPtr).toUpperCase());
         }
 
         long dataBuffer = dataBuffer(listPtr);
@@ -316,7 +317,7 @@ public final class List {
     // allocate list with pre-allocated items/slots initialized to size count
     public static synchronized long allocate(int generic, int count) {
         checkActive();
-        if (count < 0) throw new IllegalArgumentException("Count must be non-negative!");
+        if (count < 0) throw new IllegalArgumentException(StringLookup.getJavaString(399));
         int stride = Stride.get(generic);
         int cap = Math.max(DEFAULT_CAPACITY, count);
 
@@ -343,7 +344,7 @@ public final class List {
     // append new uninitialized struct element slot and return its pointer
     public static synchronized long addStruct(long listPtr) {
         checkActive();
-        if (listPtr == 0L) throw new NullPointerException("Writing to NULL off-heap list!");
+        if (listPtr == 0L) throw new NullPointerException(StringLookup.getJavaString(397));
 
         int count = size(listPtr);
         int cap = capacity(listPtr);

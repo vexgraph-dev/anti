@@ -10,6 +10,7 @@ import oop.TypeRegister;
 
 import java.lang.foreign.Arena;
 
+import nio.StringLookup;
 /**
  * Off-heap circular buffer queue (FIFO) implementation.
  */
@@ -37,13 +38,13 @@ public final class Queue {
     private Queue() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("Queue subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(400));
     }
 
     private static void checkBounds(long queuePtr) {
-        if (queuePtr == 0L) throw new NullPointerException("Accessing NULL off-heap queue pointer!");
+        if (queuePtr == 0L) throw new NullPointerException(StringLookup.getJavaString(401));
         if (isEmpty(queuePtr)) {
-            throw new IndexOutOfBoundsException("Attempted FIFO operation on an empty queue!");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(402));
         }
     }
 
@@ -90,7 +91,7 @@ public final class Queue {
     // allocate queue with pre-allocated items/slots initialized to size count
     public static synchronized long allocate(int generic, int count) {
         checkActive();
-        if (count < 0) throw new IllegalArgumentException("Count must be non-negative!");
+        if (count < 0) throw new IllegalArgumentException(StringLookup.getJavaString(399));
         int stride = Stride.get(generic);
         int cap = Math.max(DEFAULT_CAPACITY, count);
 
@@ -164,7 +165,7 @@ public final class Queue {
     // enqueue / push an element to the back of the queue
     public static synchronized void push(long queuePtr, long valueOrPointer) {
         checkActive();
-        if (queuePtr == 0L) throw new NullPointerException("Pushing to NULL off-heap queue!");
+        if (queuePtr == 0L) throw new NullPointerException(StringLookup.getJavaString(403));
 
         ensureCapacity(queuePtr);
 

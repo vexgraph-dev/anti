@@ -9,6 +9,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 
 
+import nio.StringLookup;
 public final class Fixed64 {
 
     @Required
@@ -58,7 +59,7 @@ public final class Fixed64 {
 
     // --- MUTATORS & ACCESSORS ---
     public static double get(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
         long rawVal = ForeignMemory.getUnsafeLong(pointer);
         return fixed64ToDouble(rawVal);
     }
@@ -70,68 +71,68 @@ public final class Fixed64 {
     }
 
     public static void set(long pointer, double value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Fixed64 (Class ID " + CLASS_ID + ")");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(277) + CLASS_ID + StringLookup.getJavaString(18));
         long rawVal = doubleToFixed64(value);
         ForeignMemory.set(pointer, rawVal);
     }
 
     public static void set(long pointer, int index, double value) {
         checkBounds(pointer, index);
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Fixed64 (Class ID " + CLASS_ID + ")");
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(277) + CLASS_ID + StringLookup.getJavaString(18));
         long rawVal = doubleToFixed64(value);
         ForeignMemory.set(pointer + (index * 8L), rawVal);
     }
 
     @Volatile
     public static double getVolatile(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Fixed64 (Class ID " + CLASS_ID + ")");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(277) + CLASS_ID + StringLookup.getJavaString(18));
         long rawVal = ForeignMemory.getUnsafeVolatileLong(pointer);
         return fixed64ToDouble(rawVal);
     }
 
     @Volatile
     public static void setVolatile(long pointer, double value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Fixed64 (Class ID " + CLASS_ID + ")");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(277) + CLASS_ID + StringLookup.getJavaString(18));
         long rawVal = doubleToFixed64(value);
         ForeignMemory.setVolatile(pointer, rawVal);
     }
 
     public static boolean compareAndSet(long pointer, double expected, double value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Fixed64 (Class ID " + CLASS_ID + ")");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(277) + CLASS_ID + StringLookup.getJavaString(18));
         long expectedRaw = doubleToFixed64(expected);
         long valueRaw = doubleToFixed64(value);
         return ForeignMemory.compareAndSetLong(pointer, expectedRaw, valueRaw);
     }
 
     public static long getPointer(long matrixPointer, int index) {
-        if (matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
         if (!isPointer(matrixPointer)) {
-            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + java.lang.Integer.toHexString(type(matrixPointer)).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(263) + java.lang.Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
         checkBounds(matrixPointer, index);
         return ForeignMemory.getUnsafeLong(matrixPointer + (index * 8L));
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) {
-        if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
         if (!isPointer(matrixPointer)) {
-            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + java.lang.Integer.toHexString(type(matrixPointer)).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(263) + java.lang.Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
-        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected Fixed64 (Class ID " + CLASS_ID + ")");
+        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(matrixPointer).toUpperCase() + StringLookup.getJavaString(29) + classId(matrixPointer) + StringLookup.getJavaString(277) + CLASS_ID + StringLookup.getJavaString(18));
         checkBounds(matrixPointer, index);
         ForeignMemory.set(matrixPointer + (index * 8L), targetPointer);
     }
 
     // --- ARCHITECTURAL CHECKS ---
     private static void checkBounds(long pointer, int index) {
-        if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(33));
         int len = length(pointer);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap Fixed64 length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + java.lang.Integer.toHexString(type(pointer)).toUpperCase() + ")");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(278) + len + StringLookup.getJavaString(36) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(37) + java.lang.Integer.toHexString(type(pointer)).toUpperCase() + StringLookup.getJavaString(18));
         }
     }
 
@@ -203,7 +204,7 @@ public final class Fixed64 {
 
     @Volatile
     public static long getVolatilePointer(long matrixPointer, int index) {
-        if(matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
         checkBounds(matrixPointer, index);
         return ForeignMemory.getUnsafeVolatileLong(matrixPointer + (index * 8L));
     }
@@ -216,7 +217,7 @@ public final class Fixed64 {
 
     @Volatile
     public static void setVolatilePointer(long matrixPointer, int index, long targetPointer) {
-        if(matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
         checkBounds(matrixPointer, index);
         ForeignMemory.setVolatile(matrixPointer + (index * 8L), targetPointer);
     }

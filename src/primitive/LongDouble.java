@@ -9,6 +9,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 
 
+import nio.StringLookup;
 public final class LongDouble {
 
     @Required
@@ -73,17 +74,17 @@ public final class LongDouble {
 
     // --- DATA ACCESSORS & BOUNDS CHECKS ---
     public static long getIntPart(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getUnsafeLong(pointer);
     }
 
     public static double getFracPart(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getUnsafeDouble(pointer + 8L);
     }
 
     public static double getAsDouble(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
         return ForeignMemory.getUnsafeLong(pointer) + ForeignMemory.getUnsafeDouble(pointer + 8L);
     }
 
@@ -103,43 +104,43 @@ public final class LongDouble {
     }
 
     public static long getPointer(long matrixPointer, int index) { 
-        if (matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
         if (!isPointer(matrixPointer)) {
-            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
         checkBounds(matrixPointer, index);
         return ForeignMemory.getUnsafeLong(matrixPointer + (index * 8L)); 
     }
 
     public static void set(long pointer, long intPart, double fracPart) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected LongDouble (Class ID " + CLASS_ID + ")");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(270) + CLASS_ID + StringLookup.getJavaString(18));
         ForeignMemory.setUnsafe(pointer, intPart);
         ForeignMemory.setUnsafe(pointer + 8L, fracPart);
     }
 
     public static void set(long pointer, int index, long intPart, double fracPart) {
         checkBounds(pointer, index);
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected LongDouble (Class ID " + CLASS_ID + ")");
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(270) + CLASS_ID + StringLookup.getJavaString(18));
         ForeignMemory.setUnsafe(pointer + (index * 16L), intPart);
         ForeignMemory.setUnsafe(pointer + (index * 16L) + 8L, fracPart);
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
-        if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
         if (!isPointer(matrixPointer)) {
-            throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
+            throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
         }
-        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected LongDouble (Class ID " + CLASS_ID + ")");
+        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(matrixPointer).toUpperCase() + StringLookup.getJavaString(29) + classId(matrixPointer) + StringLookup.getJavaString(270) + CLASS_ID + StringLookup.getJavaString(18));
         checkBounds(matrixPointer, index);
         ForeignMemory.setUnsafe(matrixPointer + (index * 8L), targetPointer); 
     }
 
     private static void checkBounds(long pointer, int index) {
-        if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(33));
         int len = length(pointer);
         if (index < 0 || index >= len) {
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap LongDouble length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(271) + len + StringLookup.getJavaString(36) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(37) + Integer.toHexString(type(pointer)).toUpperCase() + StringLookup.getJavaString(18));
         }
     }
 

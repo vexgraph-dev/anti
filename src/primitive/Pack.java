@@ -3,6 +3,7 @@ package primitive;
 import annotation.Required;
 import oop.TypeRegister;
 
+import nio.StringLookup;
 /**
  * Zero-overhead primitive bit-packing and unpacking utilities.
  */
@@ -52,7 +53,7 @@ public final class Pack {
 
     public static byte unpackByte(int value, int byteIndex) {
         if (byteIndex < 0 || byteIndex > 3) {
-            throw new IndexOutOfBoundsException("Byte index " + byteIndex + " out of bounds [0..3]");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(295) + byteIndex + StringLookup.getJavaString(296));
         }
         int shift = (3 - byteIndex) * 8;
         return (byte) ((value >>> shift) & 0xFF);
@@ -91,7 +92,7 @@ public final class Pack {
 
     public static short unpackShort(long value, int shortIndex) {
         if (shortIndex < 0 || shortIndex > 3) {
-            throw new IndexOutOfBoundsException("Short index " + shortIndex + " out of bounds [0..3]");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(297) + shortIndex + StringLookup.getJavaString(296));
         }
         int shift = (3 - shortIndex) * 16;
         return (short) ((value >>> shift) & 0xFFFF);
@@ -99,7 +100,7 @@ public final class Pack {
 
     public static byte unpackByte(long value, int byteIndex) {
         if (byteIndex < 0 || byteIndex > 7) {
-            throw new IndexOutOfBoundsException("Byte index " + byteIndex + " out of bounds [0..7]");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(295) + byteIndex + StringLookup.getJavaString(298));
         }
         int shift = (7 - byteIndex) * 8;
         return (byte) ((value >>> shift) & 0xFF);

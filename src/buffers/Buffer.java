@@ -9,6 +9,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 import oop.Inheritance;
 
+import nio.StringLookup;
 @Draft
 public final class Buffer {
 
@@ -35,7 +36,7 @@ public final class Buffer {
      */
     public static long allocate(int classId, int width, int height, int channels) {
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
-            throw new IllegalArgumentException("Class ID 0x" + Integer.toHexString(classId) + " is not a subclass of Buffer");
+            throw new IllegalArgumentException(StringLookup.getJavaString(23) + Integer.toHexString(classId) + StringLookup.getJavaString(24));
 
         int length = width * height * channels;
         int type = TypeRegister.FORM_ARRAY | classId;
@@ -51,7 +52,7 @@ public final class Buffer {
 
     public static long expand(long oldPointer, int newWidth, int newHeight) {
         if (oldPointer == 0L)
-            throw new NullPointerException("Expanding NULL old pointer!");
+            throw new NullPointerException(StringLookup.getJavaString(25));
         int type = type(oldPointer);
         int classId = TypeRegister.getClassId(type);
         int oldLength = length(oldPointer);
@@ -72,17 +73,17 @@ public final class Buffer {
         int type = type(pointer);
         int classId = TypeRegister.getClassId(type);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
-            throw new IllegalStateException("Not a buffer class or corrupt pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(26) + java.lang.Long.toHexString(pointer).toUpperCase());
 
         Bit8.free(pointer - HEADER_SIZE);
     }
 
     public static long get(long pointer) {
         if (pointer == 0L)
-            throw new NullPointerException("Accessing NULL off-heap pointer!");
+            throw new NullPointerException(StringLookup.getJavaString(27));
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId + StringLookup.getJavaString(30));
         return ForeignMemory.getLong(pointer);
     }
 
@@ -90,16 +91,16 @@ public final class Buffer {
         checkBounds(pointer, index);
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId + StringLookup.getJavaString(30));
         return ForeignMemory.getLong(pointer + (index * 8L));
     }
 
     public static void set(long pointer, long value) {
         if (pointer == 0L)
-            throw new NullPointerException("Writing to NULL off-heap pointer!");
+            throw new NullPointerException(StringLookup.getJavaString(31));
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId + StringLookup.getJavaString(30));
         ForeignMemory.setLong(pointer, value);
     }
 
@@ -107,54 +108,54 @@ public final class Buffer {
         checkBounds(pointer, index);
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId + StringLookup.getJavaString(30));
         ForeignMemory.setLong(pointer + (index * 8L), value);
     }
 
     @Volatile
     public static long getVolatile(long pointer) {
         if (pointer == 0L)
-            throw new NullPointerException("Reading from NULL off-heap pointer!");
+            throw new NullPointerException(StringLookup.getJavaString(32));
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId + StringLookup.getJavaString(30));
         return ForeignMemory.getVolatileLong(pointer);
     }
 
     @Volatile
     public static void setVolatile(long pointer, long value) {
         if (pointer == 0L)
-            throw new NullPointerException("Writing to NULL off-heap pointer!");
+            throw new NullPointerException(StringLookup.getJavaString(31));
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId + StringLookup.getJavaString(30));
         ForeignMemory.setVolatileLong(pointer, value);
     }
 
     public static boolean compareAndSet(long pointer, long expected, long value) {
         if (pointer == 0L)
-            throw new NullPointerException("Writing to NULL off-heap pointer!");
+            throw new NullPointerException(StringLookup.getJavaString(31));
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId + StringLookup.getJavaString(30));
         return ForeignMemory.compareAndSetLong(pointer, expected, value);
     }
 
     public static long getAndSet(long pointer, long value) {
         if (pointer == 0L)
-            throw new NullPointerException("Writing to NULL off-heap pointer!");
+            throw new NullPointerException(StringLookup.getJavaString(31));
         int classId = classId(pointer);
         if (!Inheritance.isSubclassOf(classId, TypeRegister.ID_BUFFER))
-            throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId + ", expected a subclass of Buffer");
+            throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId + StringLookup.getJavaString(30));
         return ForeignMemory.getAndSetLong(pointer, value);
     }
 
     private static void checkBounds(long pointer, int index) {
         if (pointer == 0L)
-            throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
+            throw new NullPointerException(StringLookup.getJavaString(33));
         int len = length(pointer);
         if (index < 0 || index >= len)
-            throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(35) + len + StringLookup.getJavaString(36) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(37) + Integer.toHexString(type(pointer)).toUpperCase() + StringLookup.getJavaString(18));
     }
 
     public static int width(long pointer) {

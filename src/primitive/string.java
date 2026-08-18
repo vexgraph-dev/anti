@@ -12,6 +12,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.charset.StandardCharsets;
 
+import nio.StringLookup;
 @Intention("Lowercase s to not get confused with java.lang.String")
 public final class string {
 
@@ -54,13 +55,13 @@ public final class string {
     static {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
-            SMALL_FREE_HEAD_VH = lookup.findStaticVarHandle(string.class, "smallFreeHead", long.class);
-            MEDIUM_FREE_HEAD_VH = lookup.findStaticVarHandle(string.class, "mediumFreeHead", long.class);
-            LARGE_FREE_HEAD_VH = lookup.findStaticVarHandle(string.class, "largeFreeHead", long.class);
+            SMALL_FREE_HEAD_VH = lookup.findStaticVarHandle(string.class, StringLookup.getJavaString(8), long.class);
+            MEDIUM_FREE_HEAD_VH = lookup.findStaticVarHandle(string.class, StringLookup.getJavaString(9), long.class);
+            LARGE_FREE_HEAD_VH = lookup.findStaticVarHandle(string.class, StringLookup.getJavaString(10), long.class);
 
-            SMALL_EXPANDING_VH = lookup.findStaticVarHandle(string.class, "smallExpanding", int.class);
-            MEDIUM_EXPANDING_VH = lookup.findStaticVarHandle(string.class, "mediumExpanding", int.class);
-            LARGE_EXPANDING_VH = lookup.findStaticVarHandle(string.class, "largeExpanding", int.class);
+            SMALL_EXPANDING_VH = lookup.findStaticVarHandle(string.class, StringLookup.getJavaString(11), int.class);
+            MEDIUM_EXPANDING_VH = lookup.findStaticVarHandle(string.class, StringLookup.getJavaString(12), int.class);
+            LARGE_EXPANDING_VH = lookup.findStaticVarHandle(string.class, StringLookup.getJavaString(13), int.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -77,7 +78,7 @@ public final class string {
     private string() {}
 
     private static void checkActive() {
-        if (!active) throw new IllegalStateException("string subsystem is not active!");
+        if (!active) throw new IllegalStateException(StringLookup.getJavaString(274));
     }
 
     public static void freeAll() {
@@ -238,7 +239,7 @@ public final class string {
 
         int typeHeader = type(pointer);
         if (typeHeader == 0 || !TypeRegister.isArray(typeHeader)) {
-            throw new IllegalStateException("Double free or corrupt string pointer: 0x" + java.lang.Long.toHexString(pointer).toUpperCase());
+            throw new IllegalStateException(StringLookup.getJavaString(275) + java.lang.Long.toHexString(pointer).toUpperCase());
         }
 
         int len = length(pointer);
@@ -288,19 +289,19 @@ public final class string {
     @Volatile
     public static void setVolatile(long pointerAddress, long stringPointer) {
         checkActive();
-        if (pointerAddress == 0L) throw new NullPointerException("Writing to NULL pointer address!");
+        if (pointerAddress == 0L) throw new NullPointerException(StringLookup.getJavaString(276));
         ForeignMemory.setVolatileLong(pointerAddress, stringPointer);
     }
 
     public static boolean compareAndSet(long pointerAddress, long expectedStringPointer, long newStringPointer) {
         checkActive();
-        if (pointerAddress == 0L) throw new NullPointerException("Writing to NULL pointer address!");
+        if (pointerAddress == 0L) throw new NullPointerException(StringLookup.getJavaString(276));
         return ForeignMemory.compareAndSetLong(pointerAddress, expectedStringPointer, newStringPointer);
     }
 
     public static boolean compareAndSetString(long pointerAddress, long expectedStringPointer, String newStringValue) {
         checkActive();
-        if (pointerAddress == 0L) throw new NullPointerException("Writing to NULL pointer address!");
+        if (pointerAddress == 0L) throw new NullPointerException(StringLookup.getJavaString(276));
         long newStringPointer = allocate(newStringValue);
         if (ForeignMemory.compareAndSetLong(pointerAddress, expectedStringPointer, newStringPointer)) {
             if (expectedStringPointer != 0L) {
@@ -489,7 +490,7 @@ public final class string {
         int len = length(srcPtr);
         if (start < 0) start = 0;
         if (end > len) end = len;
-        if (start >= end) return allocate("");
+        if (start >= end) return allocate(StringLookup.getJavaString(0));
 
         int subLen = end - start;
         long newPtr = allocateUninitialized(subLen);

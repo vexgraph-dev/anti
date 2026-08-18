@@ -13,6 +13,7 @@ import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import nio.StringLookup;
 @Required
 @Volatile
 @HotCode
@@ -78,25 +79,25 @@ public final class Bit8
     static {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
-            SINGLETON_FREE_HEAD_VH = lookup.findStaticVarHandle(Bit8.class, "singletonFreeHead", long.class);
-            ARRAY_FREE_HEAD_8_VH = lookup.findStaticVarHandle(Bit8.class, "arrayFreeHead8", long.class);
-            ARRAY_FREE_HEAD_32_VH = lookup.findStaticVarHandle(Bit8.class, "arrayFreeHead32", long.class);
-            ARRAY_FREE_HEAD_128_VH = lookup.findStaticVarHandle(Bit8.class, "arrayFreeHead128", long.class);
-            ARRAY_FREE_HEAD_512_VH = lookup.findStaticVarHandle(Bit8.class, "arrayFreeHead512", long.class);
-            MATRIX_FREE_HEAD_8_VH = lookup.findStaticVarHandle(Bit8.class, "matrixFreeHead8", long.class);
-            MATRIX_FREE_HEAD_32_VH = lookup.findStaticVarHandle(Bit8.class, "matrixFreeHead32", long.class);
-            MATRIX_FREE_HEAD_128_VH = lookup.findStaticVarHandle(Bit8.class, "matrixFreeHead128", long.class);
-            MATRIX_FREE_HEAD_512_VH = lookup.findStaticVarHandle(Bit8.class, "matrixFreeHead512", long.class);
+            SINGLETON_FREE_HEAD_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(106), long.class);
+            ARRAY_FREE_HEAD_8_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(107), long.class);
+            ARRAY_FREE_HEAD_32_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(108), long.class);
+            ARRAY_FREE_HEAD_128_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(109), long.class);
+            ARRAY_FREE_HEAD_512_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(110), long.class);
+            MATRIX_FREE_HEAD_8_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(7), long.class);
+            MATRIX_FREE_HEAD_32_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(5), long.class);
+            MATRIX_FREE_HEAD_128_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(4), long.class);
+            MATRIX_FREE_HEAD_512_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(6), long.class);
 
-            SINGLETON_EXPANDING_VH = lookup.findStaticVarHandle(Bit8.class, "singletonExpanding", int.class);
-            ARRAY_EXPANDING_8_VH = lookup.findStaticVarHandle(Bit8.class, "arrayExpanding8", int.class);
-            ARRAY_EXPANDING_32_VH = lookup.findStaticVarHandle(Bit8.class, "arrayExpanding32", int.class);
-            ARRAY_EXPANDING_128_VH = lookup.findStaticVarHandle(Bit8.class, "arrayExpanding128", int.class);
-            ARRAY_EXPANDING_512_VH = lookup.findStaticVarHandle(Bit8.class, "arrayExpanding512", int.class);
-            MATRIX_EXPANDING_8_VH = lookup.findStaticVarHandle(Bit8.class, "matrixExpanding8", int.class);
-            MATRIX_EXPANDING_32_VH = lookup.findStaticVarHandle(Bit8.class, "matrixExpanding32", int.class);
-            MATRIX_EXPANDING_128_VH = lookup.findStaticVarHandle(Bit8.class, "matrixExpanding128", int.class);
-            MATRIX_EXPANDING_512_VH = lookup.findStaticVarHandle(Bit8.class, "matrixExpanding512", int.class);
+            SINGLETON_EXPANDING_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(111), int.class);
+            ARRAY_EXPANDING_8_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(112), int.class);
+            ARRAY_EXPANDING_32_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(113), int.class);
+            ARRAY_EXPANDING_128_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(114), int.class);
+            ARRAY_EXPANDING_512_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(115), int.class);
+            MATRIX_EXPANDING_8_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(116), int.class);
+            MATRIX_EXPANDING_32_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(117), int.class);
+            MATRIX_EXPANDING_128_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(118), int.class);
+            MATRIX_EXPANDING_512_VH = lookup.findStaticVarHandle(Bit8.class, StringLookup.getJavaString(119), int.class);
         }
         catch(ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
@@ -125,7 +126,7 @@ public final class Bit8
 
     private static void checkActive()
     {
-        if(!active) throw new IllegalStateException("Bit8 subsystem is not active!");
+        if(!active) throw new IllegalStateException(StringLookup.getJavaString(123));
     }
 
     private static long getThreadSlotBase()
@@ -450,7 +451,7 @@ public final class Bit8
         if(userPtr == 0L) return;
 
         int type = ForeignMemory.getUnsafeInt(userPtr - 8L);
-        if(type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) throw new IllegalStateException("Double free or corrupt off-heap pointer: 0x" + java.lang.Long.toHexString(userPtr).toUpperCase());
+        if(type == 0 || (!TypeRegister.isSingleton(type) && !TypeRegister.isArray(type) && !TypeRegister.isPointer(type))) throw new IllegalStateException(StringLookup.getJavaString(121) + java.lang.Long.toHexString(userPtr).toUpperCase());
 
         int length = ForeignMemory.getUnsafeInt(userPtr - 4L);
         long base = userPtr - 8L;

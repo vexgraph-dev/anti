@@ -4,6 +4,7 @@ import annotation.HotCode;
 import nio.ForeignMemory;
 import primitive.Int;
 
+import nio.StringLookup;
 /**
  * Zero-GC Off-Heap Sparse Set for ECS.
  * Maps sparse Entity IDs (int) to a tightly packed dense index.
@@ -90,7 +91,7 @@ public final class SparseSet {
     public static long add(long ptr, int entityId) {
         int max = ForeignMemory.getInt(ptr + OFFSET_MAX_ENTITY);
         if (entityId < 0 || entityId >= max) {
-            throw new IndexOutOfBoundsException("Entity ID " + entityId + " exceeds max " + max);
+            throw new IndexOutOfBoundsException(StringLookup.getJavaString(404) + entityId + StringLookup.getJavaString(405) + max);
         }
 
         long sparsePtr = ForeignMemory.getLong(ptr + OFFSET_SPARSE_PTR);
@@ -107,7 +108,7 @@ public final class SparseSet {
         int count = ForeignMemory.getInt(ptr + OFFSET_COUNT);
         int cap = ForeignMemory.getInt(ptr + OFFSET_CAPACITY);
         if (count >= cap) {
-            throw new IllegalStateException("SparseSet is full!");
+            throw new IllegalStateException(StringLookup.getJavaString(406));
         }
 
         long densePtr = ForeignMemory.getLong(ptr + OFFSET_DENSE_PTR);

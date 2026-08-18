@@ -9,6 +9,7 @@ import nio.ForeignMemory;
 import oop.TypeRegister;
 
 
+import nio.StringLookup;
 public final class Double {
 
     @Required
@@ -76,69 +77,69 @@ public final class Double {
     }
 
     public static double get(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Accessing NULL off-heap pointer!");
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(27));
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         return ForeignMemory.getUnsafeDouble(pointer);
     }
 
     public static double get(long pointer, int index) { 
         checkBounds(pointer, index);
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         return ForeignMemory.getUnsafeDouble(pointer + (index * 8L)); 
     }
 
     public static long getPointer(long matrixPointer, int index) { 
-        if (matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
-        if(!isPointer(matrixPointer)) throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
-        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
+        if(!isPointer(matrixPointer)) throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
+        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(matrixPointer).toUpperCase() + StringLookup.getJavaString(29) + classId(matrixPointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         checkBounds(matrixPointer, index);
         return ForeignMemory.getUnsafeLong(matrixPointer + (index * 8L)); 
     }
 
     public static void set(long pointer, double value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         ForeignMemory.setUnsafe(pointer, value);
     }
 
     public static void set(long pointer, int index, double value) { 
         checkBounds(pointer, index);
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         ForeignMemory.setUnsafe(pointer + (index * 8L), value); 
     }
 
     @Volatile
     public static double getVolatile(long pointer) {
-        if (pointer == 0L) throw new NullPointerException("Reading from NULL off-heap pointer!");
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(32));
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         return ForeignMemory.getUnsafeVolatileDouble(pointer);
     }
 
     @Volatile
     public static void setVolatile(long pointer, double value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         ForeignMemory.setUnsafeVolatile(pointer, value);
     }
 
     public static boolean compareAndSet(long pointer, double expected, double value) {
-        if (pointer == 0L) throw new NullPointerException("Writing to NULL off-heap pointer!");
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(31));
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         return ForeignMemory.compareAndSetDouble(pointer, expected, value);
     }
 
     public static void setPointer(long matrixPointer, int index, long targetPointer) { 
-        if (matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
-        if(!isPointer(matrixPointer)) throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
-        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if (matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
+        if(!isPointer(matrixPointer)) throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
+        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(matrixPointer).toUpperCase() + StringLookup.getJavaString(29) + classId(matrixPointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         checkBounds(matrixPointer, index);
         ForeignMemory.setUnsafe(matrixPointer + (index * 8L), targetPointer); 
     }
 
     private static void checkBounds(long pointer, int index) {
-        if (pointer == 0L) throw new NullPointerException("Checking bounds on NULL off-heap pointer!");
+        if (pointer == 0L) throw new NullPointerException(StringLookup.getJavaString(33));
         int len = length(pointer);
-        if(index < 0 || index >= len) throw new IndexOutOfBoundsException("Index " + index + " out of bounds for off-heap double length " + len + " (Ptr: 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + ", Type: 0x" + Integer.toHexString(type(pointer)).toUpperCase() + ")");
+        if(index < 0 || index >= len) throw new IndexOutOfBoundsException(StringLookup.getJavaString(34) + index + StringLookup.getJavaString(280) + len + StringLookup.getJavaString(36) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(37) + Integer.toHexString(type(pointer)).toUpperCase() + StringLookup.getJavaString(18));
     }
 
     public static int classId() {
@@ -204,15 +205,15 @@ public final class Double {
     @Volatile
     public static double getVolatile(long pointer, int index) {
         checkBounds(pointer, index);
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         return ForeignMemory.getUnsafeVolatileDouble(pointer + (index * 8L));
     }
 
     @Volatile
     public static long getVolatilePointer(long matrixPointer, int index) {
-        if(matrixPointer == 0L) throw new NullPointerException("Accessing NULL matrix pointer!");
-        if(!isPointer(matrixPointer)) throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
-        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(260));
+        if(!isPointer(matrixPointer)) throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
+        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(matrixPointer).toUpperCase() + StringLookup.getJavaString(29) + classId(matrixPointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         checkBounds(matrixPointer, index);
         return ForeignMemory.getUnsafeVolatileLong(matrixPointer + (index * 8L));
     }
@@ -220,15 +221,15 @@ public final class Double {
     @Volatile
     public static void setVolatile(long pointer, int index, double value) {
         checkBounds(pointer, index);
-        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(pointer).toUpperCase() + " is Class ID " + classId(pointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if (classId(pointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(pointer).toUpperCase() + StringLookup.getJavaString(29) + classId(pointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         ForeignMemory.setUnsafeVolatile(pointer + (index * 8L), value);
     }
 
     @Volatile
     public static void setVolatilePointer(long matrixPointer, int index, long targetPointer) {
-        if(matrixPointer == 0L) throw new NullPointerException("Writing to NULL matrix pointer!");
-        if(!isPointer(matrixPointer)) throw new IllegalArgumentException("Expected Pointer Array (Matrix), but got Type: 0x" + Integer.toHexString(type(matrixPointer)).toUpperCase());
-        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException("Pointer 0x" + java.lang.Long.toHexString(matrixPointer).toUpperCase() + " is Class ID " + classId(matrixPointer) + ", expected Double (Class ID " + CLASS_ID + ")");
+        if(matrixPointer == 0L) throw new NullPointerException(StringLookup.getJavaString(262));
+        if(!isPointer(matrixPointer)) throw new IllegalArgumentException(StringLookup.getJavaString(263) + Integer.toHexString(type(matrixPointer)).toUpperCase());
+        if (classId(matrixPointer) != CLASS_ID) throw new IllegalArgumentException(StringLookup.getJavaString(28) + java.lang.Long.toHexString(matrixPointer).toUpperCase() + StringLookup.getJavaString(29) + classId(matrixPointer) + StringLookup.getJavaString(279) + CLASS_ID + StringLookup.getJavaString(18));
         checkBounds(matrixPointer, index);
         ForeignMemory.setUnsafeVolatile(matrixPointer + (index * 8L), targetPointer);
     }
