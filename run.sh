@@ -57,7 +57,8 @@ if [ "${ANTI_SKIP_GRAAL_CHECK:-0}" != "1" ]; then
     }
 fi
 
-CP="out/production/anti:lib/lwjgl-release-3.4.2-custom/*"
+LWJGL_CP="lib/lwjgl-release-3.4.2-custom/lwjgl.jar:lib/lwjgl-release-3.4.2-custom/lwjgl-vulkan.jar:lib/lwjgl-release-3.4.2-custom/lwjgl-stb.jar:lib/lwjgl-release-3.4.2-custom/lwjgl-openal.jar:lib/lwjgl-release-3.4.2-custom/lwjgl-unsafe.jar:lib/lwjgl-release-3.4.2-custom/lwjgl-natives-macos-arm64.jar:lib/lwjgl-release-3.4.2-custom/lwjgl-vulkan-natives-macos-arm64.jar"
+CP="out/production/anti:$LWJGL_CP"
 
 # 5. Build the whole project fresh before running.
 #    - Skip the native-image-only FFMRegistrationFeature (needs the GraalVM hosted SDK, not
@@ -90,13 +91,22 @@ if [ "$1" == "--native" ]; then
         --no-fallback \
         --enable-preview \
         --enable-native-access=ALL-UNNAMED \
+        --gc=epsilon \
+        -H:+UnlockExperimentalVMOptions \
+        -H:+ForeignAPISupport \
+        -H:+SharedArenaSupport \
+        -Os \
+        --emit build-report \
+        -H:IncludeLocales=en \
+        -H:+RemoveUnusedSymbols \
         -cp "$CP" \
         --features=config.FFMRegistrationFeature \
+        -H:ConfigurationFileDirectories=native-image-config \
         --initialize-at-run-time=window.macOSWindow \
         --initialize-at-run-time=nio.ForeignMemory \
-        -H:IncludeResources='vulkan/spv/.*\.spv' \
+        -H:IncludeResources='.*\.spv|StringLookup\.ini' \
         -Dmac.firstThread=true \
- process.EngineTest \
+        process.EngineTest \
         AntiEngine
 
     echo "[run.sh] Build complete! Run it with: ./AntiEngine"
