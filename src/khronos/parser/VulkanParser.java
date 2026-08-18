@@ -1,5 +1,7 @@
 package khronos.parser;
 
+import annotation.Draft;
+import annotation.Intention;
 import khronos.parser.model.*;
 import org.w3c.dom.*;
 import javax.xml.parsers.DocumentBuilder;
@@ -12,27 +14,43 @@ import java.util.*;
 
 /**
  * Fast XML parser for Khronos Vulkan Registry (vk.xml).
- * Extracts enums, bitmasks, struct layouts, command prototypes, and populates VulkanRegistry.ini.
+ * Converts XML definitions into zero-String primitive integer models and populates VulkanRegistry.ini.
  */
+@Draft
+@Intention("Build-time parser for vk.xml to generate primitive-ID models and VulkanRegistry.ini")
 public final class VulkanParser {
 
     private final Path xmlPath;
     private final Path registryPath;
 
-    // Parsed models
-    private final Map<String, VulkanType> types = new LinkedHashMap<>();
-    private final Map<String, List<VulkanEnum>> enumGroups = new LinkedHashMap<>();
-    private final Map<String, VulkanEnum> standaloneEnums = new LinkedHashMap<>();
-    private final Map<String, VulkanStruct> structs = new LinkedHashMap<>();
-    private final Map<String, VulkanCommand> commands = new LinkedHashMap<>();
-    private final Map<String, VulkanExtension> extensions = new LinkedHashMap<>();
+    // String Registry Interner (0 = "")
+    private final Map<String, Integer> stringToId = new LinkedHashMap<>();
+    private final List<String> idToString = new ArrayList<>();
 
-    // String Registry collector
-    private final Set<String> stringPool = new LinkedHashSet<>();
+    // Parsed Models with Primitive int IDs
+    private final Map<Integer, VulkanType> types = new LinkedHashMap<>();
+    private final Map<Integer, List<VulkanEnum>> enumGroups = new LinkedHashMap<>();
+    private final Map<Integer, VulkanEnum> standaloneEnums = new LinkedHashMap<>();
+    private final Map<Integer, VulkanStruct> structs = new LinkedHashMap<>();
+    private final Map<Integer, VulkanCommand> commands = new LinkedHashMap<>();
+    private final Map<Integer, VulkanExtension> extensions = new LinkedHashMap<>();
 
     public VulkanParser(Path xmlPath, Path registryPath) {
         this.xmlPath = xmlPath;
         this.registryPath = registryPath;
+        registerString(""); // ID 0 is empty string sentinel
+    }
+
+    public int registerString(String str) {
+        if (str == null) return 0;
+        Integer existing = stringToId.get(str);
+        if (existing != null) {
+            return existing;
+        }
+        int id = idToString.size();
+        stringToId.put(str, id);
+        idToString.add(str);
+        return id;
     }
 
     public static void main(String[] args) {
@@ -98,6 +116,11 @@ public final class VulkanParser {
 
             if (name.isEmpty()) continue;
 
+            int nameId = registerString(name);
+            int catId = registerString(category);
+            int parentId = registerString(parent);
+            int aliasId = registerString(alias);
+
             boolean isHandle = "handle".equals(category);
             boolean isDispatchable = isHandle && !el.getTextContent().contains("VK_DEFINE_NON_DISPATCHABLE_HANDLE");
             boolean isBasetype = "basetype".equals(category);
@@ -107,24 +130,24 @@ public final class VulkanParser {
             boolean isEnum = "enum".equals(category);
             boolean isFuncpointer = "funcpointer".equals(category);
 
-            types.put(name, new VulkanType(
-                name, category, parent, el.getTextContent(), alias,
+            types.put(nameId, new VulkanType(
+                nameId, catId, parentId, aliasId,
                 isHandle, isDispatchable, isBasetype, isBitmask, isStruct, isUnion, isEnum, isFuncpointer
             ));
 
             if (isStruct || isUnion) {
-                parseStructMembers(el, name, isUnion, alias);
+                parseStructMembers(el, nameId, isUnion, aliasId);
             }
         }
     }
 
-    private void parseStructMembers(Element el, String structName, boolean isUnion, String alias) {
-        if (!alias.isEmpty()) {
-            structs.put(structName, new VulkanStruct(structName, isUnion, alias, "", List.of(), 0, 0));
+    private void parseStructMembers(Element el, int structNameId, boolean isUnion, int aliasId) {
+        if (aliasId > 0) {
+            structs.put(structNameId, new VulkanStruct(structNameId, isUnion, aliasId, 0, List.of(), 0, 0));
             return;
         }
 
-        String structExtends = el.getAttribute("structextends");
+        int structExtendsId = registerString(el.getAttribute("structextends"));
         List<VulkanMember> memberList = new ArrayList<>();
         NodeList members = el.getElementsByTagName("member");
 
@@ -138,12 +161,15 @@ public final class VulkanParser {
             NodeList typeNodes = m.getElementsByTagName("type");
             String memberType = typeNodes.getLength() > 0 ? typeNodes.item(0).getTextContent().trim() : "";
 
+            int memberNameId = registerString(memberName);
+            int memberTypeId = registerString(memberType);
+
             boolean isPointer = fullText.contains("*");
             int ptrCount = (int) fullText.chars().filter(ch -> ch == '*').count();
             boolean isConst = fullText.contains("const ");
             boolean isArray = fullText.contains("[");
             int arraySize = 1;
-            String arrayEnum = null;
+            int arrayEnumId = 0;
 
             if (isArray) {
                 int start = fullText.indexOf('[');
@@ -153,21 +179,21 @@ public final class VulkanParser {
                     try {
                         arraySize = Integer.parseInt(dim);
                     } catch (NumberFormatException nfe) {
-                        arrayEnum = dim;
+                        arrayEnumId = registerString(dim);
                     }
                 }
             }
 
-            String values = m.getAttribute("values");
-            String len = m.getAttribute("len");
+            int valuesId = registerString(m.getAttribute("values"));
+            int lenId = registerString(m.getAttribute("len"));
 
             memberList.add(new VulkanMember(
-                memberName, memberType, fullText, isPointer, ptrCount, isConst,
-                isArray, arraySize, arrayEnum, 0, 0, 0, values, len
+                memberNameId, memberTypeId, isPointer, ptrCount, isConst,
+                isArray, arraySize, arrayEnumId, 0, 0, 0, valuesId, lenId
             ));
         }
 
-        structs.put(structName, new VulkanStruct(structName, isUnion, null, structExtends, memberList, 0, 0));
+        structs.put(structNameId, new VulkanStruct(structNameId, isUnion, 0, structExtendsId, memberList, 0, 0));
     }
 
     private void parseEnums(Element registry) {
@@ -175,6 +201,7 @@ public final class VulkanParser {
         for (int i = 0; i < enumElements.getLength(); i++) {
             Element el = (Element) enumElements.item(i);
             String groupName = el.getAttribute("name");
+            int groupId = registerString(groupName);
             List<VulkanEnum> groupList = new ArrayList<>();
 
             NodeList enumNodes = el.getElementsByTagName("enum");
@@ -190,25 +217,48 @@ public final class VulkanParser {
                 String offset = e.getAttribute("offset");
                 String dir = e.getAttribute("dir");
 
+                int nameId = registerString(name);
+                int commentId = registerString(comment);
+                int aliasOfId = registerString(alias);
+                int extendsEnumId = registerString(extendsEnum);
+
+                long numVal = 0L;
+                if (!value.isEmpty()) {
+                    try {
+                        numVal = value.startsWith("0x") || value.startsWith("0X")
+                            ? Long.parseUnsignedLong(value.substring(2), 16)
+                            : Long.parseLong(value);
+                    } catch (NumberFormatException ignored) {}
+                } else if (!bitpos.isEmpty()) {
+                    try {
+                        numVal = 1L << Integer.parseInt(bitpos);
+                    } catch (NumberFormatException ignored) {}
+                } else if (!offset.isEmpty()) {
+                    try {
+                        long ext = !extNumber.isEmpty() ? Long.parseLong(extNumber) : 0L;
+                        long off = Long.parseLong(offset);
+                        numVal = 1000000000L + (ext - 1L) * 1000L + off;
+                        if ("-".equals(dir)) numVal = -numVal;
+                    } catch (NumberFormatException ignored) {}
+                }
+
+                int extNum = !extNumber.isEmpty() ? Integer.parseInt(extNumber) : 0;
+                int off = !offset.isEmpty() ? Integer.parseInt(offset) : 0;
+
                 VulkanEnum item = new VulkanEnum(
-                    name, value.isEmpty() ? null : value, bitpos.isEmpty() ? null : bitpos,
-                    comment.isEmpty() ? null : comment, !alias.isEmpty(), alias,
-                    extendsEnum.isEmpty() ? null : extendsEnum, extNumber.isEmpty() ? null : extNumber,
-                    offset.isEmpty() ? null : offset, dir.isEmpty() ? null : dir
+                    nameId, numVal, commentId, !alias.isEmpty(), aliasOfId, extendsEnumId,
+                    extNum, off, "-".equals(dir)
                 );
 
                 if (!groupName.isEmpty() && !"API Constants".equals(groupName)) {
                     groupList.add(item);
                 } else {
-                    standaloneEnums.put(name, item);
+                    standaloneEnums.put(nameId, item);
                 }
-
-                stringPool.add(name);
             }
 
             if (!groupName.isEmpty() && !"API Constants".equals(groupName)) {
-                enumGroups.put(groupName, groupList);
-                stringPool.add(groupName);
+                enumGroups.put(groupId, groupList);
             }
         }
     }
@@ -221,10 +271,11 @@ public final class VulkanParser {
             String cmdName = el.getAttribute("name");
 
             if (!alias.isEmpty()) {
-                commands.put(cmdName, new VulkanCommand(
-                    cmdName, "void", List.of(), alias, "", "", "", "", "", false, false, true
+                int nameId = registerString(cmdName);
+                int aliasId = registerString(alias);
+                commands.put(nameId, new VulkanCommand(
+                    nameId, 0, List.of(), aliasId, 0, 0, 0, 0, 0, false, false, true
                 ));
-                stringPool.add(cmdName);
                 continue;
             }
 
@@ -233,6 +284,9 @@ public final class VulkanParser {
 
             String returnType = proto.getElementsByTagName("type").item(0).getTextContent().trim();
             String name = proto.getElementsByTagName("name").item(0).getTextContent().trim();
+
+            int nameId = registerString(name);
+            int retTypeId = registerString(returnType);
 
             List<VulkanParam> params = new ArrayList<>();
             NodeList paramNodes = el.getElementsByTagName("param");
@@ -246,26 +300,33 @@ public final class VulkanParser {
                 NodeList tList = paramEl.getElementsByTagName("type");
                 String pType = tList.getLength() > 0 ? tList.item(0).getTextContent().trim() : "";
 
+                int pNameId = registerString(pName);
+                int pTypeId = registerString(pType);
+
                 boolean isPtr = pText.contains("*");
                 int ptrCount = (int) pText.chars().filter(ch -> ch == '*').count();
                 boolean isConst = pText.contains("const ");
                 boolean isOptional = "true".equals(paramEl.getAttribute("optional"));
-                String len = paramEl.getAttribute("len");
+                int lenId = registerString(paramEl.getAttribute("len"));
 
-                params.add(new VulkanParam(pName, pType, pText, isPtr, ptrCount, isConst, isOptional, len));
+                params.add(new VulkanParam(pNameId, pTypeId, isPtr, ptrCount, isConst, isOptional, lenId));
             }
 
-            boolean isInstance = !params.isEmpty() && ("VkInstance".equals(params.get(0).type()) || "VkPhysicalDevice".equals(params.get(0).type()));
-            boolean isDevice = !params.isEmpty() && ("VkDevice".equals(params.get(0).type()) || "VkQueue".equals(params.get(0).type()) || "VkCommandBuffer".equals(params.get(0).type()));
+            String firstParamType = !params.isEmpty() ? idToString.get(params.get(0).typeId()) : "";
+            boolean isInstance = "VkInstance".equals(firstParamType) || "VkPhysicalDevice".equals(firstParamType);
+            boolean isDevice = "VkDevice".equals(firstParamType) || "VkQueue".equals(firstParamType) || "VkCommandBuffer".equals(firstParamType);
             boolean isGlobal = !isInstance && !isDevice;
 
-            commands.put(name, new VulkanCommand(
-                name, returnType, params, null, el.getAttribute("successcodes"),
-                el.getAttribute("errorcodes"), el.getAttribute("queues"), el.getAttribute("renderpass"),
-                el.getAttribute("cmdbufferlevel"), isInstance, isDevice, isGlobal
-            ));
+            int successCodesId = registerString(el.getAttribute("successcodes"));
+            int errorCodesId = registerString(el.getAttribute("errorcodes"));
+            int queuesId = registerString(el.getAttribute("queues"));
+            int renderPassId = registerString(el.getAttribute("renderpass"));
+            int cmdLevelId = registerString(el.getAttribute("cmdbufferlevel"));
 
-            stringPool.add(name);
+            commands.put(nameId, new VulkanCommand(
+                nameId, retTypeId, params, 0, successCodesId, errorCodesId, queuesId,
+                renderPassId, cmdLevelId, isInstance, isDevice, isGlobal
+            ));
         }
     }
 
@@ -274,17 +335,20 @@ public final class VulkanParser {
         for (int i = 0; i < extElements.getLength(); i++) {
             Element el = (Element) extElements.item(i);
             String name = el.getAttribute("name");
-            String number = el.getAttribute("number");
-            String type = el.getAttribute("type");
-            String author = el.getAttribute("author");
-            String contact = el.getAttribute("contact");
-            String platform = el.getAttribute("platform");
-            String requires = el.getAttribute("requires");
-            String promotedto = el.getAttribute("promotedto");
-            String deprecatedby = el.getAttribute("deprecatedby");
+            String numberStr = el.getAttribute("number");
+            int number = !numberStr.isEmpty() ? Integer.parseInt(numberStr) : 0;
 
-            List<String> reqCommands = new ArrayList<>();
-            List<String> reqTypes = new ArrayList<>();
+            int nameId = registerString(name);
+            int typeId = registerString(el.getAttribute("type"));
+            int authorId = registerString(el.getAttribute("author"));
+            int contactId = registerString(el.getAttribute("contact"));
+            int platformId = registerString(el.getAttribute("platform"));
+            int requiresId = registerString(el.getAttribute("requires"));
+            int promotedToId = registerString(el.getAttribute("promotedto"));
+            int deprecatedById = registerString(el.getAttribute("deprecatedby"));
+
+            List<Integer> reqCmdList = new ArrayList<>();
+            List<Integer> reqTypeList = new ArrayList<>();
             List<VulkanEnum> reqEnums = new ArrayList<>();
 
             NodeList requireNodes = el.getElementsByTagName("require");
@@ -293,12 +357,12 @@ public final class VulkanParser {
 
                 NodeList cmds = req.getElementsByTagName("command");
                 for (int c = 0; c < cmds.getLength(); c++) {
-                    reqCommands.add(((Element) cmds.item(c)).getAttribute("name"));
+                    reqCmdList.add(registerString(((Element) cmds.item(c)).getAttribute("name")));
                 }
 
                 NodeList tps = req.getElementsByTagName("type");
                 for (int t = 0; t < tps.getLength(); t++) {
-                    reqTypes.add(((Element) tps.item(t)).getAttribute("name"));
+                    reqTypeList.add(registerString(((Element) tps.item(t)).getAttribute("name")));
                 }
 
                 NodeList enums = req.getElementsByTagName("enum");
@@ -311,27 +375,49 @@ public final class VulkanParser {
                     String eOffset = enumEl.getAttribute("offset");
                     String eDir = enumEl.getAttribute("dir");
 
-                    VulkanEnum ve = new VulkanEnum(
-                        eName, eVal.isEmpty() ? null : eVal, eBitpos.isEmpty() ? null : eBitpos,
-                        null, false, null, eExtends.isEmpty() ? null : eExtends,
-                        number, eOffset.isEmpty() ? null : eOffset, eDir.isEmpty() ? null : eDir
-                    );
-                    reqEnums.add(ve);
-                    stringPool.add(eName);
+                    int eNameId = registerString(eName);
+                    int eExtendsId = registerString(eExtends);
+
+                    long numVal = 0L;
+                    if (!eVal.isEmpty()) {
+                        try {
+                            numVal = eVal.startsWith("0x") || eVal.startsWith("0X")
+                                ? Long.parseUnsignedLong(eVal.substring(2), 16)
+                                : Long.parseLong(eVal);
+                        } catch (NumberFormatException ignored) {}
+                    } else if (!eBitpos.isEmpty()) {
+                        try {
+                            numVal = 1L << Integer.parseInt(eBitpos);
+                        } catch (NumberFormatException ignored) {}
+                    } else if (!eOffset.isEmpty()) {
+                        try {
+                            long ext = number;
+                            long off = Long.parseLong(eOffset);
+                            numVal = 1000000000L + (ext - 1L) * 1000L + off;
+                            if ("-".equals(eDir)) numVal = -numVal;
+                        } catch (NumberFormatException ignored) {}
+                    }
+
+                    int off = !eOffset.isEmpty() ? Integer.parseInt(eOffset) : 0;
+
+                    reqEnums.add(new VulkanEnum(
+                        eNameId, numVal, 0, false, 0, eExtendsId, number, off, "-".equals(eDir)
+                    ));
                 }
             }
 
-            extensions.put(name, new VulkanExtension(
-                name, number, type, author, contact, platform, requires, promotedto, deprecatedby,
-                reqCommands, reqTypes, reqEnums
-            ));
+            int[] reqCmds = reqCmdList.stream().mapToInt(Integer::intValue).toArray();
+            int[] reqTps = reqTypeList.stream().mapToInt(Integer::intValue).toArray();
 
-            stringPool.add(name);
+            extensions.put(nameId, new VulkanExtension(
+                nameId, number, typeId, authorId, contactId, platformId, requiresId,
+                promotedToId, deprecatedById, reqCmds, reqTps, reqEnums
+            ));
         }
     }
 
     private void resolveStructLayouts() {
-        for (Map.Entry<String, VulkanStruct> entry : structs.entrySet()) {
+        for (Map.Entry<Integer, VulkanStruct> entry : structs.entrySet()) {
             VulkanStruct s = entry.getValue();
             if (s.isAlias() || s.members().isEmpty()) continue;
 
@@ -347,52 +433,50 @@ public final class VulkanParser {
                     structAlignment = memberAlign;
                 }
 
-                // C padding / alignment rule: offset must be aligned to member alignment
                 if (currentOffset % memberAlign != 0) {
                     currentOffset += (memberAlign - (currentOffset % memberAlign));
                 }
 
                 computedMembers.add(new VulkanMember(
-                    m.name(), m.type(), m.fullDeclaration(), m.isPointer(), m.pointerCount(),
-                    m.isConst(), m.isArray(), m.arraySize(), m.arraySizeEnum(),
-                    currentOffset, memberSize, memberAlign, m.values(), m.len()
+                    m.nameId(), m.typeId(), m.isPointer(), m.pointerCount(),
+                    m.isConst(), m.isArray(), m.arraySize(), m.arrayEnumId(),
+                    currentOffset, memberSize, memberAlign, m.valuesId(), m.lenId()
                 ));
 
                 if (s.isUnion()) {
-                    // Unions: all members start at offset 0
                     currentOffset = Math.max(currentOffset, memberSize);
                 } else {
                     currentOffset += memberSize;
                 }
             }
 
-            // Total struct size must be padded to a multiple of its alignment
             if (currentOffset % structAlignment != 0) {
                 currentOffset += (structAlignment - (currentOffset % structAlignment));
             }
 
             structs.put(entry.getKey(), new VulkanStruct(
-                s.name(), s.isUnion(), s.aliasOf(), s.structExtends(),
+                s.nameId(), s.isUnion(), s.aliasOfId(), s.structExtendsId(),
                 computedMembers, currentOffset, structAlignment
             ));
         }
     }
 
     private int getPrimitiveSize(VulkanMember m) {
-        if (m.isPointer()) return 8; // 64-bit pointer
-        int base = switch (m.type()) {
+        if (m.isPointer()) return 8;
+        String typeStr = idToString.get(m.typeId());
+        int base = switch (typeStr) {
             case "uint8_t", "int8_t", "char" -> 1;
             case "uint16_t", "int16_t" -> 2;
             case "uint32_t", "int32_t", "float", "VkBool32", "VkFlags" -> 4;
             case "uint64_t", "int64_t", "double", "VkDeviceSize", "VkDeviceAddress" -> 8;
             default -> {
-                if (types.containsKey(m.type()) && types.get(m.type()).isHandle()) yield 8;
-                if (types.containsKey(m.type()) && types.get(m.type()).isBitmask()) yield 4;
-                if (enumGroups.containsKey(m.type())) yield 4;
-                if (structs.containsKey(m.type()) && structs.get(m.type()).totalSize() > 0) {
-                    yield structs.get(m.type()).totalSize();
+                if (types.containsKey(m.typeId()) && types.get(m.typeId()).isHandle()) yield 8;
+                if (types.containsKey(m.typeId()) && types.get(m.typeId()).isBitmask()) yield 4;
+                if (enumGroups.containsKey(m.typeId())) yield 4;
+                if (structs.containsKey(m.typeId()) && structs.get(m.typeId()).totalSize() > 0) {
+                    yield structs.get(m.typeId()).totalSize();
                 }
-                yield 8; // Default 64-bit word
+                yield 8;
             }
         };
         return m.isArray() ? base * m.arraySize() : base;
@@ -400,17 +484,18 @@ public final class VulkanParser {
 
     private int getPrimitiveAlignment(VulkanMember m) {
         if (m.isPointer()) return 8;
-        return switch (m.type()) {
+        String typeStr = idToString.get(m.typeId());
+        return switch (typeStr) {
             case "uint8_t", "int8_t", "char" -> 1;
             case "uint16_t", "int16_t" -> 2;
             case "uint32_t", "int32_t", "float", "VkBool32", "VkFlags" -> 4;
             case "uint64_t", "int64_t", "double", "VkDeviceSize", "VkDeviceAddress" -> 8;
             default -> {
-                if (types.containsKey(m.type()) && types.get(m.type()).isHandle()) yield 8;
-                if (types.containsKey(m.type()) && types.get(m.type()).isBitmask()) yield 4;
-                if (enumGroups.containsKey(m.type())) yield 4;
-                if (structs.containsKey(m.type()) && structs.get(m.type()).alignment() > 0) {
-                    yield structs.get(m.type()).alignment();
+                if (types.containsKey(m.typeId()) && types.get(m.typeId()).isHandle()) yield 8;
+                if (types.containsKey(m.typeId()) && types.get(m.typeId()).isBitmask()) yield 4;
+                if (enumGroups.containsKey(m.typeId())) yield 4;
+                if (structs.containsKey(m.typeId()) && structs.get(m.typeId()).alignment() > 0) {
+                    yield structs.get(m.typeId()).alignment();
                 }
                 yield 8;
             }
@@ -420,24 +505,22 @@ public final class VulkanParser {
     public void saveRegistry() throws IOException {
         Files.createDirectories(registryPath.getParent());
 
-        List<String> sortedStrings = new ArrayList<>(stringPool);
-        Collections.sort(sortedStrings);
-
         StringBuilder sb = new StringBuilder();
         sb.append("# ==============================================================================\n");
         sb.append("# Anti Engine — Vulkan String Registry (Auto-generated by VulkanParser)\n");
         sb.append("# ==============================================================================\n");
-        sb.append("0=\"\"\n");
 
-        int id = 1;
-        for (String str : sortedStrings) {
-            if (str.isEmpty()) continue;
-            sb.append(id).append('=').append(str).append('\n');
-            id++;
+        for (int id = 0; id < idToString.size(); id++) {
+            String str = idToString.get(id);
+            if (id == 0) {
+                sb.append("0=\"\"\n");
+            } else {
+                sb.append(id).append('=').append(str).append('\n');
+            }
         }
 
         Files.writeString(registryPath, sb.toString(), StandardCharsets.UTF_8);
-        System.out.println("[VulkanParser] Wrote " + (id - 1) + " string entries to " + registryPath);
+        System.out.println("[VulkanParser] Wrote " + idToString.size() + " string entries to " + registryPath);
     }
 
     public void printSummary() {
@@ -448,13 +531,14 @@ public final class VulkanParser {
         System.out.println("  Structs & Unions:      " + structs.size());
         System.out.println("  Commands (Functions):  " + commands.size());
         System.out.println("  Extensions:            " + extensions.size());
-        System.out.println("  Unique String Pool:    " + stringPool.size());
+        System.out.println("  Unique String Pool:    " + idToString.size());
         System.out.println("--------------------------------------------------");
     }
 
-    public Map<String, VulkanType> getTypes() { return types; }
-    public Map<String, List<VulkanEnum>> getEnumGroups() { return enumGroups; }
-    public Map<String, VulkanStruct> getStructs() { return structs; }
-    public Map<String, VulkanCommand> getCommands() { return commands; }
-    public Map<String, VulkanExtension> getExtensions() { return extensions; }
+    public Map<Integer, VulkanType> getTypes() { return types; }
+    public Map<Integer, List<VulkanEnum>> getEnumGroups() { return enumGroups; }
+    public Map<Integer, VulkanStruct> getStructs() { return structs; }
+    public Map<Integer, VulkanCommand> getCommands() { return commands; }
+    public Map<Integer, VulkanExtension> getExtensions() { return extensions; }
+    public List<String> getIdToString() { return idToString; }
 }

@@ -1,22 +1,26 @@
 package khronos.parser.model;
 
+import annotation.Draft;
+import annotation.Intention;
 import java.util.List;
 
+@Draft
+@Intention("Primitive integer-ID model for Vulkan Commands and Function Pointers (0 java.lang.String references)")
 public record VulkanCommand(
-    String name,
-    String returnType,
+    int nameId,
+    int returnTypeId,
     List<VulkanParam> params,
-    String aliasOf,
-    String successCodes,
-    String errorCodes,
-    String queues,
-    String renderPassScope,
-    String cmdbufferLevel,
+    int aliasOfId,
+    int successCodesId,
+    int errorCodesId,
+    int queuesId,
+    int renderPassScopeId,
+    int cmdbufferLevelId,
     boolean isInstanceLevel,
     boolean isDeviceLevel,
     boolean isGlobalLevel
 ) {
     public boolean isAlias() {
-        return aliasOf != null && !aliasOf.isEmpty();
+        return aliasOfId > 0;
     }
 }

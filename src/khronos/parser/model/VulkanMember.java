@@ -1,18 +1,22 @@
 package khronos.parser.model;
 
+import annotation.Draft;
+import annotation.Intention;
+
+@Draft
+@Intention("Primitive integer-ID model for Vulkan Struct Members (0 java.lang.String references)")
 public record VulkanMember(
-    String name,
-    String type,
-    String fullDeclaration,
+    int nameId,
+    int typeId,
     boolean isPointer,
     int pointerCount,
     boolean isConst,
     boolean isArray,
     int arraySize,
-    String arraySizeEnum,
+    int arrayEnumId,
     int byteOffset,
     int byteSize,
     int alignment,
-    String values,
-    String len
+    int valuesId,
+    int lenId
 ) {}

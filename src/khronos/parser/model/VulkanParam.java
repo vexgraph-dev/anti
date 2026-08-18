@@ -1,12 +1,16 @@
 package khronos.parser.model;
 
+import annotation.Draft;
+import annotation.Intention;
+
+@Draft
+@Intention("Primitive integer-ID model for Vulkan Command Parameters (0 java.lang.String references)")
 public record VulkanParam(
-    String name,
-    String type,
-    String fullDeclaration,
+    int nameId,
+    int typeId,
     boolean isPointer,
     int pointerCount,
     boolean isConst,
     boolean isOptional,
-    String len
+    int lenId
 ) {}
