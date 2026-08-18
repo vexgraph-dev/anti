@@ -1,18 +1,22 @@
 package khronos.parser.model;
 
+import annotation.Draft;
+import annotation.Intention;
 import java.util.List;
 
+@Draft
+@Intention("Primitive integer-ID model for Vulkan Extensions (0 java.lang.String references)")
 public record VulkanExtension(
-    String name,
-    String number,
-    String type,
-    String author,
-    String contact,
-    String platform,
-    String requires,
-    String promotedTo,
-    String deprecatedBy,
-    List<String> requiredCommands,
-    List<String> requiredTypes,
+    int nameId,
+    int number,
+    int typeId,
+    int authorId,
+    int contactId,
+    int platformId,
+    int requiresId,
+    int promotedToId,
+    int deprecatedById,
+    int[] requiredCommandIds,
+    int[] requiredTypeIds,
     List<VulkanEnum> requiredEnums
 ) {}

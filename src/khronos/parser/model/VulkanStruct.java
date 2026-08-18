@@ -1,17 +1,21 @@
 package khronos.parser.model;
 
+import annotation.Draft;
+import annotation.Intention;
 import java.util.List;
 
+@Draft
+@Intention("Primitive integer-ID model for Vulkan Structs and Unions (0 java.lang.String references)")
 public record VulkanStruct(
-    String name,
+    int nameId,
     boolean isUnion,
-    String aliasOf,
-    String structExtends,
+    int aliasOfId,
+    int structExtendsId,
     List<VulkanMember> members,
     int totalSize,
     int alignment
 ) {
     public boolean isAlias() {
-        return aliasOf != null && !aliasOf.isEmpty();
+        return aliasOfId > 0;
     }
 }

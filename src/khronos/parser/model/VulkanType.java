@@ -1,11 +1,15 @@
 package khronos.parser.model;
 
+import annotation.Draft;
+import annotation.Intention;
+
+@Draft
+@Intention("Primitive integer-ID model for Vulkan Types (0 java.lang.String references)")
 public record VulkanType(
-    String name,
-    String category,
-    String parent,
-    String type,
-    String alias,
+    int nameId,
+    int categoryId,
+    int parentId,
+    int aliasId,
     boolean isHandle,
     boolean isDispatchable,
     boolean isBasetype,
