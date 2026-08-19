@@ -1,63 +1,37 @@
-### IntelliJ IDEA ###
-.idea/
-*.iml
-out/
-
-### Eclipse ###
-.classpath
-.project
-.settings/
-
-### LWJGL local cache ###
-.lwjgl/
-
 ### macOS ###
 .DS_Store
 
-### Build & Native Artifacts and crashes and some bs ###
+### Build & Native Artifacts and crashes ###
+build/
+bin/
 natives/
+target/
+out/
+*.log
 crash-dump.txt
 crash-dump_*.txt
-hs_err_pid*.log
-*.log
 
-### Build Tool Outputs ###
-target/
-build/
-.gradle/
+### IDE ###
+.idea/
+*.iml
+.vscode/
 
-### Dependencies ###
-lib/
+### Legacy Java snapshot (mirror of origin/legacy-java, local only) ###
+legacy-java/
 
-### Scratch / Testing ###
-scratch/
-
-### Private / Teaching docs (personal reading material, not source)
+### Private / Teaching docs (personal material, not source) ###
 lessons/
-
-### Private / Goals & planning (personal step-by-step plans)
+transition/
+*.md
 goals/
-
-### Private / Config ###
-preferences.txt
-regurgitation/
-code.txt
-debug_code.txt
-*.regurgitation
-
-### api class for vexgraph/api-haven repository ###
-src/api/com/api/
-**/api/
-
-### goals of this god damn project
 goals.txt
+scratch/
+regurgitation/
 
-### Private / agent-adjacent config (keep out of the face, keep out of git)
+### Private / agent-adjacent config ###
+preferences.txt
 preferences/
 preferences*.local.txt
-
-### IDE build output
-bin/
-
-### Private reference dumps / screenshots
+code.txt
+debug_code.txt
 clipboard.png
