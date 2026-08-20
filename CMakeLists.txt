@@ -9,6 +9,7 @@ add_executable(anti
     src/bit/bit.c
     src/engine/loop.c
     src/nio/mem.c
+    src/relational/variable.c
     src/thread/ring.c
     src/thread/spin.c
 )

@@ -19,9 +19,10 @@
 #include "bit/bit.h"
 #include "engine/loop.h"
 #include "nio/mem.h"
+#include "oop/type.h"
+#include "relational/variable.h"
 #include "thread/ring.h"
 #include "thread/spin.h"
-#include "oop/type.h"
 
 #define N_THREADS 4
 #define N_PUSH 25
@@ -91,6 +92,35 @@ int main(void) {
     void *c = BitPool_alloc(&pool, TYPE_INT_SINGLETON);
     printf("recycled a -> c=%p (same=%d)\n", c, c == a);
     BitPool_shutdown(&pool);
+
+    // Variable: relational symbol registry — every name maps to a typed pointer.
+    printf("== anti relational: Variable ==\n");
+    Variable vars;
+    Variable_init(&vars);
+
+    void *score = Memory_alloc(TYPE_INT_SINGLETON, sizeof(int32_t));
+    *(int32_t *)score = 42;
+
+    int32_t score_id = Variable_instant(&vars, "player_score", TYPE_INT_SINGLETON, (uintptr_t)score);
+    int32_t name_id = Variable_instant(&vars, "player_name", 0, (uintptr_t)0x1234);
+    printf("score_id=%d name_id=%d active=%zu\n", score_id, name_id,
+           Variable_getActiveCount(&vars));
+
+    int32_t resolved = Variable_getId(&vars, "player_score");
+    char name_buf[VARIABLE_NAME_SIZE + 1];
+    Variable_getName(&vars, resolved, name_buf, sizeof(name_buf));
+    printf("resolved=%d class=0x%08X ptr=%p name=\"%s\"\n", resolved,
+           Variable_getClassId(&vars, resolved),
+           (void *)Variable_getPointer(&vars, resolved), name_buf);
+
+    uintptr_t stored = Variable_getPointer(&vars, score_id);
+    printf("stored int=%d\n", *(int32_t *)stored);
+
+    bool renamed = Variable_rename(&vars, "player_score", "score");
+    int32_t re_id = Variable_getId(&vars, "score");
+    int32_t gone_id = Variable_getId(&vars, "player_score");
+    printf("renamed=%d new_id=%d old_id=%d\n", renamed, re_id, gone_id);
+    Variable_shutdown(&vars);
 
     // RingBuffer + Loop: 4 producers, 1 consumer loop, expect 100 jobs.
     printf("== anti ring + spin + loop ==\n");
