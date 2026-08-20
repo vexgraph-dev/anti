@@ -39,11 +39,11 @@ struct Window {
 
 @implementation AntiAppDelegate
 - (void)applicationWillTerminate:(NSNotification *)notification {
-    (void)notification;
+    (void) notification;
     if (self.should_close_ptr) *self.should_close_ptr = true;
 }
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
-    (void)sender;
+    (void) sender;
     return YES;
 }
 @end
@@ -57,8 +57,8 @@ struct Window {
 @end
 
 @implementation AntiWindowDelegate
-- (void)windowWillClose:(NSNotification *)notification {
-    (void)notification;
+- (void) windowWillClose:(NSNotification *)notification {
+    (void) notification;
     if (self.should_close_ptr) *self.should_close_ptr = true;
 }
 @end
@@ -145,6 +145,6 @@ bool Window_shouldClose(Window *window) {
 }
 
 void Window_setVsync(Window *window, bool enabled) {
-    (void)window;
-    (void)enabled;
+    (void) window;
+    (void) enabled;
 }

@@ -28,6 +28,7 @@ legacy-java/
 lessons/
 transition/
 *.md
+!preferences.txt
 goals/
 scratch/
 regurgitation/

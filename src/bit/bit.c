@@ -51,7 +51,7 @@ bool BitPool_init(BitPool *pool, size_t element_size, size_t capacity) {
         (*slot).type_id = 0;
         (*slot).length = 0;
         atomic_store_explicit(&(*slot).next, pack(tag, head), memory_order_relaxed);
-        head = (uintptr_t)slot;
+        head = (uintptr_t) slot;
         tag++;
     }
     atomic_store_explicit(&(*pool).free_head, pack(tag, head), memory_order_release);
@@ -112,7 +112,7 @@ void BitPool_free(BitPool *pool, void *user_ptr) {
                               memory_order_release);
 
         if (atomic_compare_exchange_weak_explicit(&(*pool).free_head, &head_packed,
-                                                  pack(tag, (uintptr_t)slot),
+                                                  pack(tag, (uintptr_t) slot),
                                                   memory_order_release, memory_order_acquire)) {
             return;
         }

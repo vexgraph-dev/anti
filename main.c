@@ -101,7 +101,7 @@ int main(void) {
     void *score = Memory_alloc(TYPE_INT_SINGLETON, sizeof(int32_t));
     *(int32_t *)score = 42;
 
-    int32_t score_id = Variable_instant(&vars, "player_score", TYPE_INT_SINGLETON, (uintptr_t)score);
+    int32_t score_id = Variable_instant(&vars, "player_score", TYPE_INT_SINGLETON, (uintptr_t) score);
     int32_t name_id = Variable_instant(&vars, "player_name", 0, (uintptr_t)0x1234);
     printf("score_id=%d name_id=%d active=%zu\n", score_id, name_id,
            Variable_getActiveCount(&vars));
