@@ -28,7 +28,6 @@ legacy-java/
 lessons/
 transition/
 *.md
-!preferences.txt
 goals/
 scratch/
 regurgitation/
@@ -36,6 +35,7 @@ regurgitation/
 ### Private / agent-adjacent config ###
 preferences/
 preferences*.local.txt
+preferences.txt
 code.txt
 debug_code.txt
 clipboard.png
