@@ -13,7 +13,7 @@
 // corrupting the list. This is the same trick the legacy Java used (Lesson 7
 // + Lesson 13 doctrine: zero allocation, lock-free, and the tag defeats ABA).
 
-#include "anti_bit.h"
+#include "bit/bit.h"
 
 #include <stdlib.h>
 #include <string.h>

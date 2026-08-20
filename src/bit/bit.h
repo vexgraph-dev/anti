@@ -1,12 +1,12 @@
-#ifndef ANTI_BIT_H
-#define ANTI_BIT_H
+#ifndef BIT_BIT_H
+#define BIT_BIT_H
 
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
 
-// anti_bit.h — lockless bit-width pool API (Legacy: bit/Bit64.java).
+// bit/bit.h — lockless bit-width pool API (Legacy: bit/Bit64.java).
 //
 // A pool owns one fixed arena of equal-sized slots. Alloc/free are lock-free
 // pushes and pops on a tagged free list. Use one pool per element width
