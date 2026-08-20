@@ -1,9 +1,9 @@
-#ifndef ANTI_TYPE_H
-#define ANTI_TYPE_H
+#ifndef OOP_TYPE_H
+#define OOP_TYPE_H
 
 #include <stdint.h>
 
-// anti_type.h — the TypeRegister, ported from oop/TypeRegister.java.
+// oop/type.h — the TypeRegister, ported from oop/TypeRegister.java.
 //
 // Every allocated object in anti carries a 32-bit type id in its header. The
 // id is bit-packed, mirroring the legacy hex layout:
