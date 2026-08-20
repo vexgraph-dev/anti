@@ -34,6 +34,9 @@ goals/
 scratch/
 regurgitation/
 
+### Tests (never committed — run/scratch material only) ###
+tests/
+
 ### Private / agent-adjacent config ###
 preferences/
 preferences*.local.txt
