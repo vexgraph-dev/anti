@@ -32,19 +32,29 @@ add_executable(anti
     src/util/random.c
 )
 target_include_directories(anti PRIVATE src)
-target_compile_options(anti PRIVATE -Wall -Wextra -Werror -mcpu=apple-m1)
+target_compile_options(anti PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_link_libraries(anti PRIVATE pthread)
 
 # Cocoa shim
 enable_language(OBJC)
 add_executable(anti_window
     src/window/window_cocoa.m
-    src/window/window_demo.c
+    tests/window_test.c
     src/engine/loop.c
 )
 target_include_directories(anti_window PRIVATE src)
-target_compile_options(anti_window PRIVATE -Wall -Wextra -mcpu=apple-m1)
+target_compile_options(anti_window PRIVATE -Wall -Wextra -mcpu=native)
 target_link_libraries(anti_window PRIVATE
     "-framework Cocoa"
     "-framework AppKit"
 )
+
+# Cross-platform backend seam: the Windows/Linux placeholders are draft
+# stubs (see the @Draft annotations in src/window/). Each compiles only on
+# its own platform; the anti_window target itself still needs a platform
+# split before it can build outside macOS.
+if(WIN32)
+    target_sources(anti_window PRIVATE src/window/window.c)
+elseif(UNIX AND NOT APPLE)
+    target_sources(anti_window PRIVATE src/window/window_linux.c)
+endif()
