@@ -1,0 +1,84 @@
+#include "objects/probable_objects.h"
+
+#include <string.h>
+
+#include "nio/mem.h"
+#include "oop/type.h"
+#include "util/random.h"
+
+// probable_objects.c — ProbableObjects port (Legacy: objects/ProbableObjects.java).
+
+static const size_t SLOT_SIZE = 16;
+
+ProbableObjects *ProbableObjects_allocate(size_t capacity) {
+    size_t bytes = sizeof(ProbableObjects) + capacity * SLOT_SIZE;
+    ProbableObjects *po = (ProbableObjects *)Memory_alloc(TYPE_PROBABLE_OBJECTS, bytes);
+    if (!po) return NULL;
+    memset(po, 0, bytes);
+    (*po).capacity = (uint32_t)capacity;
+    return po;
+}
+
+void ProbableObjects_free(ProbableObjects *po) {
+    Memory_free(po);
+}
+
+size_t ProbableObjects_size(ProbableObjects *po) {
+    if (!po) return 0;
+    return (*po).count;
+}
+
+size_t ProbableObjects_capacity(ProbableObjects *po) {
+    if (!po) return 0;
+    return (*po).capacity;
+}
+
+uint32_t ProbableObjects_totalWeight(ProbableObjects *po) {
+    if (!po) return 0;
+    return (*po).total_weight;
+}
+
+static uint8_t *slot_at(ProbableObjects *po, size_t index) {
+    return (*po).slots + index * SLOT_SIZE;
+}
+
+int ProbableObjects_add(ProbableObjects *po, uintptr_t object, uint32_t weight) {
+    if (!po) return 0;
+    if ((*po).count >= (*po).capacity)
+        return 0;
+
+    uint8_t *slot = slot_at(po, (*po).count);
+    *(uintptr_t *)slot = object;
+
+    uint32_t running = (*po).total_weight + weight;
+    *(uint32_t *)(slot + 8) = running;
+    *(uint32_t *)(slot + 12) = weight;
+
+    (*po).total_weight = running;
+    (*po).count++;
+    return 1;
+}
+
+int ProbableObjects_addProbable(ProbableObjects *po, const Probable *probable) {
+    if (!probable) return 0;
+    return ProbableObjects_add(po, (*probable).object, (*probable).weight);
+}
+
+uintptr_t ProbableObjects_objectAt(ProbableObjects *po, size_t index) {
+    if (!po || index >= (*po).count) return 0;
+    return *(uintptr_t *)slot_at(po, index);
+}
+
+uint32_t ProbableObjects_cumulativeAt(ProbableObjects *po, size_t index) {
+    if (!po || index >= (*po).count) return 0;
+    return *(uint32_t *)(slot_at(po, index) + 8);
+}
+
+uint32_t ProbableObjects_weightAt(ProbableObjects *po, size_t index) {
+    if (!po || index >= (*po).count) return 0;
+    return *(uint32_t *)(slot_at(po, index) + 12);
+}
+
+uintptr_t ProbableObjects_get(ProbableObjects *po) {
+    return Random_probablePool(Random_system(), po);
+}
