@@ -1,12 +1,12 @@
-#ifndef ANTI_MEM_H
-#define ANTI_MEM_H
+#ifndef NIO_MEM_H
+#define NIO_MEM_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#include "anti_type.h"
+#include "oop/type.h"
 
-// anti_mem.h — the ForeignMemory API (Legacy: nio/ForeignMemory.java).
+// nio/mem.h — the ForeignMemory API (Legacy: nio/ForeignMemory.java).
 //
 // Every allocation returns a payload pointer whose 16-byte prefix holds
 // [type_id][length]. Callers never see the header; the length/type accessors
@@ -15,7 +15,7 @@
 // This is the "lens of all things": with type+length on every block, debug
 // validation, serialization, and the hot-swap system can trust a raw pointer.
 
-// The header struct lives in anti_type.h (anti_type_header_t). A block is
+// The header struct lives in oop/type.h (type_header_t). A block is
 // that header followed by an aligned payload.
 typedef struct anti_block {
     uint32_t type_id;
