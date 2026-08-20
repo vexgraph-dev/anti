@@ -1,0 +1,83 @@
+// anti_spin.c — SpinLock port (thread/SpinLock.java) on C11 atomics.
+//
+// One word: 0 = free, otherwise owner-encoded:
+//     (threadId & 0x3FFFFFFF) << 1 | 1
+// The low bit marks "held" so 0 is unambiguously free, and the owner id is
+// embedded in the same word — one word means we can embed a lock directly in a
+// RingBuffer header etc. without allocating a separate object.
+//
+// Ordering note (Lesson 20): on ARM the hardware reorders freely, so we use
+// acquire on the successful CAS and release on the store in unlock. Relaxed
+// would "work" on x86 and corrupt on Apple Silicon.
+
+#include "anti_spin.h"
+
+#include <stdatomic.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <time.h>
+
+// x86 has `pause`; ARM64 has `yield`. Both tell the CPU "I'm spinning" so it
+// can back off power/contention. This is the one place we're arch-specific.
+#if defined(__aarch64__)
+#define ANTI_SPIN_PAUSE() asm volatile("yield" ::: "memory")
+#else
+#define ANTI_SPIN_PAUSE() asm volatile("pause" ::: "memory")
+#endif
+
+// Encode a thread id into the lock word: low bit = held, id in the upper 31.
+// Keeps the word 0 (free) unambiguous from any held value.
+static uint32_t anti_ticket(uint64_t thread_id) {
+    return (uint32_t)(((thread_id & 0x3FFFFFFFull) << 1) | 1u);
+}
+
+// Spin until acquired. The CAS publishes with acquire so our critical section
+// sees everything the previous owner wrote before releasing.
+void anti_spin_lock(anti_spin_t *lock) {
+    uint32_t expected = 0;
+    uint32_t ticket = anti_ticket(0);
+    while (!atomic_compare_exchange_weak_explicit(&(*lock).word, &expected, ticket,
+                                                  memory_order_acquire, memory_order_relaxed)) {
+        expected = 0;
+        for (int i = 0; i < 16; i++) {
+            ANTI_SPIN_PAUSE();
+        }
+    }
+}
+
+// One-shot acquire: returns immediately whether it worked or not.
+bool anti_spin_try_lock(anti_spin_t *lock) {
+    uint32_t expected = 0;
+    uint32_t ticket = anti_ticket(0);
+    return atomic_compare_exchange_strong_explicit(&(*lock).word, &expected, ticket,
+                                                   memory_order_acquire, memory_order_relaxed);
+}
+
+// Try until timeout_nanos elapses (or forever if negative). Never returns
+// falsely-successful; the deadline is a hard stop.
+bool anti_spin_try_lock_timeout(anti_spin_t *lock, int64_t timeout_nanos) {
+    struct timespec start, now;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    while (!anti_spin_try_lock(lock)) {
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        int64_t elapsed = (now.tv_sec - start.tv_sec) * 1000000000LL
+                        + (now.tv_nsec - start.tv_nsec);
+        if (timeout_nanos >= 0 && elapsed >= timeout_nanos) return false;
+        for (int i = 0; i < 16; i++) {
+            ANTI_SPIN_PAUSE();
+        }
+    }
+    return true;
+}
+
+// Release with release semantics so our critical-section writes are visible
+// to the next thread that acquires.
+void anti_spin_unlock(anti_spin_t *lock) {
+    atomic_store_explicit(&(*lock).word, 0, memory_order_release);
+}
+
+// is_locked takes a const pointer, so cast away const for the atomic load.
+bool anti_spin_is_locked(const anti_spin_t *lock) {
+    return atomic_load_explicit(&((anti_spin_t *)lock)->word, memory_order_acquire) != 0;
+}

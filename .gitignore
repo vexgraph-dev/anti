@@ -7,6 +7,11 @@ bin/
 natives/
 target/
 out/
+build-debug/
+build-release/
+cmake-build-debug/
+cmake-build-release/
+anti.app/
 *.log
 crash-dump.txt
 crash-dump_*.txt
@@ -24,12 +29,10 @@ lessons/
 transition/
 *.md
 goals/
-goals.txt
 scratch/
 regurgitation/
 
 ### Private / agent-adjacent config ###
-preferences.txt
 preferences/
 preferences*.local.txt
 code.txt
