@@ -11,7 +11,7 @@
 // Lesson 18 replaces the spinlock with per-thread slots later; this is the
 // correct, simple version that works today.
 
-#include "anti_ring.h"
+#include "thread/ring.h"
 
 #include <stdlib.h>
 #include <string.h>

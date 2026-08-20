@@ -1,14 +1,14 @@
-#ifndef ANTI_RING_H
-#define ANTI_RING_H
+#ifndef THREAD_RING_H
+#define THREAD_RING_H
 
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
 
-#include "anti_spin.h"
+#include "thread/spin.h"
 
-// anti_ring.h — MPMC ring buffer API (Legacy: thread/RingBuffer.java).
+// thread/ring.h — MPMC ring buffer API (Legacy: thread/RingBuffer.java).
 //
 // A fixed-capacity FIFO whose capacity is rounded to a power of two, so slot
 // indexing is `idx & mask` (no modulo). One embedded spinlock serializes

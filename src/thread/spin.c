@@ -10,7 +10,7 @@
 // acquire on the successful CAS and release on the store in unlock. Relaxed
 // would "work" on x86 and corrupt on Apple Silicon.
 
-#include "anti_spin.h"
+#include "thread/spin.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>

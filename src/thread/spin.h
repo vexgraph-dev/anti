@@ -1,11 +1,11 @@
-#ifndef ANTI_SPIN_H
-#define ANTI_SPIN_H
+#ifndef THREAD_SPIN_H
+#define THREAD_SPIN_H
 
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 
-// anti_spin.h — spinlock API (Legacy: thread/SpinLock.java).
+// thread/spin.h — spinlock API (Legacy: thread/SpinLock.java).
 //
 // A single atomic word: 0 = free, else (threadId<<1)|1 (owner-encoded). One
 // word means the lock can be embedded inside other structs (ring buffers,
