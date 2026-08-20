@@ -34,6 +34,7 @@ Feel free to fork the code however or use it as inspiration for your own zero-al
 | Mixed-caps or snake-capital functions | Style rule. | Definition `functionName`, call site `Class_functionName(...)`. |
 | Braced single-statement `if` | Style rule. | `if(foo)` newline `(*coo).doo(params);` — no braces. |
 | External GUI/windowing libs (GLFW, SDL) | Pulls in C++/extra dependencies, contradicts the native backend. | `window.Window` — AppKit directly via Objective-C shim. |
+| Annotation marker written bare (e.g. `DRAFT`) | Style rule. | `;;DRAFT` — two semicolons prefix, nothing after. |
 
 ---
 
