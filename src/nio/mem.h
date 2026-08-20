@@ -17,25 +17,25 @@
 
 // The header struct lives in oop/type.h (type_header_t). A block is
 // that header followed by an aligned payload.
-typedef struct anti_block {
+typedef struct Block {
     uint32_t type_id;
     uint32_t length;
     uint64_t _pad;
-} anti_block_t;
+} Block;
 
 // Allocate nbytes with the given type id stamped in the header.
 // Returns the aligned payload pointer, or NULL on failure.
-void *anti_mem_alloc(uint32_t type_id, size_t nbytes);
+void *Memory_alloc(uint32_t type_id, size_t nbytes);
 
 // Grow/shrink a block, preserving contents and type. Returns the new payload
 // pointer (the old one is freed). NULL on failure leaves the original intact.
-void *anti_mem_realloc(void *user_ptr, size_t new_nbytes);
+void *Memory_realloc(void *user_ptr, size_t new_nbytes);
 
 // Free a block (user_ptr may be NULL). The header is found by walking back.
-void anti_mem_free(void *user_ptr);
+void Memory_free(void *user_ptr);
 
 // Metadata accessors: cost a single pointer subtract.
-size_t anti_mem_length(void *user_ptr);
-uint32_t anti_mem_type(void *user_ptr);
+size_t Memory_length(void *user_ptr);
+uint32_t Memory_type(void *user_ptr);
 
 #endif
