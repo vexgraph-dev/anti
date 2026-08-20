@@ -1,4 +1,4 @@
-// anti_window_cocoa.m — the AppKit shim (the ".m" glue file).
+// window_cocoa.m — the AppKit shim (the ".m" glue file).
 //
 // anti's core is pure C11; this is the ONE Objective-C file in the project.
 // It exists only to talk to AppKit, because NSWindow/NSApplication are ObjC
@@ -24,7 +24,7 @@
 
 // One opaque handle handed back to C. Holds both NS objects we must keep
 // alive: the window itself and its delegate.
-struct anti_window {
+struct Window {
     NSWindow *ns_window;
     AntiWindowDelegate *delegate;
     bool should_close;
@@ -68,7 +68,7 @@ static NSWindow *s_last_window = nil;
 
 // Drain the OS event queue. Called every frame from the engine loop (the
 // "poll" half of poll-then-tick). Returns immediately; never blocks.
-void anti_window_poll_events(void) {
+void Window_pollEvents(void) {
     @autoreleasepool {
         NSEvent *event;
         while ((event = [NSApp nextEventMatchingMask:NSEventMaskAny
@@ -81,8 +81,8 @@ void anti_window_poll_events(void) {
 }
 
 // Create and show an NSWindow. Returns an opaque handle or NULL.
-// The handle must be freed with anti_window_destroy().
-anti_window_t *anti_window_create(const char *title, int width, int height) {
+// The handle must be freed with Window_destroy().
+Window *Window_create(const char *title, int width, int height) {
     @autoreleasepool {
         if (!NSApp) {
             [NSApplication sharedApplication];   // bootstrap the app object once
@@ -113,7 +113,7 @@ anti_window_t *anti_window_create(const char *title, int width, int height) {
         AntiWindowDelegate *delegate = [[AntiWindowDelegate alloc] init];
         [window setDelegate:delegate];
 
-        anti_window_t *w = (anti_window_t *)calloc(1, sizeof(anti_window_t));
+        Window *w = (Window *)calloc(1, sizeof(Window));
         (*w).ns_window = window;
         (*w).delegate = delegate;
         (*w).should_close = false;
@@ -129,7 +129,7 @@ anti_window_t *anti_window_create(const char *title, int width, int height) {
 // Tear down the window and free the handle. Safe to call whether the user
 // already closed the window or not: if it's still open we close it, and we
 // detach the delegate first so no callback can touch our freed memory.
-void anti_window_destroy(anti_window_t *window) {
+void Window_destroy(Window *window) {
     if (!window) return;
     @autoreleasepool {
         [(*window).ns_window setDelegate:nil];   // detach: no callbacks into freed struct
@@ -140,11 +140,11 @@ void anti_window_destroy(anti_window_t *window) {
     free(window);
 }
 
-bool anti_window_should_close(anti_window_t *window) {
+bool Window_shouldClose(Window *window) {
     return window ? (*window).should_close : true;
 }
 
-void anti_window_set_vsync(anti_window_t *window, bool enabled) {
+void Window_setVsync(Window *window, bool enabled) {
     (void)window;
     (void)enabled;
 }
