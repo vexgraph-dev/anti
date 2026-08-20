@@ -18,7 +18,7 @@
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
 
-#include "anti_window.h"
+#include "window/window.h"
 
 @class AntiWindowDelegate;
 

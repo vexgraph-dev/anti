@@ -1,10 +1,10 @@
-#ifndef ANTI_WINDOW_H
-#define ANTI_WINDOW_H
+#ifndef WINDOW_WINDOW_H
+#define WINDOW_WINDOW_H
 
 #include <stdbool.h>
 #include <stdint.h>
 
-// anti_window.h — platform-agnostic window API.
+// window/window.h — platform-agnostic window API.
 //
 // The implementation is anti_window_cocoa.m (the one ObjC file). C callers
 // never see AppKit: they get an opaque handle, create/destroy it, and poll
