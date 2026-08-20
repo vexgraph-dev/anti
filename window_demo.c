@@ -6,8 +6,8 @@
 
 #include <stdio.h>
 
-#include "anti_loop.h"
-#include "anti_window.h"
+#include "engine/loop.h"
+#include "window/window.h"
 
 typedef struct {
     anti_window_t *window;

@@ -16,12 +16,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "anti_bit.h"
-#include "anti_loop.h"
-#include "anti_mem.h"
-#include "anti_ring.h"
-#include "anti_spin.h"
-#include "anti_type.h"
+#include "bit/bit.h"
+#include "engine/loop.h"
+#include "nio/mem.h"
+#include "thread/ring.h"
+#include "thread/spin.h"
+#include "oop/type.h"
 
 #define N_THREADS 4
 #define N_PUSH 25
