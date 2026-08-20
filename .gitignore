@@ -28,6 +28,8 @@ legacy-java/
 lessons/
 transition/
 *.md
+!README.md
+!CONTRIBUTING.md
 goals/
 scratch/
 regurgitation/
