@@ -1,10 +1,10 @@
-#ifndef ANTI_LOOP_H
-#define ANTI_LOOP_H
+#ifndef ENGINE_LOOP_H
+#define ENGINE_LOOP_H
 
 #include <stdbool.h>
 #include <stdint.h>
 
-// anti_loop.h — the engine loop API (Legacy: engine/EngineLoop.java).
+// engine/loop.h — the engine loop API (Legacy: engine/EngineLoop.java).
 //
 // The loop is a fixed-timestep accumulator: your tick() runs exactly every
 // frame_ms of simulated time, no matter how fast or slow the wall clock is.

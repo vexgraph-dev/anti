@@ -5,7 +5,7 @@
 // The "while" the lessons keep mentioning lives here:
 //     while (running) { poll events; tick at fixed steps; }
 
-#include "anti_loop.h"
+#include "engine/loop.h"
 
 #include <time.h>
 
