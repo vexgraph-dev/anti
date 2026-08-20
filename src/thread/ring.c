@@ -1,4 +1,4 @@
-// anti_ring.c — MPMC ring buffer (thread/RingBuffer.java port).
+// ring.c — MPMC ring buffer (thread/RingBuffer.java port).
 //
 // A fixed-capacity FIFO with power-of-two capacity so the slot index is a
 // cheap mask instead of a modulo. One spinlock guards the whole structure
@@ -18,7 +18,7 @@
 
 // Round up to the next power of two (clamp: 1..2^64). Classic bit trick —
 // same nextPowerOfTwo the Java version had.
-static size_t anti_next_pow2(size_t value) {
+static size_t nextPow2(size_t value) {
     if (value <= 0) return 1;
     value--;
     value |= value >> 1;
@@ -30,15 +30,15 @@ static size_t anti_next_pow2(size_t value) {
     return value + 1;
 }
 
-bool anti_ring_init(anti_ring_t *ring, size_t elem_size, size_t capacity) {
+bool RingBuffer_init(RingBuffer *ring, size_t elem_size, size_t capacity) {
     if (!ring || elem_size == 0) return false;
 
     // Round the request up to a power of two; slot = idx & mask.
-    size_t cap = anti_next_pow2(capacity);
+    size_t cap = nextPow2(capacity);
     (*ring).capacity = cap;
     (*ring).mask = cap - 1;
     (*ring).elem_size = elem_size;
-    (*ring).lock = ANTI_SPIN_INIT;
+    (*ring).lock = SPIN_LOCK_INIT;
     atomic_store_explicit(&(*ring).head, 0, memory_order_relaxed);
     atomic_store_explicit(&(*ring).tail, 0, memory_order_relaxed);
 
@@ -46,7 +46,7 @@ bool anti_ring_init(anti_ring_t *ring, size_t elem_size, size_t capacity) {
     return (*ring).slots != NULL;
 }
 
-void anti_ring_shutdown(anti_ring_t *ring) {
+void RingBuffer_shutdown(RingBuffer *ring) {
     if (ring && (*ring).slots) {
         free((*ring).slots);
         (*ring).slots = NULL;
@@ -54,15 +54,15 @@ void anti_ring_shutdown(anti_ring_t *ring) {
 }
 
 // Push one item. Locked: the whole copy in must be atomic to readers.
-bool anti_ring_push(anti_ring_t *ring, const void *item) {
+bool RingBuffer_push(RingBuffer *ring, const void *item) {
     if (!ring || !item) return false;
 
-    anti_spin_lock(&(*ring).lock);
+    SpinLock_lock(&(*ring).lock);
 
     size_t tail = atomic_load_explicit(&(*ring).tail, memory_order_relaxed);
     size_t head = atomic_load_explicit(&(*ring).head, memory_order_relaxed);
     if (tail - head >= (*ring).capacity) {
-        anti_spin_unlock(&(*ring).lock);
+        SpinLock_unlock(&(*ring).lock);
         return false; // full
     }
 
@@ -70,20 +70,20 @@ bool anti_ring_push(anti_ring_t *ring, const void *item) {
     memcpy((*ring).slots + slot * (*ring).elem_size, item, (*ring).elem_size);
     atomic_store_explicit(&(*ring).tail, tail + 1, memory_order_release);
 
-    anti_spin_unlock(&(*ring).lock);
+    SpinLock_unlock(&(*ring).lock);
     return true;
 }
 
 // Pop the oldest item. Locked: we can't let a reader see a half-written slot.
-bool anti_ring_pop(anti_ring_t *ring, void *out) {
+bool RingBuffer_pop(RingBuffer *ring, void *out) {
     if (!ring || !out) return false;
 
-    anti_spin_lock(&(*ring).lock);
+    SpinLock_lock(&(*ring).lock);
 
     size_t head = atomic_load_explicit(&(*ring).head, memory_order_relaxed);
     size_t tail = atomic_load_explicit(&(*ring).tail, memory_order_relaxed);
     if (head == tail) {
-        anti_spin_unlock(&(*ring).lock);
+        SpinLock_unlock(&(*ring).lock);
         return false; // empty
     }
 
@@ -91,6 +91,6 @@ bool anti_ring_pop(anti_ring_t *ring, void *out) {
     memcpy(out, (*ring).slots + slot * (*ring).elem_size, (*ring).elem_size);
     atomic_store_explicit(&(*ring).head, head + 1, memory_order_release);
 
-    anti_spin_unlock(&(*ring).lock);
+    SpinLock_unlock(&(*ring).lock);
     return true;
 }
