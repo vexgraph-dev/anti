@@ -8,6 +8,7 @@
 // platform (e.g. "Windows", "Linux", "Mac"). The platform is a string literal.
 //
 // See draft.h for the macro convention (C has no language-level annotations).
+// Usage: `;;PLATFORM_EXCLUSIVE("Windows")` (see preferences.txt, rule 8).
 
 #define PLATFORM_EXCLUSIVE(platform) _Static_assert(1, "@PlatformExclusive(" platform ")");
 

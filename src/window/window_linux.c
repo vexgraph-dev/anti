@@ -18,11 +18,11 @@
 
 #if defined(__linux__) || defined(__unix__)
 
-PLATFORM_EXCLUSIVE("Linux")
-INTENTION("Fills the Window API seam (window.h) on Linux so the engine can be built there; mirrors the legacy linuxWindow.java.")
-DRAFT
+;;PLATFORM_EXCLUSIVE("Linux")
+;;INTENTION("Fills the Window API seam (window.h) on Linux so the engine can be built there; mirrors the legacy linuxWindow.java.")
+;;DRAFT
 
-INCOMPLETE // XCreateSimpleWindow; returns NULL until implemented.
+;;;;INCOMPLETE // XCreateSimpleWindow; returns NULL until implemented.
 Window *Window_create(const char *title, int width, int height) {
     (void) title;
     (void) width;
@@ -30,165 +30,165 @@ Window *Window_create(const char *title, int width, int height) {
     return NULL;
 }
 
-INCOMPLETE // XDestroyWindow; no-op until implemented.
+;;INCOMPLETE // XDestroyWindow; no-op until implemented.
 void Window_destroy(Window *window) {
     (void) window;
 }
 
-INCOMPLETE // Check DestroyNotify; true until implemented.
+;;INCOMPLETE // Check DestroyNotify; true until implemented.
 bool Window_shouldClose(Window *window) {
     (void) window;
     return true;
 }
 
-INCOMPLETE // XPending/XNextEvent loop; no-op until implemented.
+;;INCOMPLETE // XPending/XNextEvent loop; no-op until implemented.
 void Window_pollEvents(void) {
 }
 
-INCOMPLETE // SwapBuffers vsync; no-op until implemented.
+;;INCOMPLETE // SwapBuffers vsync; no-op until implemented.
 void Window_setVsync(Window *window, bool enabled) {
     (void) window;
     (void) enabled;
 }
 
-INCOMPLETE // XStoreName; no-op until implemented.
+;;INCOMPLETE // XStoreName; no-op until implemented.
 void Window_setTitle(Window *window, const char *title) {
     (void) window;
     (void) title;
 }
 
-INCOMPLETE // XResizeWindow; no-op until implemented.
+;;INCOMPLETE // XResizeWindow; no-op until implemented.
 void Window_setSize(Window *window, int width, int height) {
     (void) window;
     (void) width;
     (void) height;
 }
 
-INCOMPLETE // XResizeWindow; no-op until implemented.
+;;INCOMPLETE // XResizeWindow; no-op until implemented.
 void Window_setWidth(Window *window, int width) {
     (void) window;
     (void) width;
 }
 
-INCOMPLETE // XResizeWindow; no-op until implemented.
+;;INCOMPLETE // XResizeWindow; no-op until implemented.
 void Window_setHeight(Window *window, int height) {
     (void) window;
     (void) height;
 }
 
-INCOMPLETE // XMoveWindow; no-op until implemented.
+;;INCOMPLETE // XMoveWindow; no-op until implemented.
 void Window_setLocation(Window *window, int x, int y) {
     (void) window;
     (void) x;
     (void) y;
 }
 
-INCOMPLETE // Center on the screen; no-op until implemented.
+;;INCOMPLETE // Center on the screen; no-op until implemented.
 void Window_center(Window *window) {
     (void) window;
 }
 
-INCOMPLETE // XMapWindow/XUnmapWindow; no-op until implemented.
+;;INCOMPLETE // XMapWindow/XUnmapWindow; no-op until implemented.
 void Window_setVisible(Window *window, bool visible) {
     (void) window;
     (void) visible;
 }
 
-INCOMPLETE // Motif hints; false until implemented.
+;;INCOMPLETE // Motif hints; false until implemented.
 bool Window_isResizable(Window *window) {
     (void) window;
     return false;
 }
 
-INCOMPLETE // Motif hints; no-op until implemented.
+;;INCOMPLETE // Motif hints; no-op until implemented.
 void Window_setResizable(Window *window, bool resizable) {
     (void) window;
     (void) resizable;
 }
 
-INCOMPLETE // WM_DELETE_WINDOW; false until implemented.
+;;INCOMPLETE // WM_DELETE_WINDOW; false until implemented.
 bool Window_isClosable(Window *window) {
     (void) window;
     return false;
 }
 
-INCOMPLETE // WM_DELETE_WINDOW; no-op until implemented.
+;;INCOMPLETE // WM_DELETE_WINDOW; no-op until implemented.
 void Window_setClosable(Window *window, bool closable) {
     (void) window;
     (void) closable;
 }
 
-INCOMPLETE // Motif hints; false until implemented.
+;;INCOMPLETE // Motif hints; false until implemented.
 bool Window_isMiniaturizable(Window *window) {
     (void) window;
     return false;
 }
 
-INCOMPLETE // Motif hints; no-op until implemented.
+;;INCOMPLETE // Motif hints; no-op until implemented.
 void Window_setMiniaturizable(Window *window, bool miniaturizable) {
     (void) window;
     (void) miniaturizable;
 }
 
-INCOMPLETE // _NET_WM_STATE_FULLSCREEN; no-op until implemented.
+;;INCOMPLETE // _NET_WM_STATE_FULLSCREEN; no-op until implemented.
 void Window_setFullscreenButton(Window *window, bool enabled) {
     (void) window;
     (void) enabled;
 }
 
-INCOMPLETE // Fullscreen/borderless chrome switch; no-op until implemented.
+;;INCOMPLETE // Fullscreen/borderless chrome switch; no-op until implemented.
 void Window_setUndecorated(Window *window, int mode) {
     (void) window;
     (void) mode;
 }
 
-INCOMPLETE // XIconifyWindow; no-op until implemented.
+;;INCOMPLETE // XIconifyWindow; no-op until implemented.
 void Window_minimize(Window *window) {
     (void) window;
 }
 
-INCOMPLETE // WM_CHANGE_STATE normal; no-op until implemented.
+;;INCOMPLETE // WM_CHANGE_STATE normal; no-op until implemented.
 void Window_restore(Window *window) {
     (void) window;
 }
 
-INCOMPLETE // Check _NET_WM_STATE_HIDDEN; false until implemented.
+;;INCOMPLETE // Check _NET_WM_STATE_HIDDEN; false until implemented.
 bool Window_isMinimized(Window *window) {
     (void) window;
     return false;
 }
 
-INCOMPLETE // Check _NET_WM_STATE_FULLSCREEN; false until implemented.
+;;INCOMPLETE // Check _NET_WM_STATE_FULLSCREEN; false until implemented.
 bool Window_isFullscreen(Window *window) {
     (void) window;
     return false;
 }
 
-INCOMPLETE // _NET_WM_STATE_FULLSCREEN toggle; no-op until implemented.
+;;INCOMPLETE // _NET_WM_STATE_FULLSCREEN toggle; no-op until implemented.
 void Window_setFullscreen(Window *window, bool fullscreen) {
     (void) window;
     (void) fullscreen;
 }
 
-INCOMPLETE // _NET_WM_STATE_FULLSCREEN toggle; no-op until implemented.
+;;INCOMPLETE // _NET_WM_STATE_FULLSCREEN toggle; no-op until implemented.
 void Window_toggleFullscreen(Window *window) {
     (void) window;
 }
 
-INCOMPLETE // WM_CHANGE_STATE / compositor support; no-op until implemented.
+;;INCOMPLETE // WM_CHANGE_STATE / compositor support; no-op until implemented.
 void Window_setDRM(Window *window, bool enabled) {
     (void) window;
     (void) enabled;
 }
 
-INCOMPLETE // WM_NORMAL_HINTS min size; no-op until implemented.
+;;INCOMPLETE // WM_NORMAL_HINTS min size; no-op until implemented.
 void Window_setMinSize(Window *window, int width, int height) {
     (void) window;
     (void) width;
     (void) height;
 }
 
-INCOMPLETE // WM_NORMAL_HINTS max size; no-op until implemented.
+;;INCOMPLETE // WM_NORMAL_HINTS max size; no-op until implemented.
 void Window_setMaxSize(Window *window, int width, int height) {
     (void) window;
     (void) width;

@@ -7,6 +7,7 @@
 // implementation, untested). Remove once it is fully implemented and tested.
 //
 // See draft.h for the macro convention (C has no language-level annotations).
+// Usage: `;;INCOMPLETE` (see preferences.txt, rule 8).
 
 #define INCOMPLETE _Static_assert(1, "@Incomplete");
 

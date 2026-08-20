@@ -11,6 +11,9 @@
 //
 // Draft: invoke when the file/method is being drafted/written/generated as a
 // first fresh write, not ready for production.
+//
+// Usage: prefix the marker with two semicolons so it reads as a marker:
+// `;;DRAFT` (see preferences.txt, rule 8).
 
 #define DRAFT _Static_assert(1, "@Draft");
 
