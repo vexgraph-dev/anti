@@ -319,15 +319,15 @@ int main(void) {
     Vec2 *va = Vec2_allocateXY(3.0f, 4.0f);
     Vec2 *vb = Vec2_allocateXY(1.0f, 2.0f);
     Vec2 tmp;
-    Vec2_add(&tmp, va, vb);
+    Vec2_add(va, vb, &tmp);
     printf("add=(%.1f,%.1f) dot=%f len=%.3f\n", (double)tmp.x, (double)tmp.y,
            (double)Vec2_dot(va, vb), (double)Vec2_length(va));
-    Vec2_normalize(&tmp, va);
+    Vec2_normalize(va, &tmp);
     printf("normalized=(%.4f,%.4f) dist=%.3f\n", (double)tmp.x, (double)tmp.y,
            (double)Vec2_distance(va, vb));
-    Vec2_perpendicular(&tmp, va);
+    Vec2_perpendicular(va, &tmp);
     printf("perp=(%.1f,%.1f)\n", (double)tmp.x, (double)tmp.y);
-    Vec2_lerp(&tmp, va, vb, 0.5f);
+    Vec2_lerp(va, vb, 0.5f, &tmp);
     printf("lerp=(%.1f,%.1f) angle=%.3f\n", (double)tmp.x, (double)tmp.y,
            (double)Vec2_angle(va, vb));
     Vec2_free(va);
@@ -338,16 +338,16 @@ int main(void) {
     Vec3 *v3a = Vec3_allocateXYZ(1.0f, 0.0f, 0.0f);
     Vec3 *v3b = Vec3_allocateXYZ(0.0f, 1.0f, 0.0f);
     Vec3 r3;
-    Vec3_cross(&r3, v3a, v3b);
+    Vec3_cross(v3a, v3b, &r3);
     printf("cross=(%.1f,%.1f,%.1f) dot=%f len=%f\n", (double)r3.x, (double)r3.y,
            (double)r3.z, (double)Vec3_dot(v3a, v3b), (double)Vec3_length(v3a));
     Vec3 *v3c = Vec3_allocateXYZ(3.0f, 4.0f, 0.0f);
-    Vec3_fastNormalize(&r3, v3c);
+    Vec3_fastNormalize(v3c, &r3);
     printf("fastNormalized=(%.4f,%.4f,%.4f)\n", (double)r3.x, (double)r3.y,
            (double)r3.z);
     Vec3 *normal = Vec3_allocateXYZ(0.0f, 1.0f, 0.0f);
     Vec3 *incident = Vec3_allocateXYZ(1.0f, -1.0f, 0.0f);
-    Vec3_reflect(&r3, incident, normal);
+    Vec3_reflect(incident, normal, &r3);
     printf("reflect=(%.1f,%.1f,%.1f)\n", (double)r3.x, (double)r3.y, (double)r3.z);
     Vec3_free(v3a);
     Vec3_free(v3b);
@@ -360,11 +360,11 @@ int main(void) {
     Vec4 *v4a = Vec4_allocateXYZW(1.0f, 2.0f, 3.0f, 4.0f);
     Vec4 *v4b = Vec4_allocateXYZW(2.0f, 0.0f, 0.0f, 1.0f);
     Vec4 r4;
-    Vec4_add(&r4, v4a, v4b);
+    Vec4_add(v4a, v4b, &r4);
     printf("add=(%.1f,%.1f,%.1f,%.1f) dot=%f len=%.3f\n", (double)r4.x,
            (double)r4.y, (double)r4.z, (double)r4.w,
            (double)Vec4_dot(v4a, v4b), (double)Vec4_length(v4a));
-    Vec4_normalize(&r4, v4a);
+    Vec4_normalize(v4a, &r4);
     printf("normalized=(%.4f,%.4f,%.4f,%.4f)\n", (double)r4.x, (double)r4.y,
            (double)r4.z, (double)r4.w);
     Vec4_free(v4a);
@@ -377,22 +377,22 @@ int main(void) {
     printf("identity m00=%f m11=%f m33=%f m30=%f\n", (double)Mat4_get(m, 0, 0),
            (double)Mat4_get(m, 1, 1), (double)Mat4_get(m, 3, 3),
            (double)Mat4_get(m, 3, 0));
-    Mat4_translate(m, mi, 10.0f, 20.0f, 30.0f);
+    Mat4_translate(mi, 10.0f, 20.0f, 30.0f, m);
     Vec3 *pt3 = Vec3_allocateXYZ(1.0f, 2.0f, 3.0f);
     Vec3 out;
-    Mat4_transformVec3(&out, m, pt3);
+    Mat4_transformVec3(m, pt3, &out);
     printf("translate(10,20,30) * (1,2,3) = (%.1f,%.1f,%.1f)\n", (double)out.x,
            (double)out.y, (double)out.z);
     Mat4 *view = Mat4_allocate();
-    Mat4_createViewMatrix(view, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f);
+    Mat4_createViewMatrix(0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, view);
     printf("view[2][2]=%f view[3][2]=%f\n", (double)Mat4_get(view, 2, 2),
            (double)Mat4_get(view, 3, 2));
     Mat4 *proj = Mat4_allocate();
-    Mat4_perspective(proj, FastMath_HALF_PI, 16.0f / 9.0f, 0.1f, 100.0f);
+    Mat4_perspective(FastMath_HALF_PI, 16.0f / 9.0f, 0.1f, 100.0f, proj);
     printf("proj[0][0]=%f proj[3][2]=%f\n", (double)Mat4_get(proj, 0, 0),
            (double)Mat4_get(proj, 3, 2));
     Mat4 *trs = Mat4_allocate();
-    Mat4_createTransformationMatrix(trs, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 90.0f, 1.0f, 1.0f, 1.0f);
+    Mat4_createTransformationMatrix(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 90.0f, 1.0f, 1.0f, 1.0f, trs);
     printf("rotZ90 m00=%f m10=%f m01=%f m11=%f\n", (double)Mat4_get(trs, 0, 0),
            (double)Mat4_get(trs, 1, 0), (double)Mat4_get(trs, 0, 1),
            (double)Mat4_get(trs, 1, 1));
