@@ -13,7 +13,7 @@
 
 typedef struct SparseSet {
     int32_t capacity;      // dense/data capacity
-    int32_t max_entities;  // sparse array length
+    int32_t maxEntities;   // sparse array length
     int32_t count;         // live entries
     int32_t stride;        // component stride (0 = set only)
     int32_t *dense;        // dense[i] = entity id
@@ -21,8 +21,8 @@ typedef struct SparseSet {
     uint8_t *data;         // component data, capacity * stride bytes
 } SparseSet;
 
-// Set over entity ids [0, max_entities) with optional component stride.
-SparseSet *SparseSet_allocate(size_t capacity, size_t max_entities, size_t stride);
+// Set over entity ids [0, maxEntities) with optional component stride.
+SparseSet *SparseSet_allocate(size_t capacity, size_t maxEntities, size_t stride);
 
 void SparseSet_free(SparseSet *set);
 
@@ -30,18 +30,18 @@ size_t SparseSet_count(SparseSet *set);
 size_t SparseSet_capacity(SparseSet *set);
 size_t SparseSet_maxEntities(SparseSet *set);
 
-bool SparseSet_contains(SparseSet *set, int32_t entity_id);
+bool SparseSet_contains(SparseSet *set, int32_t entityId);
 
 // Add entity (if absent) and return a pointer to its component data (or NULL
 // when the set carries no data block).
-uint8_t *SparseSet_add(SparseSet *set, int32_t entity_id);
+uint8_t *SparseSet_add(SparseSet *set, int32_t entityId);
 
 // Remove the entity if present; data is swap-removed to keep density.
-void SparseSet_remove(SparseSet *set, int32_t entity_id);
+void SparseSet_remove(SparseSet *set, int32_t entityId);
 
 // Component data pointer for the entity, or NULL if absent (or stride == 0,
 // in which case a non-NULL sentinel signals presence).
-uint8_t *SparseSet_get(SparseSet *set, int32_t entity_id);
+uint8_t *SparseSet_get(SparseSet *set, int32_t entityId);
 
 // Tightly packed entity ids, dense[0..count).
 const int32_t *SparseSet_denseEntities(SparseSet *set);
