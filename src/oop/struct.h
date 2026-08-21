@@ -1,83 +1,157 @@
 #ifndef OOP_STRUCT_H
 #define OOP_STRUCT_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-// oop/struct.h — the Struct class, ported from oop/Struct.java.
+#include "oop/fields.h"
+
+// oop/struct.h — Dynamic Struct Instance & Allocation Engine.
 //
-// Runtime-defined dynamic struct layouts. Calling Struct_construct with a list
-// of field class ids returns a fresh generic id (ID_CUSTOM_STRUCT + n) whose
-// stride is the packed sum of the field strides. Layouts are stored in a fixed
-// registry; Stride_get consults it so collections of custom structs work like
-// any other element class. Allocation supports singletons, AoS/SOA arrays, and
-// pointer matrices (Level 1/2/3 in legacy terms).
+// Fields *x = Fields(sizeof(Vec3), sizeof(Vec3), sizeof(Vec3), sizeof(int), sizeof(char*));
+// void *y   = Struct(x);         // allocates singleton
+// void *y   = Struct(x, amount); // allocates array
 
-// Allocate a new custom struct id for the given field class ids. Returns 0 if
-// the registry is full or the field list is empty.
-uint32_t Struct_construct(const uint32_t *field_classes, size_t field_count);
+// Aliases
+typedef Fields Struct;
+typedef Fields StructDescriptor;
 
-// (Re)define the layout for an existing custom struct id.
-void Struct_define(uint32_t generic, const uint32_t *field_classes, size_t field_count);
+// =========================================================================
+// ALLOCATIONS: Struct(x), Struct(x, amount), allocate, allocateArray
+// =========================================================================
 
-// Byte stride of a custom struct id (0 if undefined).
-size_t Struct_stride(uint32_t generic);
+void *Struct_allocate(const Fields *fields);
+void *Struct_allocateSingletonRaw(uint32_t generic);
+void *Struct_allocateArrayFrom(const Fields *fields, size_t amount);
+void *Struct_allocateArrayRaw(uint32_t generic, size_t amount);
+void *Struct_allocateCoexistentFrom(const Fields *fields, size_t amount);
+void *Struct_allocateCoexistentRaw(uint32_t generic, size_t amount);
+void *Struct_allocateSOAFrom(const Fields *fields, size_t amount);
+void *Struct_allocateSOARaw(uint32_t generic, size_t amount);
 
-// Number of fields in a custom struct id (0 if undefined).
+// Polymorphic Allocator:
+//   Struct(x)         -> allocates singleton
+//   Struct(x, amount) -> allocates array of amount elements
+#define STRUCT_CHOOSER(_1, _2, NAME, ...) NAME
+#define Struct(...) STRUCT_CHOOSER(__VA_ARGS__, Struct_allocateArray, Struct_allocateSingleton)(__VA_ARGS__)
+
+#define allocate(fields) Struct_allocate(fields)
+#define allocateArray(fields, amount) Struct_allocateArray(fields, amount)
+
+// C11 Generic Selection helpers for Struct_allocate*
+#define Struct_allocateSingleton(target) \
+    _Generic((target), \
+        const Fields*: Struct_allocate, \
+        Fields*: Struct_allocate, \
+        default: Struct_allocateSingletonRaw \
+    )(target)
+
+#define Struct_allocateArray(target, amount) \
+    _Generic((target), \
+        const Fields*: Struct_allocateArrayFrom, \
+        Fields*: Struct_allocateArrayFrom, \
+        default: Struct_allocateArrayRaw \
+    )((target), (amount))
+
+#define Struct_allocateCoexistent(target, amount) \
+    _Generic((target), \
+        const Fields*: Struct_allocateCoexistentFrom, \
+        Fields*: Struct_allocateCoexistentFrom, \
+        default: Struct_allocateCoexistentRaw \
+    )((target), (amount))
+
+#define Struct_allocateSOA(target, amount) \
+    _Generic((target), \
+        const Fields*: Struct_allocateSOAFrom, \
+        Fields*: Struct_allocateSOAFrom, \
+        default: Struct_allocateSOARaw \
+    )((target), (amount))
+
+// Legacy constructor and inspection bridges
+Fields *Struct_constructArray(const uint32_t *fieldClasses, size_t fieldCount);
+uint32_t Struct_construct(const uint32_t *fieldClasses, size_t fieldCount);
+const Fields *Struct_get(uint32_t generic);
+size_t   Struct_stride(uint32_t generic);
 uint32_t Struct_fieldsCount(uint32_t generic);
+uint32_t Struct_fieldClass(uint32_t generic, size_t fieldIndex);
+bool     Struct_isFieldStruct(uint32_t generic, size_t fieldIndex);
 
-// Field class id at index (0 if undefined/out of range).
-uint32_t Struct_fieldClass(uint32_t generic, size_t field_index);
+// Free struct memory
+void Struct_free(void *userPtr);
 
-// --- ALLOCATION (Levels) ---
+// =========================================================================
+// FIELD ACCESSORS: getField, setField, getElement, setElement
+// =========================================================================
 
-// Level 1: a single zeroed struct.
-void *Struct_allocateSingleton(uint32_t generic);
+// Direct pointer to a field inside a struct instance
+void *Struct_field(void *ptr, size_t fieldIndex);
+void *Struct_elementField(void *ptr, size_t elementIndex, size_t fieldIndex);
 
-// Level 2: an array of structs, AoS layout (same as legacy allocateArray).
-void *Struct_allocateArray(uint32_t generic, size_t length);
+// Generic slot value get/set
+uint64_t Struct_getField(void *ptr, size_t fieldIndex);
+void Struct_setField(void *ptr, size_t fieldIndex, uint64_t value);
+uint64_t Struct_getElement(void *ptr, size_t elementIndex, size_t fieldIndex);
+void Struct_setElement(void *ptr, size_t elementIndex, size_t fieldIndex, uint64_t value);
 
-// Level 2: an array of structs, SoA layout.
-void *Struct_allocateSOA(uint32_t generic, size_t length);
+#define getField(ptr, fieldIndex) Struct_getField((ptr), (fieldIndex))
+#define setField(ptr, fieldIndex, val) Struct_setField((ptr), (fieldIndex), (val))
 
-// Level 3: a matrix (pointer array) of structs.
-void *Struct_allocateMatrix(uint32_t generic, size_t length);
+// Direct typed accessors for singletons
+void Struct_setInt(void *ptr, size_t fieldIndex, int32_t value);
+int32_t Struct_getInt(void *ptr, size_t fieldIndex);
+void Struct_setLong(void *ptr, size_t fieldIndex, int64_t value);
+int64_t Struct_getLong(void *ptr, size_t fieldIndex);
+void Struct_setFloat(void *ptr, size_t fieldIndex, float value);
+float Struct_getFloat(void *ptr, size_t fieldIndex);
+void Struct_setDouble(void *ptr, size_t fieldIndex, double value);
+double Struct_getDouble(void *ptr, size_t fieldIndex);
+void Struct_setByte(void *ptr, size_t fieldIndex, int8_t value);
+int8_t Struct_getByte(void *ptr, size_t fieldIndex);
+void Struct_setShort(void *ptr, size_t fieldIndex, int16_t value);
+int16_t Struct_getShort(void *ptr, size_t fieldIndex);
+void Struct_setPointerField(void *ptr, size_t fieldIndex, uintptr_t value);
+uintptr_t Struct_getPointerField(void *ptr, size_t fieldIndex);
 
-// Pointer at index in a matrix, and setter.
-uintptr_t Struct_getPointer(void *user_ptr, size_t index);
-void Struct_setPointer(void *user_ptr, size_t index, uintptr_t target);
+// Array element accessors
+void Struct_setIntElement(void *ptr, size_t elementIndex, size_t fieldIndex, int32_t value);
+int32_t Struct_getIntElement(void *ptr, size_t elementIndex, size_t fieldIndex);
+void Struct_setLongElement(void *ptr, size_t elementIndex, size_t fieldIndex, int64_t value);
+int64_t Struct_getLongElement(void *ptr, size_t elementIndex, size_t fieldIndex);
+void Struct_setFloatElement(void *ptr, size_t elementIndex, size_t fieldIndex, float value);
+float Struct_getFloatElement(void *ptr, size_t elementIndex, size_t fieldIndex);
+void Struct_setDoubleElement(void *ptr, size_t elementIndex, size_t fieldIndex, double value);
+double Struct_getDoubleElement(void *ptr, size_t elementIndex, size_t fieldIndex);
+void Struct_setByteElement(void *ptr, size_t elementIndex, size_t fieldIndex, int8_t value);
+int8_t Struct_getByteElement(void *ptr, size_t elementIndex, size_t fieldIndex);
+void Struct_setShortElement(void *ptr, size_t elementIndex, size_t fieldIndex, int16_t value);
+int16_t Struct_getShortElement(void *ptr, size_t elementIndex, size_t fieldIndex);
 
-// Free a struct singleton, array, SOA, or matrix.
-void Struct_free(void *user_ptr);
+// Access nested sub-struct instance pointer inside a Coexistent Array or Singleton
+void *Struct_getNested(void *ptr, size_t elementIndex, size_t fieldIndex);
 
-// --- SINGLETON FIELD ACCESSORS (pointer form) ---
-void Struct_setInt(void *ptr, size_t field_index, int32_t value);
-int32_t Struct_getInt(void *ptr, size_t field_index);
-void Struct_setLong(void *ptr, size_t field_index, int64_t value);
-int64_t Struct_getLong(void *ptr, size_t field_index);
-void Struct_setFloat(void *ptr, size_t field_index, float value);
-float Struct_getFloat(void *ptr, size_t field_index);
-void Struct_setDouble(void *ptr, size_t field_index, double value);
-double Struct_getDouble(void *ptr, size_t field_index);
-void Struct_setByte(void *ptr, size_t field_index, int8_t value);
-int8_t Struct_getByte(void *ptr, size_t field_index);
-void Struct_setShort(void *ptr, size_t field_index, int16_t value);
-int16_t Struct_getShort(void *ptr, size_t field_index);
-void Struct_setPointerField(void *ptr, size_t field_index, uintptr_t value);
-uintptr_t Struct_getPointerField(void *ptr, size_t field_index);
+// Generic-explicit accessors
+void Struct_setIntG(uint32_t generic, void *ptr, size_t fieldIndex, int32_t value);
+int32_t Struct_getIntG(uint32_t generic, void *ptr, size_t fieldIndex);
+void Struct_setLongG(uint32_t generic, void *ptr, size_t fieldIndex, int64_t value);
+int64_t Struct_getLongG(uint32_t generic, void *ptr, size_t fieldIndex);
+void Struct_setFloatG(uint32_t generic, void *ptr, size_t fieldIndex, float value);
+float Struct_getFloatG(uint32_t generic, void *ptr, size_t fieldIndex);
+void Struct_setDoubleG(uint32_t generic, void *ptr, size_t fieldIndex, double value);
+double Struct_getDoubleG(uint32_t generic, void *ptr, size_t fieldIndex);
+void Struct_setByteG(uint32_t generic, void *ptr, size_t fieldIndex, int8_t value);
+int8_t Struct_getByteG(uint32_t generic, void *ptr, size_t fieldIndex);
+void Struct_setShortG(uint32_t generic, void *ptr, size_t fieldIndex, int16_t value);
+int16_t Struct_getShortG(uint32_t generic, void *ptr, size_t fieldIndex);
 
-// --- ARRAY FIELD ACCESSORS (element + field) ---
-void Struct_setIntElement(void *ptr, size_t element_index, size_t field_index, int32_t value);
-int32_t Struct_getIntElement(void *ptr, size_t element_index, size_t field_index);
-void Struct_setLongElement(void *ptr, size_t element_index, size_t field_index, int64_t value);
-int64_t Struct_getLongElement(void *ptr, size_t element_index, size_t field_index);
-void Struct_setFloatElement(void *ptr, size_t element_index, size_t field_index, float value);
-float Struct_getFloatElement(void *ptr, size_t element_index, size_t field_index);
-void Struct_setDoubleElement(void *ptr, size_t element_index, size_t field_index, double value);
-double Struct_getDoubleElement(void *ptr, size_t element_index, size_t field_index);
-void Struct_setByteElement(void *ptr, size_t element_index, size_t field_index, int8_t value);
-int8_t Struct_getByteElement(void *ptr, size_t element_index, size_t field_index);
-void Struct_setShortElement(void *ptr, size_t element_index, size_t field_index, int16_t value);
-int16_t Struct_getShortElement(void *ptr, size_t element_index, size_t field_index);
+// Direct nested subfield accessors
+void Struct_setNestedInt(void *ptr, size_t elementIndex, size_t fieldIndex, size_t subFieldIndex, int32_t value);
+int32_t Struct_getNestedInt(void *ptr, size_t elementIndex, size_t fieldIndex, size_t subFieldIndex);
+void Struct_setNestedFloat(void *ptr, size_t elementIndex, size_t fieldIndex, size_t subFieldIndex, float value);
+float Struct_getNestedFloat(void *ptr, size_t elementIndex, size_t fieldIndex, size_t subFieldIndex);
+void Struct_setNestedLong(void *ptr, size_t elementIndex, size_t fieldIndex, size_t subFieldIndex, int64_t value);
+int64_t Struct_getNestedLong(void *ptr, size_t elementIndex, size_t fieldIndex, size_t subFieldIndex);
+void Struct_setNestedDouble(void *ptr, size_t elementIndex, size_t fieldIndex, size_t subFieldIndex, double value);
+double Struct_getNestedDouble(void *ptr, size_t elementIndex, size_t fieldIndex, size_t subFieldIndex);
 
 #endif
