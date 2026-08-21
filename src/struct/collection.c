@@ -6,7 +6,7 @@
 
 // collection.c — Collection port (Legacy: struct/Collection.java).
 
-static uint64_t read_slot_at(const uint8_t *data, size_t stride) {
+static uint64_t readSlotAt(const uint8_t *data, size_t stride) {
     switch (stride) {
         case 1:  return (uint64_t)(*(const uint8_t *)data);
         case 2:  return (uint64_t)(*(const uint16_t *)data);
@@ -15,7 +15,7 @@ static uint64_t read_slot_at(const uint8_t *data, size_t stride) {
     }
 }
 
-static void write_slot_at(uint8_t *data, size_t stride, uint64_t value) {
+static void writeSlotAt(uint8_t *data, size_t stride, uint64_t value) {
     switch (stride) {
         case 1:  *(uint8_t *)data = (uint8_t)value;   break;
         case 2:  *(uint16_t *)data = (uint16_t)value; break;
@@ -31,7 +31,7 @@ uint32_t Collection_type(Collection *c) {
 
 uint32_t Collection_size(Collection *c) {
     if (!c) return 0;
-    return (*c).active_count;
+    return (*c).activeCount;
 }
 
 uint32_t Collection_length(Collection *c) {
@@ -44,7 +44,7 @@ bool Collection_isEmpty(Collection *c) {
 
 uint32_t Collection_elementClassId(Collection *c) {
     if (!c) return 0;
-    return (*c).element_class;
+    return (*c).elementClass;
 }
 
 uint32_t Collection_keyClassId(Collection *c) {
@@ -78,21 +78,21 @@ uint8_t *Collection_dataBuffer(Collection *c) {
 uint64_t Collection_readSlot(Collection *c, size_t index) {
     if (!c) return 0;
     uint8_t *slot = (*c).data + index * (*c).stride;
-    return read_slot_at(slot, (*c).stride);
+    return readSlotAt(slot, (*c).stride);
 }
 
 void Collection_writeSlot(Collection *c, size_t index, uint64_t value) {
     if (!c) return;
     uint8_t *slot = (*c).data + index * (*c).stride;
-    write_slot_at(slot, (*c).stride, value);
+    writeSlotAt(slot, (*c).stride, value);
 }
 
 uint64_t Collection_readSlotUnsafe(Collection *c, size_t index) {
     uint8_t *slot = (*c).data + index * (*c).stride;
-    return read_slot_at(slot, (*c).stride);
+    return readSlotAt(slot, (*c).stride);
 }
 
 void Collection_writeSlotUnsafe(Collection *c, size_t index, uint64_t value) {
     uint8_t *slot = (*c).data + index * (*c).stride;
-    write_slot_at(slot, (*c).stride, value);
+    writeSlotAt(slot, (*c).stride, value);
 }

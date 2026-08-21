@@ -15,9 +15,9 @@
 // back to it — one subtract, nothing more.
 
 typedef struct Collection {
-    uint32_t type_id;       // mirror of the block-header type (for debug)
-    uint32_t active_count;  // number of live elements
-    uint32_t element_class; // class of elements (Map: key class)
+    uint32_t typeId;        // mirror of the block-header type (for debug)
+    uint32_t activeCount;   // number of live elements
+    uint32_t elementClass;  // class of elements (Map: key class)
     uint32_t stride;        // bytes per element (Map: val class)
     uint32_t capacity;      // element capacity (or slot capacity)
     uint32_t head;          // circular head index (Deque/Queue); else 0
