@@ -65,7 +65,9 @@ add_executable(anti
     src/struct/set.c
     src/struct/sparseset.c
     src/struct/stack.c
+    src/thread/atomic.c
     src/thread/ring.c
+    src/thread/registry.c
     src/thread/spin.c
     src/time/calendar.c
     src/time/clock.c
@@ -130,6 +132,18 @@ target_link_libraries(enginetest PRIVATE
     "-framework Cocoa"
     "-framework AppKit"
 )
+
+# Headless threading package test
+add_executable(thread_test
+    tests/thread_test.c
+    src/thread/atomic.c
+    src/thread/registry.c
+    src/time/clock.c
+    src/time/nanotime.c
+)
+target_include_directories(thread_test PRIVATE src)
+target_compile_options(thread_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
+target_link_libraries(thread_test PRIVATE pthread)
 
 # Headless time package test
 add_executable(time_test
