@@ -73,35 +73,35 @@ void Vec4_set(Vec4 *v, float x, float y, float z, float w) {
     (*v).w = w;
 }
 
-void Vec4_copy(Vec4 *dest, const Vec4 *src) {
+void Vec4_copy(const Vec4 *src, Vec4 *dest) {
     (*dest).x = (*src).x;
     (*dest).y = (*src).y;
     (*dest).z = (*src).z;
     (*dest).w = (*src).w;
 }
 
-void Vec4_add(Vec4 *dest, const Vec4 *a, const Vec4 *b) {
+void Vec4_add(const Vec4 *a, const Vec4 *b, Vec4 *dest) {
     (*dest).x = (*a).x + (*b).x;
     (*dest).y = (*a).y + (*b).y;
     (*dest).z = (*a).z + (*b).z;
     (*dest).w = (*a).w + (*b).w;
 }
 
-void Vec4_sub(Vec4 *dest, const Vec4 *a, const Vec4 *b) {
+void Vec4_sub(const Vec4 *a, const Vec4 *b, Vec4 *dest) {
     (*dest).x = (*a).x - (*b).x;
     (*dest).y = (*a).y - (*b).y;
     (*dest).z = (*a).z - (*b).z;
     (*dest).w = (*a).w - (*b).w;
 }
 
-void Vec4_mul(Vec4 *dest, const Vec4 *a, float scalar) {
+void Vec4_mul(const Vec4 *a, float scalar, Vec4 *dest) {
     (*dest).x = (*a).x * scalar;
     (*dest).y = (*a).y * scalar;
     (*dest).z = (*a).z * scalar;
     (*dest).w = (*a).w * scalar;
 }
 
-void Vec4_div(Vec4 *dest, const Vec4 *a, float scalar) {
+void Vec4_div(const Vec4 *a, float scalar, Vec4 *dest) {
     float inv = 1.0f / scalar;
     (*dest).x = (*a).x * inv;
     (*dest).y = (*a).y * inv;
@@ -121,7 +121,7 @@ float Vec4_length(const Vec4 *v) {
     return sqrtf(Vec4_lengthSquared(v));
 }
 
-void Vec4_normalize(Vec4 *dest, const Vec4 *src) {
+void Vec4_normalize(const Vec4 *src, Vec4 *dest) {
     float len_sq = Vec4_lengthSquared(src);
     if (len_sq > FastMath_EPSILON) {
         float inv_len = FastMath_invSqrt(len_sq);
@@ -137,35 +137,35 @@ void Vec4_normalize(Vec4 *dest, const Vec4 *src) {
     }
 }
 
-void Vec4_min(Vec4 *dest, const Vec4 *a, const Vec4 *b) {
+void Vec4_min(const Vec4 *a, const Vec4 *b, Vec4 *dest) {
     (*dest).x = (*a).x < (*b).x ? (*a).x : (*b).x;
     (*dest).y = (*a).y < (*b).y ? (*a).y : (*b).y;
     (*dest).z = (*a).z < (*b).z ? (*a).z : (*b).z;
     (*dest).w = (*a).w < (*b).w ? (*a).w : (*b).w;
 }
 
-void Vec4_max(Vec4 *dest, const Vec4 *a, const Vec4 *b) {
+void Vec4_max(const Vec4 *a, const Vec4 *b, Vec4 *dest) {
     (*dest).x = (*a).x > (*b).x ? (*a).x : (*b).x;
     (*dest).y = (*a).y > (*b).y ? (*a).y : (*b).y;
     (*dest).z = (*a).z > (*b).z ? (*a).z : (*b).z;
     (*dest).w = (*a).w > (*b).w ? (*a).w : (*b).w;
 }
 
-void Vec4_clamp(Vec4 *dest, const Vec4 *src, float min_val, float max_val) {
+void Vec4_clamp(const Vec4 *src, float min_val, float max_val, Vec4 *dest) {
     (*dest).x = FastMath_clamp((*src).x, min_val, max_val);
     (*dest).y = FastMath_clamp((*src).y, min_val, max_val);
     (*dest).z = FastMath_clamp((*src).z, min_val, max_val);
     (*dest).w = FastMath_clamp((*src).w, min_val, max_val);
 }
 
-void Vec4_abs(Vec4 *dest, const Vec4 *src) {
+void Vec4_abs(const Vec4 *src, Vec4 *dest) {
     (*dest).x = FastMath_abs((*src).x);
     (*dest).y = FastMath_abs((*src).y);
     (*dest).z = FastMath_abs((*src).z);
     (*dest).w = FastMath_abs((*src).w);
 }
 
-void Vec4_lerp(Vec4 *dest, const Vec4 *a, const Vec4 *b, float t) {
+void Vec4_lerp(const Vec4 *a, const Vec4 *b, float t, Vec4 *dest) {
     float ax = (*a).x, ay = (*a).y, az = (*a).z, aw = (*a).w;
     (*dest).x = ax + t * ((*b).x - ax);
     (*dest).y = ay + t * ((*b).y - ay);

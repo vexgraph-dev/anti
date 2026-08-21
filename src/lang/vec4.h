@@ -33,24 +33,24 @@ float Vec4_getW(const Vec4 *v);
 void Vec4_setW(Vec4 *v, float w);
 void Vec4_set(Vec4 *v, float x, float y, float z, float w);
 
-void Vec4_copy(Vec4 *dest, const Vec4 *src);
+void Vec4_copy(const Vec4 *src, Vec4 *dest);
 
-void Vec4_add(Vec4 *dest, const Vec4 *a, const Vec4 *b);
-void Vec4_sub(Vec4 *dest, const Vec4 *a, const Vec4 *b);
-void Vec4_mul(Vec4 *dest, const Vec4 *a, float scalar);
-void Vec4_div(Vec4 *dest, const Vec4 *a, float scalar);
+void Vec4_add(const Vec4 *a, const Vec4 *b, Vec4 *dest);
+void Vec4_sub(const Vec4 *a, const Vec4 *b, Vec4 *dest);
+void Vec4_mul(const Vec4 *a, float scalar, Vec4 *dest);
+void Vec4_div(const Vec4 *a, float scalar, Vec4 *dest);
 
 float Vec4_dot(const Vec4 *a, const Vec4 *b);
 float Vec4_lengthSquared(const Vec4 *v);
 float Vec4_length(const Vec4 *v);
 
 // Normalize via FastMath_invSqrt. Zeroes dest when src is (near-)zero.
-void Vec4_normalize(Vec4 *dest, const Vec4 *src);
+void Vec4_normalize(const Vec4 *src, Vec4 *dest);
 
-void Vec4_min(Vec4 *dest, const Vec4 *a, const Vec4 *b);
-void Vec4_max(Vec4 *dest, const Vec4 *a, const Vec4 *b);
-void Vec4_clamp(Vec4 *dest, const Vec4 *src, float min_val, float max_val);
-void Vec4_abs(Vec4 *dest, const Vec4 *src);
-void Vec4_lerp(Vec4 *dest, const Vec4 *a, const Vec4 *b, float t);
+void Vec4_min(const Vec4 *a, const Vec4 *b, Vec4 *dest);
+void Vec4_max(const Vec4 *a, const Vec4 *b, Vec4 *dest);
+void Vec4_clamp(const Vec4 *src, float min_val, float max_val, Vec4 *dest);
+void Vec4_abs(const Vec4 *src, Vec4 *dest);
+void Vec4_lerp(const Vec4 *a, const Vec4 *b, float t, Vec4 *dest);
 
 #endif
