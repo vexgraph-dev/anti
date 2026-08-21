@@ -10,28 +10,28 @@
 
 static const size_t DEFAULT_CAPACITY = 1024;
 
-static Collection *as_collection(Queue *queue) {
+static Collection *asCollection(Queue *queue) {
     return (Collection *)queue;
 }
 
-static Queue *instant(uint32_t element_class, size_t capacity, size_t count) {
-    size_t stride = Stride_get(element_class);
+static Queue *instant(uint32_t elementClass, size_t capacity, size_t count) {
+    size_t stride = Stride_get(elementClass);
     size_t cap = capacity < DEFAULT_CAPACITY ? DEFAULT_CAPACITY : capacity;
     Queue *queue = (Queue *)Memory_alloc(TYPE_QUEUE, sizeof(Queue));
     if (!queue)
         return NULL;
 
-    Collection *c = as_collection(queue);
-    (*c).type_id = TYPE_QUEUE;
-    (*c).active_count = (uint32_t)count;
-    (*c).element_class = element_class;
+    Collection *c = asCollection(queue);
+    (*c).typeId = TYPE_QUEUE;
+    (*c).activeCount = (uint32_t)count;
+    (*c).elementClass = elementClass;
     (*c).stride = (uint32_t)stride;
     (*c).capacity = (uint32_t)cap;
     (*c).head = 0;
 
     size_t bytes = cap * stride;
-    uint32_t buf_type = Type_make(FORM_ARRAY, element_class);
-    (*c).data = (uint8_t *)Memory_alloc(buf_type, bytes);
+    uint32_t bufType = Type_make(FORM_ARRAY, elementClass);
+    (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(queue);
         return NULL;
@@ -40,17 +40,17 @@ static Queue *instant(uint32_t element_class, size_t capacity, size_t count) {
     return queue;
 }
 
-static int ensure_capacity(Collection *c) {
-    if ((*c).active_count < (*c).capacity)
+static int ensureCapacity(Collection *c) {
+    if ((*c).activeCount < (*c).capacity)
         return 1;
-    size_t new_cap = (*c).capacity + DEFAULT_CAPACITY;
-    size_t bytes = new_cap * (*c).stride;
-    uint32_t buf_type = Type_make(FORM_ARRAY, (*c).element_class);
-    uint8_t *next = (uint8_t *)Memory_alloc(buf_type, bytes);
+    size_t newCap = (*c).capacity + DEFAULT_CAPACITY;
+    size_t bytes = newCap * (*c).stride;
+    uint32_t bufType = Type_make(FORM_ARRAY, (*c).elementClass);
+    uint8_t *next = (uint8_t *)Memory_alloc(bufType, bytes);
     if (!next)
         return 0;
 
-    size_t count = (*c).active_count;
+    size_t count = (*c).activeCount;
     if (count > 0) {
         if ((*c).head == 0) {
             memcpy(next, (*c).data, count * (*c).stride);
@@ -63,93 +63,93 @@ static int ensure_capacity(Collection *c) {
     }
     Memory_free((*c).data);
     (*c).data = next;
-    (*c).capacity = (uint32_t)new_cap;
+    (*c).capacity = (uint32_t)newCap;
     (*c).head = 0;
     return 1;
 }
 
-Queue *Queue_allocate(uint32_t element_class, size_t capacity) {
-    return instant(element_class, capacity, 0);
+Queue *Queue_allocate(uint32_t elementClass, size_t capacity) {
+    return instant(elementClass, capacity, 0);
 }
 
-Queue *Queue_allocateCount(uint32_t element_class, size_t count) {
-    return instant(element_class, count, count);
+Queue *Queue_allocateCount(uint32_t elementClass, size_t count) {
+    return instant(elementClass, count, count);
 }
 
 void Queue_free(Queue *queue) {
     if (!queue) return;
-    Collection *c = as_collection(queue);
+    Collection *c = asCollection(queue);
     if ((*c).data)
         Memory_free((*c).data);
     Memory_free(queue);
 }
 
-void Queue_push(Queue *queue, uint64_t value_or_pointer) {
+void Queue_push(Queue *queue, uint64_t valueOrPointer) {
     if (!queue) return;
-    Collection *c = as_collection(queue);
-    if (!ensure_capacity(c))
+    Collection *c = asCollection(queue);
+    if (!ensureCapacity(c))
         return;
-    size_t tail = ((*c).head + (*c).active_count) % (*c).capacity;
-    Collection_writeSlot(c, tail, value_or_pointer);
-    (*c).active_count++;
+    size_t tail = ((*c).head + (*c).activeCount) % (*c).capacity;
+    Collection_writeSlot(c, tail, valueOrPointer);
+    (*c).activeCount++;
 }
 
 uint64_t Queue_pop(Queue *queue) {
     if (!queue) return 0;
-    Collection *c = as_collection(queue);
-    if ((*c).active_count == 0)
+    Collection *c = asCollection(queue);
+    if ((*c).activeCount == 0)
         return 0;
     uint64_t value = Collection_readSlot(c, (*c).head);
     (*c).head = (uint32_t)(((*c).head + 1) % (*c).capacity);
-    (*c).active_count--;
+    (*c).activeCount--;
     return value;
 }
 
 uint64_t Queue_peek(Queue *queue) {
     if (!queue) return 0;
-    Collection *c = as_collection(queue);
-    if ((*c).active_count == 0)
+    Collection *c = asCollection(queue);
+    if ((*c).activeCount == 0)
         return 0;
     return Collection_readSlot(c, (*c).head);
 }
 
 uint8_t *Queue_slot(Queue *queue, size_t index) {
     if (!queue) return NULL;
-    Collection *c = as_collection(queue);
-    if (index >= (*c).active_count)
+    Collection *c = asCollection(queue);
+    if (index >= (*c).activeCount)
         return NULL;
     size_t phys = ((*c).head + index) % (*c).capacity;
     return (*c).data + phys * (*c).stride;
 }
 
 bool Queue_isEmpty(Queue *queue) {
-    return Collection_isEmpty(as_collection(queue));
+    return Collection_isEmpty(asCollection(queue));
 }
 
 size_t Queue_size(Queue *queue) {
-    return Collection_size(as_collection(queue));
+    return Collection_size(asCollection(queue));
 }
 
 size_t Queue_length(Queue *queue) {
-    return Collection_length(as_collection(queue));
+    return Collection_length(asCollection(queue));
 }
 
 size_t Queue_capacity(Queue *queue) {
-    return Collection_capacity(as_collection(queue));
+    return Collection_capacity(asCollection(queue));
 }
 
 uint32_t Queue_elementClassId(Queue *queue) {
-    return Collection_elementClassId(as_collection(queue));
+    return Collection_elementClassId(asCollection(queue));
 }
 
 size_t Queue_stride(Queue *queue) {
-    return Collection_stride(as_collection(queue));
+    return Collection_stride(asCollection(queue));
 }
 
 size_t Queue_head(Queue *queue) {
-    return Collection_head(as_collection(queue));
+    return Collection_head(asCollection(queue));
 }
 
 uint8_t *Queue_dataBuffer(Queue *queue) {
-    return Collection_dataBuffer(as_collection(queue));
+    return Collection_dataBuffer(asCollection(queue));
 }
