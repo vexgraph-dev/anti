@@ -1,0 +1,56 @@
+#ifndef LANG_VEC4_H
+#define LANG_VEC4_H
+
+#include <stddef.h>
+
+// lang/vec4.h — the Vec4 class, ported from lang/Vec4.java.
+//
+// Off-heap 4D vector (x, y, z, w) as a self-describing Memory block. All math
+// is allocation-free; dest always carries the result. Operands are const views.
+
+typedef struct Vec4 {
+    float x;
+    float y;
+    float z;
+    float w;
+} Vec4;
+
+// Fixed byte width of a Vec4 payload (legacy BYTES).
+#define VEC4_BYTES 16u
+
+Vec4 *Vec4_allocate(void);
+Vec4 *Vec4_allocateXYZW(float x, float y, float z, float w);
+
+void Vec4_free(Vec4 *v);
+
+float Vec4_getX(const Vec4 *v);
+void Vec4_setX(Vec4 *v, float x);
+float Vec4_getY(const Vec4 *v);
+void Vec4_setY(Vec4 *v, float y);
+float Vec4_getZ(const Vec4 *v);
+void Vec4_setZ(Vec4 *v, float z);
+float Vec4_getW(const Vec4 *v);
+void Vec4_setW(Vec4 *v, float w);
+void Vec4_set(Vec4 *v, float x, float y, float z, float w);
+
+void Vec4_copy(Vec4 *dest, const Vec4 *src);
+
+void Vec4_add(Vec4 *dest, const Vec4 *a, const Vec4 *b);
+void Vec4_sub(Vec4 *dest, const Vec4 *a, const Vec4 *b);
+void Vec4_mul(Vec4 *dest, const Vec4 *a, float scalar);
+void Vec4_div(Vec4 *dest, const Vec4 *a, float scalar);
+
+float Vec4_dot(const Vec4 *a, const Vec4 *b);
+float Vec4_lengthSquared(const Vec4 *v);
+float Vec4_length(const Vec4 *v);
+
+// Normalize via FastMath_invSqrt. Zeroes dest when src is (near-)zero.
+void Vec4_normalize(Vec4 *dest, const Vec4 *src);
+
+void Vec4_min(Vec4 *dest, const Vec4 *a, const Vec4 *b);
+void Vec4_max(Vec4 *dest, const Vec4 *a, const Vec4 *b);
+void Vec4_clamp(Vec4 *dest, const Vec4 *src, float min_val, float max_val);
+void Vec4_abs(Vec4 *dest, const Vec4 *src);
+void Vec4_lerp(Vec4 *dest, const Vec4 *a, const Vec4 *b, float t);
+
+#endif
