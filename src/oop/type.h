@@ -33,6 +33,7 @@
 #define FORM_STRUCT_POINTER  0x60000000u
 #define FORM_ARRAY_SOA       0x70000000u
 #define FORM_ARRAY_AOS       0x80000000u
+#define FORM_STRUCT_COEXISTENT 0x90000000u
 
 #define MOD_GLOBAL           0x01000000u
 #define MOD_LOCALE           0x02000000u
@@ -62,6 +63,12 @@
 #define ID_VEC3       0x000Eu
 #define ID_ENTITY     0x000Fu
 
+// --- MATH / GEOMETRY CLASSES (added in the C port) ---
+#define ID_VEC4       0x0029u
+#define ID_MAT3       0x002Au
+#define ID_MAT4       0x002Bu
+#define ID_QUATERNION 0x002Cu
+
 // --- SCALAR / WRAPPER CLASSES (Legacy TypeRegister raw IDs) ---
 #define ID_BYTE          0x0010u
 #define ID_STRING        0x0011u
@@ -75,6 +82,8 @@
 #define ID_HASH          0x0019u
 #define ID_CLASS         0x001Au
 #define ID_STRIDE        0x001Bu
+#define ID_FILE          0x0030u
+#define ID_COMMAND       0x0064u
 
 // --- COLLECTION CLASSES ---
 #define ID_LIST          0x001Cu
@@ -139,6 +148,12 @@
 #define TYPE_RING_BUFFER   (FORM_ARRAY     | ID_RING_BUFFER)
 #define TYPE_LIST          (FORM_ARRAY     | ID_LIST)
 #define TYPE_ARRAY         (FORM_ARRAY     | ID_ARRAYS)
+#define TYPE_VEC2_SINGLETON (FORM_SINGLETON | ID_VEC2)
+#define TYPE_VEC3_SINGLETON (FORM_SINGLETON | ID_VEC3)
+#define TYPE_VEC4_SINGLETON (FORM_SINGLETON | ID_VEC4)
+#define TYPE_MAT3_SINGLETON (FORM_SINGLETON | ID_MAT3)
+#define TYPE_MAT4_SINGLETON (FORM_SINGLETON | ID_MAT4)
+#define TYPE_QUATERNION_SINGLETON (FORM_SINGLETON | ID_QUATERNION)
 #define TYPE_STACK         (FORM_ARRAY     | ID_STACK)
 #define TYPE_DEQUE         (FORM_ARRAY     | ID_DEQUE)
 #define TYPE_QUEUE         (FORM_ARRAY     | ID_QUEUE)
@@ -148,6 +163,8 @@
 #define TYPE_RANDOM        (FORM_SINGLETON | ID_RANDOM)
 #define TYPE_PROBABLE      (FORM_SINGLETON | WRAP2_PROBABLE | ID_PROBABLE)
 #define TYPE_PROBABLE_OBJECTS (FORM_SINGLETON | WRAP2_PROBABLE_OBJECTS | ID_PROBABLE_OBJECTS)
+#define TYPE_FILE_SINGLETON (FORM_SINGLETON | ID_FILE)
+#define TYPE_COMMAND_SINGLETON (FORM_SINGLETON | ID_COMMAND)
 
 #define TYPE_INT_SINGLETON (FORM_SINGLETON | ID_INT)
 #define TYPE_INT_ARRAY     (FORM_ARRAY     | ID_INT)
@@ -159,22 +176,22 @@
 // The header prefixing every allocated block: [typeId][length].
 // 16 bytes keeps payloads 8-byte aligned, so doubles/pointers sit naturally.
 typedef struct TypeHeader {
-    uint32_t type_id;
+    uint32_t typeId;
     uint32_t length;
 } TypeHeader;
 
 // Compose a full type id from a form + class id. Shape in the high nibble,
 // identity in the low 16 bits.
-static inline uint32_t Type_make(uint32_t form, uint32_t class_id) {
-    return (form & MASK_FORM) | (class_id & MASK_CLASS);
+static inline uint32_t Type_make(uint32_t form, uint32_t classId) {
+    return (form & MASK_FORM) | (classId & MASK_CLASS);
 }
 
-static inline uint32_t Type_class(uint32_t type_id) {
-    return type_id & MASK_CLASS;
+static inline uint32_t Type_class(uint32_t typeId) {
+    return typeId & MASK_CLASS;
 }
 
-static inline uint32_t Type_form(uint32_t type_id) {
-    return type_id & MASK_FORM;
+static inline uint32_t Type_form(uint32_t typeId) {
+    return typeId & MASK_FORM;
 }
 
 static inline int Type_isStruct(uint32_t form) {
@@ -182,86 +199,90 @@ static inline int Type_isStruct(uint32_t form) {
         || form == FORM_STRUCT_POINTER;
 }
 
-static inline int Type_isSingleton(uint32_t type_id) {
-    return (type_id & MASK_FORM) == FORM_SINGLETON;
+static inline int Type_isSingleton(uint32_t typeId) {
+    return (typeId & MASK_FORM) == FORM_SINGLETON;
 }
 
-static inline int Type_isArray(uint32_t type_id) {
-    uint32_t form = type_id & MASK_FORM;
-    return form == FORM_ARRAY || form == FORM_ARRAY_SOA || form == FORM_ARRAY_AOS;
+static inline int Type_isArray(uint32_t typeId) {
+    uint32_t form = typeId & MASK_FORM;
+    return form == FORM_ARRAY || form == FORM_ARRAY_SOA || form == FORM_ARRAY_AOS || form == FORM_STRUCT_COEXISTENT;
 }
 
-static inline int Type_isPointer(uint32_t type_id) {
-    return (type_id & MASK_FORM) == FORM_POINTER;
+static inline int Type_isPointer(uint32_t typeId) {
+    return (typeId & MASK_FORM) == FORM_POINTER;
 }
 
-static inline int Type_isStructSingleton(uint32_t type_id) {
-    return (type_id & MASK_FORM) == FORM_STRUCT_SINGLETON;
+static inline int Type_isStructSingleton(uint32_t typeId) {
+    return (typeId & MASK_FORM) == FORM_STRUCT_SINGLETON;
 }
 
-static inline int Type_isStructArray(uint32_t type_id) {
-    uint32_t form = type_id & MASK_FORM;
-    return form == FORM_STRUCT_ARRAY || form == FORM_ARRAY_SOA || form == FORM_ARRAY_AOS;
+static inline int Type_isStructArray(uint32_t typeId) {
+    uint32_t form = typeId & MASK_FORM;
+    return form == FORM_STRUCT_ARRAY || form == FORM_ARRAY_SOA || form == FORM_ARRAY_AOS || form == FORM_STRUCT_COEXISTENT;
 }
 
-static inline int Type_isStructSOA(uint32_t type_id) {
-    return (type_id & MASK_FORM) == FORM_ARRAY_SOA;
+static inline int Type_isStructSOA(uint32_t typeId) {
+    return (typeId & MASK_FORM) == FORM_ARRAY_SOA;
 }
 
-static inline int Type_isStructAOS(uint32_t type_id) {
-    return (type_id & MASK_FORM) == FORM_ARRAY_AOS;
+static inline int Type_isStructAOS(uint32_t typeId) {
+    return (typeId & MASK_FORM) == FORM_ARRAY_AOS;
 }
 
-static inline int Type_isStructPointer(uint32_t type_id) {
-    return (type_id & MASK_FORM) == FORM_STRUCT_POINTER;
+static inline int Type_isStructCoexistent(uint32_t typeId) {
+    return (typeId & MASK_FORM) == FORM_STRUCT_COEXISTENT;
 }
 
-static inline int Type_isPrimitive(uint32_t type_id) {
-    uint32_t form = type_id & MASK_FORM;
+static inline int Type_isStructPointer(uint32_t typeId) {
+    return (typeId & MASK_FORM) == FORM_STRUCT_POINTER;
+}
+
+static inline int Type_isPrimitive(uint32_t typeId) {
+    uint32_t form = typeId & MASK_FORM;
     return form == FORM_SINGLETON || form == FORM_ARRAY || form == FORM_POINTER;
 }
 
-static inline int Type_isGlobal(uint32_t type_id) {
-    return (type_id & MASK_MODIFIER) == MOD_GLOBAL;
+static inline int Type_isGlobal(uint32_t typeId) {
+    return (typeId & MASK_MODIFIER) == MOD_GLOBAL;
 }
 
-static inline int Type_isLocale(uint32_t type_id) {
-    return (type_id & MASK_MODIFIER) == MOD_LOCALE;
+static inline int Type_isLocale(uint32_t typeId) {
+    return (typeId & MASK_MODIFIER) == MOD_LOCALE;
 }
 
-static inline int Type_isTransient(uint32_t type_id) {
-    return (type_id & MASK_MODIFIER) == MOD_TRANSIENT;
+static inline int Type_isTransient(uint32_t typeId) {
+    return (typeId & MASK_MODIFIER) == MOD_TRANSIENT;
 }
 
-static inline int Type_isProactive(uint32_t type_id) {
-    return (type_id & MASK_WRAPPER_1) == WRAP_PROACTIVE;
+static inline int Type_isProactive(uint32_t typeId) {
+    return (typeId & MASK_WRAPPER_1) == WRAP_PROACTIVE;
 }
 
-static inline int Type_isReactive(uint32_t type_id) {
-    return (type_id & MASK_WRAPPER_1) == WRAP_REACTIVE;
+static inline int Type_isReactive(uint32_t typeId) {
+    return (typeId & MASK_WRAPPER_1) == WRAP_REACTIVE;
 }
 
-static inline int Type_isProbable(uint32_t type_id) {
-    return (type_id & MASK_WRAPPER_2) == WRAP2_PROBABLE;
+static inline int Type_isProbable(uint32_t typeId) {
+    return (typeId & MASK_WRAPPER_2) == WRAP2_PROBABLE;
 }
 
-static inline int Type_isProbableObjects(uint32_t type_id) {
-    return (type_id & MASK_WRAPPER_2) == WRAP2_PROBABLE_OBJECTS;
+static inline int Type_isProbableObjects(uint32_t typeId) {
+    return (typeId & MASK_WRAPPER_2) == WRAP2_PROBABLE_OBJECTS;
 }
 
-static inline int Type_isFuture(uint32_t type_id) {
-    return (type_id & MASK_WRAPPER_2) == WRAP2_FUTURE;
+static inline int Type_isFuture(uint32_t typeId) {
+    return (typeId & MASK_WRAPPER_2) == WRAP2_FUTURE;
 }
 
-static inline int Type_isChoice(uint32_t type_id) {
-    return (type_id & MASK_WRAPPER_2) == WRAP2_CHOICE;
+static inline int Type_isChoice(uint32_t typeId) {
+    return (typeId & MASK_WRAPPER_2) == WRAP2_CHOICE;
 }
 
 // Parent-class walk (Legacy getParentClass). Returns the parent class id,
 // or the class id itself when it is a root. Used by Type_isA.
-uint32_t Type_getParentClass(uint32_t class_id);
+uint32_t Type_getParentClass(uint32_t classId);
 
-// True if class_id is ancestor_id or any descendant of it (walks parents).
-int Type_isA(uint32_t class_id, uint32_t ancestor_id);
+// True if classId is ancestorId or any descendant of it (walks parents).
+int Type_isA(uint32_t classId, uint32_t ancestorId);
 
 #endif

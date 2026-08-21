@@ -5,26 +5,26 @@
 // The class table lives in type.h as macros; this file carries only the two
 // parent-chain helpers that need real code.
 
-uint32_t Type_getParentClass(uint32_t class_id) {
+uint32_t Type_getParentClass(uint32_t classId) {
     // Buffer family: 0x50..0x63 in legacy all descend from ID_BUFFER.
-    if (class_id >= 0x0050u && class_id <= 0x0063u)
+    if (classId >= 0x0050u && classId <= 0x0063u)
         return ID_BUFFER;
-    if (class_id == ID_PANEL)
+    if (classId == ID_PANEL)
         return ID_CONTAINER;
-    if (class_id == ID_PICTURE)
+    if (classId == ID_PICTURE)
         return ID_CONTAINER;
-    if (class_id == ID_SCENE)
+    if (classId == ID_SCENE)
         return ID_PANEL;
-    if (class_id == ID_SCENE2D)
+    if (classId == ID_SCENE2D)
         return ID_SCENE;
-    if (class_id == ID_SCENE3D)
+    if (classId == ID_SCENE3D)
         return ID_SCENE;
-    return class_id;
+    return classId;
 }
 
-int Type_isA(uint32_t class_id, uint32_t ancestor_id) {
-    uint32_t current = class_id;
-    while (current != ancestor_id) {
+int Type_isA(uint32_t classId, uint32_t ancestorId) {
+    uint32_t current = classId;
+    while (current != ancestorId) {
         uint32_t parent = Type_getParentClass(current);
         if (parent == current)
             return 0;
