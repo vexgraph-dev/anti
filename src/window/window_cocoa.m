@@ -6,9 +6,9 @@
 // boundary stays C; everything here is "dip into the OS, hand back a handle".
 //
 // Design notes:
-//   - s_app_delegate is created once per process (the app lifecycle delegate).
+//   - sAppDelegate is created once per process (the app lifecycle delegate).
 //   - Each window gets its own AntiWindowDelegate so we can learn about the
-//     user clicking the red close button -> sets should_close -> engine loop
+//     user clicking the red close button -> sets shouldClose -> engine loop
 //     sees it and exits (see window_demo.c).
 //   - setReleasedWhenClosed:NO is CRITICAL. The default (YES for programmatic
 //     windows) makes NSWindow free itself the moment it closes; our destroy()
@@ -25,22 +25,22 @@
 // One opaque handle handed back to C. Holds both NS objects we must keep
 // alive: the window itself and its delegate.
 struct Window {
-    NSWindow *ns_window;
+    NSWindow *nsWindow;
     AntiWindowDelegate *delegate;
-    bool should_close;
+    bool shouldClose;
 };
 
 // App-level delegate: receives lifecycle events for the whole application.
 // applicationShouldTerminateAfterLastWindowClosed lets the process end when
 // the last window goes away (normal for a game/engine run).
 @interface AntiAppDelegate : NSObject <NSApplicationDelegate>
-@property(nonatomic, assign) bool *should_close_ptr;
+@property(nonatomic, assign) bool *shouldClosePtr;
 @end
 
 @implementation AntiAppDelegate
 - (void)applicationWillTerminate:(NSNotification *)notification {
     (void) notification;
-    if (self.should_close_ptr) *self.should_close_ptr = true;
+    if (self.shouldClosePtr) *self.shouldClosePtr = true;
 }
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
     (void) sender;
@@ -53,18 +53,18 @@ struct Window {
 // bool the engine loop polls. The pointer is (assign) because the delegate
 // must not own our C struct.
 @interface AntiWindowDelegate : NSObject <NSWindowDelegate>
-@property(nonatomic, assign) bool *should_close_ptr;
+@property(nonatomic, assign) bool *shouldClosePtr;
 @end
 
 @implementation AntiWindowDelegate
 - (void) windowWillClose:(NSNotification *)notification {
     (void) notification;
-    if (self.should_close_ptr) *self.should_close_ptr = true;
+    if (self.shouldClosePtr) *self.shouldClosePtr = true;
 }
 @end
 
-static AntiAppDelegate *s_app_delegate = nil; // one app delegate for the whole process
-static NSWindow *s_last_window = nil;
+static AntiAppDelegate *sAppDelegate = nil; // one app delegate for the whole process
+static NSWindow *sLastWindow = nil;
 
 // Drain the OS event queue. Called every frame from the engine loop (the
 // "poll" half of poll-then-tick). Returns immediately; never blocks.
@@ -87,9 +87,9 @@ Window *Window_create(const char *title, int width, int height) {
         if (!NSApp) {
             [NSApplication sharedApplication];   // bootstrap the app object once
         }
-        if (!s_app_delegate) {
-            s_app_delegate = [[AntiAppDelegate alloc] init];
-            [NSApp setDelegate:s_app_delegate];
+        if (!sAppDelegate) {
+            sAppDelegate = [[AntiAppDelegate alloc] init];
+            [NSApp setDelegate:sAppDelegate];
             [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
             [NSApp activateIgnoringOtherApps:YES];
         }
@@ -104,8 +104,8 @@ Window *Window_create(const char *title, int width, int height) {
         NSWindow *window = [[NSWindow alloc]
             initWithContentRect:frame
                       styleMask:style
-                        backing:NSBackingStoreBuffered
-                          defer:NO];
+                         backing:NSBackingStoreBuffered
+                           defer:NO];
         [window setTitle:[NSString stringWithUTF8String:title]];
         [window setReleasedWhenClosed:NO];   // we own the window object; close must not free it
 
@@ -122,12 +122,12 @@ Window *Window_create(const char *title, int width, int height) {
         [window setDelegate:delegate];
 
         Window *w = (Window *)calloc(1, sizeof(Window));
-        (*w).ns_window = window;
+        (*w).nsWindow = window;
         (*w).delegate = delegate;
-        (*w).should_close = false;
-        delegate.should_close_ptr = &(*w).should_close;
+        (*w).shouldClose = false;
+        delegate.shouldClosePtr = &(*w).shouldClose;
 
-        s_last_window = window;
+        sLastWindow = window;
         [window makeKeyAndOrderFront:nil];
 
         return w;
@@ -140,16 +140,16 @@ Window *Window_create(const char *title, int width, int height) {
 void Window_destroy(Window *window) {
     if (!window) return;
     @autoreleasepool {
-        [(*window).ns_window setDelegate:nil];   // detach: no callbacks into freed struct
-        if (!(*window).should_close) {
-            [(*window).ns_window close];
+        [(*window).nsWindow setDelegate:nil];   // detach: no callbacks into freed struct
+        if (!(*window).shouldClose) {
+            [(*window).nsWindow close];
         }
     }
     free(window);
 }
 
 bool Window_shouldClose(Window *window) {
-    return window ? (*window).should_close : true;
+    return window ? (*window).shouldClose : true;
 }
 
 void Window_setVsync(Window *window, bool enabled) {
@@ -164,7 +164,7 @@ void Window_setVsync(Window *window, bool enabled) {
 // ---------------------------------------------------------------------------
 
 static NSWindowStyleMask styleMaskOf(Window *window) {
-    return [(*window).ns_window styleMask];
+    return [(*window).nsWindow styleMask];
 }
 
 static bool hasStyleBit(Window *window, NSWindowStyleMask bit) {
@@ -179,21 +179,21 @@ static void updateStyleMask(Window *window, NSWindowStyleMask add, NSWindowStyle
     NSWindowStyleMask mask = styleMaskOf(window);
     if ((mask & NSWindowStyleMaskFullScreen) != 0)
         return;
-    [(*window).ns_window setStyleMask:(mask & ~clear) | add];
+    [(*window).nsWindow setStyleMask:(mask & ~clear) | add];
 }
 
 void Window_setTitle(Window *window, const char *title) {
     if (!window || !title)
         return;
     @autoreleasepool {
-        [(*window).ns_window setTitle:[NSString stringWithUTF8String:title]];
+        [(*window).nsWindow setTitle:[NSString stringWithUTF8String:title]];
 
         // macOS 15+ re-reveals the native title view whenever the title string
         // changes, even when titleVisibility is hidden. Re-apply the hidden
         // state for FullSizeContentView (NAKED) windows, mirroring legacy.
         if ((styleMaskOf(window) & NSWindowStyleMaskFullSizeContentView) != 0) {
-            [(*window).ns_window setTitlebarAppearsTransparent:YES];
-            [(*window).ns_window setTitleVisibility:NSWindowTitleHidden];
+            [(*window).nsWindow setTitlebarAppearsTransparent:YES];
+            [(*window).nsWindow setTitleVisibility:NSWindowTitleHidden];
         }
     }
 }
@@ -202,7 +202,7 @@ void Window_setSize(Window *window, int width, int height) {
     if (!window)
         return;
     @autoreleasepool {
-        [(*window).ns_window setContentSize:NSMakeSize((CGFloat)width, (CGFloat)height)];
+        [(*window).nsWindow setContentSize:NSMakeSize((CGFloat)width, (CGFloat)height)];
     }
 }
 
@@ -210,8 +210,8 @@ void Window_setWidth(Window *window, int width) {
     if (!window)
         return;
     @autoreleasepool {
-        NSSize size = [(*window).ns_window contentRectForFrameRect:[(*window).ns_window frame]].size;
-        [(*window).ns_window setContentSize:NSMakeSize((CGFloat)width, size.height)];
+        NSSize size = [(*window).nsWindow contentRectForFrameRect:[(*window).nsWindow frame]].size;
+        [(*window).nsWindow setContentSize:NSMakeSize((CGFloat)width, size.height)];
     }
 }
 
@@ -219,8 +219,8 @@ void Window_setHeight(Window *window, int height) {
     if (!window)
         return;
     @autoreleasepool {
-        NSSize size = [(*window).ns_window contentRectForFrameRect:[(*window).ns_window frame]].size;
-        [(*window).ns_window setContentSize:NSMakeSize(size.width, (CGFloat)height)];
+        NSSize size = [(*window).nsWindow contentRectForFrameRect:[(*window).nsWindow frame]].size;
+        [(*window).nsWindow setContentSize:NSMakeSize(size.width, (CGFloat)height)];
     }
 }
 
@@ -229,7 +229,7 @@ void Window_setLocation(Window *window, int x, int y) {
         return;
     @autoreleasepool {
         NSRect screen = [[NSScreen mainScreen] frame];
-        [(*window).ns_window setFrameTopLeftPoint:NSMakePoint((CGFloat)x, screen.size.height - (CGFloat)y)];
+        [(*window).nsWindow setFrameTopLeftPoint:NSMakePoint((CGFloat)x, screen.size.height - (CGFloat)y)];
     }
 }
 
@@ -237,7 +237,7 @@ void Window_center(Window *window) {
     if (!window)
         return;
     @autoreleasepool {
-        [(*window).ns_window center];
+        [(*window).nsWindow center];
     }
 }
 
@@ -250,9 +250,9 @@ void Window_setVisible(Window *window, bool visible) {
             // unreliable on recent macOS (leaves traffic lights greyed).
             [[NSRunningApplication currentApplication]
                 activateWithOptions:NSApplicationActivateAllWindows];
-            [(*window).ns_window makeKeyAndOrderFront:nil];
+            [(*window).nsWindow makeKeyAndOrderFront:nil];
         } else {
-            [(*window).ns_window orderOut:nil];
+            [(*window).nsWindow orderOut:nil];
         }
     }
 }
@@ -297,12 +297,12 @@ void Window_setFullscreenButton(Window *window, bool enabled) {
     if (!window)
         return;
     @autoreleasepool {
-        NSWindowCollectionBehavior behavior = [(*window).ns_window collectionBehavior];
+        NSWindowCollectionBehavior behavior = [(*window).nsWindow collectionBehavior];
         if (enabled)
             behavior |= NSWindowCollectionBehaviorFullScreenPrimary;
         else
             behavior &= ~NSWindowCollectionBehaviorFullScreenPrimary;
-        [(*window).ns_window setCollectionBehavior:behavior];
+        [(*window).nsWindow setCollectionBehavior:behavior];
     }
 }
 
@@ -325,11 +325,11 @@ void Window_setUndecorated(Window *window, int mode) {
             next = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
                  | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
 
-        [(*window).ns_window setStyleMask:next];
+        [(*window).nsWindow setStyleMask:next];
 
         bool transparent = (mode == WINDOW_UNDECORATED_NAKED);
-        [(*window).ns_window setTitlebarAppearsTransparent:transparent];
-        [(*window).ns_window setTitleVisibility:(transparent ? NSWindowTitleHidden : NSWindowTitleVisible)];
+        [(*window).nsWindow setTitlebarAppearsTransparent:transparent];
+        [(*window).nsWindow setTitleVisibility:(transparent ? NSWindowTitleHidden : NSWindowTitleVisible)];
     }
 }
 
@@ -337,7 +337,7 @@ void Window_minimize(Window *window) {
     if (!window)
         return;
     @autoreleasepool {
-        [(*window).ns_window miniaturize:nil];
+        [(*window).nsWindow miniaturize:nil];
     }
 }
 
@@ -345,7 +345,7 @@ void Window_restore(Window *window) {
     if (!window)
         return;
     @autoreleasepool {
-        [(*window).ns_window deminiaturize:nil];
+        [(*window).nsWindow deminiaturize:nil];
     }
 }
 
@@ -353,7 +353,7 @@ bool Window_isMinimized(Window *window) {
     if (!window)
         return false;
     @autoreleasepool {
-        return [(*window).ns_window isMiniaturized];
+        return [(*window).nsWindow isMiniaturized];
     }
 }
 
@@ -370,7 +370,7 @@ void Window_setFullscreen(Window *window, bool fullscreen) {
         return;
     @autoreleasepool {
         if (fullscreen != Window_isFullscreen(window))
-            [(*window).ns_window toggleFullScreen:nil];
+            [(*window).nsWindow toggleFullScreen:nil];
     }
 }
 
@@ -378,7 +378,7 @@ void Window_toggleFullscreen(Window *window) {
     if (!window)
         return;
     @autoreleasepool {
-        [(*window).ns_window toggleFullScreen:nil];
+        [(*window).nsWindow toggleFullScreen:nil];
     }
 }
 
@@ -387,7 +387,7 @@ void Window_setDRM(Window *window, bool enabled) {
         return;
     @autoreleasepool {
         // NSWindowSharingNone = 0, NSWindowSharingReadOnly = 1
-        [(*window).ns_window setSharingType:(enabled ? NSWindowSharingNone : NSWindowSharingReadOnly)];
+        [(*window).nsWindow setSharingType:(enabled ? NSWindowSharingNone : NSWindowSharingReadOnly)];
     }
 }
 
@@ -395,7 +395,7 @@ void Window_setMinSize(Window *window, int width, int height) {
     if (!window)
         return;
     @autoreleasepool {
-        [(*window).ns_window setContentMinSize:NSMakeSize((CGFloat)width, (CGFloat)height)];
+        [(*window).nsWindow setContentMinSize:NSMakeSize((CGFloat)width, (CGFloat)height)];
     }
 }
 
@@ -403,6 +403,6 @@ void Window_setMaxSize(Window *window, int width, int height) {
     if (!window)
         return;
     @autoreleasepool {
-        [(*window).ns_window setContentMaxSize:NSMakeSize((CGFloat)width, (CGFloat)height)];
+        [(*window).nsWindow setContentMaxSize:NSMakeSize((CGFloat)width, (CGFloat)height)];
     }
 }
