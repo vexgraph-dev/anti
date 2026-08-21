@@ -17,13 +17,31 @@
 #include <string.h>
 
 #include "bit/bit.h"
+#include "cli/command.h"
+#include "cli/commandparser.h"
+#include "cli/commandregistry.h"
+#include "cli/console.h"
+#include "cli/logcommands.h"
+#include "cli/scanner.h"
 #include "engine/loop.h"
+#include "io/antihome.h"
+#include "io/file.h"
+#include "io/filewriter.h"
+#include "io/log.h"
+#include "io/logkind.h"
+#include "io/logparser.h"
+#include "lang/fastmath.h"
+#include "lang/mat4.h"
+#include "lang/vec2.h"
+#include "lang/vec3.h"
+#include "lang/vec4.h"
 #include "nio/mem.h"
 #include "objects/probable.h"
 #include "objects/probable_objects.h"
 #include "oop/stride.h"
 #include "oop/struct.h"
 #include "oop/type.h"
+#include "primitive/string.h"
 #include "relational/variable.h"
 #include "struct/array.h"
 #include "struct/deque.h"
@@ -73,10 +91,33 @@ static void *producer_main(void *arg) {
     return NULL;
 }
 
+// LogParser record callback: prints each record formatted against the first.
+static void log_print_handler(void *userdata, int kind, int64_t ts,
+                              int64_t v0, int64_t v1, int64_t v2,
+                              int64_t v3, int64_t v4) {
+    int64_t *base = (int64_t *)userdata;
+    if (*base == 0)
+        *base = ts;
+    char line[128];
+    if (LogParser_formatRecord(line, sizeof(line), kind, ts, *base,
+                               LogParser_kindName(kind), v0, v1, v2, v3, v4) >= 0)
+        printf("  %s\n", line);
+}
+
+// Console session state shared with the registered "quit" command.
+static bool console_running = false;
+
+// Registered command target: quits the scripted console session.
+static void on_quit_command(Command *command) {
+    (void)command;
+    console_running = false;
+}
+
 // Called by the engine loop at a fixed timestep. Drains everything the
 // producers pushed and stops the loop once the expected total has arrived.
 static void engine_tick(void *userdata) {
     engine_ctx_t *ctx = (engine_ctx_t *)userdata;
+
     (*ctx).ticks++;
 
     job_t job;
@@ -96,6 +137,251 @@ int main(void) {
     void *blk = Memory_alloc(TYPE_INT_ARRAY, 4 * sizeof(int32_t));
     printf("type=0x%08X len=%zu\n", Memory_type(blk), Memory_length(blk));
     Memory_free(blk);
+
+    // FastMath: fast 32-bit approximations and bitwise ops.
+    printf("== anti lang: FastMath ==\n");
+    printf("abs(-3.5)=%.4f absInt(-7)=%d round(2.4)=%.1f round(2.6)=%.1f\n",
+           (double)FastMath_abs(-3.5f), FastMath_absInt(-7),
+           (double)FastMath_round(2.4f), (double)FastMath_round(2.6f));
+    printf("sin32(0)=%.4f cos32(0)=%.4f tan32(0)=%.4f\n",
+           (double)FastMath_sin32(0.0f), (double)FastMath_cos32(0.0f),
+           (double)FastMath_tan32(0.0f));
+    printf("sin32(PI/2)=%.4f cos32(PI/2)=%.4f\n",
+           (double)FastMath_sin32(FastMath_HALF_PI),
+           (double)FastMath_cos32(FastMath_HALF_PI));
+    printf("invSqrt(4)=%.4f pow(2,10)=%.1f\n", (double)FastMath_invSqrt(4.0f),
+           (double)FastMath_pow(2.0f, 10.0f));
+    printf("toRadians(180)=%.4f toDegrees(PI)=%.4f clamp(5,1,3)=%.1f cosFromSin(0.5,PI/2)=%.4f\n",
+           (double)FastMath_toRadians(180.0f), (double)FastMath_toDegrees(FastMath_PI),
+           (double)FastMath_clamp(5.0f, 1.0f, 3.0f),
+           (double)FastMath_cosFromSin(0.5f, FastMath_HALF_PI));
+
+    // File: off-heap file handle (stdio-backed).
+    printf("== anti io: File ==\n");
+    const char *demo_path = "/tmp/anti_demo.bin";
+    File_delete(demo_path);
+    File *f = File_open(demo_path, FILE_MODE_WRITE | FILE_MODE_CREATE | FILE_MODE_TRUNCATE);
+    const char greeting[] = "anti zero-alloc";
+    File_write(f, greeting, (int64_t)(sizeof(greeting) - 1));
+    printf("wrote %lld bytes size=%lld pos=%lld\n",
+           (long long)(sizeof(greeting) - 1), (long long)File_size(f),
+           (long long)File_pos(f));
+    File_close(f);
+
+    f = File_open(demo_path, FILE_MODE_READ);
+    char readbuf[64];
+    int64_t n = File_read(f, readbuf, (int64_t)(sizeof(readbuf) - 1));
+    readbuf[n] = '\0';
+    printf("read=%lld text=\"%s\" eof=%d exists=%d\n", (long long)n, readbuf,
+           File_eof(f), File_exists(demo_path));
+    File_seek(f, 0);
+    printf("seek0 pos=%lld\n", (long long)File_pos(f));
+    File_close(f);
+    File_delete(demo_path);
+
+    // AntiHome: per-user ~/anti layout.
+    printf("== anti io: AntiHome ==\n");
+    printf("ensure=%d root=%s\n", AntiHome_ensure(), AntiHome_root());
+    printf("logs=%s projects=%s\n", AntiHome_logs(), AntiHome_projects());
+    printf("defaultLog=%s\n", AntiHome_defaultLogPath());
+
+    // FileWriter: buffered binary writer.
+    printf("== anti io: FileWriter ==\n");
+    FileWriter w;
+    if (FileWriter_open(&w, "/tmp/anti_demo_w.bin")) {
+        uint8_t data[3] = { 0x41, 0x4E, 0x54 };
+        FileWriter_write(&w, data, 3);
+        FileWriter_flush(&w);
+        printf("open=%d bytes=%llu\n", w.open,
+               (unsigned long long)FileWriter_bytesWritten(&w));
+        FileWriter_close(&w);
+    } else {
+        printf("open=failed\n");
+    }
+    File_delete("/tmp/anti_demo_w.bin");
+
+    // Log: lockless MPSC ring logger with a writer daemon.
+    printf("== anti io: Log ==\n");
+    const char *log_path = "/tmp/anti_demo.log";
+    File_delete(log_path);
+    Log log;
+    if (Log_init(&log, log_path, 1 << 8)) {
+        Log_append(&log, LOG_KIND_KEY_DOWN, 32, 123456789, 0, 0, 0);
+        Log_append(&log, LOG_KIND_MOUSE_MOVE, 0, 320 * 1000, 240 * 1000, 0, 0);
+        Log_append(&log, LOG_KIND_RENDER_PRODUCE, 3, 12, 0, 0, 0);
+        Log_appendKind(&log, LOG_KIND_TOUCH_UP);
+        Log_shutdown(&log);
+        printf("enabled=%d path=%s\n", Log_isEnabled(&log), Log_path(&log));
+        printf("appended=%llu dropped=%llu written=%llu\n",
+               (unsigned long long)Log_appended(&log),
+               (unsigned long long)Log_dropped(&log),
+               (unsigned long long)Log_written(&log));
+        File *lf = File_open(log_path, FILE_MODE_READ);
+        if (lf) {
+            printf("logfile bytes=%lld (header=%d + 4x52=%d)\n",
+                   (long long)File_size(lf), LOG_HEADER_BYTES, 4 * LOG_RECORD_BYTES);
+            File_close(lf);
+        }
+        printf("isLogFile=%d count=%lld\n", LogParser_isLogFile(log_path),
+               (long long)LogParser_count(log_path));
+        printf("parsed records:\n");
+        int64_t base_ts = 0;
+        (void)LogParser_parse(log_path, log_print_handler, &base_ts);
+        File_delete(log_path);
+    } else {
+        printf("init failed\n");
+    }
+
+    // Console: ring-backed string sink, drained later by the console loop.
+    printf("== anti cli: Console ==\n");
+    Console_init();
+    Console_log("hello from the engine console");
+    Console_log("a second queued message");
+    Console_drain();
+    Console_shutdown();
+
+    // Console session: Scanner + CommandParser + CommandRegistry over a script.
+    printf("== anti cli: Console session ==\n");
+    const char *cmd_log = "/tmp/anti_cmd.log";
+    const char *cmd_script = "/tmp/anti_script.txt";
+    File_delete(cmd_log);
+    Log clog;
+    if (Log_init(&clog, cmd_log, 1 << 6)) {
+        Log_append(&clog, LOG_KIND_KEY_DOWN, 65, 1111, 0, 0, 0);
+        Log_append(&clog, LOG_KIND_MOUSE_DOWN, 0, 500, 300, 0, 0);
+        Log_appendKind(&clog, LOG_KIND_RENDER_PRESENT);
+        Log_shutdown(&clog);
+    }
+    File *csf = File_open(cmd_script, FILE_MODE_WRITE | FILE_MODE_TRUNCATE);
+    if (csf) {
+        const char *lines =
+            "log /tmp/anti_cmd.log\n"
+            "cat /tmp/anti_cmd.log\n"
+            "bogus 1 2\n"
+            "quit\n";
+        File_write(csf, lines, (int64_t)strlen(lines));
+        File_close(csf);
+    }
+    FILE *console_script = fopen(cmd_script, "r");
+    if (console_script) {
+        stdin = console_script;
+        console_running = true;
+        CommandRegistry_register("quit", on_quit_command);
+        while (console_running && Scanner_hasNextLine()) {
+            uint8_t *line = Scanner_nextLine();
+            if (!line)
+                continue;
+            Command *cmd = CommandParser_parse(string_get(line));
+            if (cmd) {
+                uint8_t *name = Command_name(cmd);
+                if (string_equals(name, "log") && Command_argumentCount(cmd) >= 1)
+                    LogCommands_stat(string_get(Command_argument(cmd, 0)));
+                else if (string_equals(name, "cat") && Command_argumentCount(cmd) >= 1) {
+                    int limit = Command_argumentCount(cmd) >= 2
+                        ? atoi(string_get(Command_argument(cmd, 1)))
+                        : -1;
+                    LogCommands_cat(string_get(Command_argument(cmd, 0)), limit);
+                } else {
+                    CommandRegistry_execute(cmd);
+                }
+                Command_free(cmd);
+            }
+            string_free(line);
+        }
+        CommandRegistry_free();
+        fclose(console_script);
+    }
+    File_delete(cmd_script);
+    File_delete(cmd_log);
+
+    // Vec2: off-heap 2D vector ops.
+    printf("== anti lang: Vec2 ==\n");
+    Vec2 *va = Vec2_allocateXY(3.0f, 4.0f);
+    Vec2 *vb = Vec2_allocateXY(1.0f, 2.0f);
+    Vec2 tmp;
+    Vec2_add(&tmp, va, vb);
+    printf("add=(%.1f,%.1f) dot=%f len=%.3f\n", (double)tmp.x, (double)tmp.y,
+           (double)Vec2_dot(va, vb), (double)Vec2_length(va));
+    Vec2_normalize(&tmp, va);
+    printf("normalized=(%.4f,%.4f) dist=%.3f\n", (double)tmp.x, (double)tmp.y,
+           (double)Vec2_distance(va, vb));
+    Vec2_perpendicular(&tmp, va);
+    printf("perp=(%.1f,%.1f)\n", (double)tmp.x, (double)tmp.y);
+    Vec2_lerp(&tmp, va, vb, 0.5f);
+    printf("lerp=(%.1f,%.1f) angle=%.3f\n", (double)tmp.x, (double)tmp.y,
+           (double)Vec2_angle(va, vb));
+    Vec2_free(va);
+    Vec2_free(vb);
+
+    // Vec3: off-heap 3D vector ops (cross, normalize, reflect).
+    printf("== anti lang: Vec3 ==\n");
+    Vec3 *v3a = Vec3_allocateXYZ(1.0f, 0.0f, 0.0f);
+    Vec3 *v3b = Vec3_allocateXYZ(0.0f, 1.0f, 0.0f);
+    Vec3 r3;
+    Vec3_cross(&r3, v3a, v3b);
+    printf("cross=(%.1f,%.1f,%.1f) dot=%f len=%f\n", (double)r3.x, (double)r3.y,
+           (double)r3.z, (double)Vec3_dot(v3a, v3b), (double)Vec3_length(v3a));
+    Vec3 *v3c = Vec3_allocateXYZ(3.0f, 4.0f, 0.0f);
+    Vec3_fastNormalize(&r3, v3c);
+    printf("fastNormalized=(%.4f,%.4f,%.4f)\n", (double)r3.x, (double)r3.y,
+           (double)r3.z);
+    Vec3 *normal = Vec3_allocateXYZ(0.0f, 1.0f, 0.0f);
+    Vec3 *incident = Vec3_allocateXYZ(1.0f, -1.0f, 0.0f);
+    Vec3_reflect(&r3, incident, normal);
+    printf("reflect=(%.1f,%.1f,%.1f)\n", (double)r3.x, (double)r3.y, (double)r3.z);
+    Vec3_free(v3a);
+    Vec3_free(v3b);
+    Vec3_free(v3c);
+    Vec3_free(normal);
+    Vec3_free(incident);
+
+    // Vec4: off-heap 4D vector ops.
+    printf("== anti lang: Vec4 ==\n");
+    Vec4 *v4a = Vec4_allocateXYZW(1.0f, 2.0f, 3.0f, 4.0f);
+    Vec4 *v4b = Vec4_allocateXYZW(2.0f, 0.0f, 0.0f, 1.0f);
+    Vec4 r4;
+    Vec4_add(&r4, v4a, v4b);
+    printf("add=(%.1f,%.1f,%.1f,%.1f) dot=%f len=%.3f\n", (double)r4.x,
+           (double)r4.y, (double)r4.z, (double)r4.w,
+           (double)Vec4_dot(v4a, v4b), (double)Vec4_length(v4a));
+    Vec4_normalize(&r4, v4a);
+    printf("normalized=(%.4f,%.4f,%.4f,%.4f)\n", (double)r4.x, (double)r4.y,
+           (double)r4.z, (double)r4.w);
+    Vec4_free(v4a);
+    Vec4_free(v4b);
+
+    // Mat4: column-major 4x4 transforms.
+    printf("== anti lang: Mat4 ==\n");
+    Mat4 *m = Mat4_allocate();
+    Mat4 *mi = Mat4_allocateIdentity();
+    printf("identity m00=%f m11=%f m33=%f m30=%f\n", (double)Mat4_get(m, 0, 0),
+           (double)Mat4_get(m, 1, 1), (double)Mat4_get(m, 3, 3),
+           (double)Mat4_get(m, 3, 0));
+    Mat4_translate(m, mi, 10.0f, 20.0f, 30.0f);
+    Vec3 *pt3 = Vec3_allocateXYZ(1.0f, 2.0f, 3.0f);
+    Vec3 out;
+    Mat4_transformVec3(&out, m, pt3);
+    printf("translate(10,20,30) * (1,2,3) = (%.1f,%.1f,%.1f)\n", (double)out.x,
+           (double)out.y, (double)out.z);
+    Mat4 *view = Mat4_allocate();
+    Mat4_createViewMatrix(view, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f);
+    printf("view[2][2]=%f view[3][2]=%f\n", (double)Mat4_get(view, 2, 2),
+           (double)Mat4_get(view, 3, 2));
+    Mat4 *proj = Mat4_allocate();
+    Mat4_perspective(proj, FastMath_HALF_PI, 16.0f / 9.0f, 0.1f, 100.0f);
+    printf("proj[0][0]=%f proj[3][2]=%f\n", (double)Mat4_get(proj, 0, 0),
+           (double)Mat4_get(proj, 3, 2));
+    Mat4 *trs = Mat4_allocate();
+    Mat4_createTransformationMatrix(trs, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 90.0f, 1.0f, 1.0f, 1.0f);
+    printf("rotZ90 m00=%f m10=%f m01=%f m11=%f\n", (double)Mat4_get(trs, 0, 0),
+           (double)Mat4_get(trs, 1, 0), (double)Mat4_get(trs, 0, 1),
+           (double)Mat4_get(trs, 1, 1));
+    Mat4_free(m);
+    Mat4_free(mi);
+    Mat4_free(view);
+    Mat4_free(proj);
+    Mat4_free(trs);
+    Vec3_free(pt3);
 
     // BitPool: allocation a, free a, allocate again -> the SAME address comes back.
     printf("== anti bit pool ==\n");
@@ -279,10 +565,13 @@ int main(void) {
     printf("sample=%llu\n", (unsigned long long)Random_sample(rng, p));
     Probable_free(p);
 
+    Scanner_hasNextLine();
+
+
     ProbableObjects *objpool = ProbableObjects_allocate(3);
-    ProbableObjects_add(objpool, (uintptr_t)0x1111, 200);
-    ProbableObjects_add(objpool, (uintptr_t)0x2222, 40);
-    ProbableObjects_add(objpool, (uintptr_t)0x3333, 1);
+    ProbableObjects_add(objpool, 0x1111, 200);
+    ProbableObjects_add(objpool, 0x2222, 40);
+    ProbableObjects_add(objpool, 0x3333, 1);
     printf("pool total=%u draw=%llu\n", ProbableObjects_totalWeight(objpool),
            (unsigned long long)ProbableObjects_get(objpool));
     ProbableObjects_free(objpool);
@@ -295,14 +584,13 @@ int main(void) {
     printf("sorted: %d %d %d %d %d %d\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
     printf("search7=%ld\n", (long)Arrays_binarySearchInt(buf, 6, 7));
 
-    // Struct: runtime-defined custom struct.
+    // Struct & Fields: size-based dynamic schema and polymorphic allocator.
     printf("== anti oop: Struct ==\n");
-    uint32_t fields[3] = { ID_INT, ID_LONG, ID_FLOAT };
-    uint32_t point = Struct_construct(fields, 3);
-    printf("generic=0x%X stride=%zu\n", point, Struct_stride(point));
-    printf("stride_via_registry=%zu\n", Stride_get(point));
+    Fields *pointFields = Fields(sizeof(int32_t), sizeof(int64_t), sizeof(float));
+    printf("generic=0x%X stride=%zu\n", pointFields->genericId, pointFields->stride);
+    printf("stride_via_registry=%zu\n", Stride_get(pointFields->genericId));
 
-    void *pt = Struct_allocateSingleton(point);
+    void *pt = Struct(pointFields); // allocates singleton
     Struct_setInt(pt, 0, 5);
     Struct_setLong(pt, 1, 123456789);
     Struct_setFloat(pt, 2, 2.5f);
@@ -310,17 +598,12 @@ int main(void) {
            (long long)Struct_getLong(pt, 1), (double)Struct_getFloat(pt, 2));
     Struct_free(pt);
 
-    void *pts = Struct_allocateArray(point, 3);
+    void *pts = Struct(pointFields, 3); // allocates array of 3 elements
     for (size_t i = 0; i < 3; i++)
         Struct_setIntElement(pts, i, 0, (int32_t)(i + 1));
     printf("aos: %d %d %d\n", Struct_getIntElement(pts, 0, 0),
            Struct_getIntElement(pts, 1, 0), Struct_getIntElement(pts, 2, 0));
     Struct_free(pts);
-
-    void *mat = Struct_allocateMatrix(point, 2);
-    Struct_setPointer(mat, 1, (uintptr_t)0xDEAD);
-    printf("matrix ptr=%llu\n", (unsigned long long)Struct_getPointer(mat, 1));
-    Struct_free(mat);
 
     // RingBuffer + Loop: 4 producers, 1 consumer loop, expect 100 jobs.
     printf("== anti ring + spin + loop ==\n");
