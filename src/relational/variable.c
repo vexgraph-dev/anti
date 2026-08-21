@@ -1,7 +1,7 @@
 // relational/variable.c — Variable registry port (Legacy: variable/Variable.java).
 //
 // Open-addressing hash map keyed on the 4-word lowercase name; each 40-byte map
-// slot holds the name words + a var id (-1 = empty). Slot 0..active_count-1 of
+// slot holds the name words + a var id (-1 = empty). Slot 0..activeCount-1 of
 // the arena are the live rows.
 
 #include "relational/variable.h"
@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void lowercase_pack(const char *name, size_t len, uint64_t words[4]) {
+static void lowercasePack(const char *name, size_t len, uint64_t words[4]) {
     for (int w = 0; w < 4; w++) {
         uint64_t word = 0;
         for (int i = 0; i < 8; i++) {
@@ -26,102 +26,102 @@ static void lowercase_pack(const char *name, size_t len, uint64_t words[4]) {
     }
 }
 
-static uint32_t hash_name(uint64_t l0, uint64_t l1, uint64_t l2, uint64_t l3) {
+static uint32_t hashName(uint64_t l0, uint64_t l1, uint64_t l2, uint64_t l3) {
     uint64_t mix = l0 ^ (l1 >> 7) ^ (l2 << 9) ^ (l3 >> 13);
     mix ^= mix >> 32;
     return (uint32_t)mix;
 }
 
-static int32_t map_get(Variable *v, const uint64_t words[4]) {
+static int32_t mapGet(Variable *v, const uint64_t words[4]) {
     uint64_t *map = (uint64_t *)(*v).map;
-    size_t cap = (*v).map_capacity;
-    uint32_t index = hash_name(words[0], words[1], words[2], words[3]) % (uint32_t)cap;
+    size_t cap = (*v).mapCapacity;
+    uint32_t index = hashName(words[0], words[1], words[2], words[3]) % (uint32_t)cap;
 
     for (size_t i = 0; i < cap; i++) {
         uint64_t *slot = map + index * (VARIABLE_MAP_SLOT_SIZE / 8);
-        int32_t stored_id = (int32_t)(slot[4] & 0xFFFFFFFFu);
-        if (stored_id == -1)
+        int32_t storedId = (int32_t)(slot[4] & 0xFFFFFFFFu);
+        if (storedId == -1)
             return -1;
         if (slot[0] == words[0] && slot[1] == words[1] && slot[2] == words[2] && slot[3] == words[3])
-            return stored_id;
+            return storedId;
         index = (index + 1) % (uint32_t)cap;
     }
     return -1;
 }
 
-static void map_insert(Variable *v, const uint64_t words[4], int32_t var_id) {
+static void mapInsert(Variable *v, const uint64_t words[4], int32_t varId) {
     uint64_t *map = (uint64_t *)(*v).map;
-    size_t cap = (*v).map_capacity;
-    uint32_t index = hash_name(words[0], words[1], words[2], words[3]) % (uint32_t)cap;
+    size_t cap = (*v).mapCapacity;
+    uint32_t index = hashName(words[0], words[1], words[2], words[3]) % (uint32_t)cap;
 
     while (true) {
         uint64_t *slot = map + index * (VARIABLE_MAP_SLOT_SIZE / 8);
-        int32_t stored_id = (int32_t)(slot[4] & 0xFFFFFFFFu);
-        if (stored_id == -1 || stored_id == var_id) {
+        int32_t storedId = (int32_t)(slot[4] & 0xFFFFFFFFu);
+        if (storedId == -1 || storedId == varId) {
             slot[0] = words[0];
             slot[1] = words[1];
             slot[2] = words[2];
             slot[3] = words[3];
-            slot[4] = (uint64_t)(uint32_t)var_id;
+            slot[4] = (uint64_t)(uint32_t)varId;
             return;
         }
         index = (index + 1) % (uint32_t)cap;
     }
 }
 
-static void map_rebuild(Variable *v) {
-    memset((*v).map, 0xFF, (*v).map_capacity * VARIABLE_MAP_SLOT_SIZE);
-    for (size_t i = 0; i < (*v).active_count; i++) {
+static void mapRebuild(Variable *v) {
+    memset((*v).map, 0xFF, (*v).mapCapacity * VARIABLE_MAP_SLOT_SIZE);
+    for (size_t i = 0; i < (*v).activeCount; i++) {
         uint64_t *slot = (uint64_t *)((*v).arena + i * VARIABLE_SLOT_SIZE);
         uint64_t words[4] = {slot[0], slot[1], slot[2], slot[3]};
-        map_insert(v, words, (int32_t)i);
+        mapInsert(v, words, (int32_t)i);
     }
 }
 
-static bool map_resize(Variable *v) {
-    size_t new_capacity = (*v).map_capacity * 2;
-    uint8_t *new_map = malloc(new_capacity * VARIABLE_MAP_SLOT_SIZE);
-    if (new_map == NULL)
+static bool mapResize(Variable *v) {
+    size_t newCapacity = (*v).mapCapacity * 2;
+    uint8_t *newMap = malloc(newCapacity * VARIABLE_MAP_SLOT_SIZE);
+    if (newMap == NULL)
         return false;
-    memset(new_map, 0xFF, new_capacity * VARIABLE_MAP_SLOT_SIZE);
+    memset(newMap, 0xFF, newCapacity * VARIABLE_MAP_SLOT_SIZE);
 
-    uint64_t *old_map = (uint64_t *)(*v).map;
-    size_t old_capacity = (*v).map_capacity;
-    (*v).map = new_map;
-    (*v).map_capacity = new_capacity;
-    for (size_t i = 0; i < old_capacity; i++) {
-        uint64_t *slot = old_map + i * (VARIABLE_MAP_SLOT_SIZE / 8);
-        int32_t stored_id = (int32_t)(slot[4] & 0xFFFFFFFFu);
-        if (stored_id != -1) {
+    uint64_t *oldMap = (uint64_t *)(*v).map;
+    size_t oldCapacity = (*v).mapCapacity;
+    (*v).map = newMap;
+    (*v).mapCapacity = newCapacity;
+    for (size_t i = 0; i < oldCapacity; i++) {
+        uint64_t *slot = oldMap + i * (VARIABLE_MAP_SLOT_SIZE / 8);
+        int32_t storedId = (int32_t)(slot[4] & 0xFFFFFFFFu);
+        if (storedId != -1) {
             uint64_t words[4] = {slot[0], slot[1], slot[2], slot[3]};
-            map_insert(v, words, stored_id);
+            mapInsert(v, words, storedId);
         }
     }
-    free(old_map);
+    free(oldMap);
     return true;
 }
 
-static uint8_t *slot_ptr(Variable *v, int32_t var_id) {
-    return (*v).arena + (size_t) var_id * VARIABLE_SLOT_SIZE;
+static uint8_t *slotPtr(Variable *v, int32_t varId) {
+    return (*v).arena + (size_t) varId * VARIABLE_SLOT_SIZE;
 }
 
 bool Variable_init(Variable *v) {
     memset(v, 0, sizeof(*v));
     (*v).capacity = VARIABLE_DEFAULT_CAPACITY;
-    (*v).map_capacity = VARIABLE_DEFAULT_CAPACITY * 2;
+    (*v).mapCapacity = VARIABLE_DEFAULT_CAPACITY * 2;
 
     (*v).arena = malloc((*v).capacity * VARIABLE_SLOT_SIZE);
     if ((*v).arena == NULL)
         return false;
 
-    (*v).map = malloc((*v).map_capacity * VARIABLE_MAP_SLOT_SIZE);
+    (*v).map = malloc((*v).mapCapacity * VARIABLE_MAP_SLOT_SIZE);
     if ((*v).map == NULL) {
         free((*v).arena);
         (*v).arena = NULL;
         return false;
     }
 
-    memset((*v).map, 0xFF, (*v).map_capacity * VARIABLE_MAP_SLOT_SIZE);
+    memset((*v).map, 0xFF, (*v).mapCapacity * VARIABLE_MAP_SLOT_SIZE);
     (*v).active = true;
     return true;
 }
@@ -133,13 +133,13 @@ void Variable_shutdown(Variable *v) {
     free((*v).arena);
     (*v).map = NULL;
     (*v).arena = NULL;
-    (*v).map_capacity = 0;
+    (*v).mapCapacity = 0;
     (*v).capacity = 0;
-    (*v).active_count = 0;
+    (*v).activeCount = 0;
     (*v).active = false;
 }
 
-int32_t Variable_instant(Variable *v, const char *name, uint32_t class_id, uintptr_t target_pointer) {
+int32_t Variable_instant(Variable *v, const char *name, uint32_t classId, uintptr_t targetPointer) {
     if (!(*v).active || name == NULL)
         return -1;
 
@@ -148,44 +148,44 @@ int32_t Variable_instant(Variable *v, const char *name, uint32_t class_id, uintp
         return -1;
 
     uint64_t words[4];
-    lowercase_pack(name, len, words);
+    lowercasePack(name, len, words);
 
-    int32_t existing = map_get(v, words);
+    int32_t existing = mapGet(v, words);
     if (existing != -1) {
-        uint64_t *slot = (uint64_t *)slot_ptr(v, existing);
-        slot[4] = ((uint64_t)class_id << 32) | (slot[4] & 0xFFFFFFFFu);
-        slot[5] = (uint64_t)target_pointer;
+        uint64_t *slot = (uint64_t *)slotPtr(v, existing);
+        slot[4] = ((uint64_t)classId << 32) | (slot[4] & 0xFFFFFFFFu);
+        slot[5] = (uint64_t)targetPointer;
         return existing;
     }
 
-    if ((*v).active_count >= (*v).capacity) {
-        size_t new_capacity = (*v).capacity + VARIABLE_DEFAULT_CAPACITY;
-        uint8_t *new_arena = malloc(new_capacity * VARIABLE_SLOT_SIZE);
-        if (new_arena == NULL)
+    if ((*v).activeCount >= (*v).capacity) {
+        size_t newCapacity = (*v).capacity + VARIABLE_DEFAULT_CAPACITY;
+        uint8_t *newArena = malloc(newCapacity * VARIABLE_SLOT_SIZE);
+        if (newArena == NULL)
             return -1;
-        memcpy(new_arena, (*v).arena, (*v).active_count * VARIABLE_SLOT_SIZE);
+        memcpy(newArena, (*v).arena, (*v).activeCount * VARIABLE_SLOT_SIZE);
         free((*v).arena);
-        (*v).arena = new_arena;
-        (*v).capacity = new_capacity;
+        (*v).arena = newArena;
+        (*v).capacity = newCapacity;
     }
 
-    int32_t assigned = (int32_t)(*v).active_count;
-    uint64_t *slot = (uint64_t *)slot_ptr(v, assigned);
+    int32_t assigned = (int32_t)(*v).activeCount;
+    uint64_t *slot = (uint64_t *)slotPtr(v, assigned);
     slot[0] = words[0];
     slot[1] = words[1];
     slot[2] = words[2];
     slot[3] = words[3];
-    slot[4] = (uint64_t)class_id << 32;
-    slot[5] = (uint64_t)target_pointer;
-    (*v).active_count++;
+    slot[4] = (uint64_t)classId << 32;
+    slot[5] = (uint64_t)targetPointer;
+    (*v).activeCount++;
 
-    if ((*v).active_count >= (*v).map_capacity * 6 / 10) {
-        if (!map_resize(v)) {
-            (*v).active_count--;
+    if ((*v).activeCount >= (*v).mapCapacity * 6 / 10) {
+        if (!mapResize(v)) {
+            (*v).activeCount--;
             return -1;
         }
     } else
-        map_insert(v, words, assigned);
+        mapInsert(v, words, assigned);
     return assigned;
 }
 
@@ -198,66 +198,66 @@ int32_t Variable_getId(Variable *v, const char *name) {
         return -1;
 
     uint64_t words[4];
-    lowercase_pack(name, len, words);
-    return map_get(v, words);
+    lowercasePack(name, len, words);
+    return mapGet(v, words);
 }
 
-bool Variable_rename(Variable *v, const char *old_name, const char *new_name) {
-    if (!(*v).active || old_name == NULL || new_name == NULL)
+bool Variable_rename(Variable *v, const char *oldName, const char *newName) {
+    if (!(*v).active || oldName == NULL || newName == NULL)
         return false;
 
-    size_t old_len = strlen(old_name);
-    size_t new_len = strlen(new_name);
-    if (old_len > VARIABLE_NAME_SIZE || new_len > VARIABLE_NAME_SIZE)
+    size_t oldLen = strlen(oldName);
+    size_t newLen = strlen(newName);
+    if (oldLen > VARIABLE_NAME_SIZE || newLen > VARIABLE_NAME_SIZE)
         return false;
 
-    uint64_t old_words[4];
-    uint64_t new_words[4];
-    lowercase_pack(old_name, old_len, old_words);
-    lowercase_pack(new_name, new_len, new_words);
+    uint64_t oldWords[4];
+    uint64_t newWords[4];
+    lowercasePack(oldName, oldLen, oldWords);
+    lowercasePack(newName, newLen, newWords);
 
-    if (map_get(v, new_words) != -1)
+    if (mapGet(v, newWords) != -1)
         return false;
 
-    int32_t target = map_get(v, old_words);
+    int32_t target = mapGet(v, oldWords);
     if (target == -1)
         return false;
 
-    uint64_t *slot = (uint64_t *)slot_ptr(v, target);
-    slot[0] = new_words[0];
-    slot[1] = new_words[1];
-    slot[2] = new_words[2];
-    slot[3] = new_words[3];
+    uint64_t *slot = (uint64_t *)slotPtr(v, target);
+    slot[0] = newWords[0];
+    slot[1] = newWords[1];
+    slot[2] = newWords[2];
+    slot[3] = newWords[3];
 
-    map_rebuild(v);
+    mapRebuild(v);
     return true;
 }
 
-uintptr_t Variable_getPointer(Variable *v, int32_t var_id) {
-    uint64_t *slot = (uint64_t *)slot_ptr(v, var_id);
+uintptr_t Variable_getPointer(Variable *v, int32_t varId) {
+    uint64_t *slot = (uint64_t *)slotPtr(v, varId);
     return (uintptr_t) slot[5];
 }
 
-void Variable_setPointer(Variable *v, int32_t var_id, uintptr_t target_pointer) {
-    uint64_t *slot = (uint64_t *)slot_ptr(v, var_id);
-    slot[5] = (uint64_t)target_pointer;
+void Variable_setPointer(Variable *v, int32_t varId, uintptr_t targetPointer) {
+    uint64_t *slot = (uint64_t *)slotPtr(v, varId);
+    slot[5] = (uint64_t)targetPointer;
 }
 
-bool Variable_compareAndSetPointer(Variable *v, int32_t var_id, uintptr_t expected, uintptr_t new_pointer) {
-    uint64_t *slot = (uint64_t *)slot_ptr(v, var_id);
+bool Variable_compareAndSetPointer(Variable *v, int32_t varId, uintptr_t expected, uintptr_t newPointer) {
+    uint64_t *slot = (uint64_t *)slotPtr(v, varId);
     if (slot[5] != (uint64_t)expected)
         return false;
-    slot[5] = (uint64_t)new_pointer;
+    slot[5] = (uint64_t)newPointer;
     return true;
 }
 
-uint32_t Variable_getClassId(Variable *v, int32_t var_id) {
-    uint64_t *slot = (uint64_t *)slot_ptr(v, var_id);
+uint32_t Variable_getClassId(Variable *v, int32_t varId) {
+    uint64_t *slot = (uint64_t *)slotPtr(v, varId);
     return (uint32_t)(slot[4] >> 32);
 }
 
-int Variable_getName(Variable *v, int32_t var_id, char *out, size_t out_cap) {
-    uint64_t *slot = (uint64_t *)slot_ptr(v, var_id);
+int Variable_getName(Variable *v, int32_t varId, char *out, size_t outCap) {
+    uint64_t *slot = (uint64_t *)slotPtr(v, varId);
     char buf[VARIABLE_NAME_SIZE + 1];
     size_t len = 0;
     for (int i = 0; i < 4 && len < VARIABLE_NAME_SIZE; i++) {
@@ -270,12 +270,12 @@ int Variable_getName(Variable *v, int32_t var_id, char *out, size_t out_cap) {
         }
     }
     buf[len] = '\0';
-    if (out_cap < len + 1)
+    if (outCap < len + 1)
         return -1;
     memcpy(out, buf, len + 1);
     return (int)len;
 }
 
 size_t Variable_getActiveCount(Variable *v) {
-    return (*v).active_count;
+    return (*v).activeCount;
 }

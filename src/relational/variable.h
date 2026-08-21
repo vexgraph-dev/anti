@@ -25,11 +25,11 @@
 #define VARIABLE_DEFAULT_CAPACITY 1024
 
 typedef struct Variable {
-    uint8_t *arena;        // slot arena (active_count * SLOT_SIZE)
+    uint8_t *arena;        // slot arena (activeCount * SLOT_SIZE)
     size_t capacity;       // slot count
-    size_t active_count;   // registered symbols
+    size_t activeCount;    // registered symbols
     uint8_t *map;          // open-addressing name hash map
-    size_t map_capacity;   // map slot count
+    size_t mapCapacity;    // map slot count
     bool active;
 } Variable;
 
@@ -41,24 +41,24 @@ void Variable_shutdown(Variable *v);
 
 // Register name -> (classId, targetPointer), or update the payload if the name
 // already exists. Returns the assigned var id, or -1 on invalid input.
-int32_t Variable_instant(Variable *v, const char *name, uint32_t class_id, uintptr_t target_pointer);
+int32_t Variable_instant(Variable *v, const char *name, uint32_t classId, uintptr_t targetPointer);
 
 // Rename an existing symbol. Fails (false) if oldName is absent or newName is
 // already taken.
-bool Variable_rename(Variable *v, const char *old_name, const char *new_name);
+bool Variable_rename(Variable *v, const char *oldName, const char *newName);
 
 // Resolve a name to its var id. Returns -1 if not registered.
 int32_t Variable_getId(Variable *v, const char *name);
 
-// Payload accessors. var_id must be a valid registered id.
-uintptr_t Variable_getPointer(Variable *v, int32_t var_id);
-void Variable_setPointer(Variable *v, int32_t var_id, uintptr_t target_pointer);
-bool Variable_compareAndSetPointer(Variable *v, int32_t var_id, uintptr_t expected, uintptr_t new_pointer);
-uint32_t Variable_getClassId(Variable *v, int32_t var_id);
+// Payload accessors. varId must be a valid registered id.
+uintptr_t Variable_getPointer(Variable *v, int32_t varId);
+void Variable_setPointer(Variable *v, int32_t varId, uintptr_t targetPointer);
+bool Variable_compareAndSetPointer(Variable *v, int32_t varId, uintptr_t expected, uintptr_t newPointer);
+uint32_t Variable_getClassId(Variable *v, int32_t varId);
 
-// Copy the registered name into out (nul-terminated, at most out_cap bytes).
-// Returns the string length, or -1 on bad var_id / short buffer.
-int Variable_getName(Variable *v, int32_t var_id, char *out, size_t out_cap);
+// Copy the registered name into out (nul-terminated, at most outCap bytes).
+// Returns the string length, or -1 on bad varId / short buffer.
+int Variable_getName(Variable *v, int32_t varId, char *out, size_t outCap);
 
 // Number of registered symbols.
 size_t Variable_getActiveCount(Variable *v);
