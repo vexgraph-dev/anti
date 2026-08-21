@@ -162,4 +162,12 @@ uint32_t Window_id(Window *window);      // 0 when window is NULL
 void Window_focus(Window *window);       // ask the OS to make this key
 bool Window_isFocused(Window *window);   // is THIS the spotlight right now?
 
+// --- Resize reflection ---
+//
+// Monotonic counter bumped by Thread 0 whenever Window_pollEvents observes
+// the content size actually changed. Renderers, layouts, and scenes compare
+// their last-seen generation against this and rebuild when it moved — one
+// frame of lag at worst, zero AppKit calls off Thread 0, no locks.
+uint64_t Window_sizeGeneration(Window *window);
+
 #endif

@@ -17,6 +17,7 @@
 
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
+#import <stdatomic.h>
 
 #include "window/window.h"
 
@@ -79,25 +80,32 @@ static CGPoint s_lockCenter = {0, 0};
 // One opaque handle handed back to C. Holds both NS objects we must keep
 // alive: the window itself and its delegate. `id` is the engine's small
 // window number (1..7; 0 is the broadcast reserved id) used to tag input
-// events and route them to per-window listeners.
+// events and route them to per-window listeners. sizeGeneration is the
+// resize-reflection counter: Thread 0 bumps it when the content rect moves.
 struct Window {
     NSWindow *nsWindow;
     AntiWindowDelegate *delegate;
     bool shouldClose;
     uint32_t id;
+    _Atomic uint64_t sizeGeneration;
+    int cachedWidth;
+    int cachedHeight;
 };
 
-// Window id registry: slot i holds the NSWindow currently owning id i.
-// Ids are scarce on purpose (8 total) — an engine does not open hundreds of
-// windows. Slot 0 stays empty forever (FOCUS_BROADCAST).
+// Window id registry: slot i holds the NSWindow currently owning id i (and
+// the C handle that owns that NSWindow). Ids are scarce on purpose (8 total)
+// — an engine does not open hundreds of windows. Slot 0 stays empty forever
+// (FOCUS_BROADCAST).
 #define WINDOW_ID_SLOTS 8
 static NSWindow *s_idToWindow[WINDOW_ID_SLOTS] = { nil };
+static Window *s_idToHandle[WINDOW_ID_SLOTS] = { NULL };
 
 // Resolve an id for a newly created window, or 0 when the table is full.
-static uint32_t windowIdAcquire(NSWindow *window) {
+static uint32_t windowIdAcquire(NSWindow *window, Window *handle) {
     for (uint32_t i = 1; i < WINDOW_ID_SLOTS; i++) {
         if (s_idToWindow[i] == nil) {
             s_idToWindow[i] = window;
+            s_idToHandle[i] = handle;
             return i;
         }
     }
@@ -105,8 +113,10 @@ static uint32_t windowIdAcquire(NSWindow *window) {
 }
 
 static void windowIdRelease(uint32_t id) {
-    if (id != FOCUS_BROADCAST && id < WINDOW_ID_SLOTS)
+    if (id != FOCUS_BROADCAST && id < WINDOW_ID_SLOTS) {
         s_idToWindow[id] = nil;
+        s_idToHandle[id] = NULL;
+    }
 }
 
 // Reverse lookup: which engine id does this OS window carry? 0 if unknown.
@@ -115,6 +125,13 @@ static uint32_t windowIdOf(NSWindow *window) {
     for (uint32_t i = 1; i < WINDOW_ID_SLOTS; i++)
         if (s_idToWindow[i] == window) return i;
     return FOCUS_BROADCAST;
+}
+
+static Window *windowHandleOf(NSWindow *window) {
+    if (!window) return NULL;
+    for (uint32_t i = 1; i < WINDOW_ID_SLOTS; i++)
+        if (s_idToWindow[i] == window) return s_idToHandle[i];
+    return NULL;
 }
 
 // App-level delegate: receives lifecycle events for the whole application.
@@ -326,6 +343,24 @@ void Window_pollEvents(void) {
         [NSApp updateWindows];
         recenterIfLocked();
         Focus_set(windowIdOf([NSApp keyWindow]));
+
+        // Resize reflection: compare the live content rect against the cache
+        // and bump the generation only on an actual change, so a renderer
+        // polling once per frame pays one int compare.
+        for (uint32_t i = 1; i < WINDOW_ID_SLOTS; i++) {
+            NSWindow *w = s_idToWindow[i];
+            if (!w) continue;
+            Window *handle = windowHandleOf(w);
+            if (!handle) continue;
+            NSRect content = [w contentRectForFrameRect:[w frame]];
+            int cw = (int)content.size.width;
+            int ch = (int)content.size.height;
+            if (cw != (*handle).cachedWidth || ch != (*handle).cachedHeight) {
+                (*handle).cachedWidth = cw;
+                (*handle).cachedHeight = ch;
+                atomic_fetch_add_explicit(&(*handle).sizeGeneration, 1, memory_order_release);
+            }
+        }
     }
 }
 
@@ -377,7 +412,11 @@ static Window *windowAlloc(const WindowDesc *desc) {
         (*w).nsWindow = window;
         (*w).delegate = delegate;
         (*w).shouldClose = false;
-        (*w).id = windowIdAcquire(window);
+        atomic_store_explicit(&(*w).sizeGeneration, 0, memory_order_relaxed);
+        NSRect initialContent = [window contentRectForFrameRect:[window frame]];
+        (*w).cachedWidth = (int)initialContent.size.width;
+        (*w).cachedHeight = (int)initialContent.size.height;
+        (*w).id = windowIdAcquire(window, w);
         delegate.shouldClosePtr = &(*w).shouldClose;
 
         sLastWindow = window;
@@ -819,4 +858,11 @@ void Window_focus(Window *window) {
 
 bool Window_isFocused(Window *window) {
     return window && Focus_isFocused((*window).id);
+}
+
+// --- Resize reflection ---
+
+uint64_t Window_sizeGeneration(Window *window) {
+    if (!window) return 0;
+    return atomic_load_explicit(&(*window).sizeGeneration, memory_order_acquire);
 }
