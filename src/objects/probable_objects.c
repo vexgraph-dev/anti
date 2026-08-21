@@ -35,10 +35,10 @@ size_t ProbableObjects_capacity(ProbableObjects *po) {
 
 uint32_t ProbableObjects_totalWeight(ProbableObjects *po) {
     if (!po) return 0;
-    return (*po).total_weight;
+    return (*po).totalWeight;
 }
 
-static uint8_t *slot_at(ProbableObjects *po, size_t index) {
+static uint8_t *slotAt(ProbableObjects *po, size_t index) {
     return (*po).slots + index * SLOT_SIZE;
 }
 
@@ -47,14 +47,14 @@ int ProbableObjects_add(ProbableObjects *po, uintptr_t object, uint32_t weight) 
     if ((*po).count >= (*po).capacity)
         return 0;
 
-    uint8_t *slot = slot_at(po, (*po).count);
+    uint8_t *slot = slotAt(po, (*po).count);
     *(uintptr_t *)slot = object;
 
-    uint32_t running = (*po).total_weight + weight;
+    uint32_t running = (*po).totalWeight + weight;
     *(uint32_t *)(slot + 8) = running;
     *(uint32_t *)(slot + 12) = weight;
 
-    (*po).total_weight = running;
+    (*po).totalWeight = running;
     (*po).count++;
     return 1;
 }
@@ -66,17 +66,17 @@ int ProbableObjects_addProbable(ProbableObjects *po, const Probable *probable) {
 
 uintptr_t ProbableObjects_objectAt(ProbableObjects *po, size_t index) {
     if (!po || index >= (*po).count) return 0;
-    return *(uintptr_t *)slot_at(po, index);
+    return *(uintptr_t *)slotAt(po, index);
 }
 
 uint32_t ProbableObjects_cumulativeAt(ProbableObjects *po, size_t index) {
     if (!po || index >= (*po).count) return 0;
-    return *(uint32_t *)(slot_at(po, index) + 8);
+    return *(uint32_t *)(slotAt(po, index) + 8);
 }
 
 uint32_t ProbableObjects_weightAt(ProbableObjects *po, size_t index) {
     if (!po || index >= (*po).count) return 0;
-    return *(uint32_t *)(slot_at(po, index) + 12);
+    return *(uint32_t *)(slotAt(po, index) + 12);
 }
 
 uintptr_t ProbableObjects_get(ProbableObjects *po) {
