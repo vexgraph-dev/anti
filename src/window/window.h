@@ -5,6 +5,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "event/key.h"
+#include "event/mouse.h"
+#include "event/touch.h"
+
 // window/window.h — platform-agnostic window API.
 //
 // The implementation is window_cocoa.m (the one ObjC file). C callers
@@ -25,7 +29,46 @@ typedef struct Window Window;
 #define WINDOW_UNDECORATED_BORDERLESS 1 // no title bar and no traffic lights
 #define WINDOW_UNDECORATED_NAKED      2 // transparent title bar, hidden title, traffic lights kept
 
-// Create and show a window. Returns NULL on failure.
+// Constructor parameters. Every field has a default; a call site names only
+// what it wants to change. Zero it for pure defaults.
+typedef struct WindowDesc {
+    const char *title;   // default "anti"
+    int width;           // default 800
+    int height;          // default 600
+    int x;               // top-left, default 0
+    int y;               // default 0
+    bool centered;       // default false
+    bool shown;          // default false — construct hidden, show() when ready
+} WindowDesc;
+
+// --- Overloaded constructors (the Vec4 chooser idiom) ---
+//
+//   Window()                     -> defaults, hidden
+//   Window("title")              -> titled, hidden
+//   Window("title", 800, 600)    -> legacy create, hidden
+//   Window_new(&(WindowDesc){…}) -> every other field (x/y/centered/shown)
+//
+// All variants construct HIDDEN: construct -> mutate -> Window_show().
+// The macro is function-like, so it never fires when `Window` is used as the
+// type name — only at call sites with parentheses.
+
+Window *Window_0(void);
+Window *Window_1(const char *title);
+Window *Window_3(const char *title, int width, int height);
+
+#define WINDOW_CHOOSER(_0, _1, _2, _3, NAME, ...) NAME
+
+#define Window(...) WINDOW_CHOOSER( \
+    dummy, ##__VA_ARGS__,           \
+    Window_3, Window_2, Window_1, Window_0 \
+)(__VA_ARGS__)
+
+// Parameterized constructor: Desc fields applied on top of defaults.
+// Pass &(WindowDesc){ .title = "...", .centered = true } — unset fields keep
+// their defaults. Returns NULL on failure.
+Window *Window_new(const WindowDesc *desc);
+
+// Legacy-style convenience constructor: titled, sized, created hidden.
 Window *Window_create(const char *title, int width, int height);
 
 // Close the window and free the handle. Safe if already closed.
@@ -42,11 +85,15 @@ void Window_setVsync(Window *window, bool enabled);
 
 // --- Title / size / position ---
 void Window_setTitle(Window *window, const char *title);
-void Window_setSize(Window *window, int width, int height);
+int  Window_width(Window *window);
+int  Window_height(Window *window);
+void Window_setDimension(Window *window, int width, int height);
 void Window_setWidth(Window *window, int width);
 void Window_setHeight(Window *window, int height);
 void Window_setLocation(Window *window, int x, int y);
 void Window_center(Window *window);
+void Window_show(Window *window);
+void Window_hide(Window *window);
 void Window_setVisible(Window *window, bool visible);
 
 // --- Chrome capability toggles (style-mask API) ---
@@ -80,5 +127,39 @@ void Window_setDRM(Window *window, bool enabled);
 // --- Size constraints ---
 void Window_setMinSize(Window *window, int width, int height);
 void Window_setMaxSize(Window *window, int width, int height);
+
+// FPS-style relative cursor: hides the pointer, decouples it from movement,
+// and re-warps to the window centre each pump pass while deltas flow into the
+// input/mouse stream as move-delta events. (Legacy: macOSWindow.setCursorLock.)
+void Window_setCursorLocked(Window *window, bool locked);
+
+// --- Event wiring ---
+//
+// The window is the registration surface for the event contracts: implement
+// a KeyEvent/MouseEvent/TouchEvent vtable (with .self = your object) and
+// attach it here. Every queued event carries the id of the window the OS
+// delivered it to, so an attached listener only hears events for ITS window
+// (broadcast-tagged synthetic events reach every window). Removal is by
+// pointer identity. Destroying the window detaches its listeners.
+void Window_addKeyEvent(Window *window, const KeyEvent *listener);
+bool Window_removeKeyEvent(Window *window, const KeyEvent *listener);
+void Window_addMouseEvent(Window *window, const MouseEvent *listener);
+bool Window_removeMouseEvent(Window *window, const MouseEvent *listener);
+void Window_addTouchEvent(Window *window, const TouchEvent *listener);
+bool Window_removeTouchEvent(Window *window, const TouchEvent *listener);
+
+// The running: drain all three device rings into the registered listeners.
+// Call ONCE per frame from the game loop, after Window_pollEvents(). If you
+// never call it, polling (Key_isDown/Mouse_x) still works but queued events
+// pile up and drop once the rings fill.
+void Window_dispatchEvents(Window *window);
+
+// --- Focus (the spotlight: one focused window per machine) ---
+//
+// The OS owns focus; we mirror it. After every pump pass the key window's id
+// lands in one atomic word any thread can read.
+uint32_t Window_id(Window *window);      // 0 when window is NULL
+void Window_focus(Window *window);       // ask the OS to make this key
+bool Window_isFocused(Window *window);   // is THIS the spotlight right now?
 
 #endif
