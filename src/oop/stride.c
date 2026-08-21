@@ -37,9 +37,14 @@ size_t Stride_get(uint32_t class_id) {
 
         // Variable and the time outliers.
         case ID_VARIABLE:   return 40;
-        case ID_ENTITY:
-        case ID_VEC2:
-        case ID_VEC3:       return 8;
+        // Math / geometry blocks.
+        case ID_VEC2:       return 8;
+        case ID_VEC3:       return 12;
+        case ID_VEC4:       return 16;
+        case ID_MAT3:       return 36;
+        case ID_MAT4:       return 64;
+        case ID_QUATERNION: return 16;
+        case ID_ENTITY:     return 8;
 
         // Wrappers of a single pointer/struct.
         case ID_RANDOM:     return 16;
