@@ -1,0 +1,132 @@
+#include "io/logparser.h"
+
+#include <stdio.h>
+#include <string.h>
+
+#include "io/file.h"
+
+// logparser.c — LogParser port (Legacy: io/LogParser.java).
+
+static const uint8_t LOGPARSER_MAGIC[7] = { 0x41, 0x4E, 0x54, 0x49, 0x4C, 0x4F, 0x47 };
+
+static uint32_t read_be32(const uint8_t *b) {
+    return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16)
+        | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
+}
+
+static int64_t read_be64(const uint8_t *b) {
+    uint64_t v = 0;
+    for (int i = 0; i < 8; i++)
+        v = (v << 8) | (uint64_t)b[i];
+    return (int64_t)v;
+}
+
+static bool is_log_header(const uint8_t *h) {
+    for (int i = 0; i < 7; i++)
+        if (h[i] != LOGPARSER_MAGIC[i])
+            return false;
+    return h[7] == 0x01 && read_be32(h + 8) == LOGPARSER_RECORD_BYTES;
+}
+
+bool LogParser_isLogFile(const char *path) {
+    File *f = File_open(path, FILE_MODE_READ);
+    if (!f)
+        return false;
+    uint8_t h[LOGPARSER_HEADER_BYTES];
+    int64_t n = File_read(f, h, LOGPARSER_HEADER_BYTES);
+    bool ok = n == LOGPARSER_HEADER_BYTES && is_log_header(h);
+    File_close(f);
+    return ok;
+}
+
+int64_t LogParser_count(const char *path) {
+    File *f = File_open(path, FILE_MODE_READ);
+    if (!f)
+        return -1;
+    int64_t size = File_size(f);
+    if (size < LOGPARSER_HEADER_BYTES) {
+        File_close(f);
+        return -1;
+    }
+    uint8_t h[LOGPARSER_HEADER_BYTES];
+    if (File_read(f, h, LOGPARSER_HEADER_BYTES) != LOGPARSER_HEADER_BYTES
+        || !is_log_header(h)) {
+        File_close(f);
+        return -1;
+    }
+    File_close(f);
+    return (size - LOGPARSER_HEADER_BYTES) / LOGPARSER_RECORD_BYTES;
+}
+
+int64_t LogParser_parse(const char *path, LogRecordFn handler, void *userdata) {
+    if (!handler)
+        return -1;
+    File *f = File_open(path, FILE_MODE_READ);
+    if (!f)
+        return -1;
+    uint8_t h[LOGPARSER_HEADER_BYTES];
+    if (File_read(f, h, LOGPARSER_HEADER_BYTES) != LOGPARSER_HEADER_BYTES
+        || !is_log_header(h)) {
+        File_close(f);
+        return -1;
+    }
+    uint8_t rec[LOGPARSER_RECORD_BYTES];
+    int64_t count = 0;
+    while (File_read(f, rec, LOGPARSER_RECORD_BYTES) == LOGPARSER_RECORD_BYTES) {
+        handler(userdata,
+                (int)read_be32(rec),
+                read_be64(rec + 4),
+                read_be64(rec + 12),
+                read_be64(rec + 20),
+                read_be64(rec + 28),
+                read_be64(rec + 36),
+                read_be64(rec + 44));
+        count++;
+    }
+    File_close(f);
+    return count;
+}
+
+int LogParser_formatRecord(char *out, size_t out_cap, int kind, int64_t ts,
+                           int64_t base_ts, const char *name,
+                           int64_t v0, int64_t v1, int64_t v2,
+                           int64_t v3, int64_t v4) {
+    double ms = base_ts <= 0 ? 0.0 : (double)(ts - base_ts) / 1000000.0;
+    int64_t rounded = (int64_t)(ms * 1000.0 + (ms >= 0 ? 0.5 : -0.5));
+    int64_t whole = rounded / 1000;
+    int64_t frac = rounded % 1000;
+    if (frac < 0)
+        frac = -frac;
+
+    int n = snprintf(out, out_cap, "%lld.%03lld ms  %s  %lld  %lld  %lld  %lld  %lld",
+                     (long long)whole, (long long)frac,
+                     name ? name : LogParser_kindName(kind),
+                     (long long)v0, (long long)v1, (long long)v2,
+                     (long long)v3, (long long)v4);
+    if (n < 0 || (size_t)n >= out_cap)
+        return -1;
+    return n;
+}
+
+const char *LogParser_kindName(int kind) {
+    switch (kind) {
+        case 1:  return "produce";
+        case 2:  return "present";
+        case 3:  return "drop";
+        case 10: return "keyDown";
+        case 11: return "keyRepeat";
+        case 12: return "keyUp";
+        case 20: return "mouseDown";
+        case 21: return "mouseUp";
+        case 22: return "mouseMove";
+        case 30: return "touchDown";
+        case 31: return "touchUp";
+        case 32: return "touchMove";
+        case 33: return "touchCancel";
+        default: {
+            static char fallback[32];
+            snprintf(fallback, sizeof(fallback), "kind#%d", kind);
+            return fallback;
+        }
+    }
+}
