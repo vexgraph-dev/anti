@@ -178,9 +178,9 @@ uint64_t Struct_getField(void *ptr, size_t fieldIndex) {
     bool dummy = false;
     size_t sz = Fields_resolveSize((*layout).items[fieldIndex].size, &dummy);
     switch (sz) {
-        case 1:  return (uint64_t)*(uint8_t *)addr;
-        case 2:  return (uint64_t)*(uint16_t *)addr;
-        case 4:  return (uint64_t)*(uint32_t *)addr;
+        case 1:  return *(uint8_t *)addr;
+        case 2:  return *(uint16_t *)addr;
+        case 4:  return *(uint32_t *)addr;
         default: return *(uint64_t *)addr;
     }
 }
@@ -244,7 +244,7 @@ int32_t Struct_getInt(void *ptr, size_t fieldIndex) {
 
 void Struct_setLong(void *ptr, size_t fieldIndex, int64_t value) {
     void *addr = Struct_field(ptr, fieldIndex);
-    if (addr) *(int64_t *)addr = value;
+    if (addr) *(int64_t*) addr = value;
 }
 
 int64_t Struct_getLong(void *ptr, size_t fieldIndex) {

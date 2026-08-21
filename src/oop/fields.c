@@ -53,6 +53,30 @@ size_t Fields_resolveSize(size_t val, bool *outIsStruct) {
     }
 }
 
+// Natural alignment for a field of the given byte size: primitives align to
+// their own width (capped at 8), compound fields to their widest component
+// class. Every cursor in defineInto rounds up to this before laying a field
+// down, and strides round to MAX_FIELD_ALIGN so array elements keep every
+// 8-byte field aligned.
+#define MAX_FIELD_ALIGN 8u
+
+static size_t alignOf(size_t size) {
+    if (size >= MAX_FIELD_ALIGN)
+        return MAX_FIELD_ALIGN;
+
+    if (size >= 4)
+        return 4;
+
+    if (size >= 2)
+        return 2;
+
+    return 1;
+}
+
+static size_t roundUp(size_t val, size_t align) {
+    return (val + align - 1) & ~(align - 1);
+}
+
 static int defineInto(Fields *s, const size_t *sizesOrClasses, size_t count) {
     if (!sizesOrClasses || count == 0)
         return 0;
@@ -74,26 +98,32 @@ static int defineInto(Fields *s, const size_t *sizesOrClasses, size_t count) {
         size_t rawVal = sizesOrClasses[i];
         bool isS = false;
         size_t size = Fields_resolveSize(rawVal, &isS);
+        size_t align = alignOf(size);
 
         items[i].size = (uint32_t)rawVal;
         items[i].isStruct = isS;
+
+        unifiedOffset = roundUp(unifiedOffset, align);
         items[i].offset = (uint32_t)unifiedOffset;
         unifiedOffset += size;
 
         if (!isS) {
+            s1Offset = roundUp(s1Offset, align);
             items[i].stream1Offset = (uint32_t)s1Offset;
             items[i].stream2Offset = 0;
             s1Offset += size;
         } else {
+            s2Offset = roundUp(s2Offset, align);
             items[i].stream1Offset = 0;
             items[i].stream2Offset = (uint32_t)s2Offset;
             s2Offset += size;
         }
     }
 
-    (*s).stride = unifiedOffset;
-    (*s).stream1Stride = s1Offset;
-    (*s).stream2Stride = s2Offset;
+    // Tail-pad so element N's aligned fields stay aligned at array stride.
+    (*s).stride = roundUp(unifiedOffset, MAX_FIELD_ALIGN);
+    (*s).stream1Stride = roundUp(s1Offset, MAX_FIELD_ALIGN);
+    (*s).stream2Stride = roundUp(s2Offset, MAX_FIELD_ALIGN);
     (*s).count = (uint32_t)count;
     (*s).items = items;
     return 1;
