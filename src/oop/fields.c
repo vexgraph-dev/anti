@@ -33,12 +33,15 @@ size_t Fields_resolveSize(size_t val, bool *outIsStruct) {
     switch (val) {
         case ID_BYTE:    return 1;
         case ID_SHORT:   return 2;
-        case ID_INT:     return 4;
-        case ID_LONG:    return 8;
+
+        case ID_INT:     
         case ID_FLOAT:   return 4;
+
+        case ID_STRING:
+        case ID_VEC2:
+        case ID_LONG:
         case ID_DOUBLE:  return 8;
-        case ID_STRING:  return 8;
-        case ID_VEC2:    return 8;
+
         case ID_VEC3:    *outIsStruct = true; return 12;
         case ID_VEC4:    *outIsStruct = true; return 16;
         case ID_MAT4:    *outIsStruct = true; return 64;
