@@ -35,7 +35,7 @@ typedef struct {
     uint64_t pressTime;
     uint64_t lastReleaseTime;
     int32_t taps;
-    int32_t pad;
+    int32_t pad; // we need the padding
     uint64_t lastHoldDuration;
 } KeySlot;
 

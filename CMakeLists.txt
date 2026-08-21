@@ -67,6 +67,9 @@ add_executable(anti
     src/struct/stack.c
     src/thread/ring.c
     src/thread/spin.c
+    src/time/calendar.c
+    src/time/clock.c
+    src/time/datetime.c
     src/time/nanotime.c
     src/util/arrays.c
     src/util/hash.c
@@ -118,14 +121,26 @@ add_executable(enginetest
     src/input/touch.c
     src/thread/ring.c
     src/thread/spin.c
+    src/time/clock.c
     src/time/nanotime.c
 )
 target_include_directories(enginetest PRIVATE src)
-target_compile_options(enginetest PRIVATE -Wall -Wextra -mcpu=native)
+target_compile_options(enginetest PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_link_libraries(enginetest PRIVATE
     "-framework Cocoa"
     "-framework AppKit"
 )
+
+# Headless time package test
+add_executable(time_test
+    tests/time_test.c
+    src/time/calendar.c
+    src/time/clock.c
+    src/time/datetime.c
+    src/time/nanotime.c
+)
+target_include_directories(time_test PRIVATE src)
+target_compile_options(time_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
 
 # Headless input pipeline test
 add_executable(input_test
@@ -136,6 +151,7 @@ add_executable(input_test
     src/input/touch.c
     src/thread/ring.c
     src/thread/spin.c
+    src/time/clock.c
     src/time/nanotime.c
 )
 target_include_directories(input_test PRIVATE src)
@@ -152,10 +168,11 @@ add_executable(anti_window
     src/input/touch.c
     src/thread/ring.c
     src/thread/spin.c
+    src/time/clock.c
     src/time/nanotime.c
 )
 target_include_directories(anti_window PRIVATE src)
-target_compile_options(anti_window PRIVATE -Wall -Wextra -mcpu=native)
+target_compile_options(anti_window PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_link_libraries(anti_window PRIVATE
     "-framework Cocoa"
     "-framework AppKit"
