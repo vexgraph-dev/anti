@@ -36,3 +36,56 @@ uint64_t NanoTime_elapsedNanos(void) {
     if (!s_started) return 0;
     return readNanos() - s_startNanos;
 }
+
+// --- Tickable timer (Legacy: NanoTime.allocate/tick) ---
+
+void NanoTimer_reset(NanoTimer *timer) {
+    uint64_t now = readNanos();
+    (*timer).startNanos = now;
+    (*timer).lastNanos = now;
+    (*timer).currentNanos = now;
+    (*timer).deltaTime = 0.0;
+    (*timer).totalTime = 0.0;
+}
+
+void NanoTimer_tickWithClock(NanoTimer *timer, const Clock *clock) {
+    uint64_t now = readNanos();
+    uint64_t current = (*timer).currentNanos;
+
+    (*timer).lastNanos = current;
+    (*timer).currentNanos = now;
+
+    double realDeltaSec = (double)(now - current) / 1000000000.0;
+
+    double scale = 1.0;
+    if (clock) {
+        if (Clock_isPaused(clock))
+            scale = 0.0;
+        else
+            scale = Clock_timeScale(clock);
+    }
+
+    double scaledDeltaSec = realDeltaSec * scale;
+    (*timer).deltaTime = scaledDeltaSec;
+    (*timer).totalTime += scaledDeltaSec;
+}
+
+void NanoTimer_tick(NanoTimer *timer) {
+    NanoTimer_tickWithClock(timer, NULL);
+}
+
+double NanoTimer_deltaTime(const NanoTimer *timer) {
+    return (*timer).deltaTime;
+}
+
+double NanoTimer_totalTime(const NanoTimer *timer) {
+    return (*timer).totalTime;
+}
+
+uint64_t NanoTimer_deltaNanos(const NanoTimer *timer) {
+    return (*timer).currentNanos - (*timer).lastNanos;
+}
+
+uint64_t NanoTimer_elapsedNanosOf(const NanoTimer *timer) {
+    return (*timer).currentNanos - (*timer).startNanos;
+}

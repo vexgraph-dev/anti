@@ -1,7 +1,10 @@
 #ifndef TIME_NANOTIME_H
 #define TIME_NANOTIME_H
 
+#include <stdbool.h>
 #include <stdint.h>
+
+#include "time/clock.h"
 
 // time/nanotime.h — the monotonic clock (Legacy: time/NanoTime.java).
 //
@@ -24,5 +27,32 @@ uint64_t NanoTime_startNanos(void);
 
 // Nanos since the engine epoch (0 before init).
 uint64_t NanoTime_elapsedNanos(void);
+
+// --- Tickable timer (Legacy: NanoTime.allocate/tick) ---
+//
+// A frame-timer accumulator: tick() rolls current into last, computes the
+// real delta, and (optionally) scales it through a Clock so pause/slow-mo
+// shape deltaTime and totalTime exactly like the simulation experienced them.
+
+typedef struct NanoTimer {
+    uint64_t startNanos;
+    uint64_t lastNanos;
+    uint64_t currentNanos;
+    double deltaTime;  // seconds, Clock-scaled
+    double totalTime;  // seconds, accumulated scaled
+} NanoTimer;
+
+// Anchor all fields at now; deltas zero.
+void NanoTimer_reset(NanoTimer *timer);
+
+// Roll one frame. With a clock, delta is multiplied by its timeScale and
+// freezes while paused (real reading still advances — no resume jump).
+void NanoTimer_tick(NanoTimer *timer);
+void NanoTimer_tickWithClock(NanoTimer *timer, const Clock *clock);
+
+double NanoTimer_deltaTime(const NanoTimer *timer);
+double NanoTimer_totalTime(const NanoTimer *timer);
+uint64_t NanoTimer_deltaNanos(const NanoTimer *timer);
+uint64_t NanoTimer_elapsedNanosOf(const NanoTimer *timer); // since start
 
 #endif
