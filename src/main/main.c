@@ -40,8 +40,14 @@
 #include "lang/vec3.h"
 #include "lang/vec4.h"
 #include "nio/mem.h"
+#include "objects/choice.h"
+#include "objects/future.h"
+#include "objects/global.h"
+#include "objects/local.h"
+#include "objects/passive.h"
 #include "objects/probable.h"
 #include "objects/probable_objects.h"
+#include "objects/reactive.h"
 #include "oop/stride.h"
 #include "oop/struct.h"
 #include "oop/type.h"
@@ -115,6 +121,16 @@ static bool console_running = false;
 static void on_quit_command(Command *command) {
     (void)command;
     console_running = false;
+}
+
+static void on_reactive_change(uint64_t oldVal, uint64_t newVal, void *userdata) {
+    (void)userdata;
+    printf("reactive changed: %llu -> %llu\n", (unsigned long long)oldVal, (unsigned long long)newVal);
+}
+
+static uint64_t passive_lazy_calc(void *userdata) {
+    int *base = (int *)userdata;
+    return (uint64_t)((*base) * 2);
 }
 
 // Called by the engine loop at a fixed timestep. Drains everything the
@@ -623,6 +639,29 @@ int main(void) {
 
     Buffer_free(colorBuf);
     Buffer_free(depthBuf);
+
+    // Objects: Future, Reactive, Passive, Choice, Global, Local
+    printf("== anti objects: Future & Reactive & Passive & Global ==\n");
+    Future *fut = Future_allocate();
+    printf("future isGiven=%d\n", Future_isGiven(fut));
+    Future_setDesiredValue(fut, 4242);
+    printf("future isGiven=%d val=%llu\n", Future_isGiven(fut), (unsigned long long)Future_get(fut));
+    Future_free(fut);
+
+    Reactive *rx = Reactive_allocate(100);
+    Reactive_setOnChanged(rx, on_reactive_change, NULL);
+    Reactive_set(rx, 250);
+    Reactive_free(rx);
+
+    int factor = 21;
+    Passive *pv = Passive_allocate(passive_lazy_calc, NULL, &factor);
+    printf("passive lazy val=%llu\n", (unsigned long long)Passive_get(pv));
+    Passive_free(pv);
+
+    Global *g = Global_allocate(999);
+    Global_set(g, 1000);
+    printf("global val=%llu\n", (unsigned long long)Global_get(g));
+    Global_free(g);
 
     // RingBuffer + Loop: 4 producers, 1 consumer loop, expect 100 jobs.
     printf("== anti ring + spin + loop ==\n");

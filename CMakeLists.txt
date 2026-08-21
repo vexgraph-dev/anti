@@ -37,8 +37,14 @@ add_executable(anti
     src/lang/vec3.c
     src/lang/vec4.c
     src/nio/mem.c
+    src/objects/choice.c
+    src/objects/future.c
+    src/objects/global.c
+    src/objects/local.c
+    src/objects/passive.c
     src/objects/probable.c
     src/objects/probable_objects.c
+    src/objects/reactive.c
     src/oop/fields.c
     src/oop/stride.c
     src/oop/struct.c
