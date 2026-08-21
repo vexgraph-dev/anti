@@ -100,6 +100,15 @@
 #define ID_QUEUE         0x0027u
 #define ID_ARGUMENTS     0x0028u
 
+// --- OBJECT WRAPPERS & MODIFIERS (Legacy 0x006F..0x0075) ---
+#define ID_CHOICE        0x006Fu
+#define ID_FUTURE        0x0070u
+#define ID_PASSIVE       0x0071u
+#define ID_REACTIVE      0x0072u
+#define ID_TRANSIENT     0x0073u
+#define ID_LOCAL         0x0074u
+#define ID_GLOBAL        0x0075u
+
 // Base ID for runtime-defined custom structs (Legacy CUSTOM_STRUCT).
 // Custom structs are CUSTOM_STRUCT + n; the Struct registry owns the stride.
 #define ID_CUSTOM_STRUCT 0x4000u
