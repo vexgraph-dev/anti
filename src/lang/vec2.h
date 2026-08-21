@@ -28,22 +28,22 @@ float Vec2_getY(const Vec2 *v);
 void Vec2_setY(Vec2 *v, float y);
 void Vec2_set(Vec2 *v, float x, float y);
 
-void Vec2_copy(Vec2 *dest, const Vec2 *src);
+void Vec2_copy(const Vec2 *src, Vec2 *dest);
 
-void Vec2_add(Vec2 *dest, const Vec2 *a, const Vec2 *b);
-void Vec2_sub(Vec2 *dest, const Vec2 *a, const Vec2 *b);
-void Vec2_mul(Vec2 *dest, const Vec2 *a, float scalar);
-void Vec2_div(Vec2 *dest, const Vec2 *a, float scalar);
+void Vec2_add(const Vec2 *a, const Vec2 *b, Vec2 *dest);
+void Vec2_sub(const Vec2 *a, const Vec2 *b, Vec2 *dest);
+void Vec2_mul(const Vec2 *a, float scalar, Vec2 *dest);
+void Vec2_div(const Vec2 *a, float scalar, Vec2 *dest);
 
 float Vec2_dot(const Vec2 *a, const Vec2 *b);
 float Vec2_lengthSquared(const Vec2 *v);
 float Vec2_length(const Vec2 *v);
 
 // Normalize src into dest; zeroes dest when src is (near-)zero.
-void Vec2_normalize(Vec2 *dest, const Vec2 *src);
+void Vec2_normalize(const Vec2 *src, Vec2 *dest);
 
 // Counter-clockwise 90-degree perpendicular: dest = (-y, x).
-void Vec2_perpendicular(Vec2 *dest, const Vec2 *src);
+void Vec2_perpendicular(const Vec2 *src, Vec2 *dest);
 
 float Vec2_distance(const Vec2 *a, const Vec2 *b);
 
@@ -51,12 +51,12 @@ float Vec2_distance(const Vec2 *a, const Vec2 *b);
 float Vec2_angle(const Vec2 *a, const Vec2 *b);
 
 // Project vector onto onto; zeroes dest when onto is (near-)zero.
-void Vec2_project(Vec2 *dest, const Vec2 *vector, const Vec2 *onto);
+void Vec2_project(const Vec2 *vector, const Vec2 *onto, Vec2 *dest);
 
-void Vec2_min(Vec2 *dest, const Vec2 *a, const Vec2 *b);
-void Vec2_max(Vec2 *dest, const Vec2 *a, const Vec2 *b);
-void Vec2_clamp(Vec2 *dest, const Vec2 *src, float min_val, float max_val);
-void Vec2_abs(Vec2 *dest, const Vec2 *src);
-void Vec2_lerp(Vec2 *dest, const Vec2 *a, const Vec2 *b, float t);
+void Vec2_min(const Vec2 *a, const Vec2 *b, Vec2 *dest);
+void Vec2_max(const Vec2 *a, const Vec2 *b, Vec2 *dest);
+void Vec2_clamp(const Vec2 *src, float min_val, float max_val, Vec2 *dest);
+void Vec2_abs(const Vec2 *src, Vec2 *dest);
+void Vec2_lerp(const Vec2 *a, const Vec2 *b, float t, Vec2 *dest);
 
 #endif

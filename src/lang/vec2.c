@@ -51,27 +51,27 @@ void Vec2_set(Vec2 *v, float x, float y) {
     (*v).y = y;
 }
 
-void Vec2_copy(Vec2 *dest, const Vec2 *src) {
+void Vec2_copy(const Vec2 *src, Vec2 *dest) {
     (*dest).x = (*src).x;
     (*dest).y = (*src).y;
 }
 
-void Vec2_add(Vec2 *dest, const Vec2 *a, const Vec2 *b) {
+void Vec2_add(const Vec2 *a, const Vec2 *b, Vec2 *dest) {
     (*dest).x = (*a).x + (*b).x;
     (*dest).y = (*a).y + (*b).y;
 }
 
-void Vec2_sub(Vec2 *dest, const Vec2 *a, const Vec2 *b) {
+void Vec2_sub(const Vec2 *a, const Vec2 *b, Vec2 *dest) {
     (*dest).x = (*a).x - (*b).x;
     (*dest).y = (*a).y - (*b).y;
 }
 
-void Vec2_mul(Vec2 *dest, const Vec2 *a, float scalar) {
+void Vec2_mul(const Vec2 *a, float scalar, Vec2 *dest) {
     (*dest).x = (*a).x * scalar;
     (*dest).y = (*a).y * scalar;
 }
 
-void Vec2_div(Vec2 *dest, const Vec2 *a, float scalar) {
+void Vec2_div(const Vec2 *a, float scalar, Vec2 *dest) {
     float inv = 1.0f / scalar;
     (*dest).x = (*a).x * inv;
     (*dest).y = (*a).y * inv;
@@ -89,7 +89,7 @@ float Vec2_length(const Vec2 *v) {
     return sqrtf(Vec2_lengthSquared(v));
 }
 
-void Vec2_normalize(Vec2 *dest, const Vec2 *src) {
+void Vec2_normalize(const Vec2 *src, Vec2 *dest) {
     float len_sq = Vec2_lengthSquared(src);
     if (len_sq > FastMath_EPSILON) {
         float inv_len = FastMath_invSqrt(len_sq);
@@ -101,7 +101,7 @@ void Vec2_normalize(Vec2 *dest, const Vec2 *src) {
     }
 }
 
-void Vec2_perpendicular(Vec2 *dest, const Vec2 *src) {
+void Vec2_perpendicular(const Vec2 *src, Vec2 *dest) {
     (*dest).x = -(*src).y;
     (*dest).y = (*src).x;
 }
@@ -121,38 +121,38 @@ float Vec2_angle(const Vec2 *a, const Vec2 *b) {
     return acosf(cos_theta);
 }
 
-void Vec2_project(Vec2 *dest, const Vec2 *vector, const Vec2 *onto) {
+void Vec2_project(const Vec2 *vector, const Vec2 *onto, Vec2 *dest) {
     float onto_len_sq = Vec2_lengthSquared(onto);
     if (onto_len_sq > FastMath_EPSILON) {
         float scale = Vec2_dot(vector, onto) / onto_len_sq;
-        Vec2_mul(dest, onto, scale);
+        Vec2_mul(onto, scale, dest);
     } else {
         (*dest).x = 0.0f;
         (*dest).y = 0.0f;
     }
 }
 
-void Vec2_min(Vec2 *dest, const Vec2 *a, const Vec2 *b) {
+void Vec2_min(const Vec2 *a, const Vec2 *b, Vec2 *dest) {
     (*dest).x = (*a).x < (*b).x ? (*a).x : (*b).x;
     (*dest).y = (*a).y < (*b).y ? (*a).y : (*b).y;
 }
 
-void Vec2_max(Vec2 *dest, const Vec2 *a, const Vec2 *b) {
+void Vec2_max(const Vec2 *a, const Vec2 *b, Vec2 *dest) {
     (*dest).x = (*a).x > (*b).x ? (*a).x : (*b).x;
     (*dest).y = (*a).y > (*b).y ? (*a).y : (*b).y;
 }
 
-void Vec2_clamp(Vec2 *dest, const Vec2 *src, float min_val, float max_val) {
+void Vec2_clamp(const Vec2 *src, float min_val, float max_val, Vec2 *dest) {
     (*dest).x = FastMath_clamp((*src).x, min_val, max_val);
     (*dest).y = FastMath_clamp((*src).y, min_val, max_val);
 }
 
-void Vec2_abs(Vec2 *dest, const Vec2 *src) {
+void Vec2_abs(const Vec2 *src, Vec2 *dest) {
     (*dest).x = FastMath_abs((*src).x);
     (*dest).y = FastMath_abs((*src).y);
 }
 
-void Vec2_lerp(Vec2 *dest, const Vec2 *a, const Vec2 *b, float t) {
+void Vec2_lerp(const Vec2 *a, const Vec2 *b, float t, Vec2 *dest) {
     float ax = (*a).x;
     float ay = (*a).y;
     (*dest).x = ax + t * ((*b).x - ax);
