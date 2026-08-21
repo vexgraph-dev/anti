@@ -17,6 +17,10 @@
 #include <string.h>
 
 #include "bit/bit.h"
+#include "buffers/color_buffer.h"
+#include "buffers/depth_buffer.h"
+#include "buffers/frame_buffer.h"
+#include "buffers/normal_buffer.h"
 #include "cli/command.h"
 #include "cli/commandparser.h"
 #include "cli/commandregistry.h"
@@ -604,6 +608,21 @@ int main(void) {
     printf("aos: %d %d %d\n", Struct_getIntElement(pts, 0, 0),
            Struct_getIntElement(pts, 1, 0), Struct_getIntElement(pts, 2, 0));
     Struct_free(pts);
+
+    // Buffers: 2D multi-channel raster engine
+    printf("== anti buffers: Buffer & ColorBuffer ==\n");
+    Buffer *colorBuf = ColorBuffer_allocate(64, 64);
+    ColorBuffer_setRGBA(colorBuf, 10, 20, 255, 128, 64, 255);
+    uint8_t cr = 0, cg = 0, cb = 0, ca = 0;
+    ColorBuffer_getRGBA(colorBuf, 10, 20, &cr, &cg, &cb, &ca);
+    printf("color[10,20] = rgba(%u,%u,%u,%u)\n", cr, cg, cb, ca);
+
+    Buffer *depthBuf = DepthBuffer_allocate(64, 64);
+    DepthBuffer_set(depthBuf, 10, 20, 0.75f);
+    printf("depth[10,20] = %.2f\n", (double)DepthBuffer_get(depthBuf, 10, 20));
+
+    Buffer_free(colorBuf);
+    Buffer_free(depthBuf);
 
     // RingBuffer + Loop: 4 producers, 1 consumer loop, expect 100 jobs.
     printf("== anti ring + spin + loop ==\n");

@@ -11,6 +11,14 @@ endif()
 add_executable(anti
     src/main/main.c
     src/bit/bit.c
+    src/buffers/buffer.c
+    src/buffers/color_buffer.c
+    src/buffers/depth_buffer.c
+    src/buffers/frame_buffer.c
+    src/buffers/height_buffer.c
+    src/buffers/normal_buffer.c
+    src/buffers/shadow_buffer.c
+    src/buffers/stencil_buffer.c
     src/cli/command.c
     src/cli/commandparser.c
     src/cli/commandregistry.c
