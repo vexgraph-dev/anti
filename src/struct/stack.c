@@ -10,28 +10,28 @@
 
 static const size_t DEFAULT_CAPACITY = 1024;
 
-static Collection *as_collection(Stack *stack) {
+static Collection *asCollection(Stack *stack) {
     return (Collection *)stack;
 }
 
-static Stack *instant(uint32_t element_class, size_t capacity, size_t count) {
-    size_t stride = Stride_get(element_class);
+static Stack *instant(uint32_t elementClass, size_t capacity, size_t count) {
+    size_t stride = Stride_get(elementClass);
     size_t cap = capacity < DEFAULT_CAPACITY ? DEFAULT_CAPACITY : capacity;
     Stack *stack = (Stack *)Memory_alloc(TYPE_STACK, sizeof(Stack));
     if (!stack)
         return NULL;
 
-    Collection *c = as_collection(stack);
-    (*c).type_id = TYPE_STACK;
-    (*c).active_count = (uint32_t)count;
-    (*c).element_class = element_class;
+    Collection *c = asCollection(stack);
+    (*c).typeId = TYPE_STACK;
+    (*c).activeCount = (uint32_t)count;
+    (*c).elementClass = elementClass;
     (*c).stride = (uint32_t)stride;
     (*c).capacity = (uint32_t)cap;
     (*c).head = 0;
 
     size_t bytes = cap * stride;
-    uint32_t buf_type = Type_make(FORM_ARRAY, element_class);
-    (*c).data = (uint8_t *)Memory_alloc(buf_type, bytes);
+    uint32_t bufType = Type_make(FORM_ARRAY, elementClass);
+    (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(stack);
         return NULL;
@@ -40,90 +40,90 @@ static Stack *instant(uint32_t element_class, size_t capacity, size_t count) {
     return stack;
 }
 
-Stack *Stack_allocate(uint32_t element_class, size_t capacity) {
-    return instant(element_class, capacity, 0);
+Stack *Stack_allocate(uint32_t elementClass, size_t capacity) {
+    return instant(elementClass, capacity, 0);
 }
 
-Stack *Stack_allocateCount(uint32_t element_class, size_t count) {
-    return instant(element_class, count, count);
+Stack *Stack_allocateCount(uint32_t elementClass, size_t count) {
+    return instant(elementClass, count, count);
 }
 
 void Stack_free(Stack *stack) {
     if (!stack) return;
-    Collection *c = as_collection(stack);
+    Collection *c = asCollection(stack);
     if ((*c).data)
         Memory_free((*c).data);
     Memory_free(stack);
 }
 
-void Stack_push(Stack *stack, uint64_t value_or_pointer) {
+void Stack_push(Stack *stack, uint64_t valueOrPointer) {
     if (!stack) return;
-    Collection *c = as_collection(stack);
-    if ((*c).active_count >= (*c).capacity) {
-        size_t new_cap = (*c).capacity + DEFAULT_CAPACITY;
-        size_t bytes = new_cap * (*c).stride;
-        uint32_t buf_type = Type_make(FORM_ARRAY, (*c).element_class);
-        uint8_t *next = (uint8_t *)Memory_alloc(buf_type, bytes);
+    Collection *c = asCollection(stack);
+    if ((*c).activeCount >= (*c).capacity) {
+        size_t newCap = (*c).capacity + DEFAULT_CAPACITY;
+        size_t bytes = newCap * (*c).stride;
+        uint32_t bufType = Type_make(FORM_ARRAY, (*c).elementClass);
+        uint8_t *next = (uint8_t *)Memory_alloc(bufType, bytes);
         if (!next)
             return;
-        memcpy(next, (*c).data, (*c).active_count * (*c).stride);
+        memcpy(next, (*c).data, (*c).activeCount * (*c).stride);
         Memory_free((*c).data);
         (*c).data = next;
-        (*c).capacity = (uint32_t)new_cap;
+        (*c).capacity = (uint32_t)newCap;
     }
-    Collection_writeSlot(c, (*c).active_count, value_or_pointer);
-    (*c).active_count++;
+    Collection_writeSlot(c, (*c).activeCount, valueOrPointer);
+    (*c).activeCount++;
 }
 
 uint64_t Stack_pop(Stack *stack) {
     if (!stack) return 0;
-    Collection *c = as_collection(stack);
-    if ((*c).active_count == 0)
+    Collection *c = asCollection(stack);
+    if ((*c).activeCount == 0)
         return 0;
-    (*c).active_count--;
-    return Collection_readSlot(c, (*c).active_count);
+    (*c).activeCount--;
+    return Collection_readSlot(c, (*c).activeCount);
 }
 
 uint64_t Stack_peek(Stack *stack) {
     if (!stack) return 0;
-    Collection *c = as_collection(stack);
-    if ((*c).active_count == 0)
+    Collection *c = asCollection(stack);
+    if ((*c).activeCount == 0)
         return 0;
-    return Collection_readSlot(c, (*c).active_count - 1);
+    return Collection_readSlot(c, (*c).activeCount - 1);
 }
 
 uint8_t *Stack_slot(Stack *stack, size_t index) {
     if (!stack) return NULL;
-    Collection *c = as_collection(stack);
-    if (index >= (*c).active_count)
+    Collection *c = asCollection(stack);
+    if (index >= (*c).activeCount)
         return NULL;
     return (*c).data + index * (*c).stride;
 }
 
 bool Stack_isEmpty(Stack *stack) {
-    return Collection_isEmpty(as_collection(stack));
+    return Collection_isEmpty(asCollection(stack));
 }
 
 size_t Stack_size(Stack *stack) {
-    return Collection_size(as_collection(stack));
+    return Collection_size(asCollection(stack));
 }
 
 size_t Stack_length(Stack *stack) {
-    return Collection_length(as_collection(stack));
+    return Collection_length(asCollection(stack));
 }
 
 size_t Stack_capacity(Stack *stack) {
-    return Collection_capacity(as_collection(stack));
+    return Collection_capacity(asCollection(stack));
 }
 
 uint32_t Stack_elementClassId(Stack *stack) {
-    return Collection_elementClassId(as_collection(stack));
+    return Collection_elementClassId(asCollection(stack));
 }
 
 size_t Stack_stride(Stack *stack) {
-    return Collection_stride(as_collection(stack));
+    return Collection_stride(asCollection(stack));
 }
 
 uint8_t *Stack_dataBuffer(Stack *stack) {
-    return Collection_dataBuffer(as_collection(stack));
+    return Collection_dataBuffer(asCollection(stack));
 }
