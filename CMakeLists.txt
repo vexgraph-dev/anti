@@ -31,6 +31,10 @@ add_executable(anti
     src/io/filewriter.c
     src/io/log.c
     src/io/logparser.c
+    src/input/focus.c
+    src/input/key.c
+    src/input/mouse.c
+    src/input/touch.c
     src/lang/fastmath.c
     src/lang/mat4.c
     src/lang/vec2.c
@@ -63,6 +67,7 @@ add_executable(anti
     src/struct/stack.c
     src/thread/ring.c
     src/thread/spin.c
+    src/time/nanotime.c
     src/util/arrays.c
     src/util/hash.c
     src/util/random.c
@@ -102,11 +107,52 @@ else()
     target_compile_options(touchid_demo PRIVATE -Wall -Wextra -mcpu=native)
 endif()
 
+# Windowed engine demo (Legacy: process/EngineTest.java)
+add_executable(enginetest
+    src/main/enginetest.c
+    src/window/window_cocoa.m
+    src/engine/loop.c
+    src/input/focus.c
+    src/input/key.c
+    src/input/mouse.c
+    src/input/touch.c
+    src/thread/ring.c
+    src/thread/spin.c
+    src/time/nanotime.c
+)
+target_include_directories(enginetest PRIVATE src)
+target_compile_options(enginetest PRIVATE -Wall -Wextra -mcpu=native)
+target_link_libraries(enginetest PRIVATE
+    "-framework Cocoa"
+    "-framework AppKit"
+)
+
+# Headless input pipeline test
+add_executable(input_test
+    tests/input_test.c
+    src/input/focus.c
+    src/input/key.c
+    src/input/mouse.c
+    src/input/touch.c
+    src/thread/ring.c
+    src/thread/spin.c
+    src/time/nanotime.c
+)
+target_include_directories(input_test PRIVATE src)
+target_compile_options(input_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
+
 # Cocoa shim/s
 add_executable(anti_window
     src/window/window_cocoa.m
     tests/window_test.c
     src/engine/loop.c
+    src/input/focus.c
+    src/input/key.c
+    src/input/mouse.c
+    src/input/touch.c
+    src/thread/ring.c
+    src/thread/spin.c
+    src/time/nanotime.c
 )
 target_include_directories(anti_window PRIVATE src)
 target_compile_options(anti_window PRIVATE -Wall -Wextra -mcpu=native)
