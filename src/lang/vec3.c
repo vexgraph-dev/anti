@@ -62,31 +62,31 @@ void Vec3_set(Vec3 *v, float x, float y, float z) {
     (*v).z = z;
 }
 
-void Vec3_copy(Vec3 *dest, const Vec3 *src) {
+void Vec3_copy(const Vec3 *src, Vec3 *dest) {
     (*dest).x = (*src).x;
     (*dest).y = (*src).y;
     (*dest).z = (*src).z;
 }
 
-void Vec3_add(Vec3 *dest, const Vec3 *a, const Vec3 *b) {
+void Vec3_add(const Vec3 *a, const Vec3 *b, Vec3 *dest) {
     (*dest).x = (*a).x + (*b).x;
     (*dest).y = (*a).y + (*b).y;
     (*dest).z = (*a).z + (*b).z;
 }
 
-void Vec3_sub(Vec3 *dest, const Vec3 *a, const Vec3 *b) {
+void Vec3_sub(const Vec3 *a, const Vec3 *b, Vec3 *dest) {
     (*dest).x = (*a).x - (*b).x;
     (*dest).y = (*a).y - (*b).y;
     (*dest).z = (*a).z - (*b).z;
 }
 
-void Vec3_mul(Vec3 *dest, const Vec3 *a, float scalar) {
+void Vec3_mul(const Vec3 *a, float scalar, Vec3 *dest) {
     (*dest).x = (*a).x * scalar;
     (*dest).y = (*a).y * scalar;
     (*dest).z = (*a).z * scalar;
 }
 
-void Vec3_div(Vec3 *dest, const Vec3 *a, float scalar) {
+void Vec3_div(const Vec3 *a, float scalar, Vec3 *dest) {
     float inv = 1.0f / scalar;
     (*dest).x = (*a).x * inv;
     (*dest).y = (*a).y * inv;
@@ -97,7 +97,7 @@ float Vec3_dot(const Vec3 *a, const Vec3 *b) {
     return (*a).x * (*b).x + (*a).y * (*b).y + (*a).z * (*b).z;
 }
 
-void Vec3_cross(Vec3 *dest, const Vec3 *a, const Vec3 *b) {
+void Vec3_cross(const Vec3 *a, const Vec3 *b, Vec3 *dest) {
     float ax = (*a).x, ay = (*a).y, az = (*a).z;
     float bx = (*b).x, by = (*b).y, bz = (*b).z;
     (*dest).x = ay * bz - az * by;
@@ -113,11 +113,11 @@ float Vec3_length(const Vec3 *v) {
     return sqrtf(Vec3_lengthSquared(v));
 }
 
-void Vec3_normalize(Vec3 *dest, const Vec3 *src) {
+void Vec3_normalize(const Vec3 *src, Vec3 *dest) {
     float len_sq = Vec3_lengthSquared(src);
     if (len_sq > FastMath_EPSILON) {
         if (FastMath_abs(len_sq - 1.0f) < FastMath_EPSILON) {
-            Vec3_copy(dest, src);
+            Vec3_copy(src, dest);
         } else {
             float inv_len = (float)(1.0 / sqrt((double)len_sq));
             (*dest).x = (*src).x * inv_len;
@@ -131,7 +131,7 @@ void Vec3_normalize(Vec3 *dest, const Vec3 *src) {
     }
 }
 
-void Vec3_fastNormalize(Vec3 *dest, const Vec3 *src) {
+void Vec3_fastNormalize(const Vec3 *src, Vec3 *dest) {
     float len_sq = Vec3_lengthSquared(src);
     if (len_sq > FastMath_EPSILON) {
         float inv_len = FastMath_invSqrt(len_sq);
@@ -161,11 +161,11 @@ float Vec3_angle(const Vec3 *a, const Vec3 *b) {
     return acosf(cos_theta);
 }
 
-void Vec3_project(Vec3 *dest, const Vec3 *vector, const Vec3 *onto) {
+void Vec3_project(const Vec3 *vector, const Vec3 *onto, Vec3 *dest) {
     float onto_len_sq = Vec3_lengthSquared(onto);
     if (onto_len_sq > FastMath_EPSILON) {
         float scale = Vec3_dot(vector, onto) / onto_len_sq;
-        Vec3_mul(dest, onto, scale);
+        Vec3_mul(onto, scale, dest);
     } else {
         (*dest).x = 0.0f;
         (*dest).y = 0.0f;
@@ -173,38 +173,38 @@ void Vec3_project(Vec3 *dest, const Vec3 *vector, const Vec3 *onto) {
     }
 }
 
-void Vec3_reflect(Vec3 *dest, const Vec3 *incident, const Vec3 *normal) {
+void Vec3_reflect(const Vec3 *incident, const Vec3 *normal, Vec3 *dest) {
     float d = 2.0f * Vec3_dot(incident, normal);
     (*dest).x = (*incident).x - d * (*normal).x;
     (*dest).y = (*incident).y - d * (*normal).y;
     (*dest).z = (*incident).z - d * (*normal).z;
 }
 
-void Vec3_min(Vec3 *dest, const Vec3 *a, const Vec3 *b) {
+void Vec3_min(const Vec3 *a, const Vec3 *b, Vec3 *dest) {
     (*dest).x = (*a).x < (*b).x ? (*a).x : (*b).x;
     (*dest).y = (*a).y < (*b).y ? (*a).y : (*b).y;
     (*dest).z = (*a).z < (*b).z ? (*a).z : (*b).z;
 }
 
-void Vec3_max(Vec3 *dest, const Vec3 *a, const Vec3 *b) {
+void Vec3_max(const Vec3 *a, const Vec3 *b, Vec3 *dest) {
     (*dest).x = (*a).x > (*b).x ? (*a).x : (*b).x;
     (*dest).y = (*a).y > (*b).y ? (*a).y : (*b).y;
     (*dest).z = (*a).z > (*b).z ? (*a).z : (*b).z;
 }
 
-void Vec3_clamp(Vec3 *dest, const Vec3 *src, float min_val, float max_val) {
+void Vec3_clamp(const Vec3 *src, float min_val, float max_val, Vec3 *dest) {
     (*dest).x = FastMath_clamp((*src).x, min_val, max_val);
     (*dest).y = FastMath_clamp((*src).y, min_val, max_val);
     (*dest).z = FastMath_clamp((*src).z, min_val, max_val);
 }
 
-void Vec3_abs(Vec3 *dest, const Vec3 *src) {
+void Vec3_abs(const Vec3 *src, Vec3 *dest) {
     (*dest).x = FastMath_abs((*src).x);
     (*dest).y = FastMath_abs((*src).y);
     (*dest).z = FastMath_abs((*src).z);
 }
 
-void Vec3_lerp(Vec3 *dest, const Vec3 *a, const Vec3 *b, float t) {
+void Vec3_lerp(const Vec3 *a, const Vec3 *b, float t, Vec3 *dest) {
     float ax = (*a).x, ay = (*a).y, az = (*a).z;
     (*dest).x = ax + t * ((*b).x - ax);
     (*dest).y = ay + t * ((*b).y - ay);

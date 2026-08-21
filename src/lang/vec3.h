@@ -30,26 +30,26 @@ float Vec3_getZ(const Vec3 *v);
 void Vec3_setZ(Vec3 *v, float z);
 void Vec3_set(Vec3 *v, float x, float y, float z);
 
-void Vec3_copy(Vec3 *dest, const Vec3 *src);
+void Vec3_copy(const Vec3 *src, Vec3 *dest);
 
-void Vec3_add(Vec3 *dest, const Vec3 *a, const Vec3 *b);
-void Vec3_sub(Vec3 *dest, const Vec3 *a, const Vec3 *b);
-void Vec3_mul(Vec3 *dest, const Vec3 *a, float scalar);
-void Vec3_div(Vec3 *dest, const Vec3 *a, float scalar);
+void Vec3_add(const Vec3 *a, const Vec3 *b, Vec3 *dest);
+void Vec3_sub(const Vec3 *a, const Vec3 *b, Vec3 *dest);
+void Vec3_mul(const Vec3 *a, float scalar, Vec3 *dest);
+void Vec3_div(const Vec3 *a, float scalar, Vec3 *dest);
 
 float Vec3_dot(const Vec3 *a, const Vec3 *b);
 
 // Cross product: dest = a x b.
-void Vec3_cross(Vec3 *dest, const Vec3 *a, const Vec3 *b);
+void Vec3_cross(const Vec3 *a, const Vec3 *b, Vec3 *dest);
 
 float Vec3_lengthSquared(const Vec3 *v);
 float Vec3_length(const Vec3 *v);
 
 // Precise normalize (1/sqrt via libm). Zeroes dest when src is (near-)zero.
-void Vec3_normalize(Vec3 *dest, const Vec3 *src);
+void Vec3_normalize(const Vec3 *src, Vec3 *dest);
 
 // Fast normalize via FastMath_invSqrt. Zeroes dest when src is (near-)zero.
-void Vec3_fastNormalize(Vec3 *dest, const Vec3 *src);
+void Vec3_fastNormalize(const Vec3 *src, Vec3 *dest);
 
 float Vec3_distance(const Vec3 *a, const Vec3 *b);
 
@@ -57,15 +57,15 @@ float Vec3_distance(const Vec3 *a, const Vec3 *b);
 float Vec3_angle(const Vec3 *a, const Vec3 *b);
 
 // Project vector onto onto; zeroes dest when onto is (near-)zero.
-void Vec3_project(Vec3 *dest, const Vec3 *vector, const Vec3 *onto);
+void Vec3_project(const Vec3 *vector, const Vec3 *onto, Vec3 *dest);
 
 // Mirror incident across normal (normal need not be unit length).
-void Vec3_reflect(Vec3 *dest, const Vec3 *incident, const Vec3 *normal);
+void Vec3_reflect(const Vec3 *incident, const Vec3 *normal, Vec3 *dest);
 
-void Vec3_min(Vec3 *dest, const Vec3 *a, const Vec3 *b);
-void Vec3_max(Vec3 *dest, const Vec3 *a, const Vec3 *b);
-void Vec3_clamp(Vec3 *dest, const Vec3 *src, float min_val, float max_val);
-void Vec3_abs(Vec3 *dest, const Vec3 *src);
-void Vec3_lerp(Vec3 *dest, const Vec3 *a, const Vec3 *b, float t);
+void Vec3_min(const Vec3 *a, const Vec3 *b, Vec3 *dest);
+void Vec3_max(const Vec3 *a, const Vec3 *b, Vec3 *dest);
+void Vec3_clamp(const Vec3 *src, float min_val, float max_val, Vec3 *dest);
+void Vec3_abs(const Vec3 *src, Vec3 *dest);
+void Vec3_lerp(const Vec3 *a, const Vec3 *b, float t, Vec3 *dest);
 
 #endif
