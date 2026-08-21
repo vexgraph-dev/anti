@@ -40,6 +40,10 @@ add_executable(anti
     src/lang/vec2.c
     src/lang/vec3.c
     src/lang/vec4.c
+    src/net/http.c
+    src/net/json.c
+    src/net/netfacade.c
+    src/net/url.c
     src/nio/mem.c
     src/objects/choice.c
     src/objects/future.c
@@ -132,6 +136,17 @@ target_link_libraries(enginetest PRIVATE
     "-framework Cocoa"
     "-framework AppKit"
 )
+
+# Headless net package test
+add_executable(net_test
+    tests/net_test.c
+    src/net/http.c
+    src/net/json.c
+    src/net/netfacade.c
+    src/net/url.c
+)
+target_include_directories(net_test PRIVATE src)
+target_compile_options(net_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
 
 # Headless threading package test
 add_executable(thread_test
