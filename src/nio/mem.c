@@ -20,8 +20,10 @@ static const size_t ALIGN = 8;
 // Allocate a block, stamp the type, align the payload, return the payload.
 void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
     const size_t total = HEADER_SIZE + numBytes + (ALIGN - 1);
-    unsigned char *raw = (unsigned char *)malloc(total);
-    if (!raw) return NULL;
+    unsigned char *raw = malloc(total);
+
+    if (!raw)
+        return NULL;
 
     // Align the payload to 8 bytes so doubles/pointers sit naturally.
     uintptr_t aligned = (uintptr_t)(raw + HEADER_SIZE);
@@ -42,7 +44,9 @@ void *Memory_realloc(void *userPtr, size_t newBytes) {
     size_t oldLen = Memory_length(userPtr);
 
     void *next = Memory_alloc(typeId, newBytes);
-    if (!next) return NULL;
+
+    if (!next)
+        return NULL;
 
     memcpy(next, userPtr, oldLen < newBytes ? oldLen : newBytes);
     Memory_free(userPtr);
@@ -50,7 +54,8 @@ void *Memory_realloc(void *userPtr, size_t newBytes) {
 }
 
 void Memory_free(void *userPtr) {
-    if (!userPtr) return;
+    if (!userPtr)
+        return;
     void *hdr = (unsigned char *)userPtr - HEADER_SIZE;
     free(hdr);
 }

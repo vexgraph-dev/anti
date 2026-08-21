@@ -16,7 +16,7 @@ Buffer *Buffer_allocate(uint32_t classId, size_t width, size_t height, size_t ch
     uint32_t type = Type_make(FORM_ARRAY, classId);
     size_t payloadBytes = sizeof(Buffer) + length * sizeof(uint64_t);
 
-    Buffer *buf = (Buffer *)Memory_alloc(type, payloadBytes);
+    Buffer *buf = Memory_alloc(type, payloadBytes);
     if (!buf)
         return NULL;
 

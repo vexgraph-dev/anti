@@ -34,7 +34,7 @@ size_t Fields_resolveSize(size_t val, bool *outIsStruct) {
         case ID_BYTE:    return 1;
         case ID_SHORT:   return 2;
 
-        case ID_INT:     
+        case ID_INT:
         case ID_FLOAT:   return 4;
 
         case ID_STRING:
