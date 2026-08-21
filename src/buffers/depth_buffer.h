@@ -1,0 +1,14 @@
+#ifndef BUFFERS_DEPTH_BUFFER_H
+#define BUFFERS_DEPTH_BUFFER_H
+
+#include "buffers/buffer.h"
+
+// buffers/depth_buffer.h — 1-channel floating-point depth buffer.
+// Ported from legacy buffers/DepthBuffer.java.
+
+Buffer *DepthBuffer_allocate(size_t width, size_t height);
+float DepthBuffer_get(const Buffer *buf, size_t x, size_t y);
+void DepthBuffer_set(Buffer *buf, size_t x, size_t y, float depth);
+void DepthBuffer_clear(Buffer *buf, float depth);
+
+#endif
