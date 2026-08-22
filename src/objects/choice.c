@@ -12,10 +12,10 @@ typedef struct ChoiceSlot {
     ChoiceCallback callback;
 } ChoiceSlot;
 
-struct Choice {
+typedef struct Choice {
     size_t     count;
     ChoiceSlot slots[];
-};
+} Choice;
 
 Choice *Choice_allocate(const uint64_t *objectPtrs, const ChoiceCallback *callbacks, size_t count) {
     if (count == 0) return NULL;
