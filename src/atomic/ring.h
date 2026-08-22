@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "thread/spin.h"
+#include "atomic/spin.h"
 
 // thread/ring.h — MPMC ring buffer API (Legacy: thread/RingBuffer.java).
 //

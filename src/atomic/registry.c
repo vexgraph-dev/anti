@@ -9,7 +9,7 @@
 // Roles ride beside the identity table, one int per index. They are written
 // once by the owning thread and read by anyone; plain atomics keep it simple.
 
-#include "thread/registry.h"
+#include "atomic/registry.h"
 
 #include <pthread.h>
 #include <stdatomic.h>
