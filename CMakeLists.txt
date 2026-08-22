@@ -11,6 +11,8 @@ endif()
 add_executable(anti
     src/main/main.c
     src/bit/bit.c
+    src/nio/mem.c
+    src/oop/type.c
     src/buffers/buffer.c
     src/buffers/color_buffer.c
     src/buffers/depth_buffer.c
@@ -139,6 +141,10 @@ endif()
 add_executable(enginetest
     src/main/enginetest.c
     src/window/window_cocoa.m
+    src/nio/mem.c
+    src/oop/type.c
+    src/buffers/buffer.c
+    src/buffers/color_buffer.c
     src/engine/loop.c
     src/input/focus.c
     src/input/key.c
@@ -209,6 +215,10 @@ target_compile_options(input_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
 # Cocoa shim/s
 add_executable(anti_window
     src/window/window_cocoa.m
+    src/nio/mem.c
+    src/oop/type.c
+    src/buffers/buffer.c
+    src/buffers/color_buffer.c
     tests/window_test.c
     src/engine/loop.c
     src/input/focus.c
