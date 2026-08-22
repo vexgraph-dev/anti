@@ -4,7 +4,7 @@
 // engine reads like the legacy map (Atomic_cas / AtomicInt_add / spin waits)
 // instead of scattering raw __c11 builtins across subsystems.
 
-#include "thread/atomic.h"
+#include "atomic/atomic.h"
 
 #include <sched.h>
 
