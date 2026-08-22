@@ -136,6 +136,10 @@
 #define ID_TRANSPARENCY_BUFFER    0x0062u
 #define ID_VISIBILITY_BUFFER      0x0063u
 
+// --- SYSTEM CLASSES ---
+#define ID_DISPLAY_MONITOR        0x0066u
+#define TYPE_DISPLAY_MONITOR_SINGLETON (FORM_SINGLETON | ID_DISPLAY_MONITOR)
+
 // --- THREAD CLASSES (the real OS threads; sync primitives live in atomic/) ---
 #define ID_THREAD            0x0080u
 #define ID_THREAD_NETWORKING 0x0081u
