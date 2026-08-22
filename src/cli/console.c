@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #include "primitive/string.h"
-#include "thread/ring.h"
+#include "atomic/ring.h"
 
 // console.c — the Console class, ported from cli/Console.java.
 
