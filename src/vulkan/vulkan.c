@@ -325,6 +325,37 @@ bool Vk_clearPresent(float r, float g, float b) {
 
 #include <stdlib.h>
 
+#include <mach-o/dyld.h>
+
+// Bundle-aware spv lookup: inside the .app's Resources next to the executable,
+// then cwd-relative for dev runs from the repo root, then the CMake-provided
+// source dir (generated per machine — never hardcoded).
+static unsigned char *loadSpv(const char *path, size_t *outSize);
+
+static unsigned char *loadSpvAny(const char *name, size_t *outSize) {
+    char path[512];
+    uint32_t exeSize = sizeof(path);
+    if (_NSGetExecutablePath(path, &exeSize) == 0) {
+        char *slash = strrchr(path, '/');
+        if (slash) {
+            *slash = 0;
+            snprintf(path + strlen(path), sizeof(path) - strlen(path),
+                     "/../Resources/spv/%s", name);
+            unsigned char *code = loadSpv(path, outSize);
+            if (code)
+                return code;
+        }
+    }
+    unsigned char *code = loadSpv(name, outSize); // cwd-relative
+    if (code)
+        return code;
+#ifdef ANTI_SPV_DIR
+    snprintf(path, sizeof(path), "%s/%s", ANTI_SPV_DIR, name);
+    code = loadSpv(path, outSize);
+#endif
+    return code;
+}
+
 static VkRenderPass s_triPass;
 static VkPipelineLayout s_triLayout;
 static VkPipeline s_triPipeline;
@@ -363,12 +394,11 @@ static unsigned char *loadSpv(const char *path, size_t *outSize) {
     return bytes;
 }
 
-static VkShaderModule createShaderModule(const char *primary, const char *fallback) {
+static VkShaderModule createShaderModule(const char *name, const char *unused) {
+    (void)unused;
     VK_LOAD_DEVICE(CreateShaderModule)
     size_t size = 0;
-    unsigned char *code = loadSpv(primary, &size);
-    if (!code)
-        code = loadSpv(fallback, &size);
+    unsigned char *code = loadSpvAny(name, &size);
     if (!code)
         return VK_NULL_HANDLE;
 
@@ -466,11 +496,9 @@ bool Vk_helloTriangle(float timeSeconds) {
 
         // --- pipeline: fullscreen triangle, no vertex input, push u_time
         VkShaderModule vert = createShaderModule(
-            "src/vulkan/spv/hello_triangle_vert.spv",
-            "/Users/vexgraph/clionprojects/anti/src/vulkan/spv/hello_triangle_vert.spv");
+            "hello_triangle_vert.spv", NULL);
         VkShaderModule frag = createShaderModule(
-            "src/vulkan/spv/hello_triangle_frag.spv",
-            "/Users/vexgraph/clionprojects/anti/src/vulkan/spv/hello_triangle_frag.spv");
+            "hello_triangle_frag.spv", NULL);
         if (vert == VK_NULL_HANDLE || frag == VK_NULL_HANDLE) {
             snprintf(s_status, sizeof(s_status), "shader spv not found");
             return false;
