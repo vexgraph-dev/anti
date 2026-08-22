@@ -5,6 +5,8 @@
 // arrays.c — Arrays port (Legacy: util/Arrays.java). Quicksort + search over
 // int32/int64 buffers, memcpy-backed block ops.
 
+// would or should or will support other stuff, and maybe support struct based on field itself and compare...
+
 static void swap_int(int32_t *data, size_t i, size_t j) {
     if (i == j) return;
     int32_t temp = data[i];
