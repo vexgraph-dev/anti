@@ -154,9 +154,11 @@
 // --- AUDIO CLASSES (native playback seam) ---
 #define ID_AUDIO_CLIP    0x0086u
 #define ID_AUDIO_VOICE   0x0087u
+#define ID_AUDIO         0x0088u
 
 #define TYPE_AUDIO_CLIP_SINGLETON  (FORM_SINGLETON | ID_AUDIO_CLIP)
 #define TYPE_AUDIO_VOICE_SINGLETON (FORM_SINGLETON | ID_AUDIO_VOICE)
+#define TYPE_AUDIO_SINGLETON       (FORM_SINGLETON | ID_AUDIO)
 
 // --- DARLING UI TREE (structural subclasses) ---
 #define ID_CONTAINER              0x0079u
