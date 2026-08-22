@@ -11,7 +11,7 @@ set -euo pipefail
 CLION_CMAKE="/Applications/CLion.app/Contents/bin/cmake/mac/aarch64/bin/cmake"
 if [ -x "$CLION_CMAKE" ]; then CMAKE="$CLION_CMAKE"; else CMAKE="$(command -v cmake)"; fi
 
-APP="vktest.app"
+APP="out/vktest.app"
 BIN="vk_test"
 
 echo "== building $BIN =="
@@ -47,4 +47,4 @@ echo "== app size =="
 du -k  "$APP/Contents/MacOS/vktest" | awk '{printf "%8.1f KB  executable\n", $1}'
 ls -l "$APP/Contents/Resources/spv"/*.spv | awk '{s+=$5} END {printf "%8.1f KB  shaders (2 spv)\n", s/1024}'
 du -sk "$APP"                       | awk '{printf "%8.1f KB  total bundle\n", $1}'
-echo "== done: ./$APP =="
+echo "== done: $APP =="
