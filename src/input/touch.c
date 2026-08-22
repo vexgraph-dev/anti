@@ -10,7 +10,7 @@
 #include <string.h>
 
 #include "input/focus.h"
-#include "thread/ring.h"
+#include "atomic/ring.h"
 #include "time/nanotime.h"
 
 #define QUEUE_CAPACITY 1024

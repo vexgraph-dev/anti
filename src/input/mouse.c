@@ -18,7 +18,7 @@
 
 #include "input/focus.h"
 #include "input/key.h"
-#include "thread/ring.h"
+#include "atomic/ring.h"
 #include "time/nanotime.h"
 
 #define BUTTON_COUNT 16

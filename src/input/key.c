@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "input/focus.h"
-#include "thread/ring.h"
+#include "atomic/ring.h"
 #include "time/nanotime.h"
 
 #define KEY_COUNT 512
