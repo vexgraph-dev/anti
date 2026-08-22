@@ -135,8 +135,6 @@ add_executable(darlingtest
     src/buffers/color_buffer.c
     src/main/darlingtest.c
     src/window/window_cocoa.m
-    src/buffers/buffer.c
-    src/buffers/color_buffer.c
     src/render/raster.c
     src/render/surface.c
     src/darling/container.c
@@ -148,6 +146,11 @@ add_executable(darlingtest
     src/lang/fastmath.c
     src/struct/list.c
     src/struct/collection.c
+    src/struct/array.c
+    src/struct/map.c
+    src/util/hash.c
+    src/thread/thread.c
+    src/thread/draw.c
     src/oop/stride.c
     src/oop/struct.c
     src/oop/fields.c
@@ -166,7 +169,9 @@ add_executable(darlingtest
 set_source_files_properties(src/window/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 target_include_directories(darlingtest PRIVATE src /opt/homebrew/include)
 target_compile_options(darlingtest PRIVATE -Wall -Wextra -Werror -mcpu=native)
+target_compile_definitions(darlingtest PRIVATE ANTI_SPV_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/spv")
 target_link_libraries(darlingtest PRIVATE
+    pthread
     "-framework Cocoa"
     "-framework AppKit"
     "-framework QuartzCore"
@@ -182,18 +187,37 @@ add_executable(vk_test
     src/atomic/spin.c
     src/time/clock.c
     src/time/nanotime.c
+    src/thread/thread.c
+    src/thread/draw.c
+    src/struct/array.c
+    src/struct/map.c
+    src/struct/list.c
+    src/struct/collection.c
+    src/util/hash.c
     tests/vk_test.c
     src/vulkan/vulkan.c
     src/buffers/buffer.c
     src/buffers/color_buffer.c
     src/window/window_cocoa.m
+    src/darling/container.c
+    src/darling/panel.c
+    src/darling/scene.c
+    src/lang/mat4.c
+    src/lang/vec2.c
+    src/lang/vec4.c
+    src/lang/fastmath.c
     src/nio/mem.c
+    src/oop/stride.c
+    src/oop/struct.c
+    src/oop/fields.c
     src/oop/type.c
 )
 set_source_files_properties(src/window/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 target_include_directories(vk_test PRIVATE src /opt/homebrew/include)
 target_compile_options(vk_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
+target_compile_definitions(vk_test PRIVATE ANTI_SPV_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/spv")
 target_link_libraries(vk_test PRIVATE
+    pthread
     "-framework Cocoa"
     "-framework AppKit"
     "-framework QuartzCore"
