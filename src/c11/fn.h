@@ -23,20 +23,20 @@
 // through Function_run turn any worker into an executor.
 
 typedef struct Function {
-    void *(*call)(void *ctx, void *in);
-    void *ctx;
+    void *(*call)(void *context, void *in);
+    void *context;
 } Function;
 
 // Invoke f with its captured environment. Returns whatever the impl returned.
-static inline void *Function_run(Function *f, void *in) {
-    return (*(*f).call)((*f).ctx, in);
+static void *run(Function *f, void *in) {
+    return (*(*f).call)((*f).context, in);
 }
 
 // Partial application: same code, fresh environment. By value — assign it.
-static inline Function Function_bind(Function *f, void *ctx) {
+static Function fnbind(const Function *f, void *context) {
     Function bound;
     bound.call = (*f).call;
-    bound.ctx = ctx;
+    bound.context = context;
     return bound;
 }
 

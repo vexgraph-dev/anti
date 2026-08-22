@@ -30,7 +30,7 @@
 //
 // V*V mul is ELEMENTWISE (GLSL-style); dot/cross stay explicit class calls.
 // div mirrors the engine's existing semantics (no zero guard). Header-only:
-// every helper is static inline, zero allocations.
+// every helper is static inline, there should be zero allocations.
 
 static inline void ov_type_error(void) {
 }
