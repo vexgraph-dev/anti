@@ -21,7 +21,9 @@
 // (resizable/closable/miniaturizable/traffic lights), fullscreen, minimize,
 // undecorated (naked) chrome, DRM (sharing) mode, and size constraints.
 
-// Opaque handle; contents live in the backend file.
+// Opaque handle; contents live in the backend file. The tag stays INCOMPLETE
+// here on purpose (exception to preferences rule 3): the backend translation
+// unit completes struct Window with its real fields.
 typedef struct Window Window;
 
 // Undecorated chrome modes for Window_setUndecorated.
