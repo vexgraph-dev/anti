@@ -17,8 +17,10 @@
 
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
+#import <QuartzCore/QuartzCore.h>
 #import <stdatomic.h>
 
+#include "buffers/color_buffer.h"
 #include "window/window.h"
 
 #include "input/focus.h"
@@ -865,4 +867,68 @@ bool Window_isFocused(Window *window) {
 uint64_t Window_sizeGeneration(Window *window) {
     if (!window) return 0;
     return atomic_load_explicit(&(*window).sizeGeneration, memory_order_acquire);
+}
+// --- Software frame presentation ---------------------------------------------
+// Packs the planar RGBA raster into an interleaved RGBX bitmap and stamps it
+// into the content view's layer, aspect-fit. The scratch pack buffer is cached
+// per size: steady-state presents are allocation-free.
+
+bool Window_present(Window *window, const Buffer *frame) {
+    if (!window || !frame)
+        return false;
+    size_t w = Buffer_width(frame);
+    size_t h = Buffer_height(frame);
+    if (w == 0 || h == 0)
+        return false;
+
+    static uint8_t *s_pixels = NULL;
+    static size_t s_cap = 0;
+    size_t bytes = w * h * 4;
+    if (bytes > s_cap) {
+        uint8_t *grown = (uint8_t *)realloc(s_pixels, bytes);
+        if (!grown)
+            return false;
+        s_pixels = grown;
+        s_cap = bytes;
+    }
+
+    for (size_t y = 0; y < h; y++) {
+        uint8_t *row = s_pixels + y * w * 4;
+        for (size_t x = 0; x < w; x++) {
+            uint8_t r = 0, g = 0, b = 0, a = 0;
+            ColorBuffer_getRGBA(frame, x, y, &r, &g, &b, &a);
+            row[x * 4 + 0] = r;
+            row[x * 4 + 1] = g;
+            row[x * 4 + 2] = b;
+            row[x * 4 + 3] = 255; // opaque present; alpha channel reserved
+        }
+    }
+
+    @autoreleasepool {
+        NSWindow *nsw = (*window).nsWindow;
+        NSView *view = [nsw contentView];
+        [view setWantsLayer:YES];
+
+        CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+        CGContextRef ctx = CGBitmapContextCreate(
+            s_pixels, w, h, 8, w * 4, cs,
+            kCGImageAlphaNoneSkipLast | kCGBitmapByteOrder32Big);
+        if (!ctx) {
+            CGColorSpaceRelease(cs);
+            return false;
+        }
+        CGImageRef img = CGBitmapContextCreateImage(ctx);
+
+        CALayer *layer = view.layer;
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES]; // no implicit fade between frames
+        layer.contents = (__bridge id)img;
+        layer.contentsGravity = kCAGravityResizeAspect;
+        [CATransaction commit];
+
+        CFRelease(img);
+        CFRelease(ctx);
+        CGColorSpaceRelease(cs);
+        return true;
+    }
 }

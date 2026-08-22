@@ -135,6 +135,14 @@ void Window_setMaxSize(Window *window, int width, int height);
 // input/mouse stream as move-delta events. (Legacy: macOSWindow.setCursorLock.)
 void Window_setCursorLocked(Window *window, bool locked);
 
+// --- Software frame presentation ---
+//
+// Stamp an RGBA raster (ColorBuffer layout) into the window's content view,
+// scaled to fit. THREAD CONTRACT: call from thread 0 only — this touches
+// AppKit, and AppKit owns its main thread like a landlord.
+typedef struct Buffer Buffer;
+bool Window_present(Window *window, const Buffer *frame);
+
 // --- Event wiring ---
 //
 // The window is the registration surface for the event contracts: implement
