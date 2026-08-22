@@ -41,6 +41,7 @@ static VkQueue s_queue;
 static VkSwapchainKHR s_swapchain;
 static VkFormat s_format;
 static VkExtent2D s_extent;
+static Window *s_window = NULL;
 
 // hello-triangle targets (hoisted: rebuildTargets/destroyTargets need them)
 static VkRenderPass s_triPass;
@@ -99,6 +100,7 @@ bool Vk_init(Window *window) {
 
     if (!window)
         return false;
+    s_window = window;
     if (s_lib)
         return true;
 
@@ -784,8 +786,16 @@ bool Vk_helloTriangle(float timeSeconds) {
     scissor.extent = s_extent;
 
     if (s_scene3D != NULL) {
+        int winW = s_window ? Window_width(s_window) : 0;
+        int winH = s_window ? Window_height(s_window) : 0;
+        if (winW <= 0) winW = (int)s_extent.width;
+        if (winH <= 0) winH = (int)s_extent.height;
+
+        float scaleX = (float)s_extent.width / (float)winW;
+        float scaleY = (float)s_extent.height / (float)winH;
+
         Vec4 rect;
-        Container_resolve(&(*s_scene3D).base.base.base, 0.0f, 0.0f, (float)s_extent.width, (float)s_extent.height, &rect);
+        Container_resolve(&(*s_scene3D).base.base.base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
 
         uint32_t bg = Panel_getBackgroundColor(&(*s_scene3D).base.base);
         if (bg != 0) {
@@ -796,15 +806,18 @@ bool Vk_helloTriangle(float timeSeconds) {
         }
 
         if (rect.z > 0.0f && rect.w > 0.0f) {
-            viewport.x = rect.x;
-            viewport.y = rect.y;
-            viewport.width = rect.z;
-            viewport.height = rect.w;
+            viewport.x = rect.x * scaleX;
+            viewport.y = rect.y * scaleY;
+            viewport.width = rect.z * scaleX;
+            viewport.height = rect.w * scaleY;
 
-            int32_t sx = (int32_t)rect.x > 0 ? (int32_t)rect.x : 0;
-            int32_t sy = (int32_t)rect.y > 0 ? (int32_t)rect.y : 0;
-            uint32_t sw = (uint32_t)rect.z;
-            uint32_t sh = (uint32_t)rect.w;
+            int32_t sx = (int32_t)(rect.x * scaleX);
+            if (sx < 0) sx = 0;
+            int32_t sy = (int32_t)(rect.y * scaleY);
+            if (sy < 0) sy = 0;
+
+            uint32_t sw = (uint32_t)(rect.z * scaleX);
+            uint32_t sh = (uint32_t)(rect.w * scaleY);
 
             if ((uint32_t)sx + sw > s_extent.width)
                 sw = s_extent.width > (uint32_t)sx ? s_extent.width - (uint32_t)sx : 0;
