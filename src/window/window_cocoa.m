@@ -949,6 +949,8 @@ void *Window_metalLayer(Window *window) {
             // pin for C callers: static strong ref keeps the layer immortal
             static CAMetalLayer *s_pinnedLayer = NULL;
             s_pinnedLayer = [[CAMetalLayer alloc] init];
+            s_pinnedLayer.contentsGravity = kCAGravityTopLeft;
+            s_pinnedLayer.contentsScale = [(*window).nsWindow backingScaleFactor];
             view.layer = s_pinnedLayer;
         }
         return (__bridge void *)view.layer;
