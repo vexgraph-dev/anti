@@ -69,10 +69,16 @@ add_executable(anti
     src/struct/set.c
     src/struct/sparseset.c
     src/struct/stack.c
-    src/thread/atomic.c
-    src/thread/ring.c
-    src/thread/registry.c
-    src/thread/spin.c
+        src/atomic/atomic.c
+        src/atomic/ring.c
+        src/atomic/registry.c
+        src/atomic/spin.c
+        src/thread/thread.c
+        src/thread/networking.c
+        src/thread/event.c
+        src/thread/draw.c
+        src/thread/scripting.c
+        src/thread/ui.c
     src/time/calendar.c
     src/time/clock.c
     src/time/datetime.c
@@ -80,6 +86,7 @@ add_executable(anti
     src/util/arrays.c
     src/util/hash.c
     src/util/random.c
+        src/c11/overload.h
 )
 target_include_directories(anti PRIVATE src)
 target_compile_options(anti PRIVATE -Wall -Wextra -Werror -mcpu=native)
@@ -125,8 +132,8 @@ add_executable(enginetest
     src/input/key.c
     src/input/mouse.c
     src/input/touch.c
-    src/thread/ring.c
-    src/thread/spin.c
+        src/atomic/ring.c
+        src/atomic/spin.c
     src/time/clock.c
     src/time/nanotime.c
 )
@@ -151,8 +158,8 @@ target_compile_options(net_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
 # Headless threading package test
 add_executable(thread_test
     tests/thread_test.c
-    src/thread/atomic.c
-    src/thread/registry.c
+        src/atomic/atomic.c
+        src/atomic/registry.c
     src/time/clock.c
     src/time/nanotime.c
 )
@@ -178,8 +185,8 @@ add_executable(input_test
     src/input/key.c
     src/input/mouse.c
     src/input/touch.c
-    src/thread/ring.c
-    src/thread/spin.c
+        src/atomic/ring.c
+        src/atomic/spin.c
     src/time/clock.c
     src/time/nanotime.c
 )
@@ -195,8 +202,8 @@ add_executable(anti_window
     src/input/key.c
     src/input/mouse.c
     src/input/touch.c
-    src/thread/ring.c
-    src/thread/spin.c
+        src/atomic/ring.c
+        src/atomic/spin.c
     src/time/clock.c
     src/time/nanotime.c
 )
