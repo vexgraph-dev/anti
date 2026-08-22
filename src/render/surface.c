@@ -1,4 +1,4 @@
-#include "render/panel.h"
+#include "render/surface.h"
 
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -10,15 +10,15 @@
 // canvas and flips one atomic word; the compositor reads only the front, so
 // a stamp mid-paint can never tear.
 
-typedef struct Panel {
+typedef struct Surface {
     Buffer *canvas[2];
     _Atomic int front;      // 0 or 1: which canvas the compositor may read
     int x;
     int y;
-} Panel;
+} Surface;
 
-Panel *Panel_new(size_t width, size_t height, int x, int y) {
-    Panel *p = (Panel *)Memory_alloc(FORM_STRUCT_SINGLETON | ID_CUSTOM_STRUCT, sizeof(Panel));
+Surface *Surface_new(size_t width, size_t height, int x, int y) {
+    Surface *p = (Surface *)Memory_alloc(FORM_STRUCT_SINGLETON | ID_CUSTOM_STRUCT, sizeof(Surface));
     if (!p)
         return NULL;
     (*p).canvas[0] = ColorBuffer_allocate(width, height);
@@ -37,46 +37,46 @@ Panel *Panel_new(size_t width, size_t height, int x, int y) {
     return p;
 }
 
-Buffer *Panel_back(Panel *panel) {
+Buffer *Surface_back(Surface *panel) {
     if (!panel)
         return NULL;
     int front = atomic_load_explicit(&(*panel).front, memory_order_relaxed);
     return (*panel).canvas[front ^ 1];
 }
 
-void Panel_flip(Panel *panel) {
+void Surface_flip(Surface *panel) {
     if (!panel)
         return;
     atomic_fetch_xor_explicit(&(*panel).front, 1, memory_order_acq_rel);
 }
 
-const Buffer *Panel_front(Panel *panel) {
+const Buffer *Surface_front(Surface *panel) {
     if (!panel)
         return NULL;
     int front = atomic_load_explicit(&(*panel).front, memory_order_acquire);
     return (*panel).canvas[front];
 }
 
-void Panel_setScissor(Panel *panel, int x, int y) {
+void Surface_setScissor(Surface *panel, int x, int y) {
     if (!panel)
         return;
     (*panel).x = x;
     (*panel).y = y;
 }
 
-int Panel_x(Panel *panel) {
+int Surface_x(Surface *panel) {
     return panel ? (*panel).x : 0;
 }
 
-int Panel_y(Panel *panel) {
+int Surface_y(Surface *panel) {
     return panel ? (*panel).y : 0;
 }
 
 // Stamp front onto master at the scissor, clipped to both rectangles.
-void Panel_composite(Panel *panel, Buffer *master) {
+void Surface_composite(Surface *panel, Buffer *master) {
     if (!panel || !master)
         return;
-    const Buffer *src = Panel_front(panel);
+    const Buffer *src = Surface_front(panel);
     size_t sw = Buffer_width(src);
     size_t sh = Buffer_height(src);
 
@@ -107,7 +107,7 @@ void Panel_composite(Panel *panel, Buffer *master) {
                 (size_t)clipW, (size_t)clipH);
 }
 
-void Panel_free(Panel *panel) {
+void Surface_free(Surface *panel) {
     if (!panel)
         return;
     Buffer_free((*panel).canvas[0]);
