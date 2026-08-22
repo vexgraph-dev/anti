@@ -7,9 +7,9 @@
 
 // local.c — Thread-local variable slot array object wrapper implementation.
 
-struct Local {
+typedef struct Local {
     uint64_t slots[LOCAL_THREAD_MAX];
-};
+} Local;
 
 Local *Local_allocate(void) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_LOCAL) | MOD_LOCALE;

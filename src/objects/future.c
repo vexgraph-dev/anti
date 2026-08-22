@@ -7,15 +7,14 @@
 #include "oop/type.h"
 
 // future.c — Asynchronous single-assignment Future object wrapper implementation.
-
-struct Future {
+typedef struct Future {
     atomic_bool isGiven;
     uint64_t    value;
-};
+} Future;
 
 Future *Future_allocate(void) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_FUTURE) | WRAP2_FUTURE;
-    Future *future = (Future *)Memory_alloc(type, sizeof(Future));
+    Future *future = Memory_alloc(type, sizeof(Future));
     if (!future)
         return NULL;
     atomic_init(&(*future).isGiven, false);

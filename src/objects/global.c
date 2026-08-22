@@ -7,9 +7,9 @@
 
 // global.c — Atomic global pointer/variable object wrapper implementation.
 
-struct Global {
+typedef struct Global {
     atomic_uint_least64_t value;
-};
+} Global;
 
 Global *Global_allocate(uint64_t initialValue) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_GLOBAL) | MOD_GLOBAL;
