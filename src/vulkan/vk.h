@@ -24,6 +24,10 @@ bool Vk_ready(void);
 // when not ready or the swapchain is out of date.
 bool Vk_clearPresent(float r, float g, float b);
 
+// The hello triangle: your legacy shaders (gradient + bouncing glow triangle)
+// driven by u_time. Builds pipeline/framebuffers/sync on first call.
+bool Vk_helloTriangle(float timeSeconds);
+
 // Human-readable stop point of the last init attempt ("ok", "no loader", ...).
 const char *Vk_status(void);
 

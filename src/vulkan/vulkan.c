@@ -316,3 +316,331 @@ bool Vk_clearPresent(float r, float g, float b) {
     (void)b;
     return Vk_ready();
 }
+
+// --- hello triangle (Legacy: vulkan/TriangleRenderer.java + your spv blobs) --
+//
+// Full-screen triangle shader pair with a float push constant u_time. The
+// fragment stage paints the animated gradient and the bouncing glow triangle;
+// the vertex stage needs no vertex buffers at all.
+
+#include <stdlib.h>
+
+static VkRenderPass s_triPass;
+static VkPipelineLayout s_triLayout;
+static VkPipeline s_triPipeline;
+static VkImageView s_views[8];
+static VkFramebuffer s_framebuffers[8];
+static uint32_t s_imageCount = 0;
+static VkCommandPool s_cmdPool;
+static VkCommandBuffer s_cmdBuffer;
+static VkSemaphore s_semAcquire;
+static VkSemaphore s_semRender;
+static VkFence s_fence;
+
+static unsigned char *loadSpv(const char *path, size_t *outSize) {
+    FILE *f = fopen(path, "rb");
+    if (!f)
+        return NULL;
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (size <= 0 || size % 4 != 0) {
+        fclose(f);
+        return NULL;
+    }
+    unsigned char *bytes = (unsigned char *)malloc((size_t)size);
+    if (!bytes) {
+        fclose(f);
+        return NULL;
+    }
+    if (fread(bytes, 1, (size_t)size, f) != (size_t)size) {
+        free(bytes);
+        fclose(f);
+        return NULL;
+    }
+    fclose(f);
+    *outSize = (size_t)size;
+    return bytes;
+}
+
+static VkShaderModule createShaderModule(const char *primary, const char *fallback) {
+    VK_LOAD_DEVICE(CreateShaderModule)
+    size_t size = 0;
+    unsigned char *code = loadSpv(primary, &size);
+    if (!code)
+        code = loadSpv(fallback, &size);
+    if (!code)
+        return VK_NULL_HANDLE;
+
+    VkShaderModuleCreateInfo ci = { .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    ci.codeSize = size;
+    ci.pCode = (const uint32_t *)code;
+
+    VkShaderModule module = VK_NULL_HANDLE;
+    if (CreateShaderModule_fn(s_device, &ci, NULL, &module) != VK_SUCCESS) {
+        free(code);
+        return VK_NULL_HANDLE;
+    }
+    free(code); // driver may reference code until pipeline creation; safe for v1 demo
+    return module;
+}
+
+bool Vk_helloTriangle(float timeSeconds) {
+    if (!Vk_ready())
+        return false;
+
+    static bool built = false;
+    if (!built) {
+        // --- swapchain images + views + framebuffers
+        VK_LOAD_DEVICE(GetSwapchainImagesKHR)
+        VK_LOAD_DEVICE(CreateImageView)
+        VK_LOAD_DEVICE(CreateFramebuffer)
+        VK_LOAD_DEVICE(CreateRenderPass)
+        VK_LOAD_DEVICE(CreatePipelineLayout)
+        VK_LOAD_DEVICE(CreateGraphicsPipelines)
+        VK_LOAD_DEVICE(CreateCommandPool)
+        VK_LOAD_DEVICE(AllocateCommandBuffers)
+        VK_LOAD_DEVICE(CreateSemaphore)
+        VK_LOAD_DEVICE(CreateFence)
+
+        GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_imageCount, NULL);
+        if (s_imageCount > 8)
+            s_imageCount = 8;
+        VkImage images[8];
+        GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_imageCount, images);
+
+        VkAttachmentDescription att = {0};
+        att.format = s_format;
+        att.samples = VK_SAMPLE_COUNT_1_BIT;
+        att.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;   // legacy TriangleRenderer
+        att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        att.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        VkAttachmentReference colorRef = {0};
+        colorRef.attachment = 0;
+        colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkSubpassDescription sub = {0};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 1;
+        sub.pColorAttachments = &colorRef;
+
+        VkRenderPassCreateInfo rpci = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+        rpci.attachmentCount = 1;
+        rpci.pAttachments = &att;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &sub;
+
+        if (CreateRenderPass_fn(s_device, &rpci, NULL, &s_triPass) != VK_SUCCESS) {
+            snprintf(s_status, sizeof(s_status), "renderpass failed");
+            return false;
+        }
+
+        for (uint32_t i = 0; i < s_imageCount; i++) {
+            VkImageViewCreateInfo vci = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+            vci.image = images[i];
+            vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            vci.format = s_format;
+            vci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            vci.subresourceRange.levelCount = 1;
+            vci.subresourceRange.layerCount = 1;
+            if (CreateImageView_fn(s_device, &vci, NULL, &s_views[i]) != VK_SUCCESS) {
+                snprintf(s_status, sizeof(s_status), "imageview failed");
+                return false;
+            }
+            VkFramebufferCreateInfo fci = { .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+            fci.renderPass = s_triPass;
+            fci.attachmentCount = 1;
+            fci.pAttachments = &s_views[i];
+            fci.width = s_extent.width;
+            fci.height = s_extent.height;
+            fci.layers = 1;
+            if (CreateFramebuffer_fn(s_device, &fci, NULL, &s_framebuffers[i]) != VK_SUCCESS) {
+                snprintf(s_status, sizeof(s_status), "framebuffer failed");
+                return false;
+            }
+        }
+
+        // --- pipeline: fullscreen triangle, no vertex input, push u_time
+        VkShaderModule vert = createShaderModule(
+            "src/vulkan/spv/hello_triangle_vert.spv",
+            "/Users/vexgraph/clionprojects/anti/src/vulkan/spv/hello_triangle_vert.spv");
+        VkShaderModule frag = createShaderModule(
+            "src/vulkan/spv/hello_triangle_frag.spv",
+            "/Users/vexgraph/clionprojects/anti/src/vulkan/spv/hello_triangle_frag.spv");
+        if (vert == VK_NULL_HANDLE || frag == VK_NULL_HANDLE) {
+            snprintf(s_status, sizeof(s_status), "shader spv not found");
+            return false;
+        }
+
+        VkPushConstantRange push = {0};
+        push.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        push.offset = 0;
+        push.size = 4; // float u_time
+
+        VkPipelineLayoutCreateInfo plci = { .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+        plci.pushConstantRangeCount = 1;
+        plci.pPushConstantRanges = &push;
+        if (CreatePipelineLayout_fn(s_device, &plci, NULL, &s_triLayout) != VK_SUCCESS) {
+            snprintf(s_status, sizeof(s_status), "layout failed");
+            return false;
+        }
+
+        VkPipelineShaderStageCreateInfo stages[2] = {{0}, {0}};
+        stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+        stages[0].module = vert;
+        stages[0].pName = "main";
+        stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        stages[1].module = frag;
+        stages[1].pName = "main";
+
+        VkPipelineVertexInputStateCreateInfo vi = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+        VkPipelineInputAssemblyStateCreateInfo ia = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        VkPipelineViewportStateCreateInfo vp = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+        vp.viewportCount = 1;
+        vp.scissorCount = 1;
+        VkPipelineRasterizationStateCreateInfo rs = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+        rs.polygonMode = VK_POLYGON_MODE_FILL;
+        rs.cullMode = VK_CULL_MODE_BACK_BIT;       // legacy: CLOCKWISE front face
+        rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rs.lineWidth = 1.0f;
+        VkPipelineMultisampleStateCreateInfo ms = { .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkPipelineColorBlendAttachmentState blend = {0};
+        blend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                             | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        VkPipelineColorBlendStateCreateInfo cb = { .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+        cb.attachmentCount = 1;
+        cb.pAttachments = &blend;
+        VkDynamicState dynStates[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo ds = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+        ds.dynamicStateCount = 2;
+        ds.pDynamicStates = dynStates;
+
+        VkGraphicsPipelineCreateInfo pci = { .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+        pci.stageCount = 2;
+        pci.pStages = stages;
+        pci.pVertexInputState = &vi;
+        pci.pInputAssemblyState = &ia;
+        pci.pViewportState = &vp;
+        pci.pRasterizationState = &rs;
+        pci.pMultisampleState = &ms;
+        pci.pColorBlendState = &cb;
+        pci.pDynamicState = &ds;
+        pci.layout = s_triLayout;
+        pci.renderPass = s_triPass;
+        pci.subpass = 0;
+
+        if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &pci, NULL, &s_triPipeline) != VK_SUCCESS) {
+            snprintf(s_status, sizeof(s_status), "pipeline failed");
+            return false;
+        }
+
+        // --- command pool/buffer + sync objects
+        VkCommandPoolCreateInfo cpci = { .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+        cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        cpci.queueFamilyIndex = s_queueFamily;
+        if (CreateCommandPool_fn(s_device, &cpci, NULL, &s_cmdPool) != VK_SUCCESS) {
+            snprintf(s_status, sizeof(s_status), "cmdpool failed");
+            return false;
+        }
+        VkCommandBufferAllocateInfo cbai = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+        cbai.commandPool = s_cmdPool;
+        cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cbai.commandBufferCount = 1;
+        AllocateCommandBuffers_fn(s_device, &cbai, &s_cmdBuffer);
+
+        VkSemaphoreCreateInfo sci2 = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+        CreateSemaphore_fn(s_device, &sci2, NULL, &s_semAcquire);
+        CreateSemaphore_fn(s_device, &sci2, NULL, &s_semRender);
+
+        VkFenceCreateInfo fci2 = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+        fci2.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        CreateFence_fn(s_device, &fci2, NULL, &s_fence);
+
+        built = true;
+    }
+
+    // --- per-frame: acquire -> record -> submit -> present
+    VK_LOAD_DEVICE(AcquireNextImageKHR)
+    VK_LOAD_DEVICE(QueuePresentKHR)
+    VK_LOAD_DEVICE(QueueSubmit)
+    VK_LOAD_DEVICE(WaitForFences)
+    VK_LOAD_DEVICE(ResetFences)
+    VK_LOAD_DEVICE(ResetCommandBuffer)
+    VK_LOAD_DEVICE(BeginCommandBuffer)
+    VK_LOAD_DEVICE(EndCommandBuffer)
+    VK_LOAD_DEVICE(CmdBeginRenderPass)
+    VK_LOAD_DEVICE(CmdEndRenderPass)
+    VK_LOAD_DEVICE(CmdBindPipeline)
+    VK_LOAD_DEVICE(CmdPushConstants)
+    VK_LOAD_DEVICE(CmdSetViewport)
+    VK_LOAD_DEVICE(CmdSetScissor)
+    VK_LOAD_DEVICE(CmdDraw)
+
+    uint32_t imageIndex = 0;
+    VkResult ar = AcquireNextImageKHR_fn(s_device, s_swapchain, UINT64_MAX,
+                                         s_semAcquire, VK_NULL_HANDLE, &imageIndex);
+    if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR)
+        return false;
+
+    WaitForFences_fn(s_device, 1, &s_fence, VK_TRUE, UINT64_MAX);
+    ResetFences_fn(s_device, 1, &s_fence);
+    ResetCommandBuffer_fn(s_cmdBuffer, 0);
+
+    VkCommandBufferBeginInfo bbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    BeginCommandBuffer_fn(s_cmdBuffer, &bbi);
+
+    VkClearValue clear = {0};
+    clear.color.float32[3] = 1.0f;
+    VkRenderPassBeginInfo rbi = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+    rbi.renderPass = s_triPass;
+    rbi.framebuffer = s_framebuffers[imageIndex];
+    rbi.renderArea.extent = s_extent;
+    rbi.clearValueCount = 1;
+    rbi.pClearValues = &clear;
+    CmdBeginRenderPass_fn(s_cmdBuffer, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+
+    CmdBindPipeline_fn(s_cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
+
+    VkViewport viewport = {0};
+    viewport.width = (float)s_extent.width;
+    viewport.height = (float)s_extent.height;
+    viewport.maxDepth = 1.0f;
+    VkRect2D scissor = {0};
+    scissor.extent = s_extent;
+    CmdSetViewport_fn(s_cmdBuffer, 0, 1, &viewport);
+    CmdSetScissor_fn(s_cmdBuffer, 0, 1, &scissor);
+
+    CmdPushConstants_fn(s_cmdBuffer, s_triLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 4,
+                        (const void *)&timeSeconds);
+    CmdDraw_fn(s_cmdBuffer, 3, 1, 0, 0);
+    CmdEndRenderPass_fn(s_cmdBuffer);
+    EndCommandBuffer_fn(s_cmdBuffer);
+
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo si = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    si.waitSemaphoreCount = 1;
+    si.pWaitSemaphores = &s_semAcquire;
+    si.pWaitDstStageMask = &waitStage;
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &s_cmdBuffer;
+    si.signalSemaphoreCount = 1;
+    si.pSignalSemaphores = &s_semRender;
+    QueueSubmit_fn(s_queue, 1, &si, s_fence);
+
+    VkPresentInfoKHR pi = { .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+    pi.waitSemaphoreCount = 1;
+    pi.pWaitSemaphores = &s_semRender;
+    pi.swapchainCount = 1;
+    pi.pSwapchains = &s_swapchain;
+    pi.pImageIndices = &imageIndex;
+    QueuePresentKHR_fn(s_queue, &pi);
+    return true;
+}
