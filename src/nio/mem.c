@@ -18,7 +18,8 @@ static const size_t HEADER_SIZE = 16;
 static const size_t ALIGN = 8;
 
 // Allocate a block, stamp the type, align the payload, return the payload.
-void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
+void* Memory_alloc(const uint32_t typeId, const size_t numBytes) {
+    // stamp the payload
     const size_t total = HEADER_SIZE + numBytes + (ALIGN - 1);
     unsigned char *raw = malloc(total);
 
@@ -34,11 +35,12 @@ void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
     (*hdr).length = (uint32_t)numBytes;
     (*hdr).pad = 0;
 
-    return (void *)aligned;
+    // return the payload
+    return (void*) aligned;
 }
 
 // Grow/shrink: allocate new, copy min(old,new) bytes, free old.
-void *Memory_realloc(void *userPtr, size_t newBytes) {
+void* Memory_realloc(void *userPtr, size_t newBytes) {
     if (!userPtr) return NULL;
     uint32_t typeId = Memory_type(userPtr);
     size_t oldLen = Memory_length(userPtr);
