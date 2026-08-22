@@ -102,6 +102,16 @@ else()
     target_sources(anti PRIVATE src/security/touchid.c)
 endif()
 
+# Audio: AVFoundation backend on macOS, silence elsewhere.
+if(APPLE)
+    target_sources(anti PRIVATE src/audio/audio_cocoa.m)
+    set_source_files_properties(src/audio/audio_cocoa.m PROPERTIES
+        COMPILE_OPTIONS "-fobjc-arc")
+    target_link_libraries(anti PRIVATE "-framework AVFoundation")
+else()
+    target_sources(anti PRIVATE src/audio/audio_stub.c)
+endif()
+
 # TouchID Demo Target
 if(APPLE)
     add_executable(touchid_demo
