@@ -77,7 +77,7 @@ void Container_setX(Container *c, float x);
 void Container_setY(Container *c, float y);
 void Container_setWidth(Container *c, float w);
 void Container_setHeight(Container *c, float h);
-void Container_setPos(Container *c, float x, float y);
+void Container_setLocation(Container *c, float x, float y);
 void Container_setSize(Container *c, float w, float h);
 float Container_getScaleWidth(const Container *c);
 float Container_getScaleHeight(const Container *c);

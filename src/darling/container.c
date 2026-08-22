@@ -47,7 +47,7 @@ void Container_setY(Container *c, float y) { if (c) { (*c).y = y; layoutEdited(c
 void Container_setWidth(Container *c, float w) { if (c) { (*c).w = w; layoutEdited(c); } }
 void Container_setHeight(Container *c, float h) { if (c) { (*c).h = h; layoutEdited(c); } }
 
-void Container_setPos(Container *c, float x, float y) {
+void Container_setLocation(Container *c, float x, float y) {
     Container_setX(c, x);
     Container_setY(c, y);
 }
