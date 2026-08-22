@@ -8,7 +8,7 @@
 
 #include <time.h>
 
-void DateTime_setEpochMillis(DateTime *dt, int64_t epochMillis) {
+void setEpochMillis(DateTime *dt, int64_t epochMillis) {
     (*dt).epochMillis = epochMillis;
 
     int64_t totalSeconds = epochMillis / 1000;
@@ -67,10 +67,10 @@ void DateTime_setEpochMillis(DateTime *dt, int64_t epochMillis) {
     (*dt).dayOfWeek = dayOfWeek;
 }
 
-void DateTime_setNow(DateTime *dt) {
+void DateTime_set(DateTime *dt) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
-    DateTime_setEpochMillis(dt, (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+    setEpochMillis(dt, (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
 }
 
 int64_t DateTime_epochMillis(const DateTime *dt) {

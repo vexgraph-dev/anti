@@ -4,6 +4,8 @@
 // target month (Jan 31 + 1 month -> Feb 28), then reconstitute the epoch via
 // the inverse of Hinnant's civil-from-days algorithm — same as legacy.
 
+// should support calendar at 1500s i think? may regurgitate...
+
 #include "time/calendar.h"
 
 bool Calendar_isLeapYear(int32_t year) {
@@ -40,7 +42,7 @@ int32_t Calendar_dayOfWeek(int32_t year, int32_t month, int32_t day) {
 }
 
 void Calendar_addDays(DateTime *dt, int32_t days) {
-    DateTime_setEpochMillis(dt, DateTime_epochMillis(dt) + (int64_t)days * 86400000LL);
+    setEpochMillis(dt, DateTime_epochMillis(dt) + (int64_t)days * 86400000LL);
 }
 
 // Inverse of Hinnant's algorithm: calendar fields -> UTC epoch millis.
@@ -76,7 +78,7 @@ void Calendar_addMonths(DateTime *dt, int32_t months) {
     int32_t maxDays = Calendar_daysInMonth(newYear, newMonth);
     int32_t newDay = day < maxDays ? day : maxDays;
 
-    DateTime_setEpochMillis(dt, toEpochMillis(newYear, newMonth, newDay,
+    setEpochMillis(dt, toEpochMillis(newYear, newMonth, newDay,
                                               hour, minute, second, millisecond));
 }
 
@@ -93,6 +95,6 @@ void Calendar_addYears(DateTime *dt, int32_t years) {
     int32_t maxDays = Calendar_daysInMonth(newYear, month);
     int32_t newDay = day < maxDays ? day : maxDays;
 
-    DateTime_setEpochMillis(dt, toEpochMillis(newYear, month, newDay,
+    setEpochMillis(dt, toEpochMillis(newYear, month, newDay,
                                               hour, minute, second, millisecond));
 }

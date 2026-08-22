@@ -9,10 +9,11 @@
 
 #include <time.h>
 
+// little conflicted.. would need this to be localthread variable to ensure thread safety
 static uint64_t s_startNanos = 0;
 static int s_started = 0;
 
-static uint64_t readNanos(void) {
+static uint64_t nanoTime(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
     return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
@@ -20,27 +21,30 @@ static uint64_t readNanos(void) {
 
 void NanoTime_init(void) {
     if (s_started) return;
-    s_startNanos = readNanos();
+    s_startNanos = nanoTime();
     s_started = 1;
-}
-
-uint64_t NanoTime_now(void) {
-    return readNanos();
 }
 
 uint64_t NanoTime_startNanos(void) {
     return s_startNanos;
 }
 
+// Raw reading only — pure function of the clock, no shared state involved
+// (the init-race concern lives in the epoch accessors below, not here).
+uint64_t NanoTime_now(void) {
+    return nanoTime();
+}
+
 uint64_t NanoTime_elapsedNanos(void) {
-    if (!s_started) return 0;
-    return readNanos() - s_startNanos;
+    if (!s_started)
+        return 0;
+    return nanoTime() - s_startNanos;
 }
 
 // --- Tickable timer (Legacy: NanoTime.allocate/tick) ---
 
 void NanoTimer_reset(NanoTimer *timer) {
-    uint64_t now = readNanos();
+    uint64_t now = nanoTime();
     (*timer).startNanos = now;
     (*timer).lastNanos = now;
     (*timer).currentNanos = now;
@@ -49,7 +53,7 @@ void NanoTimer_reset(NanoTimer *timer) {
 }
 
 void NanoTimer_tickWithClock(NanoTimer *timer, const Clock *clock) {
-    uint64_t now = readNanos();
+    uint64_t now = nanoTime();
     uint64_t current = (*timer).currentNanos;
 
     (*timer).lastNanos = current;

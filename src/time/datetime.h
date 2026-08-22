@@ -22,10 +22,10 @@ typedef struct DateTime {
 } DateTime;
 
 // Set from the current system wall clock.
-void DateTime_setNow(DateTime *dt);
+void DateTime_set(DateTime *dt);
 
 // Recompute every calendar field from epochMillis (Hinnant's algorithm).
-void DateTime_setEpochMillis(DateTime *dt, int64_t epochMillis);
+void setEpochMillis(DateTime *dt, int64_t epochMillis);
 
 int64_t DateTime_epochMillis(const DateTime *dt);
 int32_t DateTime_year(const DateTime *dt);

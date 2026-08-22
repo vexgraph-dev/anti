@@ -11,7 +11,7 @@
 
 // Wall-clock millis (legacy used System.currentTimeMillis(); kept for the
 // informational base anchor).
-static uint64_t wallMillis(void) {
+static uint64_t currentTimeMillis(void) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
@@ -27,7 +27,7 @@ static uint64_t monoMillis(void) {
 Clock Clock_create(void) {
     Clock c;
     c.timeScale = 1.0;
-    c.baseRealMillis = wallMillis();
+    c.baseRealMillis = currentTimeMillis();
     c.lastTickRealMillis = monoMillis();
     c.virtualTimeMillis = 0;
     c.paused = false;
@@ -65,7 +65,7 @@ uint64_t Clock_virtualTimeMillis(const Clock *clock) {
 }
 
 void Clock_reset(Clock *clock) {
-    (*clock).baseRealMillis = wallMillis();
+    (*clock).baseRealMillis = currentTimeMillis();
     (*clock).lastTickRealMillis = monoMillis();
     (*clock).virtualTimeMillis = 0;
 }
