@@ -15,10 +15,14 @@
 // surface wraps the window's AppKit view).
 
 typedef struct Window Window;
+typedef struct Scene3D Scene3D;
 
 bool Vk_init(Window *window);
 void Vk_shutdown(void);
 bool Vk_ready(void);
+
+// Set the active Scene3D container (sets viewport, scissor and clear color from layout)
+void Vk_setScene3D(Scene3D *scene);
 
 // Acquire, clear the frame to (r,g,b) in linear-ish [0..1], present. False
 // when not ready or the swapchain is out of date.

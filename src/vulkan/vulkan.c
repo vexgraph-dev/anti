@@ -9,6 +9,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "darling/container.h"
+#include "darling/panel.h"
+#include "darling/scene.h"
 #include "window/window.h"
 
 // vulkan/vulkan.c — runtime-loaded Vulkan chain (Legacy: none — the Java tree
@@ -24,6 +27,11 @@ static PFN_vkGetDeviceProcAddr s_gdpa = NULL;
 static char s_status[64] = "not started";
 #define VK_MARK(msg) do { snprintf(s_status, sizeof(s_status), msg); fprintf(stderr, "vk: %s\n", s_status); } while(0)
 
+// Swapchain + views + framebuffers: rebuilt whenever the surface outgrows the
+// chain (fullscreen, resize). Renderpass/pipeline are extent-independent.
+static bool rebuildTargets(void);
+static void destroyTargets(void);
+
 static VkInstance s_instance;
 static VkSurfaceKHR s_surface;
 static VkPhysicalDevice s_phys;
@@ -33,6 +41,15 @@ static VkQueue s_queue;
 static VkSwapchainKHR s_swapchain;
 static VkFormat s_format;
 static VkExtent2D s_extent;
+
+// hello-triangle targets (hoisted: rebuildTargets/destroyTargets need them)
+static VkRenderPass s_triPass;
+static VkPipelineLayout s_triLayout;
+static VkPipeline s_triPipeline;
+static VkImageView s_views[8];
+static VkFramebuffer s_framebuffers[8];
+static uint32_t s_imageCount = 0;
+static bool s_triBuilt = false;
 
 static void *s_libLoad(void) {
     // MoltenVK first: the ICD exports everything itself, no loader manifest
@@ -219,14 +236,40 @@ bool Vk_init(Window *window) {
     VK_LOAD_DEVICE(GetDeviceQueue)
     GetDeviceQueue_fn(s_device, s_queueFamily, 0, &s_queue);
 
-    // 6. swapchain: surface defaults, FIFO (always supported)
+    // 6. swapchain + views + framebuffers (rebuilt on every surface resize)
+    if (!rebuildTargets())
+        return false;
+    return true;
+}
+
+// --- swapchain targets: created, and re-created on fullscreen/resize ---------
+// Fullscreen changes the view extent; presenting to a stale chain is the bug
+// that "closed" the app. Now: proactive extent check per frame, reactive
+// rebuild on OUT_OF_DATE/SUBOPTIMAL.
+
+static bool rebuildTargets(void) {
     VK_LOAD_DEVICE(CreateSwapchainKHR)
+    VK_LOAD_DEVICE(DestroySwapchainKHR)
     VK_LOAD_DEVICE(DeviceWaitIdle)
+    VK_LOAD_DEVICE(GetSwapchainImagesKHR)
+    VK_LOAD_DEVICE(CreateImageView)
+    VK_LOAD_DEVICE(CreateFramebuffer)
+    VK_LOAD_DEVICE_VOID(DestroyFramebuffer)
+    VK_LOAD_DEVICE_VOID(DestroyImageView)
+    VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceCapabilitiesKHR)
+    VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceFormatsKHR)
+
+    // Wait for in-flight GPU & Metal completion queue work before recreating targets
+    DeviceWaitIdle_fn(s_device);
 
     VkSurfaceCapabilitiesKHR caps;
     memset(&caps, 0, sizeof(caps));
     if (GetPhysicalDeviceSurfaceCapabilitiesKHR_fn(s_phys, s_surface, &caps) != VK_SUCCESS) {
         snprintf(s_status, sizeof(s_status), "caps failed");
+        return false;
+    }
+
+    if (caps.currentExtent.width == 0 || caps.currentExtent.height == 0) {
         return false;
     }
 
@@ -244,6 +287,8 @@ bool Vk_init(Window *window) {
         }
     }
 
+    VkSwapchainKHR oldSwapchain = s_swapchain;
+
     VkSwapchainCreateInfoKHR swci = { .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     swci.surface = s_surface;
     swci.minImageCount = caps.minImageCount;
@@ -258,14 +303,94 @@ bool Vk_init(Window *window) {
     swci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     swci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     swci.clipped = VK_TRUE;
+    swci.oldSwapchain = oldSwapchain;
 
-    if (CreateSwapchainKHR_fn(s_device, &swci, NULL, &s_swapchain) != VK_SUCCESS) {
+    VkSwapchainKHR newSwapchain = VK_NULL_HANDLE;
+    if (CreateSwapchainKHR_fn(s_device, &swci, NULL, &newSwapchain) != VK_SUCCESS) {
         snprintf(s_status, sizeof(s_status), "swapchain failed");
         return false;
     }
+
+    // Safely destroy previous framebuffers, views, and old swapchain
+    for (uint32_t i = 0; i < s_imageCount; i++) {
+        if (s_framebuffers[i] != VK_NULL_HANDLE)
+            DestroyFramebuffer_fn(s_device, s_framebuffers[i], NULL);
+        s_framebuffers[i] = VK_NULL_HANDLE;
+        if (s_views[i] != VK_NULL_HANDLE)
+            DestroyImageView_fn(s_device, s_views[i], NULL);
+        s_views[i] = VK_NULL_HANDLE;
+    }
+    if (oldSwapchain != VK_NULL_HANDLE)
+        DestroySwapchainKHR_fn(s_device, oldSwapchain, NULL);
+
+    s_swapchain = newSwapchain;
+
+    GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_imageCount, NULL);
+    if (s_imageCount > 8)
+        s_imageCount = 8;
+    VkImage images[8];
+    GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_imageCount, images);
+
+    for (uint32_t i = 0; i < s_imageCount; i++) {
+        VkImageViewCreateInfo vci = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+        vci.image = images[i];
+        vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        vci.format = s_format;
+        vci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        vci.subresourceRange.levelCount = 1;
+        vci.subresourceRange.layerCount = 1;
+        if (CreateImageView_fn(s_device, &vci, NULL, &s_views[i]) != VK_SUCCESS) {
+            snprintf(s_status, sizeof(s_status), "imageview failed");
+            return false;
+        }
+        if (s_triPass == VK_NULL_HANDLE)
+            continue; // framebuffers arrive with the pipeline init
+        VkFramebufferCreateInfo fci = { .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+        fci.renderPass = s_triPass;
+        fci.attachmentCount = 1;
+        fci.pAttachments = &s_views[i];
+        fci.width = s_extent.width;
+        fci.height = s_extent.height;
+        fci.layers = 1;
+        if (CreateFramebuffer_fn(s_device, &fci, NULL, &s_framebuffers[i]) != VK_SUCCESS) {
+            snprintf(s_status, sizeof(s_status), "framebuffer failed");
+            return false;
+        }
+    }
+
     fprintf(stderr, "vk: swapchain live %ux%u fmt=%d\n", s_extent.width, s_extent.height, (int)s_format);
-    DeviceWaitIdle_fn(s_device);
     return true;
+}
+
+static void destroyTargets(void) {
+    if (s_device == VK_NULL_HANDLE)
+        return;
+    VK_LOAD_DEVICE_VOID(DeviceWaitIdle)
+    VK_LOAD_DEVICE_VOID(DestroyFramebuffer)
+    VK_LOAD_DEVICE_VOID(DestroyImageView)
+    VK_LOAD_DEVICE_VOID(DestroySwapchainKHR)
+
+    if (DeviceWaitIdle_fn)
+        DeviceWaitIdle_fn(s_device);
+
+    for (uint32_t i = 0; i < s_imageCount; i++) {
+        if (s_framebuffers[i] != VK_NULL_HANDLE && DestroyFramebuffer_fn)
+            DestroyFramebuffer_fn(s_device, s_framebuffers[i], NULL);
+        s_framebuffers[i] = VK_NULL_HANDLE;
+        if (s_views[i] != VK_NULL_HANDLE && DestroyImageView_fn)
+            DestroyImageView_fn(s_device, s_views[i], NULL);
+        s_views[i] = VK_NULL_HANDLE;
+    }
+    s_imageCount = 0;
+    if (s_swapchain != VK_NULL_HANDLE && DestroySwapchainKHR_fn)
+        DestroySwapchainKHR_fn(s_device, s_swapchain, NULL);
+    s_swapchain = VK_NULL_HANDLE;
+}
+
+static Scene3D *s_scene3D = NULL;
+
+void Vk_setScene3D(Scene3D *scene) {
+    s_scene3D = scene;
 }
 
 bool Vk_ready(void) {
@@ -280,12 +405,7 @@ void Vk_shutdown(void) {
     if (!s_lib)
         return;
     if (s_device != VK_NULL_HANDLE) {
-        VK_LOAD_DEVICE_VOID(DeviceWaitIdle)
-        if (DeviceWaitIdle_fn)
-            DeviceWaitIdle_fn(s_device);
-        VK_LOAD_DEVICE_VOID(DestroySwapchainKHR)
-        if (DestroySwapchainKHR_fn)
-            DestroySwapchainKHR_fn(s_device, s_swapchain, NULL);
+        destroyTargets();
     }
     if (s_instance != VK_NULL_HANDLE) {
         VK_LOAD_INSTANCE_VOID(DestroySurfaceKHR)
@@ -339,29 +459,53 @@ static unsigned char *loadSpvAny(const char *name, size_t *outSize) {
         char *slash = strrchr(path, '/');
         if (slash) {
             *slash = 0;
-            snprintf(path + strlen(path), sizeof(path) - strlen(path),
-                     "/../Resources/spv/%s", name);
-            unsigned char *code = loadSpv(path, outSize);
+            // 1. Inside .app bundle: Contents/MacOS/.. -> Contents/Resources/spv/
+            char candidate[512];
+            snprintf(candidate, sizeof(candidate), "%s/../Resources/spv/%s", path, name);
+            unsigned char *code = loadSpv(candidate, outSize);
+            if (code)
+                return code;
+
+            // 2. Next to executable: <exe_dir>/spv/<name>
+            snprintf(candidate, sizeof(candidate), "%s/spv/%s", path, name);
+            code = loadSpv(candidate, outSize);
+            if (code)
+                return code;
+
+            // 3. Executable in build/ or cmake-build-debug/: <exe_dir>/../src/vulkan/spv/<name>
+            snprintf(candidate, sizeof(candidate), "%s/../src/vulkan/spv/%s", path, name);
+            code = loadSpv(candidate, outSize);
             if (code)
                 return code;
         }
     }
-    unsigned char *code = loadSpv(name, outSize); // cwd-relative
+
+    // 4. Direct CWD-relative
+    unsigned char *code = loadSpv(name, outSize);
     if (code)
         return code;
+
+    // 5. CWD-relative src/vulkan/spv/
+    snprintf(path, sizeof(path), "src/vulkan/spv/%s", name);
+    code = loadSpv(path, outSize);
+    if (code)
+        return code;
+
+    // 6. CWD-relative ../src/vulkan/spv/
+    snprintf(path, sizeof(path), "../src/vulkan/spv/%s", name);
+    code = loadSpv(path, outSize);
+    if (code)
+        return code;
+
 #ifdef ANTI_SPV_DIR
     snprintf(path, sizeof(path), "%s/%s", ANTI_SPV_DIR, name);
     code = loadSpv(path, outSize);
+    if (code)
+        return code;
 #endif
-    return code;
+    return NULL;
 }
 
-static VkRenderPass s_triPass;
-static VkPipelineLayout s_triLayout;
-static VkPipeline s_triPipeline;
-static VkImageView s_views[8];
-static VkFramebuffer s_framebuffers[8];
-static uint32_t s_imageCount = 0;
 static VkCommandPool s_cmdPool;
 static VkCommandBuffer s_cmdBuffer;
 static VkSemaphore s_semAcquire;
@@ -419,11 +563,8 @@ bool Vk_helloTriangle(float timeSeconds) {
     if (!Vk_ready())
         return false;
 
-    static bool built = false;
-    if (!built) {
-        // --- swapchain images + views + framebuffers
-        VK_LOAD_DEVICE(GetSwapchainImagesKHR)
-        VK_LOAD_DEVICE(CreateImageView)
+    if (!s_triBuilt) {
+        // --- renderpass + pipeline + sync (targets live in rebuildTargets)
         VK_LOAD_DEVICE(CreateFramebuffer)
         VK_LOAD_DEVICE(CreateRenderPass)
         VK_LOAD_DEVICE(CreatePipelineLayout)
@@ -432,12 +573,6 @@ bool Vk_helloTriangle(float timeSeconds) {
         VK_LOAD_DEVICE(AllocateCommandBuffers)
         VK_LOAD_DEVICE(CreateSemaphore)
         VK_LOAD_DEVICE(CreateFence)
-
-        GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_imageCount, NULL);
-        if (s_imageCount > 8)
-            s_imageCount = 8;
-        VkImage images[8];
-        GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_imageCount, images);
 
         VkAttachmentDescription att = {0};
         att.format = s_format;
@@ -469,18 +604,8 @@ bool Vk_helloTriangle(float timeSeconds) {
             return false;
         }
 
+        // render pass now exists: build the framebuffers that were deferred
         for (uint32_t i = 0; i < s_imageCount; i++) {
-            VkImageViewCreateInfo vci = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-            vci.image = images[i];
-            vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            vci.format = s_format;
-            vci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            vci.subresourceRange.levelCount = 1;
-            vci.subresourceRange.layerCount = 1;
-            if (CreateImageView_fn(s_device, &vci, NULL, &s_views[i]) != VK_SUCCESS) {
-                snprintf(s_status, sizeof(s_status), "imageview failed");
-                return false;
-            }
             VkFramebufferCreateInfo fci = { .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
             fci.renderPass = s_triPass;
             fci.attachmentCount = 1;
@@ -501,6 +626,7 @@ bool Vk_helloTriangle(float timeSeconds) {
             "hello_triangle_frag.spv", NULL);
         if (vert == VK_NULL_HANDLE || frag == VK_NULL_HANDLE) {
             snprintf(s_status, sizeof(s_status), "shader spv not found");
+            fprintf(stderr, "vk: shader spv not found (vert=%p frag=%p)\n", (void *)vert, (void *)frag);
             return false;
         }
 
@@ -592,7 +718,7 @@ bool Vk_helloTriangle(float timeSeconds) {
         fci2.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         CreateFence_fn(s_device, &fci2, NULL, &s_fence);
 
-        built = true;
+        s_triBuilt = true;
     }
 
     // --- per-frame: acquire -> record -> submit -> present
@@ -612,9 +738,30 @@ bool Vk_helloTriangle(float timeSeconds) {
     VK_LOAD_DEVICE(CmdSetScissor)
     VK_LOAD_DEVICE(CmdDraw)
 
+    // resize sentry: fullscreen/resize changes the surface extent behind our
+    // back; presenting to a stale chain is what "closed" the app before.
+    VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceCapabilitiesKHR)
+
+    VkSurfaceCapabilitiesKHR live;
+    memset(&live, 0, sizeof(live));
+    if (GetPhysicalDeviceSurfaceCapabilitiesKHR_fn(s_phys, s_surface, &live) == VK_SUCCESS
+        && (live.currentExtent.width != s_extent.width
+            || live.currentExtent.height != s_extent.height)) {
+        fprintf(stderr, "vk: extent moved %ux%u -> %ux%u; rebuilding\n",
+                s_extent.width, s_extent.height,
+                live.currentExtent.width, live.currentExtent.height);
+        if (!rebuildTargets())
+            return false;
+    }
+
     uint32_t imageIndex = 0;
     VkResult ar = AcquireNextImageKHR_fn(s_device, s_swapchain, UINT64_MAX,
                                          s_semAcquire, VK_NULL_HANDLE, &imageIndex);
+    if (ar == VK_ERROR_OUT_OF_DATE_KHR) {
+        if (!rebuildTargets())
+            return false;
+        return Vk_helloTriangle(timeSeconds); // one retry on fresh targets
+    }
     if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR)
         return false;
 
@@ -627,6 +774,50 @@ bool Vk_helloTriangle(float timeSeconds) {
 
     VkClearValue clear = {0};
     clear.color.float32[3] = 1.0f;
+
+    VkViewport viewport = {0};
+    viewport.width = (float)s_extent.width;
+    viewport.height = (float)s_extent.height;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor = {0};
+    scissor.extent = s_extent;
+
+    if (s_scene3D != NULL) {
+        Vec4 rect;
+        Container_resolve(&(*s_scene3D).base.base.base, 0.0f, 0.0f, (float)s_extent.width, (float)s_extent.height, &rect);
+
+        uint32_t bg = Panel_getBackgroundColor(&(*s_scene3D).base.base);
+        if (bg != 0) {
+            clear.color.float32[0] = ((bg >> 16) & 0xFF) / 255.0f;
+            clear.color.float32[1] = ((bg >> 8) & 0xFF) / 255.0f;
+            clear.color.float32[2] = (bg & 0xFF) / 255.0f;
+            clear.color.float32[3] = ((bg >> 24) & 0xFF) / 255.0f;
+        }
+
+        if (rect.z > 0.0f && rect.w > 0.0f) {
+            viewport.x = rect.x;
+            viewport.y = rect.y;
+            viewport.width = rect.z;
+            viewport.height = rect.w;
+
+            int32_t sx = (int32_t)rect.x > 0 ? (int32_t)rect.x : 0;
+            int32_t sy = (int32_t)rect.y > 0 ? (int32_t)rect.y : 0;
+            uint32_t sw = (uint32_t)rect.z;
+            uint32_t sh = (uint32_t)rect.w;
+
+            if ((uint32_t)sx + sw > s_extent.width)
+                sw = s_extent.width > (uint32_t)sx ? s_extent.width - (uint32_t)sx : 0;
+            if ((uint32_t)sy + sh > s_extent.height)
+                sh = s_extent.height > (uint32_t)sy ? s_extent.height - (uint32_t)sy : 0;
+
+            scissor.offset.x = sx;
+            scissor.offset.y = sy;
+            scissor.extent.width = sw;
+            scissor.extent.height = sh;
+        }
+    }
+
     VkRenderPassBeginInfo rbi = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
     rbi.renderPass = s_triPass;
     rbi.framebuffer = s_framebuffers[imageIndex];
@@ -636,13 +827,6 @@ bool Vk_helloTriangle(float timeSeconds) {
     CmdBeginRenderPass_fn(s_cmdBuffer, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
     CmdBindPipeline_fn(s_cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
-
-    VkViewport viewport = {0};
-    viewport.width = (float)s_extent.width;
-    viewport.height = (float)s_extent.height;
-    viewport.maxDepth = 1.0f;
-    VkRect2D scissor = {0};
-    scissor.extent = s_extent;
     CmdSetViewport_fn(s_cmdBuffer, 0, 1, &viewport);
     CmdSetScissor_fn(s_cmdBuffer, 0, 1, &scissor);
 
@@ -669,6 +853,10 @@ bool Vk_helloTriangle(float timeSeconds) {
     pi.swapchainCount = 1;
     pi.pSwapchains = &s_swapchain;
     pi.pImageIndices = &imageIndex;
-    QueuePresentKHR_fn(s_queue, &pi);
-    return true;
+    VkResult pr = QueuePresentKHR_fn(s_queue, &pi);
+    if (pr == VK_ERROR_OUT_OF_DATE_KHR || pr == VK_SUBOPTIMAL_KHR) {
+        // targets rebuilt on the next call's sentry
+        return pr == VK_SUBOPTIMAL_KHR;
+    }
+    return pr == VK_SUCCESS;
 }
