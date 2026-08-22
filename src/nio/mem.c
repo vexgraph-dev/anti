@@ -35,7 +35,7 @@ void* Memory_alloc(const uint32_t typeId, const size_t numBytes) {
     (*hdr).length = (uint32_t)numBytes;
     (*hdr).pad = 0;
 
-    // return the payload
+    // return the payload, its like a pointer of that allocated memory
     return (void*) aligned;
 }
 
