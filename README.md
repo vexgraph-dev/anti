@@ -21,9 +21,9 @@ latency: C stripped of its comfort abstractions, rebuilt for raw performance.
   yields the header, so `Memory_type()`/`Memory_length()` are free.
 * `src/bit/bit.h/.c` — the lockless width pool (`BitPool`). ABA-tagged
   freelists recycle slots; freed slots come back at the same address.
-* `src/thread/spin.h/.c` — `SpinLock` on C11 atomics (ticket lock, bounded
+* `src/atomic/spin.h/.c` — `SpinLock` on C11 atomics (ticket lock, bounded
   wait).
-* `src/thread/ring.h/.c` — the MPMC ring buffer (`RingBuffer`), the inter-thread
+* `src/atomic/ring.h/.c` — the MPMC ring buffer (`RingBuffer`), the inter-thread
   channel.
 * `src/engine/loop.h/.c` — the fixed-timestep engine loop (`Loop`).
 * `src/relational/variable.h/.c` — the relational symbol registry (`Variable`).
