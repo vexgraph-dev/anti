@@ -58,7 +58,8 @@ add_executable(anti
     src/oop/struct.c
     src/oop/type.c
     src/primitive/string.c
-    src/relational/variable.c
+        src/relational/variable.c
+        src/render/raster.c
     src/struct/array.c
     src/struct/collection.c
     src/struct/deque.c
