@@ -84,3 +84,96 @@ bool AudioVoice_isPlaying(AudioVoice *voice) {
     (void)voice;
     return false;
 }
+
+// --- Audio: one-handle class (silent backend) ---
+
+Audio *Audio_0(void) {
+    return NULL;
+}
+
+Audio *Audio_load(const char *path) {
+    (void)path;
+    return NULL;
+}
+
+Audio *Audio_withRate(double sampleRate) {
+    (void)sampleRate;
+    return NULL;
+}
+
+Audio *Audio_2(double sampleRate, int channels) {
+    (void)sampleRate;
+    (void)channels;
+    return NULL;
+}
+
+void Audio_play(Audio *a) {
+    (void)a;
+}
+
+void Audio_pause(Audio *a) {
+    (void)a;
+}
+
+void Audio_stop(Audio *a) {
+    (void)a;
+}
+
+bool Audio_isPlaying(Audio *a) {
+    (void)a;
+    return false;
+}
+
+void Audio_setGain(Audio *a, float gain) {
+    (void)a;
+    (void)gain;
+}
+
+float Audio_getGain(Audio *a) {
+    (void)a;
+    return 0.0f;
+}
+
+void Audio_setPitch(Audio *a, float pitch) {
+    (void)a;
+    (void)pitch;
+}
+
+float Audio_getPitch(Audio *a) {
+    (void)a;
+    return 1.0f;
+}
+
+void Audio_setLooping(Audio *a, bool looping) {
+    (void)a;
+    (void)looping;
+}
+
+bool Audio_getLooping(Audio *a) {
+    (void)a;
+    return false;
+}
+
+void Audio_setSampleRate(Audio *a, double rate) {
+    (void)a;
+    (void)rate;
+}
+
+double Audio_getSampleRate(Audio *a) {
+    (void)a;
+    return 0.0;
+}
+
+void Audio_setChannels(Audio *a, int channels) {
+    (void)a;
+    (void)channels;
+}
+
+int Audio_getChannels(Audio *a) {
+    (void)a;
+    return 0;
+}
+
+void Audio_free(Audio *a) {
+    (void)a;
+}

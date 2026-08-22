@@ -248,3 +248,200 @@ bool AudioVoice_isPlaying(AudioVoice *voice) {
         return false;
     return (*voice).node != NULL && [(AVAudioPlayerNode *)(*voice).node isPlaying];
 }
+
+// --- Audio: one-handle class -------------------------------------------------
+
+typedef struct Audio {
+    AVAudioPCMBuffer *buffer;
+    AVAudioPlayerNode *node;
+    bool active;
+    bool looping;
+    float gain;
+    float pitch;
+    double rate;
+    int channels;
+} Audio;
+
+static void audioInitFields(Audio *a, double rate, int channels) {
+    (*a).buffer = NULL;
+    (*a).node = NULL;
+    (*a).active = false;
+    (*a).looping = false;
+    (*a).gain = 1.0f;
+    (*a).pitch = 1.0f;
+    (*a).rate = rate > 0.0 ? rate : 44100.0;
+    (*a).channels = (channels == AUDIO_MONO || channels == AUDIO_STEREO) ? channels : AUDIO_STEREO;
+}
+
+static bool audioWireUp(Audio *a) {
+    AVAudioPlayerNode *node = [[AVAudioPlayerNode alloc] init];
+    if (!node)
+        return false;
+    [s_engine attachNode:node];
+    AVAudioFormat *fmt = [[s_engine outputNode] outputFormatForBus:0];
+    [s_engine connect:node to:[s_engine mainMixerNode] format:fmt error:NULL];
+    if (!ensureRunning()) {
+        [s_engine detachNode:node];
+        return false;
+    }
+    (*a).node = node;
+    return true;
+}
+
+Audio *Audio_0(void) {
+    if (!s_ready)
+        return NULL;
+    @autoreleasepool {
+        Audio *a = (Audio *)Memory_alloc(TYPE_AUDIO_SINGLETON, sizeof(Audio));
+        if (!a)
+            return NULL;
+        audioInitFields(a, 44100.0, AUDIO_STEREO);
+        return a;
+    }
+}
+
+Audio *Audio_withRate(double sampleRate) {
+    Audio *a = Audio_0();
+    if (a)
+        (*a).rate = sampleRate > 0.0 ? sampleRate : 44100.0;
+    return a;
+}
+
+Audio *Audio_2(double sampleRate, int channels) {
+    Audio *a = Audio_withRate(sampleRate);
+    if (a && (channels == AUDIO_MONO || channels == AUDIO_STEREO))
+        (*a).channels = channels;
+    return a;
+}
+
+Audio *Audio_load(const char *path) {
+    if (!path || !s_ready)
+        return NULL;
+    @autoreleasepool {
+        NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:path]];
+        AVAudioFile *file = [[AVAudioFile alloc] initForReading:url error:NULL];
+        if (!file)
+            return NULL;
+
+        AVAudioFormat *format = [file processingFormat];
+        AVAudioFrameCount frames = (AVAudioFrameCount)[file length];
+        if (frames == 0)
+            return NULL;
+
+        AVAudioPCMBuffer *buf = [[AVAudioPCMBuffer alloc]
+            initWithPCMFormat:format frameCapacity:frames];
+        if (!buf)
+            return NULL;
+        if (![file readIntoBuffer:buf error:NULL] || buf.frameLength == 0)
+            return NULL;
+
+        Audio *a = Audio_0();
+        if (!a)
+            return NULL;
+        (*a).buffer = buf;
+        (*a).rate = format.sampleRate;
+        (*a).channels = (int)format.channelCount;
+        if (!audioWireUp(a)) {
+            Memory_free(a);
+            return NULL;
+        }
+        return a;
+    }
+}
+
+void Audio_play(Audio *a) {
+    if (!a || !(*a).buffer || !(*a).node)
+        return;
+    AVAudioPlayerNodeBufferOptions opts = (*a).looping
+        ? AVAudioPlayerNodeBufferLoops
+        : AVAudioPlayerNodeBufferInterrupts;
+    [(*a).node scheduleBuffer:(*a).buffer atTime:nil options:opts completionHandler:nil];
+    if (![(*a).node playAndReturnError:NULL])
+        return;
+    (*a).active = true;
+}
+
+void Audio_pause(Audio *a) {
+    if (a && (*a).node)
+        [(*a).node pause];
+}
+
+void Audio_stop(Audio *a) {
+    if (!a || !(*a).node)
+        return;
+    [(*a).node stop];
+    (*a).active = false;
+}
+
+bool Audio_isPlaying(Audio *a) {
+    if (!a || !(*a).active || !(*a).node)
+        return false;
+    return [(AVAudioPlayerNode *)(*a).node isPlaying];
+}
+
+void Audio_setGain(Audio *a, float gain) {
+    if (!a)
+        return;
+    (*a).gain = gain;
+    if ((*a).node)
+        (*a).node.volume = gain;
+}
+
+float Audio_getGain(Audio *a) {
+    return a ? (*a).gain : 0.0f;
+}
+
+void Audio_setPitch(Audio *a, float pitch) {
+    if (!a || pitch <= 0.0f)
+        return;
+    (*a).pitch = pitch;
+    if ((*a).node)
+        (*a).node.rate = pitch;
+}
+
+float Audio_getPitch(Audio *a) {
+    return a ? (*a).pitch : 1.0f;
+}
+
+void Audio_setLooping(Audio *a, bool looping) {
+    if (a)
+        (*a).looping = looping;
+}
+
+bool Audio_getLooping(Audio *a) {
+    return a ? (*a).looping : false;
+}
+
+void Audio_setSampleRate(Audio *a, double rate) {
+    if (!a || rate <= 0.0)
+        return;
+    (*a).rate = rate;
+}
+
+double Audio_getSampleRate(Audio *a) {
+    return a ? (*a).rate : 0.0;
+}
+
+void Audio_setChannels(Audio *a, int channels) {
+    if (!a || (channels != AUDIO_MONO && channels != AUDIO_STEREO))
+        return;
+    (*a).channels = channels;
+}
+
+int Audio_getChannels(Audio *a) {
+    return a ? (*a).channels : 0;
+}
+
+void Audio_free(Audio *a) {
+    if (!a)
+        return;
+    @autoreleasepool {
+        if ((*a).node) {
+            [(*a).node stop];
+            [s_engine detachNode:(*a).node];
+        }
+    }
+    (*a).node = NULL;
+    (*a).buffer = NULL;
+    Memory_free(a);
+}
