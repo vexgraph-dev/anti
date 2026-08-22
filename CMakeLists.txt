@@ -28,6 +28,13 @@ add_executable(anti
     src/cli/logcommands.c
     src/cli/scanner.c
     src/engine/loop.c
+    src/lang/vec4.c
+    src/lang/vec2.c
+    src/lang/mat4.c
+    src/lang/fastmath.c
+    src/struct/list.c
+    src/struct/collection.c
+    src/nio/mem.c
     src/darling/container.c
     src/darling/panel.c
     src/darling/scene.c
@@ -67,7 +74,7 @@ add_executable(anti
     src/primitive/string.c
         src/relational/variable.c
         src/render/raster.c
-        src/render/panel.c
+        src/render/surface.c
     src/struct/array.c
     src/struct/collection.c
     src/struct/deque.c
@@ -120,6 +127,47 @@ if(APPLE)
 else()
     target_sources(anti PRIVATE src/audio/audio_stub.c)
 endif()
+
+# Darling-tree live demo: scene panels + software raster + present.
+add_executable(darlingtest
+    src/main/darlingtest.c
+    src/window/window_cocoa.m
+    src/buffers/buffer.c
+    src/buffers/color_buffer.c
+    src/render/raster.c
+    src/render/surface.c
+    src/darling/container.c
+    src/darling/panel.c
+    src/darling/scene.c
+    src/lang/mat4.c
+    src/lang/vec2.c
+    src/lang/vec4.c
+    src/lang/fastmath.c
+    src/struct/list.c
+    src/struct/collection.c
+    src/oop/stride.c
+    src/oop/struct.c
+    src/oop/fields.c
+    src/engine/loop.c
+    src/input/focus.c
+    src/input/key.c
+    src/input/mouse.c
+    src/input/touch.c
+    src/atomic/ring.c
+    src/atomic/spin.c
+    src/time/clock.c
+    src/time/nanotime.c
+    src/nio/mem.c
+    src/oop/type.c
+)
+set_source_files_properties(src/window/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+target_include_directories(darlingtest PRIVATE src)
+target_compile_options(darlingtest PRIVATE -Wall -Wextra -Werror -mcpu=native)
+target_link_libraries(darlingtest PRIVATE
+    "-framework Cocoa"
+    "-framework AppKit"
+    "-framework QuartzCore"
+)
 
 # TouchID Demo Target
 if(APPLE)
