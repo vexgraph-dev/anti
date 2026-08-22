@@ -163,10 +163,16 @@ add_executable(darlingtest
     src/atomic/spin.c
     src/time/clock.c
     src/time/nanotime.c
+    src/system/display_monitor.c
+    src/system/display_info.c
+    src/system/hardware_info.c
+    src/system/graphics_info.c
+    src/system/discovery.m
     src/nio/mem.c
     src/oop/type.c
 )
 set_source_files_properties(src/window/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+set_source_files_properties(src/system/discovery.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 target_include_directories(darlingtest PRIVATE src /opt/homebrew/include)
 target_compile_options(darlingtest PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_compile_definitions(darlingtest PRIVATE ANTI_SPV_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/spv")
@@ -175,6 +181,9 @@ target_link_libraries(darlingtest PRIVATE
     "-framework Cocoa"
     "-framework AppKit"
     "-framework QuartzCore"
+    "-framework CoreGraphics"
+    "-framework Metal"
+    "-framework IOKit"
 )
 
 # Vulkan chain probe: loader -> instance -> surface -> device -> swapchain.
@@ -206,6 +215,11 @@ add_executable(vk_test
     src/lang/vec2.c
     src/lang/vec4.c
     src/lang/fastmath.c
+    src/system/display_monitor.c
+    src/system/display_info.c
+    src/system/hardware_info.c
+    src/system/graphics_info.c
+    src/system/discovery.m
     src/nio/mem.c
     src/oop/stride.c
     src/oop/struct.c
@@ -213,6 +227,7 @@ add_executable(vk_test
     src/oop/type.c
 )
 set_source_files_properties(src/window/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+set_source_files_properties(src/system/discovery.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 target_include_directories(vk_test PRIVATE src /opt/homebrew/include)
 target_compile_options(vk_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_compile_definitions(vk_test PRIVATE ANTI_SPV_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/spv")
@@ -221,6 +236,35 @@ target_link_libraries(vk_test PRIVATE
     "-framework Cocoa"
     "-framework AppKit"
     "-framework QuartzCore"
+    "-framework CoreGraphics"
+    "-framework Metal"
+    "-framework IOKit"
+)
+
+# System Discovery & Hardware / Display probe target
+add_executable(system_test
+    tests/system_test.c
+    src/system/display_monitor.c
+    src/system/display_info.c
+    src/system/hardware_info.c
+    src/system/graphics_info.c
+    src/system/discovery.m
+    src/nio/mem.c
+    src/oop/stride.c
+    src/oop/struct.c
+    src/oop/fields.c
+    src/oop/type.c
+)
+set_source_files_properties(src/system/discovery.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+target_include_directories(system_test PRIVATE src)
+target_compile_options(system_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
+target_link_libraries(system_test PRIVATE
+    pthread
+    "-framework Cocoa"
+    "-framework AppKit"
+    "-framework CoreGraphics"
+    "-framework Metal"
+    "-framework IOKit"
 )
 
 # TouchID Demo Target
