@@ -28,6 +28,11 @@ add_executable(anti
     src/cli/logcommands.c
     src/cli/scanner.c
     src/engine/loop.c
+    src/darling/container.c
+    src/darling/panel.c
+    src/darling/scene.c
+    src/darling/picture.c
+    src/darling/canvas.c
     src/io/antihome.c
     src/io/file.c
     src/io/filewriter.c
