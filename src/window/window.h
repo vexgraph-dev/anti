@@ -135,6 +135,14 @@ void Window_setMaxSize(Window *window, int width, int height);
 // input/mouse stream as move-delta events. (Legacy: macOSWindow.setCursorLock.)
 void Window_setCursorLocked(Window *window, bool locked);
 
+// The AppKit content view behind this window — the surface anchor GPU backends
+// need (MoltenVK wraps it in a CAMetalLayer). THREAD CONTRACT: thread 0 only.
+void *Window_contentView(Window *window);
+
+// Creates (or reuses) a CAMetalLayer on the content view — the VK_EXT_metal_surface
+// path. Returns NULL off-Apple. THREAD CONTRACT: thread 0 only.
+void *Window_metalLayer(Window *window);
+
 // --- Software frame presentation ---
 //
 // Stamp an RGBA raster (ColorBuffer layout) into the window's content view,

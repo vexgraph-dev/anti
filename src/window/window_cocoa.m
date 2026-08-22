@@ -932,3 +932,25 @@ bool Window_present(Window *window, const Buffer *frame) {
         return true;
     }
 }
+
+void *Window_contentView(Window *window) {
+    if (!window || !(*window).nsWindow)
+        return NULL;
+    return (__bridge void *)[(*window).nsWindow contentView];
+}
+
+void *Window_metalLayer(Window *window) {
+    if (!window || !(*window).nsWindow)
+        return NULL;
+    @autoreleasepool {
+        NSView *view = [(*window).nsWindow contentView];
+        [view setWantsLayer:YES];
+        if (![view.layer isKindOfClass:[CAMetalLayer class]]) {
+            // pin for C callers: static strong ref keeps the layer immortal
+            static CAMetalLayer *s_pinnedLayer = NULL;
+            s_pinnedLayer = [[CAMetalLayer alloc] init];
+            view.layer = s_pinnedLayer;
+        }
+        return (__bridge void *)view.layer;
+    }
+}
