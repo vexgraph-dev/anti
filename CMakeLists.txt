@@ -130,6 +130,9 @@ endif()
 
 # Darling-tree live demo: scene panels + software raster + present.
 add_executable(darlingtest
+    src/vulkan/vulkan.c
+    src/buffers/buffer.c
+    src/buffers/color_buffer.c
     src/main/darlingtest.c
     src/window/window_cocoa.m
     src/buffers/buffer.c
@@ -161,9 +164,36 @@ add_executable(darlingtest
     src/oop/type.c
 )
 set_source_files_properties(src/window/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
-target_include_directories(darlingtest PRIVATE src)
+target_include_directories(darlingtest PRIVATE src /opt/homebrew/include)
 target_compile_options(darlingtest PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_link_libraries(darlingtest PRIVATE
+    "-framework Cocoa"
+    "-framework AppKit"
+    "-framework QuartzCore"
+)
+
+# Vulkan chain probe: loader -> instance -> surface -> device -> swapchain.
+add_executable(vk_test
+    src/input/focus.c
+    src/input/key.c
+    src/input/mouse.c
+    src/input/touch.c
+    src/atomic/ring.c
+    src/atomic/spin.c
+    src/time/clock.c
+    src/time/nanotime.c
+    tests/vk_test.c
+    src/vulkan/vulkan.c
+    src/buffers/buffer.c
+    src/buffers/color_buffer.c
+    src/window/window_cocoa.m
+    src/nio/mem.c
+    src/oop/type.c
+)
+set_source_files_properties(src/window/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+target_include_directories(vk_test PRIVATE src /opt/homebrew/include)
+target_compile_options(vk_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
+target_link_libraries(vk_test PRIVATE
     "-framework Cocoa"
     "-framework AppKit"
     "-framework QuartzCore"
