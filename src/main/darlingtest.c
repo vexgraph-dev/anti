@@ -103,7 +103,7 @@ int main(void) {
     Container_setSize(&(*g_demo.sky).base, (float)FB_W, (float)FB_H);
 
     g_demo.sun = Panel_1(&(*g_demo.scene).base);
-    Container_setPos(&(*g_demo.sun).base, 520.0f, 60.0f);
+    Container_setLocation(&(*g_demo.sun).base, 520.0f, 60.0f);
     Container_setSize(&(*g_demo.sun).base, 90.0f, 90.0f);
 
     // render-side swapchains mirroring that geometry (v1 1:1 stamps)
