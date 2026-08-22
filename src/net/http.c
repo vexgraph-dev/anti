@@ -91,7 +91,7 @@ bool Http_perform(const HttpRequest *req, HttpResponse *resp) {
 
     const char *method = req->method ? req->method : "GET";
     const char *path = req->path ? req->path : "/";
-    int port = req->port > 0 ? req->port : NetUrl_defaultPort("http");
+    int port = req->port > 0 ? req->port : Url_defaultPort("http");
     uint32_t timeoutMs = req->timeoutMs ? req->timeoutMs : RECV_TIMEOUT_DEFAULT_MS;
 
     // --- Resolve ---
