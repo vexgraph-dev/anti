@@ -60,6 +60,7 @@ add_executable(anti
     src/primitive/string.c
         src/relational/variable.c
         src/render/raster.c
+        src/render/panel.c
     src/struct/array.c
     src/struct/collection.c
     src/struct/deque.c
@@ -151,6 +152,7 @@ add_executable(enginetest
 target_include_directories(enginetest PRIVATE src)
 target_compile_options(enginetest PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_link_libraries(enginetest PRIVATE
+    "-framework QuartzCore"
     "-framework Cocoa"
     "-framework AppKit"
 )
@@ -221,6 +223,7 @@ add_executable(anti_window
 target_include_directories(anti_window PRIVATE src)
 target_compile_options(anti_window PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_link_libraries(anti_window PRIVATE
+    "-framework QuartzCore"
     "-framework Cocoa"
     "-framework AppKit"
 )
