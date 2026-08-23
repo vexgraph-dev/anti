@@ -142,6 +142,7 @@ void *Window_contentView(Window *window);
 // Creates (or reuses) a CAMetalLayer on the content view — the VK_EXT_metal_surface
 // path. Returns NULL off-Apple. THREAD CONTRACT: thread 0 only.
 void *Window_metalLayer(Window *window);
+void Window_setGravityTopLeft(Window *window);
 
 // --- Software frame presentation ---
 //

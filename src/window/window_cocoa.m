@@ -956,3 +956,14 @@ void *Window_metalLayer(Window *window) {
         return (__bridge void *)view.layer;
     }
 }
+
+void Window_setGravityTopLeft(Window *window) {
+    if (!window || !(*window).nsWindow)
+        return;
+    @autoreleasepool {
+        NSView *view = [(*window).nsWindow contentView];
+        if (view.layer) {
+            view.layer.contentsGravity = kCAGravityTopLeft;
+        }
+    }
+}
