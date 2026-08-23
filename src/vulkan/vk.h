@@ -2,6 +2,7 @@
 #define VULKAN_VULKAN_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 // vulkan/vulkan.h — the GPU backend seam (MoltenVK on macOS, software stays).
 //
@@ -21,8 +22,8 @@ bool Vk_init(Window *window);
 void Vk_shutdown(void);
 bool Vk_ready(void);
 
-// Set the active Scene3D container (sets viewport, scissor and clear color from layout)
-void Vk_setScene3D(Scene3D *scene);
+// Update the layout constraints (safely read by draw thread to set viewport/scissor)
+void Vk_updateLayout(float x, float y, float w, float h, int winW, int winH, uint32_t bgColor);
 
 // Acquire, clear the frame to (r,g,b) in linear-ish [0..1], present. False
 // when not ready or the swapchain is out of date.
