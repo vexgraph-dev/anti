@@ -8,6 +8,7 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdatomic.h>
 
 #include "darling/container.h"
 #include "darling/panel.h"
@@ -291,9 +292,15 @@ static bool rebuildTargets(void) {
 
     VkSwapchainKHR oldSwapchain = s_swapchain;
 
+    uint32_t imageCount = caps.minImageCount + 1;
+    if (imageCount < 3) imageCount = 3;
+    if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount) {
+        imageCount = caps.maxImageCount;
+    }
+
     VkSwapchainCreateInfoKHR swci = { .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     swci.surface = s_surface;
-    swci.minImageCount = caps.minImageCount;
+    swci.minImageCount = imageCount;
     swci.imageFormat = s_format;
     swci.imageColorSpace = formatCount ? formats[0].colorSpace : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     swci.imageExtent = caps.currentExtent;
@@ -303,7 +310,7 @@ static bool rebuildTargets(void) {
     swci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     swci.preTransform = caps.currentTransform;
     swci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    swci.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
     swci.clipped = VK_TRUE;
     swci.oldSwapchain = oldSwapchain;
 
@@ -389,10 +396,24 @@ static void destroyTargets(void) {
     s_swapchain = VK_NULL_HANDLE;
 }
 
-static Scene3D *s_scene3D = NULL;
+static _Atomic float s_rectX = 0;
+static _Atomic float s_rectY = 0;
+static _Atomic float s_rectW = 0;
+static _Atomic float s_rectH = 0;
+static _Atomic int s_winW = 0;
+static _Atomic int s_winH = 0;
+static _Atomic uint32_t s_bgColor = 0;
+static _Atomic bool s_hasLayout = false;
 
-void Vk_setScene3D(Scene3D *scene) {
-    s_scene3D = scene;
+void Vk_updateLayout(float x, float y, float w, float h, int winW, int winH, uint32_t bgColor) {
+    atomic_store_explicit(&s_rectX, x, memory_order_relaxed);
+    atomic_store_explicit(&s_rectY, y, memory_order_relaxed);
+    atomic_store_explicit(&s_rectW, w, memory_order_relaxed);
+    atomic_store_explicit(&s_rectH, h, memory_order_relaxed);
+    atomic_store_explicit(&s_winW, winW, memory_order_relaxed);
+    atomic_store_explicit(&s_winH, winH, memory_order_relaxed);
+    atomic_store_explicit(&s_bgColor, bgColor, memory_order_relaxed);
+    atomic_store_explicit(&s_hasLayout, true, memory_order_release);
 }
 
 bool Vk_ready(void) {
@@ -785,19 +806,21 @@ bool Vk_helloTriangle(float timeSeconds) {
     VkRect2D scissor = {0};
     scissor.extent = s_extent;
 
-    if (s_scene3D != NULL) {
-        int winW = s_window ? Window_width(s_window) : 0;
-        int winH = s_window ? Window_height(s_window) : 0;
+    if (atomic_load_explicit(&s_hasLayout, memory_order_acquire)) {
+        int winW = atomic_load_explicit(&s_winW, memory_order_relaxed);
+        int winH = atomic_load_explicit(&s_winH, memory_order_relaxed);
         if (winW <= 0) winW = (int)s_extent.width;
         if (winH <= 0) winH = (int)s_extent.height;
 
         float scaleX = (float)s_extent.width / (float)winW;
         float scaleY = (float)s_extent.height / (float)winH;
 
-        Vec4 rect;
-        Container_resolve(&(*s_scene3D).base.base.base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
+        float rx = atomic_load_explicit(&s_rectX, memory_order_relaxed);
+        float ry = atomic_load_explicit(&s_rectY, memory_order_relaxed);
+        float rw = atomic_load_explicit(&s_rectW, memory_order_relaxed);
+        float rh = atomic_load_explicit(&s_rectH, memory_order_relaxed);
 
-        uint32_t bg = Panel_getBackgroundColor(&(*s_scene3D).base.base);
+        uint32_t bg = atomic_load_explicit(&s_bgColor, memory_order_relaxed);
         if (bg != 0) {
             clear.color.float32[0] = ((bg >> 16) & 0xFF) / 255.0f;
             clear.color.float32[1] = ((bg >> 8) & 0xFF) / 255.0f;
@@ -805,19 +828,19 @@ bool Vk_helloTriangle(float timeSeconds) {
             clear.color.float32[3] = ((bg >> 24) & 0xFF) / 255.0f;
         }
 
-        if (rect.z > 0.0f && rect.w > 0.0f) {
-            viewport.x = rect.x * scaleX;
-            viewport.y = rect.y * scaleY;
-            viewport.width = rect.z * scaleX;
-            viewport.height = rect.w * scaleY;
+        if (rw > 0.0f && rh > 0.0f) {
+            viewport.x = rx * scaleX;
+            viewport.y = ry * scaleY;
+            viewport.width = rw * scaleX;
+            viewport.height = rh * scaleY;
 
-            int32_t sx = (int32_t)(rect.x * scaleX);
+            int32_t sx = (int32_t)(rx * scaleX);
             if (sx < 0) sx = 0;
-            int32_t sy = (int32_t)(rect.y * scaleY);
+            int32_t sy = (int32_t)(ry * scaleY);
             if (sy < 0) sy = 0;
 
-            uint32_t sw = (uint32_t)(rect.z * scaleX);
-            uint32_t sh = (uint32_t)(rect.w * scaleY);
+            uint32_t sw = (uint32_t)(rw * scaleX);
+            uint32_t sh = (uint32_t)(rh * scaleY);
 
             if ((uint32_t)sx + sw > s_extent.width)
                 sw = s_extent.width > (uint32_t)sx ? s_extent.width - (uint32_t)sx : 0;

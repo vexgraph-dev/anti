@@ -89,7 +89,11 @@ int main(void) {
     Container_setSelfAnchor(&(*scene3D).base.base.base, CONTAINER_SELF_ANCHOR_TOP_LEFT);
     Container_setParentAnchor(&(*scene3D).base.base.base, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
     Panel_setBackgroundColor(&(*scene3D).base.base, 0xFF141414);
-    Vk_setScene3D(scene3D);
+    int winW = Window_width(w);
+    int winH = Window_height(w);
+    Vec4 rect;
+    Container_resolve(&(*scene3D).base.base.base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
+    Vk_updateLayout(rect.x, rect.y, rect.z, rect.w, winW, winH, Panel_getBackgroundColor(&(*scene3D).base.base));
 
     atomic_store(&g_state.running, true);
 
@@ -108,6 +112,10 @@ int main(void) {
 
     while (!Window_shouldClose(w) && !Key_isDown(KEY_ESCAPE)) {
         Window_pollEvents();
+        winW = Window_width(w);
+        winH = Window_height(w);
+        Container_resolve(&(*scene3D).base.base.base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
+        Vk_updateLayout(rect.x, rect.y, rect.z, rect.w, winW, winH, Panel_getBackgroundColor(&(*scene3D).base.base));
 
         uint64_t pStart = NanoTime_now();
         Vk_clearPresent(0, 0, 0);
