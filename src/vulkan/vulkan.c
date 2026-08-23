@@ -40,6 +40,16 @@ static uint32_t s_queueFamily = 0;
 static VkDevice s_device;
 static VkQueue s_queue;
 static VkSwapchainKHR s_swapchain;
+static VkCommandPool s_cmdPool;
+static VkCommandBuffer s_cmdBuffer;
+static VkCommandBuffer s_secondaryCmdBuffers[3];
+static _Atomic int s_renderReady = -1;
+static _Atomic int s_renderReading = -1;
+static int s_currentSecondary = 0;
+static VkSemaphore s_semAcquire;
+static VkSemaphore s_semRender;
+static VkFence s_fence;
+
 static VkFormat s_format;
 static VkExtent2D s_extent;
 static Window *s_window = NULL;
@@ -242,8 +252,24 @@ bool Vk_init(Window *window) {
     // 6. swapchain + views + framebuffers (rebuilt on every surface resize)
     if (!rebuildTargets())
         return false;
+
+    VK_LOAD_DEVICE(CreateSemaphore)
+    VK_LOAD_DEVICE(CreateFence)
+    VK_LOAD_DEVICE(WaitForFences)
+    VK_LOAD_DEVICE(ResetFences)
+
+    VkSemaphoreCreateInfo sci2 = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+    if (CreateSemaphore_fn && CreateSemaphore_fn(s_device, &sci2, NULL, &s_semAcquire) != VK_SUCCESS) return false;
+    if (CreateSemaphore_fn && CreateSemaphore_fn(s_device, &sci2, NULL, &s_semRender) != VK_SUCCESS) return false;
+
+    VkFenceCreateInfo fci2 = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+    fci2.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    if (CreateFence_fn && CreateFence_fn(s_device, &fci2, NULL, &s_fence) != VK_SUCCESS) return false;
+    
+
     return true;
 }
+
 
 // --- swapchain targets: created, and re-created on fullscreen/resize ---------
 // Fullscreen changes the view extent; presenting to a stale chain is the bug
@@ -524,15 +550,6 @@ static unsigned char *loadSpvAny(const char *name, size_t *outSize) {
     return NULL;
 }
 
-static VkCommandPool s_cmdPool;
-static VkCommandBuffer s_cmdBuffer;
-static VkCommandBuffer s_secondaryCmdBuffers[3];
-static _Atomic int s_renderReady = -1;
-static _Atomic int s_renderReading = -1;
-static int s_currentSecondary = 0;
-static VkSemaphore s_semAcquire;
-static VkSemaphore s_semRender;
-static VkFence s_fence;
 
 static unsigned char *loadSpv(const char *path, size_t *outSize) {
     FILE *f = fopen(path, "rb");
@@ -736,13 +753,7 @@ bool Vk_helloTriangle(float timeSeconds) {
         cbai.commandBufferCount = 3;
         AllocateCommandBuffers_fn(s_device, &cbai, s_secondaryCmdBuffers);
 
-        VkSemaphoreCreateInfo sci2 = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-        CreateSemaphore_fn(s_device, &sci2, NULL, &s_semAcquire);
-        CreateSemaphore_fn(s_device, &sci2, NULL, &s_semRender);
 
-        VkFenceCreateInfo fci2 = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-        fci2.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        CreateFence_fn(s_device, &fci2, NULL, &s_fence);
 
         s_triBuilt = true;
     }
@@ -839,7 +850,7 @@ bool Vk_helloTriangle(float timeSeconds) {
 }
 
 bool Vk_clearPresent(float r, float g, float b) {
-    if (!Vk_ready()) return false;
+    if (!Vk_ready() || s_cmdBuffer == VK_NULL_HANDLE) return false;
 
     VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceCapabilitiesKHR)
     VkSurfaceCapabilitiesKHR live;
