@@ -9,6 +9,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdatomic.h>
+#include <time.h>
+
+static void Vk_onResizeStart(void);
+static void Vk_onResize(void);
+static void Vk_onResizeEnd(void);
 
 #include "darling/container.h"
 #include "darling/panel.h"
@@ -112,6 +117,7 @@ bool Vk_init(Window *window) {
     if (!window)
         return false;
     s_window = window;
+    Window_setResizeCallbacks(window, Vk_onResizeStart, Vk_onResize, Vk_onResizeEnd);
     if (s_lib)
         return true;
 
@@ -427,6 +433,172 @@ static void destroyTargets(void) {
 
 static Scene3D *s_scene3D = NULL;
 
+static _Atomic bool s_isResizing = false;
+static _Atomic int s_parkedThreads = 0;
+
+static void Vk_onResizeStart(void) {
+    atomic_store_explicit(&s_isResizing, true, memory_order_release);
+    // Wait for the 2 background threads to park
+    while (atomic_load_explicit(&s_parkedThreads, memory_order_acquire) < 2) {
+        struct timespec ts = {0, 1000000};
+        nanosleep(&ts, NULL);
+    }
+}
+
+static void Vk_onResizeEnd(void) {
+    atomic_store_explicit(&s_isResizing, false, memory_order_release);
+}
+
+static void Vk_onResize(void) {
+    // Synchronous render pass on Thread 0!
+    if (!rebuildTargets()) return;
+
+    VK_LOAD_DEVICE_VOID(AcquireNextImageKHR)
+    VK_LOAD_DEVICE_VOID(QueuePresentKHR)
+    VK_LOAD_DEVICE_VOID(QueueSubmit)
+    VK_LOAD_DEVICE_VOID(WaitForFences)
+    VK_LOAD_DEVICE_VOID(ResetFences)
+    VK_LOAD_DEVICE_VOID(ResetCommandBuffer)
+    VK_LOAD_DEVICE_VOID(BeginCommandBuffer)
+    VK_LOAD_DEVICE_VOID(EndCommandBuffer)
+    VK_LOAD_DEVICE_VOID(CmdExecuteCommands)
+    VK_LOAD_DEVICE_VOID(CmdBindPipeline)
+    VK_LOAD_DEVICE_VOID(CmdSetViewport)
+    VK_LOAD_DEVICE_VOID(CmdSetScissor)
+    VK_LOAD_DEVICE_VOID(CmdPushConstants)
+    VK_LOAD_DEVICE_VOID(CmdDraw)
+    VK_LOAD_DEVICE_VOID(CmdBeginRenderPass)
+    VK_LOAD_DEVICE_VOID(CmdEndRenderPass)
+
+    uint32_t imageIndex = 0;
+    VkResult ar = AcquireNextImageKHR_fn(s_device, s_swapchain, UINT64_MAX, s_semAcquire, VK_NULL_HANDLE, &imageIndex);
+    if (ar == VK_ERROR_OUT_OF_DATE_KHR || ar == VK_SUBOPTIMAL_KHR) {
+        return; // Next loop will fix it
+    }
+    if (ar != VK_SUCCESS) return;
+
+    WaitForFences_fn(s_device, 1, &s_fence, VK_TRUE, UINT64_MAX);
+    ResetFences_fn(s_device, 1, &s_fence);
+
+    int writing = (s_currentSecondary + 1) % 3;
+    if (writing == atomic_load_explicit(&s_renderReading, memory_order_acquire)) {
+        writing = (writing + 1) % 3;
+    }
+    VkCommandBuffer cb = s_secondaryCmdBuffers[writing];
+    ResetCommandBuffer_fn(cb, 0);
+
+    VkCommandBufferInheritanceInfo inh = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
+    inh.renderPass = s_triPass;
+    inh.subpass = 0;
+    inh.framebuffer = VK_NULL_HANDLE;
+
+    VkCommandBufferBeginInfo bbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    bbi.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+    bbi.pInheritanceInfo = &inh;
+    BeginCommandBuffer_fn(cb, &bbi);
+
+    VkViewport viewport = {0};
+    viewport.width = (float)s_extent.width;
+    viewport.height = (float)s_extent.height;
+    viewport.maxDepth = 1.0f;
+    VkRect2D scissor = {0};
+    scissor.extent = s_extent;
+
+    if (s_scene3D != NULL) {
+        int winW = s_window ? Window_width(s_window) : 0;
+        int winH = s_window ? Window_height(s_window) : 0;
+        if (winW <= 0) winW = (int)s_extent.width;
+        if (winH <= 0) winH = (int)s_extent.height;
+
+        float scaleX = (float)s_extent.width / (float)winW;
+        float scaleY = (float)s_extent.height / (float)winH;
+
+        Vec4 rect;
+        Container_resolve(&(*s_scene3D).base.base.base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
+
+        if (rect.z > 0.0f && rect.w > 0.0f) {
+            viewport.x = rect.x * scaleX;
+            viewport.y = rect.y * scaleY;
+            viewport.width = rect.z * scaleX;
+            viewport.height = rect.w * scaleY;
+
+            int32_t sx = (int32_t)(rect.x * scaleX);
+            if (sx < 0) sx = 0;
+            int32_t sy = (int32_t)(rect.y * scaleY);
+            if (sy < 0) sy = 0;
+
+            uint32_t sw = (uint32_t)(rect.z * scaleX);
+            uint32_t sh = (uint32_t)(rect.w * scaleY);
+
+            if ((uint32_t)sx + sw > s_extent.width)
+                sw = s_extent.width > (uint32_t)sx ? s_extent.width - (uint32_t)sx : 0;
+            if ((uint32_t)sy + sh > s_extent.height)
+                sh = s_extent.height > (uint32_t)sy ? s_extent.height - (uint32_t)sy : 0;
+
+            scissor.offset.x = sx;
+            scissor.offset.y = sy;
+            scissor.extent.width = sw;
+            scissor.extent.height = sh;
+        }
+    }
+    
+    CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
+    CmdSetViewport_fn(cb, 0, 1, &viewport);
+    CmdSetScissor_fn(cb, 0, 1, &scissor);
+    float timeSeconds = 0.0f; 
+    CmdPushConstants_fn(cb, s_triLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &timeSeconds);
+    CmdDraw_fn(cb, 3, 1, 0, 0);
+
+    EndCommandBuffer_fn(cb);
+
+    ResetCommandBuffer_fn(s_cmdBuffer, 0);
+    VkCommandBufferBeginInfo bbi2 = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    BeginCommandBuffer_fn(s_cmdBuffer, &bbi2);
+
+    VkClearValue clear = {0};
+    uint32_t bg = 0xFF141414;
+    if (s_scene3D) {
+        bg = Panel_getBackgroundColor(&(*s_scene3D).base.base);
+    }
+    clear.color.float32[0] = ((bg >> 24) & 0xFF) / 255.0f;
+    clear.color.float32[1] = ((bg >> 16) & 0xFF) / 255.0f;
+    clear.color.float32[2] = ((bg >> 8) & 0xFF) / 255.0f;
+    clear.color.float32[3] = (bg & 0xFF) / 255.0f;
+
+    VkRenderPassBeginInfo rpi = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+    rpi.renderPass = s_triPass;
+    rpi.framebuffer = s_framebuffers[imageIndex];
+    rpi.renderArea.extent = s_extent;
+    rpi.clearValueCount = 1;
+    rpi.pClearValues = &clear;
+
+    CmdBeginRenderPass_fn(s_cmdBuffer, &rpi, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+    CmdExecuteCommands_fn(s_cmdBuffer, 1, &cb);
+    CmdEndRenderPass_fn(s_cmdBuffer);
+    EndCommandBuffer_fn(s_cmdBuffer);
+
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo si = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    si.waitSemaphoreCount = 1;
+    si.pWaitSemaphores = &s_semAcquire;
+    si.pWaitDstStageMask = &waitStage;
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &s_cmdBuffer;
+    si.signalSemaphoreCount = 1;
+    si.pSignalSemaphores = &s_semRender;
+    QueueSubmit_fn(s_queue, 1, &si, s_fence);
+
+    VkPresentInfoKHR pi = { .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+    pi.waitSemaphoreCount = 1;
+    pi.pWaitSemaphores = &s_semRender;
+    pi.swapchainCount = 1;
+    pi.pSwapchains = &s_swapchain;
+    pi.pImageIndices = &imageIndex;
+    QueuePresentKHR_fn(s_queue, &pi);
+}
+
+
+
 void Vk_setScene3D(Scene3D *scene) {
     s_scene3D = scene;
 }
@@ -590,6 +762,16 @@ static VkShaderModule createShaderModule(const char *name, const char *unused) {
 bool Vk_helloTriangle(float timeSeconds) {
     if (!Vk_ready())
         return false;
+
+    if (atomic_load_explicit(&s_isResizing, memory_order_acquire)) {
+        atomic_fetch_add(&s_parkedThreads, 1);
+        while (atomic_load_explicit(&s_isResizing, memory_order_acquire)) {
+            struct timespec ts = {0, 1000000};
+            nanosleep(&ts, NULL);
+        }
+        atomic_fetch_sub(&s_parkedThreads, 1);
+    }
+
 
     if (!s_triBuilt) {
         // --- renderpass + pipeline + sync (targets live in rebuildTargets)

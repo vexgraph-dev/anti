@@ -142,6 +142,7 @@ int main(void) {
     Container_setParentAnchor(&(*scene3D).base.base.base, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
     Panel_setBackgroundColor(&(*scene3D).base.base, 0xFF141414);
     Vk_setScene3D(scene3D);
+    Window_setDecoupledRenderingAtResize(w, false); // Enable zero-delay synchronous resize!
 
     atomic_store(&g_state.running, true);
 

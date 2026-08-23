@@ -85,6 +85,10 @@ static CGPoint s_lockCenter = {0, 0};
 // events and route them to per-window listeners. sizeGeneration is the
 // resize-reflection counter: Thread 0 bumps it when the content rect moves.
 struct Window {
+    bool decoupledResize;
+    WindowResizeCallback onStart;
+    WindowResizeCallback onResize;
+    WindowResizeCallback onEnd;
     NSWindow *nsWindow;
     AntiWindowDelegate *delegate;
     bool shouldClose;
@@ -159,10 +163,29 @@ static Window *windowHandleOf(NSWindow *window) {
 // bool the engine loop polls. The pointer is (assign) because the delegate
 // must not own our C struct.
 @interface AntiWindowDelegate : NSObject <NSWindowDelegate>
+@property (nonatomic, assign) Window *window;
 @property(nonatomic, assign) bool *shouldClosePtr;
 @end
 
 @implementation AntiWindowDelegate
+- (void)windowWillStartLiveResize:(NSNotification *)notification {
+    if (self.window && !self.window->decoupledResize && self.window->onStart) {
+        self.window->onStart();
+    }
+}
+
+- (void)windowDidResize:(NSNotification *)notification {
+    if (self.window && !self.window->decoupledResize && self.window->onResize) {
+        self.window->onResize();
+    }
+}
+
+- (void)windowDidEndLiveResize:(NSNotification *)notification {
+    if (self.window && !self.window->decoupledResize && self.window->onEnd) {
+        self.window->onEnd();
+    }
+}
+
 - (void) windowWillClose:(NSNotification *)notification {
     (void) notification;
     if (self.shouldClosePtr) *self.shouldClosePtr = true;
@@ -971,5 +994,17 @@ void Window_setGravityTopLeft(Window *window) {
                 view.layer.needsDisplayOnBoundsChange = YES;
             }
         });
+    }
+}
+
+void Window_setDecoupledRenderingAtResize(Window *window, bool decoupled) {
+    if (window) window->decoupledResize = decoupled;
+}
+
+void Window_setResizeCallbacks(Window *window, WindowResizeCallback onStart, WindowResizeCallback onResize, WindowResizeCallback onEnd) {
+    if (window) {
+        window->onStart = onStart;
+        window->onResize = onResize;
+        window->onEnd = onEnd;
     }
 }

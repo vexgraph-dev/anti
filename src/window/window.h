@@ -190,3 +190,8 @@ bool Window_isFocused(Window *window);   // is THIS the spotlight right now?
 uint64_t Window_sizeGeneration(Window *window);
 
 #endif
+// Hybrid rendering architecture
+void Window_setDecoupledRenderingAtResize(Window *window, bool decoupled);
+
+typedef void (*WindowResizeCallback)(void);
+void Window_setResizeCallbacks(Window *window, WindowResizeCallback onStart, WindowResizeCallback onResize, WindowResizeCallback onEnd);
