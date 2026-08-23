@@ -175,8 +175,17 @@ static Window *windowHandleOf(NSWindow *window) {
 }
 
 - (void)windowDidResize:(NSNotification *)notification {
-    if (self.window && !self.window->decoupledResize && self.window->onResize) {
-        self.window->onResize();
+    if (self.window && !self.window->decoupledResize) {
+        if ([self.window->nsWindow inLiveResize]) {
+            if (self.window->onResize) self.window->onResize();
+        } else {
+            // Edge case: Zooming (double click title bar) or programmatic resize.
+            // windowWillStartLiveResize does NOT fire for these!
+            // We must manually park the background threads before rendering to prevent thread collisions.
+            if (self.window->onStart) self.window->onStart();
+            if (self.window->onResize) self.window->onResize();
+            if (self.window->onEnd) self.window->onEnd();
+        }
     }
 }
 
