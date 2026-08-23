@@ -23,7 +23,9 @@ void Vk_shutdown(void);
 bool Vk_ready(void);
 
 // Update the layout constraints (safely read by draw thread to set viewport/scissor)
-void Vk_updateLayout(float x, float y, float w, float h, int winW, int winH, uint32_t bgColor);
+typedef struct Scene3D Scene3D;
+
+void Vk_setScene3D(Scene3D *scene);
 
 // Acquire, clear the frame to (r,g,b) in linear-ish [0..1], present. False
 // when not ready or the swapchain is out of date.

@@ -40,6 +40,16 @@ static uint32_t s_queueFamily = 0;
 static VkDevice s_device;
 static VkQueue s_queue;
 static VkSwapchainKHR s_swapchain;
+static VkCommandPool s_cmdPool;
+static VkCommandBuffer s_cmdBuffer;
+static VkCommandBuffer s_secondaryCmdBuffers[3];
+static _Atomic int s_renderReady = -1;
+static _Atomic int s_renderReading = -1;
+static int s_currentSecondary = 0;
+static VkSemaphore s_semAcquire;
+static VkSemaphore s_semRender;
+static VkFence s_fence;
+
 static VkFormat s_format;
 static VkExtent2D s_extent;
 static Window *s_window = NULL;
@@ -242,8 +252,24 @@ bool Vk_init(Window *window) {
     // 6. swapchain + views + framebuffers (rebuilt on every surface resize)
     if (!rebuildTargets())
         return false;
+
+    VK_LOAD_DEVICE(CreateSemaphore)
+    VK_LOAD_DEVICE(CreateFence)
+    VK_LOAD_DEVICE(WaitForFences)
+    VK_LOAD_DEVICE(ResetFences)
+
+    VkSemaphoreCreateInfo sci2 = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+    if (CreateSemaphore_fn && CreateSemaphore_fn(s_device, &sci2, NULL, &s_semAcquire) != VK_SUCCESS) return false;
+    if (CreateSemaphore_fn && CreateSemaphore_fn(s_device, &sci2, NULL, &s_semRender) != VK_SUCCESS) return false;
+
+    VkFenceCreateInfo fci2 = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+    fci2.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    if (CreateFence_fn && CreateFence_fn(s_device, &fci2, NULL, &s_fence) != VK_SUCCESS) return false;
+    
+
     return true;
 }
+
 
 // --- swapchain targets: created, and re-created on fullscreen/resize ---------
 // Fullscreen changes the view extent; presenting to a stale chain is the bug
@@ -300,7 +326,7 @@ static bool rebuildTargets(void) {
 
     VkSwapchainCreateInfoKHR swci = { .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     swci.surface = s_surface;
-    swci.minImageCount = imageCount;
+    swci.minImageCount = caps.minImageCount;
     swci.imageFormat = s_format;
     swci.imageColorSpace = formatCount ? formats[0].colorSpace : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     swci.imageExtent = caps.currentExtent;
@@ -310,7 +336,7 @@ static bool rebuildTargets(void) {
     swci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     swci.preTransform = caps.currentTransform;
     swci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swci.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+    swci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     swci.clipped = VK_TRUE;
     swci.oldSwapchain = oldSwapchain;
 
@@ -319,6 +345,9 @@ static bool rebuildTargets(void) {
         snprintf(s_status, sizeof(s_status), "swapchain failed");
         return false;
     }
+
+    Window_setGravityTopLeft(s_window);
+
 
     // Safely destroy previous framebuffers, views, and old swapchain
     for (uint32_t i = 0; i < s_imageCount; i++) {
@@ -396,24 +425,10 @@ static void destroyTargets(void) {
     s_swapchain = VK_NULL_HANDLE;
 }
 
-static _Atomic float s_rectX = 0;
-static _Atomic float s_rectY = 0;
-static _Atomic float s_rectW = 0;
-static _Atomic float s_rectH = 0;
-static _Atomic int s_winW = 0;
-static _Atomic int s_winH = 0;
-static _Atomic uint32_t s_bgColor = 0;
-static _Atomic bool s_hasLayout = false;
+static Scene3D *s_scene3D = NULL;
 
-void Vk_updateLayout(float x, float y, float w, float h, int winW, int winH, uint32_t bgColor) {
-    atomic_store_explicit(&s_rectX, x, memory_order_relaxed);
-    atomic_store_explicit(&s_rectY, y, memory_order_relaxed);
-    atomic_store_explicit(&s_rectW, w, memory_order_relaxed);
-    atomic_store_explicit(&s_rectH, h, memory_order_relaxed);
-    atomic_store_explicit(&s_winW, winW, memory_order_relaxed);
-    atomic_store_explicit(&s_winH, winH, memory_order_relaxed);
-    atomic_store_explicit(&s_bgColor, bgColor, memory_order_relaxed);
-    atomic_store_explicit(&s_hasLayout, true, memory_order_release);
+void Vk_setScene3D(Scene3D *scene) {
+    s_scene3D = scene;
 }
 
 bool Vk_ready(void) {
@@ -453,12 +468,7 @@ void Vk_shutdown(void) {
 
 // Milestone-1 clear+present lands next: acquire -> renderpass(loadOp=CLEAR)
 // -> submit -> present. The chain above is its prerequisite.
-bool Vk_clearPresent(float r, float g, float b) {
-    (void)r;
-    (void)g;
-    (void)b;
-    return Vk_ready();
-}
+
 
 // --- hello triangle (Legacy: vulkan/TriangleRenderer.java + your spv blobs) --
 //
@@ -529,11 +539,6 @@ static unsigned char *loadSpvAny(const char *name, size_t *outSize) {
     return NULL;
 }
 
-static VkCommandPool s_cmdPool;
-static VkCommandBuffer s_cmdBuffer;
-static VkSemaphore s_semAcquire;
-static VkSemaphore s_semRender;
-static VkFence s_fence;
 
 static unsigned char *loadSpv(const char *path, size_t *outSize) {
     FILE *f = fopen(path, "rb");
@@ -733,114 +738,77 @@ bool Vk_helloTriangle(float timeSeconds) {
         cbai.commandBufferCount = 1;
         AllocateCommandBuffers_fn(s_device, &cbai, &s_cmdBuffer);
 
-        VkSemaphoreCreateInfo sci2 = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-        CreateSemaphore_fn(s_device, &sci2, NULL, &s_semAcquire);
-        CreateSemaphore_fn(s_device, &sci2, NULL, &s_semRender);
+        cbai.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+        cbai.commandBufferCount = 3;
+        AllocateCommandBuffers_fn(s_device, &cbai, s_secondaryCmdBuffers);
 
-        VkFenceCreateInfo fci2 = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-        fci2.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        CreateFence_fn(s_device, &fci2, NULL, &s_fence);
+
 
         s_triBuilt = true;
     }
 
+
     // --- per-frame: acquire -> record -> submit -> present
-    VK_LOAD_DEVICE(AcquireNextImageKHR)
-    VK_LOAD_DEVICE(QueuePresentKHR)
-    VK_LOAD_DEVICE(QueueSubmit)
-    VK_LOAD_DEVICE(WaitForFences)
-    VK_LOAD_DEVICE(ResetFences)
     VK_LOAD_DEVICE(ResetCommandBuffer)
     VK_LOAD_DEVICE(BeginCommandBuffer)
-    VK_LOAD_DEVICE(EndCommandBuffer)
-    VK_LOAD_DEVICE(CmdBeginRenderPass)
-    VK_LOAD_DEVICE(CmdEndRenderPass)
     VK_LOAD_DEVICE(CmdBindPipeline)
     VK_LOAD_DEVICE(CmdPushConstants)
     VK_LOAD_DEVICE(CmdSetViewport)
     VK_LOAD_DEVICE(CmdSetScissor)
     VK_LOAD_DEVICE(CmdDraw)
+    VK_LOAD_DEVICE(EndCommandBuffer)
 
-    // resize sentry: fullscreen/resize changes the surface extent behind our
-    // back; presenting to a stale chain is what "closed" the app before.
-    VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceCapabilitiesKHR)
+    if (s_extent.width == 0 || s_extent.height == 0) return false;
 
-    VkSurfaceCapabilitiesKHR live;
-    memset(&live, 0, sizeof(live));
-    if (GetPhysicalDeviceSurfaceCapabilitiesKHR_fn(s_phys, s_surface, &live) == VK_SUCCESS
-        && (live.currentExtent.width != s_extent.width
-            || live.currentExtent.height != s_extent.height)) {
-        fprintf(stderr, "vk: extent moved %ux%u -> %ux%u; rebuilding\n",
-                s_extent.width, s_extent.height,
-                live.currentExtent.width, live.currentExtent.height);
-        if (!rebuildTargets())
-            return false;
+    int next = (s_currentSecondary + 1) % 3;
+    if (next == atomic_load_explicit(&s_renderReading, memory_order_acquire)) {
+        next = (next + 1) % 3;
     }
+    VkCommandBuffer cb = s_secondaryCmdBuffers[next];
+    ResetCommandBuffer_fn(cb, 0);
 
-    uint32_t imageIndex = 0;
-    VkResult ar = AcquireNextImageKHR_fn(s_device, s_swapchain, UINT64_MAX,
-                                         s_semAcquire, VK_NULL_HANDLE, &imageIndex);
-    if (ar == VK_ERROR_OUT_OF_DATE_KHR) {
-        if (!rebuildTargets())
-            return false;
-        return Vk_helloTriangle(timeSeconds); // one retry on fresh targets
-    }
-    if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR)
-        return false;
-
-    WaitForFences_fn(s_device, 1, &s_fence, VK_TRUE, UINT64_MAX);
-    ResetFences_fn(s_device, 1, &s_fence);
-    ResetCommandBuffer_fn(s_cmdBuffer, 0);
+    VkCommandBufferInheritanceInfo inh = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
+    inh.renderPass = s_triPass;
+    inh.subpass = 0;
+    inh.framebuffer = VK_NULL_HANDLE;
 
     VkCommandBufferBeginInfo bbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-    BeginCommandBuffer_fn(s_cmdBuffer, &bbi);
-
-    VkClearValue clear = {0};
-    clear.color.float32[3] = 1.0f;
+    bbi.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+    bbi.pInheritanceInfo = &inh;
+    BeginCommandBuffer_fn(cb, &bbi);
 
     VkViewport viewport = {0};
     viewport.width = (float)s_extent.width;
     viewport.height = (float)s_extent.height;
     viewport.maxDepth = 1.0f;
-
     VkRect2D scissor = {0};
     scissor.extent = s_extent;
 
-    if (atomic_load_explicit(&s_hasLayout, memory_order_acquire)) {
-        int winW = atomic_load_explicit(&s_winW, memory_order_relaxed);
-        int winH = atomic_load_explicit(&s_winH, memory_order_relaxed);
+    if (s_scene3D != NULL) {
+        int winW = s_window ? Window_width(s_window) : 0;
+        int winH = s_window ? Window_height(s_window) : 0;
         if (winW <= 0) winW = (int)s_extent.width;
         if (winH <= 0) winH = (int)s_extent.height;
 
         float scaleX = (float)s_extent.width / (float)winW;
         float scaleY = (float)s_extent.height / (float)winH;
 
-        float rx = atomic_load_explicit(&s_rectX, memory_order_relaxed);
-        float ry = atomic_load_explicit(&s_rectY, memory_order_relaxed);
-        float rw = atomic_load_explicit(&s_rectW, memory_order_relaxed);
-        float rh = atomic_load_explicit(&s_rectH, memory_order_relaxed);
+        Vec4 rect;
+        Container_resolve(&(*s_scene3D).base.base.base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
 
-        uint32_t bg = atomic_load_explicit(&s_bgColor, memory_order_relaxed);
-        if (bg != 0) {
-            clear.color.float32[0] = ((bg >> 16) & 0xFF) / 255.0f;
-            clear.color.float32[1] = ((bg >> 8) & 0xFF) / 255.0f;
-            clear.color.float32[2] = (bg & 0xFF) / 255.0f;
-            clear.color.float32[3] = ((bg >> 24) & 0xFF) / 255.0f;
-        }
+        if (rect.z > 0.0f && rect.w > 0.0f) {
+            viewport.x = rect.x * scaleX;
+            viewport.y = rect.y * scaleY;
+            viewport.width = rect.z * scaleX;
+            viewport.height = rect.w * scaleY;
 
-        if (rw > 0.0f && rh > 0.0f) {
-            viewport.x = rx * scaleX;
-            viewport.y = ry * scaleY;
-            viewport.width = rw * scaleX;
-            viewport.height = rh * scaleY;
-
-            int32_t sx = (int32_t)(rx * scaleX);
+            int32_t sx = (int32_t)(rect.x * scaleX);
             if (sx < 0) sx = 0;
-            int32_t sy = (int32_t)(ry * scaleY);
+            int32_t sy = (int32_t)(rect.y * scaleY);
             if (sy < 0) sy = 0;
 
-            uint32_t sw = (uint32_t)(rw * scaleX);
-            uint32_t sh = (uint32_t)(rh * scaleY);
+            uint32_t sw = (uint32_t)(rect.z * scaleX);
+            uint32_t sh = (uint32_t)(rect.w * scaleY);
 
             if ((uint32_t)sx + sw > s_extent.width)
                 sw = s_extent.width > (uint32_t)sx ? s_extent.width - (uint32_t)sx : 0;
@@ -854,21 +822,95 @@ bool Vk_helloTriangle(float timeSeconds) {
         }
     }
 
+    CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
+    CmdSetViewport_fn(cb, 0, 1, &viewport);
+    CmdSetScissor_fn(cb, 0, 1, &scissor);
+    CmdPushConstants_fn(cb, s_triLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &timeSeconds);
+    CmdDraw_fn(cb, 3, 1, 0, 0);
+
+    EndCommandBuffer_fn(cb);
+
+    atomic_store_explicit(&s_renderReady, next, memory_order_release);
+    s_currentSecondary = next;
+
+    return true;
+}
+
+bool Vk_clearPresent(float r, float g, float b) {
+    if (!Vk_ready() || s_cmdBuffer == VK_NULL_HANDLE) return false;
+
+    VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceCapabilitiesKHR)
+    VkSurfaceCapabilitiesKHR live;
+    memset(&live, 0, sizeof(live));
+    if (GetPhysicalDeviceSurfaceCapabilitiesKHR_fn(s_phys, s_surface, &live) == VK_SUCCESS
+        && (live.currentExtent.width != s_extent.width || live.currentExtent.height != s_extent.height)) {
+        fprintf(stderr, "vk: extent moved %ux%u -> %ux%u; rebuilding\n",
+                s_extent.width, s_extent.height,
+                live.currentExtent.width, live.currentExtent.height);
+        if (!rebuildTargets()) return false;
+    }
+
+    uint32_t imageIndex = 0;
+    VK_LOAD_DEVICE(AcquireNextImageKHR)
+    VkResult ar = AcquireNextImageKHR_fn(s_device, s_swapchain, UINT64_MAX,
+                                         s_semAcquire, VK_NULL_HANDLE, &imageIndex);
+    if (ar == VK_ERROR_OUT_OF_DATE_KHR) {
+        if (!rebuildTargets()) return false;
+        return Vk_clearPresent(r, g, b);
+    }
+    if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR) return false;
+
+    VK_LOAD_DEVICE(WaitForFences)
+    VK_LOAD_DEVICE(ResetFences)
+    VK_LOAD_DEVICE(ResetCommandBuffer)
+    VK_LOAD_DEVICE(BeginCommandBuffer)
+    VK_LOAD_DEVICE(CmdBeginRenderPass)
+    VK_LOAD_DEVICE(CmdExecuteCommands)
+    VK_LOAD_DEVICE(CmdEndRenderPass)
+    VK_LOAD_DEVICE(EndCommandBuffer)
+    VK_LOAD_DEVICE(QueueSubmit)
+    VK_LOAD_DEVICE(QueuePresentKHR)
+
+    WaitForFences_fn(s_device, 1, &s_fence, VK_TRUE, UINT64_MAX);
+    ResetFences_fn(s_device, 1, &s_fence);
+    ResetCommandBuffer_fn(s_cmdBuffer, 0);
+
+    int ready = atomic_exchange_explicit(&s_renderReady, -1, memory_order_acquire);
+    if (ready != -1) {
+        atomic_store_explicit(&s_renderReading, ready, memory_order_release);
+    }
+    int reading = atomic_load_explicit(&s_renderReading, memory_order_acquire);
+
+
+    VkCommandBufferBeginInfo bbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    BeginCommandBuffer_fn(s_cmdBuffer, &bbi);
+
+    VkClearValue clear = {0};
+    uint32_t bg = s_scene3D ? Panel_getBackgroundColor(&(*s_scene3D).base.base) : 0xFF141414;
+    if (bg != 0) {
+        clear.color.float32[0] = ((bg >> 16) & 0xFF) / 255.0f;
+        clear.color.float32[1] = ((bg >> 8) & 0xFF) / 255.0f;
+        clear.color.float32[2] = (bg & 0xFF) / 255.0f;
+        clear.color.float32[3] = ((bg >> 24) & 0xFF) / 255.0f;
+    } else {
+        clear.color.float32[0] = r;
+        clear.color.float32[1] = g;
+        clear.color.float32[2] = b;
+        clear.color.float32[3] = 1.0f;
+    }
+
     VkRenderPassBeginInfo rbi = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
     rbi.renderPass = s_triPass;
     rbi.framebuffer = s_framebuffers[imageIndex];
     rbi.renderArea.extent = s_extent;
     rbi.clearValueCount = 1;
     rbi.pClearValues = &clear;
-    CmdBeginRenderPass_fn(s_cmdBuffer, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    CmdBeginRenderPass_fn(s_cmdBuffer, &rbi, reading >= 0 ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS : VK_SUBPASS_CONTENTS_INLINE);
 
-    CmdBindPipeline_fn(s_cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
-    CmdSetViewport_fn(s_cmdBuffer, 0, 1, &viewport);
-    CmdSetScissor_fn(s_cmdBuffer, 0, 1, &scissor);
+    if (reading >= 0) {
+        CmdExecuteCommands_fn(s_cmdBuffer, 1, &s_secondaryCmdBuffers[reading]);
+    }
 
-    CmdPushConstants_fn(s_cmdBuffer, s_triLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 4,
-                        (const void *)&timeSeconds);
-    CmdDraw_fn(s_cmdBuffer, 3, 1, 0, 0);
     CmdEndRenderPass_fn(s_cmdBuffer);
     EndCommandBuffer_fn(s_cmdBuffer);
 
@@ -891,7 +933,6 @@ bool Vk_helloTriangle(float timeSeconds) {
     pi.pImageIndices = &imageIndex;
     VkResult pr = QueuePresentKHR_fn(s_queue, &pi);
     if (pr == VK_ERROR_OUT_OF_DATE_KHR || pr == VK_SUBOPTIMAL_KHR) {
-        // targets rebuilt on the next call's sentry
         return pr == VK_SUBOPTIMAL_KHR;
     }
     return pr == VK_SUCCESS;
