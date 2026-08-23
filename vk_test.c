@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdatomic.h>
 #include <time.h>
@@ -66,6 +67,9 @@ static void vk_draw_job(Thread *self, void *task) {
 int main(void) {
     Key_init();
     NanoTime_init();
+
+    setenv("MVK_CONFIG_DISPLAY_SYNC_ENABLED", "0", 1);
+    setenv("MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER", "0", 1);
 
     Window *w = Window();
     Window_setTitle(w, "anti vk probe");
