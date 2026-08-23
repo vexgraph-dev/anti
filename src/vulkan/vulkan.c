@@ -425,24 +425,10 @@ static void destroyTargets(void) {
     s_swapchain = VK_NULL_HANDLE;
 }
 
-static _Atomic float s_rectX = 0;
-static _Atomic float s_rectY = 0;
-static _Atomic float s_rectW = 0;
-static _Atomic float s_rectH = 0;
-static _Atomic int s_winW = 0;
-static _Atomic int s_winH = 0;
-static _Atomic uint32_t s_bgColor = 0;
-static _Atomic bool s_hasLayout = false;
+static Scene3D *s_scene3D = NULL;
 
-void Vk_updateLayout(float x, float y, float w, float h, int winW, int winH, uint32_t bgColor) {
-    atomic_store_explicit(&s_rectX, x, memory_order_relaxed);
-    atomic_store_explicit(&s_rectY, y, memory_order_relaxed);
-    atomic_store_explicit(&s_rectW, w, memory_order_relaxed);
-    atomic_store_explicit(&s_rectH, h, memory_order_relaxed);
-    atomic_store_explicit(&s_winW, winW, memory_order_relaxed);
-    atomic_store_explicit(&s_winH, winH, memory_order_relaxed);
-    atomic_store_explicit(&s_bgColor, bgColor, memory_order_relaxed);
-    atomic_store_explicit(&s_hasLayout, true, memory_order_release);
+void Vk_setScene3D(Scene3D *scene) {
+    s_scene3D = scene;
 }
 
 bool Vk_ready(void) {
@@ -798,33 +784,31 @@ bool Vk_helloTriangle(float timeSeconds) {
     VkRect2D scissor = {0};
     scissor.extent = s_extent;
 
-    if (atomic_load_explicit(&s_hasLayout, memory_order_acquire)) {
-        int winW = atomic_load_explicit(&s_winW, memory_order_relaxed);
-        int winH = atomic_load_explicit(&s_winH, memory_order_relaxed);
+    if (s_scene3D != NULL) {
+        int winW = s_window ? Window_width(s_window) : 0;
+        int winH = s_window ? Window_height(s_window) : 0;
         if (winW <= 0) winW = (int)s_extent.width;
         if (winH <= 0) winH = (int)s_extent.height;
 
         float scaleX = (float)s_extent.width / (float)winW;
         float scaleY = (float)s_extent.height / (float)winH;
 
-        float rx = atomic_load_explicit(&s_rectX, memory_order_relaxed);
-        float ry = atomic_load_explicit(&s_rectY, memory_order_relaxed);
-        float rw = atomic_load_explicit(&s_rectW, memory_order_relaxed);
-        float rh = atomic_load_explicit(&s_rectH, memory_order_relaxed);
+        Vec4 rect;
+        Container_resolve(&(*s_scene3D).base.base.base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
 
-        if (rw > 0.0f && rh > 0.0f) {
-            viewport.x = rx * scaleX;
-            viewport.y = ry * scaleY;
-            viewport.width = rw * scaleX;
-            viewport.height = rh * scaleY;
+        if (rect.z > 0.0f && rect.w > 0.0f) {
+            viewport.x = rect.x * scaleX;
+            viewport.y = rect.y * scaleY;
+            viewport.width = rect.z * scaleX;
+            viewport.height = rect.w * scaleY;
 
-            int32_t sx = (int32_t)(rx * scaleX);
+            int32_t sx = (int32_t)(rect.x * scaleX);
             if (sx < 0) sx = 0;
-            int32_t sy = (int32_t)(ry * scaleY);
+            int32_t sy = (int32_t)(rect.y * scaleY);
             if (sy < 0) sy = 0;
 
-            uint32_t sw = (uint32_t)(rw * scaleX);
-            uint32_t sh = (uint32_t)(rh * scaleY);
+            uint32_t sw = (uint32_t)(rect.z * scaleX);
+            uint32_t sh = (uint32_t)(rect.w * scaleY);
 
             if ((uint32_t)sx + sw > s_extent.width)
                 sw = s_extent.width > (uint32_t)sx ? s_extent.width - (uint32_t)sx : 0;
@@ -902,7 +886,7 @@ bool Vk_clearPresent(float r, float g, float b) {
     BeginCommandBuffer_fn(s_cmdBuffer, &bbi);
 
     VkClearValue clear = {0};
-    uint32_t bg = atomic_load_explicit(&s_bgColor, memory_order_relaxed);
+    uint32_t bg = s_scene3D ? Panel_getBackgroundColor(&(*s_scene3D).base.base) : 0xFF141414;
     if (bg != 0) {
         clear.color.float32[0] = ((bg >> 16) & 0xFF) / 255.0f;
         clear.color.float32[1] = ((bg >> 8) & 0xFF) / 255.0f;

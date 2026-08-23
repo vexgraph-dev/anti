@@ -141,11 +141,7 @@ int main(void) {
     Container_setSelfAnchor(&(*scene3D).base.base.base, CONTAINER_SELF_ANCHOR_TOP_LEFT);
     Container_setParentAnchor(&(*scene3D).base.base.base, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
     Panel_setBackgroundColor(&(*scene3D).base.base, 0xFF141414);
-    int winW = Window_width(w);
-    int winH = Window_height(w);
-    Vec4 rect;
-    Container_resolve(&(*scene3D).base.base.base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
-    Vk_updateLayout(rect.x, rect.y, rect.z, rect.w, winW, winH, Panel_getBackgroundColor(&(*scene3D).base.base));
+    Vk_setScene3D(scene3D);
 
     atomic_store(&g_state.running, true);
 
@@ -169,10 +165,9 @@ int main(void) {
 
     while (!Window_shouldClose(w) && !Key_isDown(KEY_ESCAPE)) {
         Window_pollEvents();
-        winW = Window_width(w);
-        winH = Window_height(w);
-        Container_resolve(&(*scene3D).base.base.base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
-        Vk_updateLayout(rect.x, rect.y, rect.z, rect.w, winW, winH, Panel_getBackgroundColor(&(*scene3D).base.base));
+        int winW = Window_width(w);
+        int winH = Window_height(w);
+
 
         // 1ms event sleep keeps event pump at 1000Hz with zero idle CPU load
         struct timespec tick = { 0, 1000 * 1000 };
@@ -187,8 +182,6 @@ int main(void) {
             float pMs = (float)atomic_load_explicit(&g_state.presentFrametimeUs, memory_order_relaxed) / 1000.0f;
             uint32_t dFps = atomic_load_explicit(&g_state.drawFps, memory_order_relaxed);
             float dMs = (float)atomic_load_explicit(&g_state.drawFrametimeUs, memory_order_relaxed) / 1000.0f;
-            int winW = Window_width(w);
-            int winH = Window_height(w);
 
             snprintf(titleBuf, sizeof(titleBuf),
                      "anti vk probe | Present FPS: %u (%.2f ms) | Draw FPS: %u (%.2f ms) | %dx%d",
