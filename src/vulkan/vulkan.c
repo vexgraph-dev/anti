@@ -326,7 +326,7 @@ static bool rebuildTargets(void) {
 
     VkSwapchainCreateInfoKHR swci = { .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     swci.surface = s_surface;
-    swci.minImageCount = imageCount;
+    swci.minImageCount = caps.minImageCount;
     swci.imageFormat = s_format;
     swci.imageColorSpace = formatCount ? formats[0].colorSpace : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     swci.imageExtent = caps.currentExtent;
@@ -336,7 +336,7 @@ static bool rebuildTargets(void) {
     swci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     swci.preTransform = caps.currentTransform;
     swci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swci.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+    swci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     swci.clipped = VK_TRUE;
     swci.oldSwapchain = oldSwapchain;
 
