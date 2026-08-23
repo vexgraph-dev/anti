@@ -203,7 +203,7 @@ add_executable(vk_test
     src/struct/list.c
     src/struct/collection.c
     src/util/hash.c
-    tests/vk_test.c
+    vk_test.c
     src/vulkan/vulkan.c
     src/buffers/buffer.c
     src/buffers/color_buffer.c
