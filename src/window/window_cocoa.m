@@ -956,3 +956,18 @@ void *Window_metalLayer(Window *window) {
         return (__bridge void *)view.layer;
     }
 }
+
+void Window_setGravityTopLeft(Window *window) {
+    if (!window || !(*window).nsWindow)
+        return;
+    @autoreleasepool {
+        NSView *view = [(*window).nsWindow contentView];
+        view.layerContentsPlacement = NSViewLayerContentsPlacementTopLeft;
+        view.layerContentsRedrawPolicy = NSViewLayerContentsRedrawDuringViewResize;
+        if (view.layer) {
+            view.layer.contentsGravity = kCAGravityTopLeft;
+            view.layer.autoresizingMask = kCALayerHeightSizable | kCALayerWidthSizable;
+            view.layer.needsDisplayOnBoundsChange = YES;
+        }
+    }
+}
