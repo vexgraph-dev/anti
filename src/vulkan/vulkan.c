@@ -346,6 +346,9 @@ static bool rebuildTargets(void) {
         return false;
     }
 
+    Window_setGravityTopLeft(s_window);
+
+
     // Safely destroy previous framebuffers, views, and old swapchain
     for (uint32_t i = 0; i < s_imageCount; i++) {
         if (s_framebuffers[i] != VK_NULL_HANDLE)
