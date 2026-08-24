@@ -81,10 +81,6 @@ static int macKeyMap[128] = {
 static bool s_cursorLocked = false;
 static CGPoint s_lockCenter = {0, 0};
 
-// Default clear color behind everything (legacy parity with the probe's
-// 0xFF141414 panel). Overridden per window via Window_setBackgroundColor*.
-#define WINDOW_COLOR_DEFAULT 0xFF141414u
-
 // Window-lifecycle adapter registry capacity. Attach/dispatch are thread-0
 // operations, so the registry itself needs no synchronization.
 #define WINDOW_ADAPTER_MAX 16
@@ -98,8 +94,8 @@ static CGPoint s_lockCenter = {0, 0};
 // resize-reflection counter: Thread 0 bumps it when the content rect moves.
 // renderGeneration is the same reflection trick for present POLICY: bumped
 // by the setters whenever the swapchain itself must be rebuilt
-// (presentMode / transparent). Color and container are polled fresh every
-// frame and never bump it.
+// (presentMode / transparent). The container slot is polled fresh every
+// frame and never bumps it — its panel carries the clear color too.
 struct Window {
     NSWindow *nsWindow;
     AntiWindowDelegate *delegate;
@@ -110,10 +106,11 @@ struct Window {
     int cachedHeight;
     double cachedX;          // top-left screen coords at last pump (move reflection)
     double cachedY;
+    double cachedContentX;   // CONTENT top-left (below title bar), same space
+    double cachedContentY;
 
     // --- present policy (renderer-facing atomic words) ---
     _Atomic int presentMode;
-    _Atomic uint32_t backgroundColor;
     _Atomic bool transparent;
     _Atomic uint64_t renderGeneration;
 
@@ -502,6 +499,13 @@ void Window_pollEvents(void) {
                 windowFireMoved(handle, (int)tx, (int)ty);
             }
 
+            // Content origin: chrome-aware twin of the frame cache — the
+            // collage joins against this, not the title-bar-included frame.
+            double cx = (double)frame.origin.x;
+            double cy = (double)(screenHeight - content.origin.y - content.size.height);
+            (*handle).cachedContentX = cx;
+            (*handle).cachedContentY = cy;
+
             // Focus flip: mirror the OS spotlight into per-window adapters.
             bool focused = (windowIdOf([NSApp keyWindow]) == (*handle).id);
             if (focused != (*handle).lastFocused) {
@@ -572,8 +576,11 @@ static Window *windowAlloc(const WindowDesc *desc) {
         CGFloat screenH = [[NSScreen mainScreen] frame].size.height;
         (*w).cachedX = (double)initialFrame.origin.x;
         (*w).cachedY = (double)(screenH - initialFrame.origin.y - initialFrame.size.height);
+        NSRect initialContentRect = initialContent;
+        (*w).cachedContentX = (double)initialFrame.origin.x
+                              + (double)(initialContentRect.origin.x - initialFrame.origin.x);
+        (*w).cachedContentY = (double)(screenH - initialContentRect.origin.y - initialContentRect.size.height);
         atomic_store_explicit(&(*w).presentMode, WINDOW_PRESENT_FIFO, memory_order_relaxed);
-        atomic_store_explicit(&(*w).backgroundColor, WINDOW_COLOR_DEFAULT, memory_order_relaxed);
         atomic_store_explicit(&(*w).transparent, false, memory_order_relaxed);
         atomic_store_explicit(&(*w).renderGeneration, 0, memory_order_relaxed);
         atomic_store_explicit(&(*w).container, NULL, memory_order_relaxed);
@@ -676,26 +683,6 @@ void Window_setPresentMode(Window *window, int mode) {
 int Window_getPresentMode(const Window *window) {
     return window ? atomic_load_explicit(&(*window).presentMode, memory_order_relaxed)
                   : WINDOW_PRESENT_FIFO;
-}
-
-void Window_setBackgroundColorHex(Window *window, uint32_t rgba) {
-    if (!window)
-        return;
-    atomic_store_explicit(&(*window).backgroundColor, rgba, memory_order_relaxed);
-}
-
-void Window_setBackgroundColorRGBA(Window *window, uint8_t r, uint8_t g,
-                                   uint8_t b, uint8_t a) {
-    uint32_t rgba = ((uint32_t) a << 24)
-                  | ((uint32_t) r << 16)
-                  | ((uint32_t) g << 8)
-                  | (uint32_t) b;
-    Window_setBackgroundColorHex(window, rgba);
-}
-
-uint32_t Window_getBackgroundColor(const Window *window) {
-    return window ? atomic_load_explicit(&(*window).backgroundColor, memory_order_relaxed)
-                  : WINDOW_COLOR_DEFAULT;
 }
 
 void Window_setTransparent(Window *window, bool transparent) {
@@ -816,6 +803,13 @@ void Window_getLocation(const Window *window, int *outX, int *outY) {
         *outX = window ? (int)(*window).cachedX : 0;
     if (outY)
         *outY = window ? (int)(*window).cachedY : 0;
+}
+
+void Window_getContentOrigin(const Window *window, int *outX, int *outY) {
+    if (outX)
+        *outX = window ? (int)(*window).cachedContentX : 0;
+    if (outY)
+        *outY = window ? (int)(*window).cachedContentY : 0;
 }
 
 void Window_center(Window *window) {
