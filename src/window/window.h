@@ -109,6 +109,8 @@ int  Window_width(Window *window);
 int  Window_height(Window *window);
 void Window_setSize(Window *window, int width, int height);
 void Window_setLocation(Window *window, int x, int y);
+// Top-left corner in global desktop points (the space setLocation speaks).
+void Window_getLocation(const Window *window, int *outX, int *outY);
 void Window_center(Window *window);
 void Window_show(Window *window);
 void Window_hide(Window *window);
