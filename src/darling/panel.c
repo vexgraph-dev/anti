@@ -33,7 +33,7 @@ Panel *Panel_0(void) {
 Panel *Panel_1(Panel *parent) {
     Panel *p = Panel_0();
     if (p && parent)
-        Panel_addChild(parent, p);
+        Panel_addContainer(parent, p);
     return p;
 }
 
@@ -156,7 +156,7 @@ static void detachFromParent(Panel *child) {
         Panel_removeChild(old, child);
 }
 
-void Panel_addChild(Panel *p, Panel *child) {
+void Panel_addContainer(Panel *p, Panel *child) {
     if (!p || !child || p == child)
         return;
     detachFromParent(child);
@@ -225,7 +225,7 @@ Panel *Panel_add(Panel *parent, const Panel *node) {
     for (size_t i = 0; i < n; i++)
         Panel_add(copy, Panel_getChild(node, i));
 
-    Panel_addChild(parent, copy);
+    Panel_addContainer(parent, copy);
     Container_markDirty(cb);
     return copy;
 }

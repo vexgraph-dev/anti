@@ -56,7 +56,7 @@ size_t Panel_childCount(const Panel *p);
 Panel *Panel_getChild(const Panel *p, size_t index);
 bool Panel_hasChildren(const Panel *p);
 bool Panel_containsChild(const Panel *p, const Panel *child);
-void Panel_addChild(Panel *p, Panel *child);
+void Panel_addContainer(Panel *p, Panel *child);
 bool Panel_removeChild(Panel *p, Panel *child);
 
 // Structural deep copy with aliased payloads; the copy is attached to parent.
