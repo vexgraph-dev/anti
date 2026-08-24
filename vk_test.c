@@ -67,7 +67,6 @@ int main(void) {
     Window *w = Window();
     Window_setTitle(w, "anti vk probe");
     Window_setSize(w, 640, 400);
-    Window_setBackgroundColor(w, 20, 20, 20, 255);
     Window_show(w);
 
     int vkResult = Vk_init(w);
@@ -83,6 +82,7 @@ int main(void) {
     // mirror the window's content size (resize-reflection), and everything
     // else hangs under it as children. ONE layer renders: these children.
     Panel *root = Panel_0();
+    Panel_setBackgroundColor(root,0xffffffffl);
     Window_setContainer(w, root);
 
     // Scene3D child: legacy animated triangle content in its bounds.
@@ -96,7 +96,7 @@ int main(void) {
     Container_setLocation(&(*hud).base, 40.0f, 40.0f);
     Container_setSize(&(*hud).base, 160.0f, 80.0f);
     Panel_setBackgroundColor(hud, 0xFF2E7D32);
-    Panel_addContainer(root, hud);
+    // Panel_addContainer(root, hud); // just comment because it doesnt make sense for now
 
     atomic_store(&g_state.running, true);
 
