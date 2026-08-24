@@ -17,56 +17,16 @@
 typedef struct {
     _Atomic bool running;
 
-    // Honest draw telemetry: counts only frames that actually rendered
-    // (a pass where the triple buffer was full and we got skipped is not a frame)
-    _Atomic uint32_t drawFps;
-    _Atomic uint32_t drawFrametimeUs;
+    // Honest present telemetry: one loop owns clear -> render -> blit ->
+    // present for the whole compositor model, so there is exactly one FPS.
     _Atomic uint32_t presentFps;
     _Atomic uint32_t presentFrametimeUs;
 } VkProbeState;
 
 static VkProbeState g_state = {0};
 
-static void vk_draw_job(Thread *self, void *task) {
-    (void)self;
-    (void)task;
-
-    static NanoTimer timer;
-    static bool init = false;
-    static uint64_t lastReportNanos = 0;
-    static uint32_t frameCount = 0;
-
-    if (!init) {
-        NanoTimer_reset(&timer);
-        lastReportNanos = NanoTime_now();
-        init = true;
-    }
-
-    if (!atomic_load_explicit(&g_state.running, memory_order_relaxed))
-        return;
-
-    uint64_t frameStart = NanoTime_now();
-    NanoTimer_tick(&timer);
-    float time = (float)NanoTimer_totalTime(&timer);
-
-    if (!Vk_helloTriangle(time))
-        return; // triple buffer full or rebuild paused: no frame produced
-
-    frameCount++;
-    uint64_t frameEnd = NanoTime_now();
-    uint64_t frameUs = (frameEnd - frameStart) / 1000;
-    atomic_store_explicit(&g_state.drawFrametimeUs, (uint32_t)frameUs, memory_order_relaxed);
-
-    uint64_t elapsed = frameEnd - lastReportNanos;
-    if (elapsed >= 500000000ULL) { // update every 500ms
-        uint32_t fps = (uint32_t)((frameCount * 1000000000ULL) / elapsed);
-        atomic_store_explicit(&g_state.drawFps, fps, memory_order_relaxed);
-        frameCount = 0;
-        lastReportNanos = frameEnd;
-    }
-}
-
-
+// Present Worker: clears the monitor cache, renders the basket's children
+// onto it, blits the window region and presents — the whole loop.
 static void vk_present_job(Thread *self, void *task) {
     (void)self;
     (void)task;
@@ -118,48 +78,34 @@ int main(void) {
         Key_shutdown();
         return 1;
     }
+
     // The basket: one empty panel on the window's container slot. Its w/h
     // mirror the window's content size (resize-reflection), and everything
-    // else hangs under it as children.
+    // else hangs under it as children. ONE layer renders: these children.
     Panel *root = Panel_0();
     Window_setContainer(w, root);
 
-    // Darling Scene3D: just a child of the basket, anchored to its
-    // bottom-right parent edges so it MOVES with them on resize (darling
-    // anchor semantics); the drawable itself stays 1:1 via kCAGravityTopLeft.
+    // Scene3D child: legacy animated triangle content in its bounds.
     Scene3D *scene3D = Scene3D_0();
     Container_setLocation(&(*scene3D).base.base.base, 0.0f, 0.0f);
     Container_setSize(&(*scene3D).base.base.base, 640.0f, 400.0f);
-    Container_setSelfAnchor(&(*scene3D).base.base.base, CONTAINER_SELF_ANCHOR_TOP_LEFT);
-    Container_setParentAnchor(&(*scene3D).base.base.base, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
-
     Panel_addContainer(root, &(*scene3D).base.base);
+
+    // Plain panel child: a solid quad floating over the scene.
+    Panel *hud = Panel_0();
+    Container_setLocation(&(*hud).base, 40.0f, 40.0f);
+    Container_setSize(&(*hud).base, 160.0f, 80.0f);
+    Panel_setBackgroundColor(hud, 0xFF2E7D32);
+    Panel_addContainer(root, hud);
 
     atomic_store(&g_state.running, true);
 
-    // Core Draw Worker: owns GPU render loop on dedicated background thread
-    Thread *drawWorker = Thread_new(TYPE_THREAD_DRAW_SINGLETON, vk_draw_job,
-                                    1024, true, false);
-    if (!drawWorker || !Thread_run(drawWorker)) {
-        fprintf(stderr, "failed to start Vulkan draw worker thread\n");
-        atomic_store(&g_state.running, false);
-        Vk_shutdown();
-        Memory_free(scene3D);
-        Memory_free(root);
-        Window_destroy(w);
-        Key_shutdown();
-        return 1;
-    }
-
-
-    // Present Worker: owns the swapchain presentation loop
+    // Present Worker: owns the whole cache-clear/render/blit/present loop
     Thread *presentWorker = Thread_new(TYPE_THREAD_UI_SINGLETON, vk_present_job,
                                        1024, true, false);
     if (!presentWorker || !Thread_run(presentWorker)) {
         fprintf(stderr, "failed to start Vulkan present worker thread\n");
         atomic_store(&g_state.running, false);
-        Thread_stop(drawWorker);
-        Thread_free(drawWorker);
         Vk_shutdown();
         Memory_free(scene3D);
         Memory_free(root);
@@ -176,7 +122,6 @@ int main(void) {
         int winW = Window_width(w);
         int winH = Window_height(w);
 
-
         // 1ms event sleep keeps event pump at 1000Hz with zero idle CPU load
         struct timespec tick = { 0, 1000 * 1000 };
         nanosleep(&tick, NULL);
@@ -188,15 +133,13 @@ int main(void) {
 
             uint32_t pFps = atomic_load_explicit(&g_state.presentFps, memory_order_relaxed);
             float pMs = (float)atomic_load_explicit(&g_state.presentFrametimeUs, memory_order_relaxed) / 1000.0f;
-            uint32_t dFps = atomic_load_explicit(&g_state.drawFps, memory_order_relaxed);
-            float dMs = (float)atomic_load_explicit(&g_state.drawFrametimeUs, memory_order_relaxed) / 1000.0f;
 
             snprintf(titleBuf, sizeof(titleBuf),
-                     "anti vk probe | Present FPS: %u (%.2f ms) | Draw FPS: %u (%.2f ms) | %dx%d",
-                     pFps, pMs, dFps, dMs, winW, winH);
+                     "anti vk probe | Present FPS: %u (%.2f ms) | %dx%d",
+                     pFps, pMs, winW, winH);
             Window_setTitle(w, titleBuf);
-            printf("[telemetry] Present FPS: %u (%.2f ms) | Draw FPS: %u (%.2f ms) | %dx%d\n",
-                   pFps, pMs, dFps, dMs, winW, winH);
+            printf("[telemetry] Present FPS: %u (%.2f ms) | %dx%d\n",
+                   pFps, pMs, winW, winH);
             fflush(stdout);
         }
     }
@@ -207,13 +150,10 @@ int main(void) {
         Thread_stop(presentWorker);
         Thread_free(presentWorker);
     }
-    if (drawWorker) {
-        Thread_stop(drawWorker);
-        Thread_free(drawWorker);
-    }
 
     Vk_shutdown();
     Memory_free(scene3D);
+    Memory_free(hud);
     Memory_free(root);
     Window_destroy(w);
     Key_shutdown();
