@@ -34,6 +34,11 @@ VkView  *VkView_at(size_t index);
 // or NULL when the point falls outside every monitor (then callers pick at(0)).
 VkView  *VkView_forPoint(float x, float y);
 
+// The view mirroring this display id — the same CGDirectDisplayID that
+// Window_getMonitorId and DisplayMonitor_getId speak. NULL when discovery
+// has not produced a view for it yet (fresh hotplug).
+VkView  *VkView_forMonitor(uint32_t displayId);
+
 // Desktop origin of this monitor in global AppKit points.
 float    VkView_getOriginX(const VkView *view);
 float    VkView_getOriginY(const VkView *view);

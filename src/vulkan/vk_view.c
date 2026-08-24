@@ -305,6 +305,16 @@ VkView *VkView_forPoint(float x, float y) {
     return NULL;
 }
 
+VkView *VkView_forMonitor(uint32_t displayId) {
+    if (displayId == 0)
+        return NULL;
+    for (size_t i = 0; i < s_viewCount; i++) {
+        if ((*&s_views[i]).displayId == displayId)
+            return &s_views[i];
+    }
+    return NULL;
+}
+
 float VkView_getOriginX(const VkView *view) {
     return view ? (*view).originX : 0.0f;
 }
