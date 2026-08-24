@@ -79,23 +79,11 @@ static void vk_present_job(Thread *self, void *task) {
         lastReportNanos = NanoTime_now();
         init = true;
     }
-    
-    // Wait for Draw Thread to initialize Vulkan primitives (cmd buffers, fences, etc.)
-    // on its first frame before we start presenting.
-    while (atomic_load_explicit(&g_state.running, memory_order_relaxed)) {
-        // We know Draw Thread has finished initialization once it produces the first frame
-        // But wait, s_renderReady is hidden inside vulkan.c!
-        // We can just use Vk_ready(), wait, Vk_ready() is true from the start.
-        // Let's just call a sleep. But how do we know it's ready?
-        // Let's modify Vk_clearPresent to just return early if s_cmdBuffer is NULL!
-        break;
-    }
-
 
     while (atomic_load_explicit(&g_state.running, memory_order_relaxed)) {
         uint64_t frameStart = NanoTime_now();
-        
-        Vk_clearPresent(0, 0, 0);
+
+        Vk_clearPresent();
 
         frameCount++;
         uint64_t frameEnd = NanoTime_now();
@@ -116,32 +104,36 @@ int main(void) {
     Key_init();
     NanoTime_init();
 
-    setenv("MVK_CONFIG_DISPLAY_SYNC_ENABLED", "0", 1);
-    setenv("MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER", "0", 1);
-
     Window *w = Window();
     Window_setTitle(w, "anti vk probe");
-    Window_setDimension(w, 640, 400);
+    Window_setSize(w, 640, 400);
+    Window_setBackgroundColor(w, 20, 20, 20, 255);
     Window_show(w);
-    Window_pollEvents();
 
-    printf("vk init: %d (%s)\n", Vk_init(w), Vk_status());
-    if (!Vk_ready()) {
+    int vkResult = Vk_init(w);
+    printf("vk init: %d (%s)\n", vkResult, Vk_status());
+    if (!vkResult) {
         fprintf(stderr, "vk init failed: %s\n", Vk_status());
         Window_destroy(w);
         Key_shutdown();
         return 1;
     }
-    // Darling Scene3D: 3D Scene container node anchored to the bottom-right
-    // parent edges — on resize the panel MOVES with those edges (darling
+    // The basket: one empty panel on the window's container slot. Its w/h
+    // mirror the window's content size (resize-reflection), and everything
+    // else hangs under it as children.
+    Panel *root = Panel_0();
+    Window_setContainer(w, root);
+
+    // Darling Scene3D: just a child of the basket, anchored to its
+    // bottom-right parent edges so it MOVES with them on resize (darling
     // anchor semantics); the drawable itself stays 1:1 via kCAGravityTopLeft.
     Scene3D *scene3D = Scene3D_0();
     Container_setLocation(&(*scene3D).base.base.base, 0.0f, 0.0f);
     Container_setSize(&(*scene3D).base.base.base, 640.0f, 400.0f);
     Container_setSelfAnchor(&(*scene3D).base.base.base, CONTAINER_SELF_ANCHOR_TOP_LEFT);
     Container_setParentAnchor(&(*scene3D).base.base.base, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
-    Panel_setBackgroundColor(&(*scene3D).base.base, 0xFF141414);
-    Vk_setScene3D(scene3D);
+
+    Panel_addContainer(root, &(*scene3D).base.base);
 
     atomic_store(&g_state.running, true);
 
@@ -150,6 +142,13 @@ int main(void) {
                                     1024, true, false);
     if (!drawWorker || !Thread_run(drawWorker)) {
         fprintf(stderr, "failed to start Vulkan draw worker thread\n");
+        atomic_store(&g_state.running, false);
+        Vk_shutdown();
+        Memory_free(scene3D);
+        Memory_free(root);
+        Window_destroy(w);
+        Key_shutdown();
+        return 1;
     }
 
 
@@ -158,6 +157,15 @@ int main(void) {
                                        1024, true, false);
     if (!presentWorker || !Thread_run(presentWorker)) {
         fprintf(stderr, "failed to start Vulkan present worker thread\n");
+        atomic_store(&g_state.running, false);
+        Thread_stop(drawWorker);
+        Thread_free(drawWorker);
+        Vk_shutdown();
+        Memory_free(scene3D);
+        Memory_free(root);
+        Window_destroy(w);
+        Key_shutdown();
+        return 1;
     }
 
     uint64_t lastReport = NanoTime_now();
@@ -206,6 +214,7 @@ int main(void) {
 
     Vk_shutdown();
     Memory_free(scene3D);
+    Memory_free(root);
     Window_destroy(w);
     Key_shutdown();
     return 0;
