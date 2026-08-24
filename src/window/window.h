@@ -289,4 +289,15 @@ uint32_t Window_getMonitorId(const Window *window);
 // frame of lag at worst, zero AppKit calls off Thread 0, no locks.
 uint64_t Window_sizeGeneration(Window *window);
 
+// --- Resize-cadence rendering (the c -> objc -> c bridge) --------------------
+//
+// AppKit resizes windows inside its own nested tracking loop; a decoupled
+// present thread always trails that cadence by up to a frame. The hook below
+// closes the gap: fired synchronously ON THREAD 0 from the pump, the moment
+// the content rect has resized OR moved, letting the compositor render+present
+// at the OS's own resize rhythm. Implementations MUST be non-blocking-safe:
+// if the GPU path is busy, drop the frame (the regular loop catches up).
+typedef void (*WindowResizeRenderFn)(void *userdata);
+void Window_setResizeRenderHook(Window *window, WindowResizeRenderFn fn, void *userdata);
+
 #endif

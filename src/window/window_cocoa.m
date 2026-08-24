@@ -125,6 +125,10 @@ struct Window {
     // --- window-lifecycle adapters (thread 0 only) ---
     const WindowEvent *windowAdapters[WINDOW_ADAPTER_MAX];
     int windowAdapterCount;
+
+    // --- resize-cadence render bridge (c -> objc -> c) ---
+    WindowResizeRenderFn resizeRenderFn;
+    void *resizeRenderUserdata;
 };
 
 // Window id registry: slot i holds the NSWindow currently owning id i (and
@@ -481,11 +485,13 @@ void Window_pollEvents(void) {
             NSRect content = [w contentRectForFrameRect:[w frame]];
             int cw = (int)content.size.width;
             int ch = (int)content.size.height;
+            bool rectChanged = false;
             if (cw != (*handle).cachedWidth || ch != (*handle).cachedHeight) {
                 (*handle).cachedWidth = cw;
                 (*handle).cachedHeight = ch;
                 atomic_fetch_add_explicit(&(*handle).sizeGeneration, 1, memory_order_release);
                 windowFireResized(handle, cw, ch);
+                rectChanged = true;
             }
 
             // Move reflection: top-left screen coords, same space setLocation
@@ -498,6 +504,7 @@ void Window_pollEvents(void) {
                 (*handle).cachedX = tx;
                 (*handle).cachedY = ty;
                 windowFireMoved(handle, (int)tx, (int)ty);
+                rectChanged = true;
             }
 
             // Content origin: chrome-aware twin of the frame cache — the
@@ -522,6 +529,12 @@ void Window_pollEvents(void) {
             // every pass on thread 0 before any present can sample the
             // layer. There is no stretch mode to fall back into.
             applyLayerGravity(handle);
+
+            // Resize-cadence bridge: geometry moved this pass -> hand thread
+            // 0's fresh caches straight to the compositor renderer. Runs
+            // INSIDE AppKit's event servicing, at the OS's own rhythm.
+            if (rectChanged && (*handle).resizeRenderFn)
+                (*(*handle).resizeRenderFn)((*handle).resizeRenderUserdata);
 
             // Discriminator probe: who is stretching? Log what the layer
             // ACTUALLY carries while the window is being abused. If gravity
@@ -1139,6 +1152,13 @@ void Window_focus(Window *window) {
 
 bool Window_isFocused(Window *window) {
     return window && Focus_isFocused((*window).id);
+}
+
+void Window_setResizeRenderHook(Window *window, WindowResizeRenderFn fn, void *userdata) {
+    if (!window)
+        return;
+    (*window).resizeRenderFn = fn;
+    (*window).resizeRenderUserdata = userdata;
 }
 
 uint32_t Window_getMonitorId(const Window *window) {
