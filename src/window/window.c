@@ -134,6 +134,12 @@ void Window_setLocation(Window *window, int x, int y) {
     (void) y;
 }
 
+;;INCOMPLETE // GetWindowRect top-left; zeros until implemented.
+void Window_getLocation(const Window *window, int *outX, int *outY) {
+    if (outX) *outX = 0;
+    if (outY) *outY = 0;
+}
+
 ;;INCOMPLETE // CenterWindow; no-op until implemented.
 void Window_center(Window *window) {
     (void) window;
