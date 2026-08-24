@@ -766,6 +766,15 @@ void Window_setLocation(Window *window, int x, int y) {
     }
 }
 
+// Mirrors the cached top-left desktop coords the pump already maintains for
+// move reflection — no AppKit call needed on the read path.
+void Window_getLocation(const Window *window, int *outX, int *outY) {
+    if (outX)
+        *outX = window ? (int)(*window).cachedX : 0;
+    if (outY)
+        *outY = window ? (int)(*window).cachedY : 0;
+}
+
 void Window_center(Window *window) {
     if (!window)
         return;
