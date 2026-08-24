@@ -134,6 +134,11 @@ void Window_setLocation(Window *window, int x, int y) {
     (void) y;
 }
 
+uint32_t Window_getMonitorId(const Window *window) {
+    (void) window;
+    return 0;
+}
+
 ;;INCOMPLETE // GetWindowRect top-left; zeros until implemented.
 void Window_getLocation(const Window *window, int *outX, int *outY) {
     if (outX) *outX = 0;
