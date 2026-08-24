@@ -45,10 +45,73 @@ bool Window_shouldClose(Window *window) {
 void Window_pollEvents(void) {
 }
 
-;;INCOMPLETE // SwapBuffers vsync; no-op until implemented.
-void Window_setVsync(Window *window, bool enabled) {
+;;INCOMPLETE // DXGI swap interval; no-op until implemented.
+void Window_setPresentMode(Window *window, int mode) {
+    (void) window;
+    (void) mode;
+}
+
+int Window_getPresentMode(const Window *window) {
+    (void) window;
+    return WINDOW_PRESENT_FIFO;
+}
+
+;;INCOMPLETE // Clear color; no-op until implemented.
+void Window_setBackgroundColorHex(Window *window, uint32_t rgba) {
+    (void) window;
+    (void) rgba;
+}
+
+void Window_setBackgroundColorRGBA(Window *window, uint8_t r, uint8_t g,
+                                   uint8_t b, uint8_t a) {
+    (void) window;
+    (void) r;
+    (void) g;
+    (void) b;
+    (void) a;
+}
+
+uint32_t Window_getBackgroundColor(const Window *window) {
+    (void) window;
+    return 0xFF141414u;
+}
+
+;;INCOMPLETE // Layered window alpha; no-op until implemented.
+void Window_setTransparent(Window *window, bool transparent) {
+    (void) window;
+    (void) transparent;
+}
+
+bool Window_isTransparent(const Window *window) {
+    (void) window;
+    return false;
+}
+
+uint64_t Window_renderGeneration(const Window *window) {
+    (void) window;
+    return 0;
+}
+
+;;INCOMPLETE // Content root slot; no-op until implemented.
+void Window_setContainer(Window *window, Panel *root) {
+    (void) window;
+    (void) root;
+}
+
+Panel *Window_getContainer(const Window *window) {
+    (void) window;
+    return NULL;
+}
+
+;;INCOMPLETE // Input kill switch; no-op until implemented.
+void Window_setEnabled(Window *window, bool enabled) {
     (void) window;
     (void) enabled;
+}
+
+bool Window_isEnabled(const Window *window) {
+    (void) window;
+    return true;
 }
 
 ;;INCOMPLETE // SetWindowTextA; no-op until implemented.
@@ -61,18 +124,6 @@ void Window_setTitle(Window *window, const char *title) {
 void Window_setSize(Window *window, int width, int height) {
     (void) window;
     (void) width;
-    (void) height;
-}
-
-;;INCOMPLETE // SetWindowPos; no-op until implemented.
-void Window_setWidth(Window *window, int width) {
-    (void) window;
-    (void) width;
-}
-
-;;INCOMPLETE // SetWindowPos; no-op until implemented.
-void Window_setHeight(Window *window, int height) {
-    (void) window;
     (void) height;
 }
 
