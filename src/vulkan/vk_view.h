@@ -43,9 +43,10 @@ VkView  *VkView_forMonitor(uint32_t displayId);
 float    VkView_getOriginX(const VkView *view);
 float    VkView_getOriginY(const VkView *view);
 
-// Cache extent: native physical panel pixels, falling back to the active
-// pixel mode when the panel grid is unknown. This is NOT point-derived —
-// retina scaling never touches it.
+// Cache extent: the ACTIVE pixel mode of the monitor (what the window server
+// actually composites — cache pixels are glass pixels, blits never resample),
+// falling back to the native panel grid, then points. Never point-derived by
+// choice; retina scaling is read off the mode, not multiplied in.
 int32_t  VkView_getWidth(const VkView *view);
 int32_t  VkView_getHeight(const VkView *view);
 

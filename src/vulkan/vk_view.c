@@ -259,13 +259,16 @@ bool VkView_refreshAll(VkInstance instance, PFN_vkGetInstanceProcAddr gpa,
         (*v).pointW = DisplayMonitor_getPointWidth(mon);
         (*v).pointH = DisplayMonitor_getPointHeight(mon);
 
-        // THE GIANT BUFFER: native hardware panel pixels first, active mode
-        // as fallback. Never derived from point space or a backing scale.
-        int32_t w = DisplayMonitor_getNativeWidth(mon);
-        int32_t h = DisplayMonitor_getNativeHeight(mon);
+        // THE GIANT BUFFER: the ACTIVE pixel mode first — that is literally
+        // the plane the window server composites, so cache pixels map 1:1 to
+        // glass and every blit stays a copy. Native panel grid is the
+        // fallback (it can exceed reality when macOS advertises virtual
+        // scaled modes); points last as pure desperation.
+        int32_t w = DisplayMonitor_getCurrentWidth(mon);
+        int32_t h = DisplayMonitor_getCurrentHeight(mon);
         if (w <= 0 || h <= 0) {
-            w = DisplayMonitor_getCurrentWidth(mon);
-            h = DisplayMonitor_getCurrentHeight(mon);
+            w = DisplayMonitor_getNativeWidth(mon);
+            h = DisplayMonitor_getNativeHeight(mon);
         }
         if (w <= 0 || h <= 0) {
             w = DisplayMonitor_getPointWidth(mon);
