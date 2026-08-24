@@ -22,6 +22,10 @@
 
 #include "buffers/color_buffer.h"
 #include "window/window.h"
+// NOTE: no darling/panel.h here on purpose — it transitively typedefs
+// `Collection`, which collides with CarbonCore under AppKit imports. This
+// file only stores Panel pointers (opaque slots), never dereferences them;
+// window.h's forward typedef is all it needs.
 
 #include "input/focus.h"
 #include "input/key.h"
@@ -77,6 +81,14 @@ static int macKeyMap[128] = {
 static bool s_cursorLocked = false;
 static CGPoint s_lockCenter = {0, 0};
 
+// Default clear color behind everything (legacy parity with the probe's
+// 0xFF141414 panel). Overridden per window via Window_setBackgroundColor*.
+#define WINDOW_COLOR_DEFAULT 0xFF141414u
+
+// Window-lifecycle adapter registry capacity. Attach/dispatch are thread-0
+// operations, so the registry itself needs no synchronization.
+#define WINDOW_ADAPTER_MAX 16
+
 @class AntiWindowDelegate;
 
 // One opaque handle handed back to C. Holds both NS objects we must keep
@@ -84,6 +96,10 @@ static CGPoint s_lockCenter = {0, 0};
 // window number (1..7; 0 is the broadcast reserved id) used to tag input
 // events and route them to per-window listeners. sizeGeneration is the
 // resize-reflection counter: Thread 0 bumps it when the content rect moves.
+// renderGeneration is the same reflection trick for present POLICY: bumped
+// by the setters whenever the swapchain itself must be rebuilt
+// (presentMode / transparent). Color and container are polled fresh every
+// frame and never bump it.
 struct Window {
     NSWindow *nsWindow;
     AntiWindowDelegate *delegate;
@@ -92,6 +108,25 @@ struct Window {
     _Atomic uint64_t sizeGeneration;
     int cachedWidth;
     int cachedHeight;
+    double cachedX;          // top-left screen coords at last pump (move reflection)
+    double cachedY;
+
+    // --- present policy (renderer-facing atomic words) ---
+    _Atomic int presentMode;
+    _Atomic uint32_t backgroundColor;
+    _Atomic bool transparent;
+    _Atomic uint64_t renderGeneration;
+
+    // --- content root: NULL => clear-only pass ---
+    _Atomic(Panel *) container;
+
+    // --- runtime state ---
+    _Atomic bool enabled;    // false mutes ALL OS input for this window
+    bool lastFocused;        // focus-flip detection during the pump
+
+    // --- window-lifecycle adapters (thread 0 only) ---
+    const WindowEvent *windowAdapters[WINDOW_ADAPTER_MAX];
+    int windowAdapterCount;
 };
 
 // Window id registry: slot i holds the NSWindow currently owning id i (and
@@ -156,21 +191,67 @@ static Window *windowHandleOf(NSWindow *window) {
 
 // Window-level delegate: this is how we learn the user clicked the close
 // button. windowWillClose fires as the window is being torn down; we flip the
-// bool the engine loop polls. The pointer is (assign) because the delegate
-// must not own our C struct.
+// bool the engine loop polls, then hand onCloseRequested to every attached
+// window adapter. The pointers are (assign) because the delegate must not
+// own our C struct.
 @interface AntiWindowDelegate : NSObject <NSWindowDelegate>
 @property(nonatomic, assign) bool *shouldClosePtr;
+@property(nonatomic, assign) Window *handlePtr;
 @end
+
+static void windowFireClose(Window *window);
 
 @implementation AntiWindowDelegate
 - (void) windowWillClose:(NSNotification *)notification {
     (void) notification;
     if (self.shouldClosePtr) *self.shouldClosePtr = true;
+    if (self.handlePtr) windowFireClose(self.handlePtr);
 }
 @end
 
 static AntiAppDelegate *sAppDelegate = nil; // one app delegate for the whole process
 static NSWindow *sLastWindow = nil;
+
+// Window-lifecycle adapter fan-out. All fire from thread 0 only.
+static void windowFireClose(Window *window) {
+    if (!window)
+        return;
+    for (int i = 0; i < (*window).windowAdapterCount; i++) {
+        const WindowEvent *a = (*window).windowAdapters[i];
+        if ((*a).onCloseRequested)
+            (*a).onCloseRequested((*a).self, window);
+    }
+}
+
+static void windowFireFocus(Window *window, bool focused) {
+    if (!window)
+        return;
+    for (int i = 0; i < (*window).windowAdapterCount; i++) {
+        const WindowEvent *a = (*window).windowAdapters[i];
+        if ((*a).onFocusChanged)
+            (*a).onFocusChanged((*a).self, window, focused);
+    }
+}
+
+static void windowFireResized(Window *window, int width, int height) {
+    if (!window)
+        return;
+    for (int i = 0; i < (*window).windowAdapterCount; i++) {
+        const WindowEvent *a = (*window).windowAdapters[i];
+        if ((*a).onResized)
+            (*a).onResized((*a).self, window, width, height);
+    }
+}
+
+static void windowFireMoved(Window *window, int x, int y) {
+    if (!window)
+        return;
+    for (int i = 0; i < (*window).windowAdapterCount; i++) {
+        const WindowEvent *a = (*window).windowAdapters[i];
+        if ((*a).onMoved)
+            (*a).onMoved((*a).self, window, x, y);
+    }
+}
 
 // Re-centre the cursor during the pump while locked, so the warp registers
 // before the next event loop exit (legacy recenterIfLocked).
@@ -238,6 +319,13 @@ static void routeEvent(NSEvent *event) {
     // Which engine window did the OS deliver this to? Tagged on every queued
     // event so dispatch routes it to that window's listeners only.
     uint32_t wid = windowIdOf([event window]);
+
+    // Disabled windows receive nothing: events never enter the device rings,
+    // so adapters stay silent and polling state freezes. AppKit still gets
+    // the event via sendEvent — only OUR input pipeline is muted.
+    Window *target = (wid != FOCUS_BROADCAST) ? windowHandleOf([event window]) : NULL;
+    if (target && !atomic_load_explicit(&(*target).enabled, memory_order_relaxed))
+        return;
 
     switch (type) {
         case NSEventTypeKeyDown:
@@ -346,9 +434,9 @@ void Window_pollEvents(void) {
         recenterIfLocked();
         Focus_set(windowIdOf([NSApp keyWindow]));
 
-        // Resize reflection: compare the live content rect against the cache
-        // and bump the generation only on an actual change, so a renderer
-        // polling once per frame pays one int compare.
+        // Resize + move reflection: compare the live frame against the cache
+        // and bump the generation / fire adapters only on an actual change,
+        // so a renderer polling once per frame pays one int compare.
         for (uint32_t i = 1; i < WINDOW_ID_SLOTS; i++) {
             NSWindow *w = s_idToWindow[i];
             if (!w) continue;
@@ -361,6 +449,26 @@ void Window_pollEvents(void) {
                 (*handle).cachedWidth = cw;
                 (*handle).cachedHeight = ch;
                 atomic_fetch_add_explicit(&(*handle).sizeGeneration, 1, memory_order_release);
+                windowFireResized(handle, cw, ch);
+            }
+
+            // Move reflection: top-left screen coords, same space setLocation
+            // speaks (AppKit origin is bottom-left; convert on the way out).
+            NSRect frame = [w frame];
+            CGFloat screenHeight = [[NSScreen mainScreen] frame].size.height;
+            double tx = (double)frame.origin.x;
+            double ty = (double)(screenHeight - frame.origin.y - frame.size.height);
+            if (tx != (*handle).cachedX || ty != (*handle).cachedY) {
+                (*handle).cachedX = tx;
+                (*handle).cachedY = ty;
+                windowFireMoved(handle, (int)tx, (int)ty);
+            }
+
+            // Focus flip: mirror the OS spotlight into per-window adapters.
+            bool focused = (windowIdOf([NSApp keyWindow]) == (*handle).id);
+            if (focused != (*handle).lastFocused) {
+                (*handle).lastFocused = focused;
+                windowFireFocus(handle, focused);
             }
         }
     }
@@ -418,8 +526,21 @@ static Window *windowAlloc(const WindowDesc *desc) {
         NSRect initialContent = [window contentRectForFrameRect:[window frame]];
         (*w).cachedWidth = (int)initialContent.size.width;
         (*w).cachedHeight = (int)initialContent.size.height;
+        NSRect initialFrame = [window frame];
+        CGFloat screenH = [[NSScreen mainScreen] frame].size.height;
+        (*w).cachedX = (double)initialFrame.origin.x;
+        (*w).cachedY = (double)(screenH - initialFrame.origin.y - initialFrame.size.height);
+        atomic_store_explicit(&(*w).presentMode, WINDOW_PRESENT_FIFO, memory_order_relaxed);
+        atomic_store_explicit(&(*w).backgroundColor, WINDOW_COLOR_DEFAULT, memory_order_relaxed);
+        atomic_store_explicit(&(*w).transparent, false, memory_order_relaxed);
+        atomic_store_explicit(&(*w).renderGeneration, 0, memory_order_relaxed);
+        atomic_store_explicit(&(*w).container, NULL, memory_order_relaxed);
+        atomic_store_explicit(&(*w).enabled, true, memory_order_relaxed);
+        (*w).lastFocused = false;
+        (*w).windowAdapterCount = 0;
         (*w).id = windowIdAcquire(window, w);
         delegate.shouldClosePtr = &(*w).shouldClose;
+        delegate.handlePtr = w;
 
         sLastWindow = window;
 
@@ -496,9 +617,83 @@ bool Window_shouldClose(Window *window) {
     return window ? (*window).shouldClose : true;
 }
 
-void Window_setVsync(Window *window, bool enabled) {
-    (void) window;
-    (void) enabled;
+// --- Present policy -----------------------------------------------------------
+// Plain atomic words on the handle. presentMode and transparent participate
+// in swapchain creation, so changing either bumps renderGeneration; color and
+// container are per-frame polled and never do.
+
+void Window_setPresentMode(Window *window, int mode) {
+    if (!window)
+        return;
+    int prev = atomic_exchange_explicit(&(*window).presentMode, mode, memory_order_relaxed);
+    if (prev != mode)
+        atomic_fetch_add_explicit(&(*window).renderGeneration, 1, memory_order_release);
+}
+
+int Window_getPresentMode(const Window *window) {
+    return window ? atomic_load_explicit(&(*window).presentMode, memory_order_relaxed)
+                  : WINDOW_PRESENT_FIFO;
+}
+
+void Window_setBackgroundColorHex(Window *window, uint32_t rgba) {
+    if (!window)
+        return;
+    atomic_store_explicit(&(*window).backgroundColor, rgba, memory_order_relaxed);
+}
+
+void Window_setBackgroundColorRGBA(Window *window, uint8_t r, uint8_t g,
+                                   uint8_t b, uint8_t a) {
+    uint32_t rgba = ((uint32_t) a << 24)
+                  | ((uint32_t) r << 16)
+                  | ((uint32_t) g << 8)
+                  | (uint32_t) b;
+    Window_setBackgroundColorHex(window, rgba);
+}
+
+uint32_t Window_getBackgroundColor(const Window *window) {
+    return window ? atomic_load_explicit(&(*window).backgroundColor, memory_order_relaxed)
+                  : WINDOW_COLOR_DEFAULT;
+}
+
+void Window_setTransparent(Window *window, bool transparent) {
+    if (!window)
+        return;
+    bool prev = atomic_exchange_explicit(&(*window).transparent, transparent, memory_order_relaxed);
+    if (prev != transparent)
+        atomic_fetch_add_explicit(&(*window).renderGeneration, 1, memory_order_release);
+}
+
+bool Window_isTransparent(const Window *window) {
+    return window ? atomic_load_explicit(&(*window).transparent, memory_order_relaxed)
+                  : false;
+}
+
+uint64_t Window_renderGeneration(const Window *window) {
+    return window ? atomic_load_explicit(&(*window).renderGeneration, memory_order_acquire) : 0;
+}
+
+// --- Content: the ONE container slot ------------------------------------------
+
+void Window_setContainer(Window *window, Panel *root) {
+    if (!window)
+        return;
+    atomic_store_explicit(&(*window).container, root, memory_order_release);
+}
+
+Panel *Window_getContainer(const Window *window) {
+    return window ? atomic_load_explicit(&(*window).container, memory_order_acquire) : NULL;
+}
+
+// --- Runtime state -------------------------------------------------------------
+
+void Window_setEnabled(Window *window, bool enabled) {
+    if (!window)
+        return;
+    atomic_store_explicit(&(*window).enabled, enabled, memory_order_relaxed);
+}
+
+bool Window_isEnabled(const Window *window) {
+    return window ? atomic_load_explicit(&(*window).enabled, memory_order_relaxed) : false;
 }
 
 // ---------------------------------------------------------------------------
@@ -554,29 +749,11 @@ int Window_height(Window *window) {
     return (int)[(*window).nsWindow contentRectForFrameRect:[(*window).nsWindow frame]].size.height;
 }
 
-void Window_setDimension(Window *window, int width, int height) {
+void Window_setSize(Window *window, int width, int height) {
     if (!window)
         return;
     @autoreleasepool {
         [(*window).nsWindow setContentSize:NSMakeSize((CGFloat)width, (CGFloat)height)];
-    }
-}
-
-void Window_setWidth(Window *window, int width) {
-    if (!window)
-        return;
-    @autoreleasepool {
-        NSSize size = [(*window).nsWindow contentRectForFrameRect:[(*window).nsWindow frame]].size;
-        [(*window).nsWindow setContentSize:NSMakeSize((CGFloat)width, size.height)];
-    }
-}
-
-void Window_setHeight(Window *window, int height) {
-    if (!window)
-        return;
-    @autoreleasepool {
-        NSSize size = [(*window).nsWindow contentRectForFrameRect:[(*window).nsWindow frame]].size;
-        [(*window).nsWindow setContentSize:NSMakeSize(size.width, (CGFloat)height)];
     }
 }
 
@@ -804,34 +981,56 @@ void Window_setCursorLocked(Window *window, bool locked) {
 // taps (Key_addListener etc.) still hear everything, engine-wide.
 // ---------------------------------------------------------------------------
 
-void Window_addKeyEvent(Window *window, const KeyEvent *listener) {
+void Window_addKeyAdapter(Window *window, const KeyEvent *adapter) {
     if (!window) return;
-    Key_attachWindow((*window).id, listener);
+    Key_attachWindow((*window).id, adapter);
 }
 
-bool Window_removeKeyEvent(Window *window, const KeyEvent *listener) {
+bool Window_removeKeyAdapter(Window *window, const KeyEvent *adapter) {
     if (!window) return false;
-    return Key_detachWindow((*window).id, listener);
+    return Key_detachWindow((*window).id, adapter);
 }
 
-void Window_addMouseEvent(Window *window, const MouseEvent *listener) {
+void Window_addMouseAdapter(Window *window, const MouseEvent *adapter) {
     if (!window) return;
-    Mouse_attachWindow((*window).id, listener);
+    Mouse_attachWindow((*window).id, adapter);
 }
 
-bool Window_removeMouseEvent(Window *window, const MouseEvent *listener) {
+bool Window_removeMouseAdapter(Window *window, const MouseEvent *adapter) {
     if (!window) return false;
-    return Mouse_detachWindow((*window).id, listener);
+    return Mouse_detachWindow((*window).id, adapter);
 }
 
-void Window_addTouchEvent(Window *window, const TouchEvent *listener) {
+void Window_addTouchAdapter(Window *window, const TouchEvent *adapter) {
     if (!window) return;
-    Touch_attachWindow((*window).id, listener);
+    Touch_attachWindow((*window).id, adapter);
 }
 
-bool Window_removeTouchEvent(Window *window, const TouchEvent *listener) {
+bool Window_removeTouchAdapter(Window *window, const TouchEvent *adapter) {
     if (!window) return false;
-    return Touch_detachWindow((*window).id, listener);
+    return Touch_detachWindow((*window).id, adapter);
+}
+
+// --- Window-lifecycle adapters (thread 0 registry on the handle) ---
+
+void Window_addWindowAdapter(Window *window, const WindowEvent *adapter) {
+    if (!window || !adapter || (*window).windowAdapterCount >= WINDOW_ADAPTER_MAX)
+        return;
+    (*window).windowAdapters[(*window).windowAdapterCount++] = adapter;
+}
+
+bool Window_removeWindowAdapter(Window *window, const WindowEvent *adapter) {
+    if (!window || !adapter)
+        return false;
+    for (int i = 0; i < (*window).windowAdapterCount; i++) {
+        if ((*window).windowAdapters[i] == adapter) {
+            for (int j = i; j < (*window).windowAdapterCount - 1; j++)
+                (*window).windowAdapters[j] = (*window).windowAdapters[j + 1];
+            (*window).windowAdapterCount--;
+            return true;
+        }
+    }
+    return false;
 }
 
 void Window_dispatchEvents(Window *window) {
