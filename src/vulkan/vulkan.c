@@ -56,6 +56,18 @@ static uint64_t s_mirroredSizeGen = UINT64_MAX;
 // Animation clock anchor for scene children (u_time seconds since init).
 static uint64_t s_animStartNanos = 0;
 
+// Swapchain graveyard: destroying a swapchain whose present-completion
+// callbacks are still queued on Metal's dispatch queues is a use-after-free
+// (SIGSEGV in MVKSwapchain::beginPresentation). The Vulkan fence covers
+// QUEUE work only — the CAMetal callback runs later, off-queue. So old
+// chains are RETIRED here and destroyed three rebuild generations later,
+// when every callback they could ever own has long since fired.
+#define VK_RETIRED_SWAPCHAINS_MAX 8
+static VkSwapchainKHR s_retiredSwapchains[VK_RETIRED_SWAPCHAINS_MAX];
+static uint32_t s_retiredGenerations[VK_RETIRED_SWAPCHAINS_MAX];
+static uint32_t s_retiredCount = 0;
+static uint32_t s_swapchainGeneration = 0;
+
 static VkInstance s_instance;
 static VkSurfaceKHR s_surface;
 static VkPhysicalDevice s_phys;
@@ -393,9 +405,36 @@ static bool rebuildTargets(void) {
 
     Window_setGravityTopLeft(s_window);
 
-    // The old chain dies after the new one exists (oldSwapchain retirement).
-    if (oldSwapchain != VK_NULL_HANDLE)
-        DestroySwapchainKHR_fn(s_device, oldSwapchain, NULL);
+    // Drain retirees old enough that every Metal present-callback they own
+    // has fired. Three generations of margin; no stalls.
+    {
+        uint32_t keep = 0;
+        for (uint32_t i = 0; i < s_retiredCount; i++) {
+            if (s_swapchainGeneration - s_retiredGenerations[i] >= 3) {
+                if (DestroySwapchainKHR_fn)
+                    DestroySwapchainKHR_fn(s_device, s_retiredSwapchains[i], NULL);
+            } else {
+                s_retiredSwapchains[keep] = s_retiredSwapchains[i];
+                s_retiredGenerations[keep] = s_retiredGenerations[i];
+                keep++;
+            }
+        }
+        s_retiredCount = keep;
+    }
+
+    // The old chain does NOT die here: its presentation callbacks are still
+    // in flight on Metal's queues. Retire it for deferred destruction.
+    if (oldSwapchain != VK_NULL_HANDLE) {
+        if (s_retiredCount < VK_RETIRED_SWAPCHAINS_MAX) {
+            s_retiredSwapchains[s_retiredCount] = oldSwapchain;
+            s_retiredGenerations[s_retiredCount] = s_swapchainGeneration;
+            s_retiredCount++;
+        } else {
+            // Table full (pathological); last resort is the unsafe destroy.
+            DestroySwapchainKHR_fn(s_device, oldSwapchain, NULL);
+        }
+    }
+    s_swapchainGeneration++;
     s_swapchain = newSwapchain;
 
     // Fetch the raw image handles for the blit path.
@@ -416,9 +455,18 @@ static void destroyTargets(void) {
         return;
     VK_LOAD_DEVICE_VOID(DeviceWaitIdle)
     VK_LOAD_DEVICE_VOID(DestroySwapchainKHR)
-
     if (DeviceWaitIdle_fn)
         DeviceWaitIdle_fn(s_device);
+
+    // Final drain: shutdown idles, so every pending present callback has
+    // fired and the graveyard can be flushed unconditionally.
+    if (DestroySwapchainKHR_fn) {
+        for (uint32_t i = 0; i < s_retiredCount; i++)
+            DestroySwapchainKHR_fn(s_device, s_retiredSwapchains[i], NULL);
+    }
+    s_retiredCount = 0;
+    s_swapchainGeneration = 0;
+
     if (s_swapchain != VK_NULL_HANDLE && DestroySwapchainKHR_fn)
         DestroySwapchainKHR_fn(s_device, s_swapchain, NULL);
     s_swapchain = VK_NULL_HANDLE;
