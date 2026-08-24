@@ -1052,6 +1052,9 @@ bool Vk_clearPresent(void) {
     region.dstOffsets[1].z = 1;
     VkFilter filter = (sw == dstExtent.width && sh == dstExtent.height)
                       ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
+    if (filter == VK_FILTER_LINEAR && s_trace)
+        fprintf(stderr, "vk:trace:   BLIT MISMATCH cut=%ux%u image=%ux%u (scaled)\n",
+                sw, sh, dstExtent.width, dstExtent.height);
     CmdBlitImage_fn(s_cmdBuffer, VkView_image(view), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     s_swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     1, &region, filter);
