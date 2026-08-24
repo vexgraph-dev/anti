@@ -119,6 +119,12 @@ void Window_getContentOrigin(const Window *window, int *outX, int *outY) {
     if (outY) *outY = 0;
 }
 
+void Window_setResizeRenderHook(Window *window, WindowResizeRenderFn fn, void *userdata) {
+    (void) window;
+    (void) fn;
+    (void) userdata;
+}
+
 uint32_t Window_getMonitorId(const Window *window) {
     (void) window;
     return 0;
