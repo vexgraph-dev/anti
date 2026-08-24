@@ -782,8 +782,13 @@ bool Vk_clearPresent(void) {
     if (winW <= 0 || winH <= 0)
         return false;
 
-    // The monitor this window lives on owns the cache it blits from.
-    VkView *view = VkView_forPoint((float)winX, (float)winY);
+    // The monitor this window lives on owns the cache it blits from. Join by
+    // the window's mirrored display id first; coordinate sniffing and view 0
+    // are fallbacks for a stale discovery list (fresh hotplug) or an
+    // unmapped window.
+    VkView *view = VkView_forMonitor(Window_getMonitorId(s_window));
+    if (!view)
+        view = VkView_forPoint((float)winX, (float)winY);
     if (!view)
         view = VkView_at(0);
     if (!view)
