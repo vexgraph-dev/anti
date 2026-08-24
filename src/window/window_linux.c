@@ -56,26 +56,6 @@ int Window_getPresentMode(const Window *window) {
     return WINDOW_PRESENT_FIFO;
 }
 
-;;INCOMPLETE // glClearColor equivalent; no-op until implemented.
-void Window_setBackgroundColorHex(Window *window, uint32_t rgba) {
-    (void) window;
-    (void) rgba;
-}
-
-void Window_setBackgroundColorRGBA(Window *window, uint8_t r, uint8_t g,
-                                   uint8_t b, uint8_t a) {
-    (void) window;
-    (void) r;
-    (void) g;
-    (void) b;
-    (void) a;
-}
-
-uint32_t Window_getBackgroundColor(const Window *window) {
-    (void) window;
-    return 0xFF141414u;
-}
-
 ;;INCOMPLETE // Composite alpha; no-op until implemented.
 void Window_setTransparent(Window *window, bool transparent) {
     (void) window;
@@ -132,6 +112,11 @@ void Window_setLocation(Window *window, int x, int y) {
     (void) window;
     (void) x;
     (void) y;
+}
+
+void Window_getContentOrigin(const Window *window, int *outX, int *outY) {
+    if (outX) *outX = 0;
+    if (outY) *outY = 0;
 }
 
 uint32_t Window_getMonitorId(const Window *window) {
