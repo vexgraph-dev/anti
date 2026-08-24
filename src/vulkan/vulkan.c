@@ -12,14 +12,24 @@
 
 #include "darling/container.h"
 #include "darling/panel.h"
+#include "nio/mem.h"
+#include "oop/type.h"
+#include "time/nanotime.h"
+#include "vulkan/vk_view.h"
 #include "window/window.h"
 
-// vulkan/vulkan.c — runtime-loaded Vulkan chain (Legacy: none — the Java tree
-// called Vulkan through LWJGL; the C engine speaks to it natively).
+// vulkan/vulkan.c — runtime-loaded Vulkan chain over the compositor model.
 //
 // Loader strategy: dlopen the Khronos loader (libvulkan.dylib) first, falling
 // back straight to MoltenVK's ICD. Everything beyond vkGetInstanceProcAddr is
 // fetched dynamically, instance-level then device-level.
+//
+// RENDER MODEL: each monitor owns a giant off-screen cache (see vk_view.c).
+// Every present loop clears the WHOLE cache to the background color, renders
+// ONE layer — the direct children of the window's container basket — at
+// absolute desktop coordinates, then blits the window's region (top-left
+// anchored) into the acquired swapchain image. Windows are a scissor into
+// the desktop; nothing more.
 
 static void *s_lib = NULL;
 static PFN_vkGetInstanceProcAddr s_gpa = NULL;
@@ -27,10 +37,12 @@ static PFN_vkGetDeviceProcAddr s_gdpa = NULL;
 static char s_status[64] = "not started";
 #define VK_MARK(msg) do { snprintf(s_status, sizeof(s_status), msg); fprintf(stderr, "vk: %s\n", s_status); } while(0)
 
-// Swapchain + views + framebuffers: rebuilt whenever the surface outgrows the
-// chain (fullscreen, resize). Renderpass/pipeline are extent-independent.
+// Swapchain: rebuilt whenever the surface outgrows the chain (fullscreen,
+// resize) or render policy drifts. No framebuffers live on it — the blit
+// writes its images directly.
 static bool rebuildTargets(void);
 static void destroyTargets(void);
+static bool buildPipelines(void);
 
 // Last-applied Window_renderGeneration. A drift means presentMode or
 // transparent changed on thread 0 and the swapchain wants a rebuild.
@@ -41,6 +53,9 @@ static uint64_t s_appliedRenderGen = 0;
 // drifts — the "root mirrors its window" law.
 static uint64_t s_mirroredSizeGen = UINT64_MAX;
 
+// Animation clock anchor for scene children (u_time seconds since init).
+static uint64_t s_animStartNanos = 0;
+
 static VkInstance s_instance;
 static VkSurfaceKHR s_surface;
 static VkPhysicalDevice s_phys;
@@ -50,10 +65,6 @@ static VkQueue s_queue;
 static VkSwapchainKHR s_swapchain;
 static VkCommandPool s_cmdPool;
 static VkCommandBuffer s_cmdBuffer;
-static VkCommandBuffer s_secondaryCmdBuffers[3];
-static _Atomic int s_renderReady = -1;
-static _Atomic int s_renderReading = -1;
-static int s_currentSecondary = 0;
 static VkSemaphore s_semAcquire;
 static VkSemaphore s_semRender;
 static VkFence s_fence;
@@ -62,14 +73,18 @@ static VkFormat s_format;
 static VkExtent2D s_extent;
 static Window *s_window = NULL;
 
-// hello-triangle targets (hoisted: rebuildTargets/destroyTargets need them)
-static VkRenderPass s_triPass;
+// Raw swapchain images — the blit writes these directly, no views needed.
+static VkImage s_swapchainImages[8];
+static uint32_t s_swapchainImageCount = 0;
+
+// Child pipelines, built against the monitor view's cache renderpass:
+//   triangle — legacy hello-triangle scene content (push: f32 u_time @0, VS)
+//   quad     — solid panel fill (push: vec4 rectNdc @0 VS, vec4 color @16 FS)
 static VkPipelineLayout s_triLayout;
 static VkPipeline s_triPipeline;
-static VkImageView s_views[8];
-static VkFramebuffer s_framebuffers[8];
-static uint32_t s_imageCount = 0;
-static bool s_triBuilt = false;
+static VkPipelineLayout s_quadLayout;
+static VkPipeline s_quadPipeline;
+static bool s_pipelinesBuilt = false;
 
 static void *s_libLoad(void) {
     // MoltenVK first: the ICD exports everything itself, no loader manifest
@@ -257,8 +272,16 @@ bool Vk_init(Window *window) {
     VK_LOAD_DEVICE(GetDeviceQueue)
     GetDeviceQueue_fn(s_device, s_queueFamily, 0, &s_queue);
 
-    // 6. swapchain + views + framebuffers (rebuilt on every surface resize)
+    // 6. swapchain (rebuilt on every surface resize / policy drift)
     if (!rebuildTargets())
+        return false;
+
+    // 7. per-monitor render caches + child pipelines + command plumbing
+    if (!VkView_refreshAll(s_instance, s_gpa, s_phys, s_device) || VkView_count() == 0) {
+        snprintf(s_status, sizeof(s_status), "no monitor views");
+        return false;
+    }
+    if (!buildPipelines())
         return false;
 
     VK_LOAD_DEVICE(CreateSemaphore)
@@ -273,8 +296,8 @@ bool Vk_init(Window *window) {
     VkFenceCreateInfo fci2 = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
     fci2.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     if (CreateFence_fn && CreateFence_fn(s_device, &fci2, NULL, &s_fence) != VK_SUCCESS) return false;
-    
 
+    s_animStartNanos = NanoTime_now();
     return true;
 }
 
@@ -289,10 +312,6 @@ static bool rebuildTargets(void) {
     VK_LOAD_DEVICE(DestroySwapchainKHR)
     VK_LOAD_DEVICE(DeviceWaitIdle)
     VK_LOAD_DEVICE(GetSwapchainImagesKHR)
-    VK_LOAD_DEVICE(CreateImageView)
-    VK_LOAD_DEVICE(CreateFramebuffer)
-    VK_LOAD_DEVICE_VOID(DestroyFramebuffer)
-    VK_LOAD_DEVICE_VOID(DestroyImageView)
     VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceCapabilitiesKHR)
     VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceFormatsKHR)
 
@@ -340,7 +359,9 @@ static bool rebuildTargets(void) {
     swci.imageExtent = caps.currentExtent;
     s_extent = caps.currentExtent;
     swci.imageArrayLayers = 1;
-    swci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    // The blit is the writer now: transfer-dst is a spec-mandated supported
+    // usage for swapchain images, color-attachment stays for safety.
+    swci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     swci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     swci.preTransform = caps.currentTransform;
 
@@ -372,53 +393,17 @@ static bool rebuildTargets(void) {
 
     Window_setGravityTopLeft(s_window);
 
-
-    // Safely destroy previous framebuffers, views, and old swapchain
-    for (uint32_t i = 0; i < s_imageCount; i++) {
-        if (s_framebuffers[i] != VK_NULL_HANDLE)
-            DestroyFramebuffer_fn(s_device, s_framebuffers[i], NULL);
-        s_framebuffers[i] = VK_NULL_HANDLE;
-        if (s_views[i] != VK_NULL_HANDLE)
-            DestroyImageView_fn(s_device, s_views[i], NULL);
-        s_views[i] = VK_NULL_HANDLE;
-    }
+    // The old chain dies after the new one exists (oldSwapchain retirement).
     if (oldSwapchain != VK_NULL_HANDLE)
         DestroySwapchainKHR_fn(s_device, oldSwapchain, NULL);
-
     s_swapchain = newSwapchain;
 
-    GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_imageCount, NULL);
-    if (s_imageCount > 8)
-        s_imageCount = 8;
-    VkImage images[8];
-    GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_imageCount, images);
-
-    for (uint32_t i = 0; i < s_imageCount; i++) {
-        VkImageViewCreateInfo vci = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-        vci.image = images[i];
-        vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        vci.format = s_format;
-        vci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        vci.subresourceRange.levelCount = 1;
-        vci.subresourceRange.layerCount = 1;
-        if (CreateImageView_fn(s_device, &vci, NULL, &s_views[i]) != VK_SUCCESS) {
-            snprintf(s_status, sizeof(s_status), "imageview failed");
-            return false;
-        }
-        if (s_triPass == VK_NULL_HANDLE)
-            continue; // framebuffers arrive with the pipeline init
-        VkFramebufferCreateInfo fci = { .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-        fci.renderPass = s_triPass;
-        fci.attachmentCount = 1;
-        fci.pAttachments = &s_views[i];
-        fci.width = s_extent.width;
-        fci.height = s_extent.height;
-        fci.layers = 1;
-        if (CreateFramebuffer_fn(s_device, &fci, NULL, &s_framebuffers[i]) != VK_SUCCESS) {
-            snprintf(s_status, sizeof(s_status), "framebuffer failed");
-            return false;
-        }
-    }
+    // Fetch the raw image handles for the blit path.
+    s_swapchainImageCount = 0;
+    GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_swapchainImageCount, NULL);
+    if (s_swapchainImageCount > 8)
+        s_swapchainImageCount = 8;
+    GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_swapchainImageCount, s_swapchainImages);
 
     fprintf(stderr, "vk: swapchain live %ux%u fmt=%d present=%d\n", s_extent.width, s_extent.height, (int)s_format,
             (int)(swci.presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR));
@@ -430,22 +415,10 @@ static void destroyTargets(void) {
     if (s_device == VK_NULL_HANDLE)
         return;
     VK_LOAD_DEVICE_VOID(DeviceWaitIdle)
-    VK_LOAD_DEVICE_VOID(DestroyFramebuffer)
-    VK_LOAD_DEVICE_VOID(DestroyImageView)
     VK_LOAD_DEVICE_VOID(DestroySwapchainKHR)
 
     if (DeviceWaitIdle_fn)
         DeviceWaitIdle_fn(s_device);
-
-    for (uint32_t i = 0; i < s_imageCount; i++) {
-        if (s_framebuffers[i] != VK_NULL_HANDLE && DestroyFramebuffer_fn)
-            DestroyFramebuffer_fn(s_device, s_framebuffers[i], NULL);
-        s_framebuffers[i] = VK_NULL_HANDLE;
-        if (s_views[i] != VK_NULL_HANDLE && DestroyImageView_fn)
-            DestroyImageView_fn(s_device, s_views[i], NULL);
-        s_views[i] = VK_NULL_HANDLE;
-    }
-    s_imageCount = 0;
     if (s_swapchain != VK_NULL_HANDLE && DestroySwapchainKHR_fn)
         DestroySwapchainKHR_fn(s_device, s_swapchain, NULL);
     s_swapchain = VK_NULL_HANDLE;
@@ -464,6 +437,8 @@ void Vk_shutdown(void) {
         return;
     if (s_device != VK_NULL_HANDLE) {
         destroyTargets();
+        VkView_shutdown();
+        s_pipelinesBuilt = false;
     }
     if (s_instance != VK_NULL_HANDLE) {
         VK_LOAD_INSTANCE_VOID(DestroySurfaceKHR)
@@ -607,269 +582,182 @@ static VkShaderModule createShaderModule(const char *name, const char *unused) {
     return module;
 }
 
-bool Vk_helloTriangle(float timeSeconds) {
-    if (!Vk_ready())
+static void decodeColor(uint32_t rgba, float *out) {
+    out[0] = ((rgba >> 16) & 0xFF) / 255.0f;
+    out[1] = ((rgba >> 8) & 0xFF) / 255.0f;
+    out[2] = (rgba & 0xFF) / 255.0f;
+    out[3] = ((rgba >> 24) & 0xFF) / 255.0f;
+}
+
+// Build both child pipelines against the monitor view's cache renderpass,
+// plus the command pool and primary buffer that record each present loop.
+// Runs once at init — no more lazy first-frame building, no retry leaks.
+static bool buildPipelines(void) {
+    VK_LOAD_DEVICE(CreatePipelineLayout)
+    VK_LOAD_DEVICE(CreateGraphicsPipelines)
+    VK_LOAD_DEVICE(CreateCommandPool)
+    VK_LOAD_DEVICE(AllocateCommandBuffers)
+
+    // Renderpass compatibility: every view shares format B8G8R8A8 + one
+    // subpass, so pass[0] works for all of them.
+    VkView *view0 = VkView_at(0);
+    if (!view0 || VkView_renderPass(view0) == VK_NULL_HANDLE) {
+        snprintf(s_status, sizeof(s_status), "no view renderpass");
         return false;
+    }
+    VkRenderPass pass = VkView_renderPass(view0);
 
-    if (!s_triBuilt) {
-        // --- renderpass + pipeline + sync (targets live in rebuildTargets)
-        VK_LOAD_DEVICE(CreateFramebuffer)
-        VK_LOAD_DEVICE(CreateRenderPass)
-        VK_LOAD_DEVICE(CreatePipelineLayout)
-        VK_LOAD_DEVICE(CreateGraphicsPipelines)
-        VK_LOAD_DEVICE(CreateCommandPool)
-        VK_LOAD_DEVICE(AllocateCommandBuffers)
-        VK_LOAD_DEVICE(CreateSemaphore)
-        VK_LOAD_DEVICE(CreateFence)
+    // --- shared pipeline skeleton ---------------------------------------
+    VkPipelineVertexInputStateCreateInfo vi = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+    VkPipelineInputAssemblyStateCreateInfo ia = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkPipelineViewportStateCreateInfo vp = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+    vp.viewportCount = 1;
+    vp.scissorCount = 1;
+    VkPipelineRasterizationStateCreateInfo rs = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    rs.polygonMode = VK_POLYGON_MODE_FILL;
+    rs.cullMode = VK_CULL_MODE_NONE; // push-rect quads face either way
+    rs.lineWidth = 1.0f;
+    VkPipelineMultisampleStateCreateInfo ms = { .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkPipelineColorBlendAttachmentState blend = {0};
+    blend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                         | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    VkPipelineColorBlendStateCreateInfo cb = { .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+    cb.attachmentCount = 1;
+    cb.pAttachments = &blend;
+    VkDynamicState dynStates[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo ds = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    ds.dynamicStateCount = 2;
+    ds.pDynamicStates = dynStates;
 
-        VkAttachmentDescription att = {0};
-        att.format = s_format;
-        att.samples = VK_SAMPLE_COUNT_1_BIT;
-        att.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;   // legacy TriangleRenderer
-        att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        att.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        VkAttachmentReference colorRef = {0};
-        colorRef.attachment = 0;
-        colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkSubpassDescription sub = {0};
-        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 1;
-        sub.pColorAttachments = &colorRef;
-
-        VkRenderPassCreateInfo rpci = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
-        rpci.attachmentCount = 1;
-        rpci.pAttachments = &att;
-        rpci.subpassCount = 1;
-        rpci.pSubpasses = &sub;
-
-        if (CreateRenderPass_fn(s_device, &rpci, NULL, &s_triPass) != VK_SUCCESS) {
-            snprintf(s_status, sizeof(s_status), "renderpass failed");
-            return false;
-        }
-
-        // render pass now exists: build the framebuffers that were deferred
-        for (uint32_t i = 0; i < s_imageCount; i++) {
-            VkFramebufferCreateInfo fci = { .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-            fci.renderPass = s_triPass;
-            fci.attachmentCount = 1;
-            fci.pAttachments = &s_views[i];
-            fci.width = s_extent.width;
-            fci.height = s_extent.height;
-            fci.layers = 1;
-            if (CreateFramebuffer_fn(s_device, &fci, NULL, &s_framebuffers[i]) != VK_SUCCESS) {
-                snprintf(s_status, sizeof(s_status), "framebuffer failed");
-                return false;
-            }
-        }
-
-        // --- pipeline: fullscreen triangle, no vertex input, push u_time
-        VkShaderModule vert = createShaderModule(
-            "hello_triangle_vert.spv", NULL);
-        VkShaderModule frag = createShaderModule(
-            "hello_triangle_frag.spv", NULL);
-        if (vert == VK_NULL_HANDLE || frag == VK_NULL_HANDLE) {
-            snprintf(s_status, sizeof(s_status), "shader spv not found");
-            fprintf(stderr, "vk: shader spv not found (vert=%p frag=%p)\n", (void *)vert, (void *)frag);
-            return false;
-        }
-
-        VkPushConstantRange push = {0};
-        push.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        push.offset = 0;
-        push.size = 4; // float u_time
-
-        VkPipelineLayoutCreateInfo plci = { .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-        plci.pushConstantRangeCount = 1;
-        plci.pPushConstantRanges = &push;
-        if (CreatePipelineLayout_fn(s_device, &plci, NULL, &s_triLayout) != VK_SUCCESS) {
-            snprintf(s_status, sizeof(s_status), "layout failed");
-            return false;
-        }
-
-        VkPipelineShaderStageCreateInfo stages[2] = {{0}, {0}};
-        stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-        stages[0].module = vert;
-        stages[0].pName = "main";
-        stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        stages[1].module = frag;
-        stages[1].pName = "main";
-
-        VkPipelineVertexInputStateCreateInfo vi = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-        VkPipelineInputAssemblyStateCreateInfo ia = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        VkPipelineViewportStateCreateInfo vp = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-        vp.viewportCount = 1;
-        vp.scissorCount = 1;
-        VkPipelineRasterizationStateCreateInfo rs = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-        rs.polygonMode = VK_POLYGON_MODE_FILL;
-        rs.cullMode = VK_CULL_MODE_BACK_BIT;       // legacy: CLOCKWISE front face
-        rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
-        rs.lineWidth = 1.0f;
-        VkPipelineMultisampleStateCreateInfo ms = { .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-        VkPipelineColorBlendAttachmentState blend = {0};
-        blend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
-                             | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        VkPipelineColorBlendStateCreateInfo cb = { .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-        cb.attachmentCount = 1;
-        cb.pAttachments = &blend;
-        VkDynamicState dynStates[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-        VkPipelineDynamicStateCreateInfo ds = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-        ds.dynamicStateCount = 2;
-        ds.pDynamicStates = dynStates;
-
-        VkGraphicsPipelineCreateInfo pci = { .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-        pci.stageCount = 2;
-        pci.pStages = stages;
-        pci.pVertexInputState = &vi;
-        pci.pInputAssemblyState = &ia;
-        pci.pViewportState = &vp;
-        pci.pRasterizationState = &rs;
-        pci.pMultisampleState = &ms;
-        pci.pColorBlendState = &cb;
-        pci.pDynamicState = &ds;
-        pci.layout = s_triLayout;
-        pci.renderPass = s_triPass;
-        pci.subpass = 0;
-
-        if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &pci, NULL, &s_triPipeline) != VK_SUCCESS) {
-            snprintf(s_status, sizeof(s_status), "pipeline failed");
-            return false;
-        }
-
-        // --- command pool/buffer + sync objects
-        VkCommandPoolCreateInfo cpci = { .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
-        cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        cpci.queueFamilyIndex = s_queueFamily;
-        if (CreateCommandPool_fn(s_device, &cpci, NULL, &s_cmdPool) != VK_SUCCESS) {
-            snprintf(s_status, sizeof(s_status), "cmdpool failed");
-            return false;
-        }
-        VkCommandBufferAllocateInfo cbai = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-        cbai.commandPool = s_cmdPool;
-        cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cbai.commandBufferCount = 1;
-        AllocateCommandBuffers_fn(s_device, &cbai, &s_cmdBuffer);
-
-        cbai.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-        cbai.commandBufferCount = 3;
-        AllocateCommandBuffers_fn(s_device, &cbai, s_secondaryCmdBuffers);
-
-
-
-        s_triBuilt = true;
+    // --- triangle child (legacy hello-triangle scene content) ------------
+    VkShaderModule triVert = createShaderModule("hello_triangle_vert.spv", NULL);
+    VkShaderModule triFrag = createShaderModule("hello_triangle_frag.spv", NULL);
+    if (triVert == VK_NULL_HANDLE || triFrag == VK_NULL_HANDLE) {
+        snprintf(s_status, sizeof(s_status), "triangle spv not found");
+        fprintf(stderr, "vk: triangle spv not found\n");
+        return false;
     }
 
+    VkPushConstantRange triPush = {0};
+    triPush.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    triPush.offset = 0;
+    triPush.size = 4; // float u_time
 
-    // --- per-frame: acquire -> record -> submit -> present
-    VK_LOAD_DEVICE(ResetCommandBuffer)
-    VK_LOAD_DEVICE(BeginCommandBuffer)
-    VK_LOAD_DEVICE(CmdBindPipeline)
-    VK_LOAD_DEVICE(CmdPushConstants)
-    VK_LOAD_DEVICE(CmdSetViewport)
-    VK_LOAD_DEVICE(CmdSetScissor)
-    VK_LOAD_DEVICE(CmdDraw)
-    VK_LOAD_DEVICE(EndCommandBuffer)
-
-    if (s_extent.width == 0 || s_extent.height == 0) return false;
-
-    int next = (s_currentSecondary + 1) % 3;
-    if (next == atomic_load_explicit(&s_renderReading, memory_order_acquire)) {
-        next = (next + 1) % 3;
-    }
-    VkCommandBuffer cb = s_secondaryCmdBuffers[next];
-    ResetCommandBuffer_fn(cb, 0);
-
-    VkCommandBufferInheritanceInfo inh = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
-    inh.renderPass = s_triPass;
-    inh.subpass = 0;
-    inh.framebuffer = VK_NULL_HANDLE;
-
-    VkCommandBufferBeginInfo bbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-    bbi.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
-    bbi.pInheritanceInfo = &inh;
-    BeginCommandBuffer_fn(cb, &bbi);
-
-    VkViewport viewport = {0};
-    viewport.width = (float)s_extent.width;
-    viewport.height = (float)s_extent.height;
-    viewport.maxDepth = 1.0f;
-    VkRect2D scissor = {0};
-    scissor.extent = s_extent;
-
-    // Content root: whatever Panel hangs under the window's ONE container
-    // slot. NULL => full-extent viewport, no scissor clamp.
-    Panel *root = s_window ? Window_getContainer(s_window) : NULL;
-
-    int winW = s_window ? Window_width(s_window) : 0;
-    int winH = s_window ? Window_height(s_window) : 0;
-    if (winW <= 0) winW = (int)s_extent.width;
-    if (winH <= 0) winH = (int)s_extent.height;
-
-    if (root != NULL) {
-        // The basket mirrors the window: rewrite its w/h on resize drift so
-        // percent layouts and edge anchors inside it track the real window.
-        uint64_t sizeGen = Window_sizeGeneration(s_window);
-        if (sizeGen != s_mirroredSizeGen) {
-            s_mirroredSizeGen = sizeGen;
-            Container_setSize(&(*root).base, (float)winW, (float)winH);
-        }
-
-        float scaleX = (float)s_extent.width / (float)winW;
-        float scaleY = (float)s_extent.height / (float)winH;
-
-        Vec4 rect;
-        Container_resolve(&(*root).base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
-
-        if (rect.z > 0.0f && rect.w > 0.0f) {
-            viewport.x = rect.x * scaleX;
-            viewport.y = rect.y * scaleY;
-            viewport.width = rect.z * scaleX;
-            viewport.height = rect.w * scaleY;
-
-            int32_t sx = (int32_t)(rect.x * scaleX);
-            if (sx < 0) sx = 0;
-            int32_t sy = (int32_t)(rect.y * scaleY);
-            if (sy < 0) sy = 0;
-
-            uint32_t sw = (uint32_t)(rect.z * scaleX);
-            uint32_t sh = (uint32_t)(rect.w * scaleY);
-
-            if ((uint32_t)sx + sw > s_extent.width)
-                sw = s_extent.width > (uint32_t)sx ? s_extent.width - (uint32_t)sx : 0;
-            if ((uint32_t)sy + sh > s_extent.height)
-                sh = s_extent.height > (uint32_t)sy ? s_extent.height - (uint32_t)sy : 0;
-
-            scissor.offset.x = sx;
-            scissor.offset.y = sy;
-            scissor.extent.width = sw;
-            scissor.extent.height = sh;
-        }
+    VkPipelineLayoutCreateInfo tlci = { .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    tlci.pushConstantRangeCount = 1;
+    tlci.pPushConstantRanges = &triPush;
+    if (CreatePipelineLayout_fn(s_device, &tlci, NULL, &s_triLayout) != VK_SUCCESS) {
+        snprintf(s_status, sizeof(s_status), "tri layout failed");
+        return false;
     }
 
-    CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
-    CmdSetViewport_fn(cb, 0, 1, &viewport);
-    CmdSetScissor_fn(cb, 0, 1, &scissor);
-    CmdPushConstants_fn(cb, s_triLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &timeSeconds);
-    CmdDraw_fn(cb, 3, 1, 0, 0);
+    VkPipelineShaderStageCreateInfo tstages[2] = {{0}, {0}};
+    tstages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    tstages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    tstages[0].module = triVert;
+    tstages[0].pName = "main";
+    tstages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    tstages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    tstages[1].module = triFrag;
+    tstages[1].pName = "main";
 
-    EndCommandBuffer_fn(cb);
+    rs.frontFace = VK_FRONT_FACE_CLOCKWISE;   // legacy triangle winding
+    rs.cullMode = VK_CULL_MODE_BACK_BIT;
+    VkGraphicsPipelineCreateInfo tpci = { .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+    tpci.stageCount = 2;
+    tpci.pStages = tstages;
+    tpci.pVertexInputState = &vi;
+    tpci.pInputAssemblyState = &ia;
+    tpci.pViewportState = &vp;
+    tpci.pRasterizationState = &rs;
+    tpci.pMultisampleState = &ms;
+    tpci.pColorBlendState = &cb;
+    tpci.pDynamicState = &ds;
+    tpci.layout = s_triLayout;
+    tpci.renderPass = pass;
+    tpci.subpass = 0;
+    if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &tpci, NULL, &s_triPipeline) != VK_SUCCESS) {
+        snprintf(s_status, sizeof(s_status), "tri pipeline failed");
+        return false;
+    }
 
-    atomic_store_explicit(&s_renderReady, next, memory_order_release);
-    s_currentSecondary = next;
+    // --- quad child (solid panel fill) ------------------------------------
+    VkShaderModule quadVert = createShaderModule("solid_quad_vert.spv", NULL);
+    VkShaderModule quadFrag = createShaderModule("solid_quad_frag.spv", NULL);
+    if (quadVert == VK_NULL_HANDLE || quadFrag == VK_NULL_HANDLE) {
+        snprintf(s_status, sizeof(s_status), "quad spv not found");
+        fprintf(stderr, "vk: quad spv not found\n");
+        return false;
+    }
 
+    VkPushConstantRange quadPush[2] = {{0}, {0}};
+    quadPush[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    quadPush[0].offset = 0;
+    quadPush[0].size = 16; // vec4 u_rectNdc
+    quadPush[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    quadPush[1].offset = 16;
+    quadPush[1].size = 16; // vec4 u_color
+
+    VkPipelineLayoutCreateInfo qlci = { .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    qlci.pushConstantRangeCount = 2;
+    qlci.pPushConstantRanges = quadPush;
+    if (CreatePipelineLayout_fn(s_device, &qlci, NULL, &s_quadLayout) != VK_SUCCESS) {
+        snprintf(s_status, sizeof(s_status), "quad layout failed");
+        return false;
+    }
+
+    VkPipelineShaderStageCreateInfo qstages[2] = {{0}, {0}};
+    qstages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    qstages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    qstages[0].module = quadVert;
+    qstages[0].pName = "main";
+    qstages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    qstages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    qstages[1].module = quadFrag;
+    qstages[1].pName = "main";
+
+    rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rs.cullMode = VK_CULL_MODE_NONE;
+    VkGraphicsPipelineCreateInfo qpci = { .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+    qpci.stageCount = 2;
+    qpci.pStages = qstages;
+    qpci.pVertexInputState = &vi;
+    qpci.pInputAssemblyState = &ia;
+    qpci.pViewportState = &vp;
+    qpci.pRasterizationState = &rs;
+    qpci.pMultisampleState = &ms;
+    qpci.pColorBlendState = &cb;
+    qpci.pDynamicState = &ds;
+    qpci.layout = s_quadLayout;
+    qpci.renderPass = pass;
+    qpci.subpass = 0;
+    if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &qpci, NULL, &s_quadPipeline) != VK_SUCCESS) {
+        snprintf(s_status, sizeof(s_status), "quad pipeline failed");
+        return false;
+    }
+
+    // --- command plumbing --------------------------------------------------
+    VkCommandPoolCreateInfo cpci = { .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+    cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    cpci.queueFamilyIndex = s_queueFamily;
+    if (CreateCommandPool_fn(s_device, &cpci, NULL, &s_cmdPool) != VK_SUCCESS) {
+        snprintf(s_status, sizeof(s_status), "cmdpool failed");
+        return false;
+    }
+    VkCommandBufferAllocateInfo cbai = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+    cbai.commandPool = s_cmdPool;
+    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cbai.commandBufferCount = 1;
+    AllocateCommandBuffers_fn(s_device, &cbai, &s_cmdBuffer);
+
+    s_pipelinesBuilt = true;
     return true;
 }
 
 bool Vk_clearPresent(void) {
-    if (!Vk_ready() || s_cmdBuffer == VK_NULL_HANDLE) return false;
+    if (!Vk_ready() || !s_pipelinesBuilt) return false;
 
     // Policy drift (presentMode / transparent changed) wants a fresh chain.
     uint64_t renderGen = Window_renderGeneration(s_window);
@@ -886,6 +774,49 @@ bool Vk_clearPresent(void) {
         if (!rebuildTargets()) return false;
     }
 
+    // Window geometry: desktop top-left + content size, in AppKit points.
+    int winX = 0, winY = 0;
+    int winW = s_window ? Window_width(s_window) : 0;
+    int winH = s_window ? Window_height(s_window) : 0;
+    Window_getLocation(s_window, &winX, &winY);
+    if (winW <= 0 || winH <= 0)
+        return false;
+
+    // The monitor this window lives on owns the cache it blits from.
+    VkView *view = VkView_forPoint((float)winX, (float)winY);
+    if (!view)
+        view = VkView_at(0);
+    if (!view)
+        return false;
+
+    float cacheW = (float)VkView_getWidth(view);
+    float cacheH = (float)VkView_getHeight(view);
+    float pointW = (float)VkView_getPointWidth(view);
+    float pointH = (float)VkView_getPointHeight(view);
+    if (cacheW <= 0.0f || cacheH <= 0.0f || pointW <= 0.0f || pointH <= 0.0f)
+        return false;
+    float kx = cacheW / pointW; // cache px per desktop point
+    float ky = cacheH / pointH;
+
+    // Basket mirror: rewrite its w/h to the window's content size on drift.
+    Panel *root = Window_getContainer(s_window);
+    uint64_t sizeGen = Window_sizeGeneration(s_window);
+    if (root != NULL && sizeGen != s_mirroredSizeGen) {
+        s_mirroredSizeGen = sizeGen;
+        Container_setSize(&(*root).base, (float)winW, (float)winH);
+    }
+
+    // Clear color precedence: basket color wins while set, else window bg.
+    float bg[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    uint32_t bgColor = Window_getBackgroundColor(s_window);
+    if (root != NULL) {
+        uint32_t panelBg = Panel_getBackgroundColor(root);
+        if (panelBg != 0)
+            bgColor = panelBg;
+    }
+    decodeColor(bgColor, bg);
+
+    // --- acquire first: the blit needs its target index ------------------
     uint32_t imageIndex = 0;
     VK_LOAD_DEVICE(AcquireNextImageKHR)
     VkResult ar = AcquireNextImageKHR_fn(s_device, s_swapchain, UINT64_MAX,
@@ -900,10 +831,14 @@ bool Vk_clearPresent(void) {
     VK_LOAD_DEVICE(ResetFences)
     VK_LOAD_DEVICE(ResetCommandBuffer)
     VK_LOAD_DEVICE(BeginCommandBuffer)
-    VK_LOAD_DEVICE(CmdBeginRenderPass)
-    VK_LOAD_DEVICE(CmdExecuteCommands)
-    VK_LOAD_DEVICE(CmdEndRenderPass)
     VK_LOAD_DEVICE(EndCommandBuffer)
+    VK_LOAD_DEVICE(CmdBindPipeline)
+    VK_LOAD_DEVICE(CmdPushConstants)
+    VK_LOAD_DEVICE(CmdSetViewport)
+    VK_LOAD_DEVICE(CmdSetScissor)
+    VK_LOAD_DEVICE(CmdDraw)
+    VK_LOAD_DEVICE(CmdBlitImage)
+    VK_LOAD_DEVICE(CmdPipelineBarrier)
     VK_LOAD_DEVICE(QueueSubmit)
     VK_LOAD_DEVICE(QueuePresentKHR)
 
@@ -911,49 +846,151 @@ bool Vk_clearPresent(void) {
     ResetFences_fn(s_device, 1, &s_fence);
     ResetCommandBuffer_fn(s_cmdBuffer, 0);
 
-    int ready = atomic_exchange_explicit(&s_renderReady, -1, memory_order_acquire);
-    if (ready != -1) {
-        atomic_store_explicit(&s_renderReading, ready, memory_order_release);
-    }
-    int reading = atomic_load_explicit(&s_renderReading, memory_order_acquire);
-
-
     VkCommandBufferBeginInfo bbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
     BeginCommandBuffer_fn(s_cmdBuffer, &bbi);
 
-    // Clear color precedence: the attached root panel's own color wins while
-    // one exists (PANEL_COLOR_CLEAR falls through), else the window default.
-    VkClearValue clear = {0};
-    uint32_t bg = Window_getBackgroundColor(s_window);
-    Panel *clearRoot = Window_getContainer(s_window);
-    if (clearRoot != NULL) {
-        uint32_t panelBg = Panel_getBackgroundColor(clearRoot);
-        if (panelBg != 0)
-            bg = panelBg;
-    }
-    if (bg != 0) {
-        clear.color.float32[0] = ((bg >> 16) & 0xFF) / 255.0f;
-        clear.color.float32[1] = ((bg >> 8) & 0xFF) / 255.0f;
-        clear.color.float32[2] = (bg & 0xFF) / 255.0f;
-        clear.color.float32[3] = ((bg >> 24) & 0xFF) / 255.0f;
+    // --- 1. clear + draw ONE layer of children onto the desktop cache ----
+    VkView_beginPass(view, s_cmdBuffer, bg[0], bg[1], bg[2], bg[3]);
+
+    float uTime = (float)((double)(NanoTime_now() - s_animStartNanos) / 1e9);
+
+    if (root != NULL) {
+        size_t childCount = Panel_childCount(root);
+        for (size_t i = 0; i < childCount; i++) {
+            Panel *child = Panel_getChild(root, i);
+            if (!child)
+                continue;
+
+            // Resolve against the mirrored basket (window-local points),
+            // then lift into absolute desktop points and onto this view's
+            // cache pixels.
+            Vec4 rect;
+            Container_resolve(&(*child).base, 0.0f, 0.0f,
+                              (float)winW, (float)winH, &rect);
+            if (rect.z <= 0.0f || rect.w <= 0.0f)
+                continue;
+
+            float px = ((float)winX + rect.x - VkView_getOriginX(view)) * kx;
+            float py = ((float)winY + rect.y - VkView_getOriginY(view)) * ky;
+            float pw = rect.z * kx;
+            float ph = rect.w * ky;
+            if (px < 0.0f) { pw += px; px = 0.0f; }
+            if (py < 0.0f) { ph += py; py = 0.0f; }
+            if (pw <= 0.0f || ph <= 0.0f) continue;
+            if (px + pw > cacheW) pw = cacheW - px;
+            if (py + ph > cacheH) ph = cacheH - py;
+            if (pw <= 0.0f || ph <= 0.0f) continue;
+
+            VkViewport viewport = {0};
+            viewport.x = px;
+            viewport.y = py;
+            viewport.width = pw;
+            viewport.height = ph;
+            viewport.maxDepth = 1.0f;
+            VkRect2D scissor = {0};
+            scissor.offset.x = (int32_t)px;
+            scissor.offset.y = (int32_t)py;
+            scissor.extent.width = (uint32_t)pw;
+            scissor.extent.height = (uint32_t)ph;
+
+            uint32_t childType = Memory_type(child);
+            if (childType == TYPE_SCENE3D_SINGLETON || childType == TYPE_SCENE2D_SINGLETON
+                || childType == TYPE_SCENE_SINGLETON) {
+                // Scene child: legacy animated triangle inside its bounds.
+                CmdBindPipeline_fn(s_cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
+                CmdSetViewport_fn(s_cmdBuffer, 0, 1, &viewport);
+                CmdSetScissor_fn(s_cmdBuffer, 0, 1, &scissor);
+                CmdPushConstants_fn(s_cmdBuffer, s_triLayout,
+                                    VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &uTime);
+                CmdDraw_fn(s_cmdBuffer, 3, 1, 0, 0);
+            } else {
+                // Plain panel: solid quad in its own color.
+                uint32_t color = Panel_getBackgroundColor(child);
+                if (color == 0)
+                    continue; // PANEL_COLOR_CLEAR draws nothing without blending
+                float rgba[4];
+                decodeColor(color, rgba);
+                float ndc[8]; // rectNdc.xyzw + color.rgba, push-constant block
+                ndc[0] = px / cacheW * 2.0f - 1.0f;
+                ndc[1] = py / cacheH * 2.0f - 1.0f;
+                ndc[2] = pw / cacheW * 2.0f;
+                ndc[3] = ph / cacheH * 2.0f;
+                ndc[4] = rgba[0];
+                ndc[5] = rgba[1];
+                ndc[6] = rgba[2];
+                ndc[7] = rgba[3];
+                CmdBindPipeline_fn(s_cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_quadPipeline);
+                CmdSetViewport_fn(s_cmdBuffer, 0, 1, &viewport);
+                CmdSetScissor_fn(s_cmdBuffer, 0, 1, &scissor);
+                CmdPushConstants_fn(s_cmdBuffer, s_quadLayout,
+                                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                    0, 32, ndc);
+                CmdDraw_fn(s_cmdBuffer, 6, 1, 0, 0);
+            }
+        }
     }
 
-    VkRenderPassBeginInfo rbi = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-    rbi.renderPass = s_triPass;
-    rbi.framebuffer = s_framebuffers[imageIndex];
-    rbi.renderArea.extent = s_extent;
-    rbi.clearValueCount = 1;
-    rbi.pClearValues = &clear;
-    CmdBeginRenderPass_fn(s_cmdBuffer, &rbi, reading >= 0 ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS : VK_SUBPASS_CONTENTS_INLINE);
+    // Cache is complete by construction; hand it to the blit.
+    VkView_endPass(view, s_cmdBuffer);
 
-    if (reading >= 0) {
-        CmdExecuteCommands_fn(s_cmdBuffer, 1, &s_secondaryCmdBuffers[reading]);
-    }
+    // --- 2. blit the window's region, top-left anchored -------------------
+    VkImageMemoryBarrier toDst = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+    toDst.srcAccessMask = 0;
+    toDst.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    toDst.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    toDst.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toDst.image = s_swapchainImages[imageIndex];
+    toDst.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    toDst.subresourceRange.levelCount = 1;
+    toDst.subresourceRange.layerCount = 1;
+    CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &toDst);
 
-    CmdEndRenderPass_fn(s_cmdBuffer);
+    // Source region: the window's rect in cache pixels, clamped to the cache.
+    int32_t sx = (int32_t)(((float)winX - VkView_getOriginX(view)) * kx);
+    int32_t sy = (int32_t)(((float)winY - VkView_getOriginY(view)) * ky);
+    if (sx < 0) sx = 0;
+    if (sy < 0) sy = 0;
+    uint32_t sw = (uint32_t)((float)winW * kx);
+    uint32_t sh = (uint32_t)((float)winH * ky);
+    int32_t cacheWi = (int32_t)cacheW;
+    int32_t cacheHi = (int32_t)cacheH;
+    if (sx >= cacheWi || sy >= cacheHi) { EndCommandBuffer_fn(s_cmdBuffer); return false; }
+    if (sx + (int32_t)sw > cacheWi) sw = (uint32_t)(cacheWi - sx);
+    if (sy + (int32_t)sh > cacheHi) sh = (uint32_t)(cacheHi - sy);
+
+    VkImageBlit region = {0};
+    region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.srcSubresource.layerCount = 1;
+    region.srcOffsets[0].x = sx;
+    region.srcOffsets[0].y = sy;
+    region.srcOffsets[1].x = sx + (int32_t)sw;
+    region.srcOffsets[1].y = sy + (int32_t)sh;
+    region.srcOffsets[1].z = 1;
+    region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.dstSubresource.layerCount = 1;
+    region.dstOffsets[1].x = (int32_t)s_extent.width;
+    region.dstOffsets[1].y = (int32_t)s_extent.height;
+    region.dstOffsets[1].z = 1;
+    VkFilter filter = (sw == s_extent.width && sh == s_extent.height)
+                      ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
+    CmdBlitImage_fn(s_cmdBuffer, VkView_image(view), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    s_swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    1, &region, filter);
+
+    VkImageMemoryBarrier toPresent = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+    toPresent.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    toPresent.dstAccessMask = 0;
+    toPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    toPresent.image = s_swapchainImages[imageIndex];
+    toPresent.subresourceRange = toDst.subresourceRange;
+    CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &toPresent);
+
     EndCommandBuffer_fn(s_cmdBuffer);
 
-    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
     VkSubmitInfo si = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
     si.waitSemaphoreCount = 1;
     si.pWaitSemaphores = &s_semAcquire;

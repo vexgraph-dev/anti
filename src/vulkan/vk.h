@@ -25,15 +25,14 @@ bool Vk_init(Window *window);
 void Vk_shutdown(void);
 bool Vk_ready(void);
 
-// Acquire, clear the frame to the window's background color (or the root
-// panel's own color while one is attached), execute the latest recorded
-// scene commands, present. False when not ready or the swapchain is out of
-// date. Present pacing follows Window_getPresentMode(window).
+// Acquire, clear the monitor cache to the window's background color (or the
+// basket panel's own color while one is set), render ONE layer — the direct
+// children of the window's container basket — at absolute desktop
+// coordinates, then blit the window's region (top-left anchored) from the
+// monitor's giant cache into the acquired swapchain image and present.
+// False when not ready or the swapchain is out of date. Present pacing
+// follows Window_getPresentMode(window).
 bool Vk_clearPresent(void);
-
-// The hello triangle: your legacy shaders (gradient + bouncing glow triangle)
-// driven by u_time. Builds pipeline/framebuffers/sync on first call.
-bool Vk_helloTriangle(float timeSeconds);
 
 // Human-readable stop point of the last init attempt ("ok", "no loader", ...).
 const char *Vk_status(void);
