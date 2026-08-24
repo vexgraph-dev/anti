@@ -1251,6 +1251,10 @@ static void applyLayerGravity(Window *window) {
         NSView *view = [(*window).nsWindow contentView];
         if (!view)
             return;
+        // Policy writes ride no implicit CA actions — same discipline as
+        // the software path's setDisableActions around layer.contents.
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
         view.layerContentsPlacement = NSViewLayerContentsPlacementTopLeft;
         view.layerContentsRedrawPolicy = NSViewLayerContentsRedrawDuringViewResize;
         if (view.layer) {
@@ -1258,6 +1262,7 @@ static void applyLayerGravity(Window *window) {
             view.layer.autoresizingMask = kCALayerHeightSizable | kCALayerWidthSizable;
             view.layer.needsDisplayOnBoundsChange = YES;
         }
+        [CATransaction commit];
     }
 }
 
