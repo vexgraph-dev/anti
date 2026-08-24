@@ -26,7 +26,7 @@ typedef struct SpinLock {
 void SpinLock_lock(SpinLock *lock);
 
 // Try once: returns true if acquired, false if held by someone else.
-bool SpinLockry_lock(SpinLock *lock);
+bool SpinLock_tryLock(SpinLock *lock);
 
 // Try with a deadline in nanoseconds. Returns false on timeout (never spins
 // forever); pass -1 for "spin forever".
