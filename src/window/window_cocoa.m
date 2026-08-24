@@ -123,6 +123,7 @@ struct Window {
     // --- runtime state ---
     _Atomic bool enabled;    // false mutes ALL OS input for this window
     bool lastFocused;        // focus-flip detection during the pump
+    _Atomic uint32_t monitorId; // CGDirectDisplayID mirror; 0 = unmapped
 
     // --- window-lifecycle adapters (thread 0 only) ---
     const WindowEvent *windowAdapters[WINDOW_ADAPTER_MAX];
@@ -251,6 +252,43 @@ static void windowFireMoved(Window *window, int x, int y) {
         if ((*a).onMoved)
             (*a).onMoved((*a).self, window, x, y);
     }
+}
+
+static void windowFireMonitorChanged(Window *window, uint32_t oldId, uint32_t newId) {
+    if (!window)
+        return;
+    for (int i = 0; i < (*window).windowAdapterCount; i++) {
+        const WindowEvent *a = (*window).windowAdapters[i];
+        if ((*a).onMonitorChanged)
+            (*a).onMonitorChanged((*a).self, window, oldId, newId);
+    }
+}
+
+// Resolve the CGDirectDisplayID of the screen carrying the greatest share of
+// this window. Returns 0 when no screen qualifies (headless, fully off-screen
+// with no intersection, or screens list empty).
+static uint32_t resolveMonitorId(Window *window) {
+    if (!window)
+        return 0;
+    @autoreleasepool {
+        NSScreen *screen = [(*window).nsWindow screen];
+        if (!screen)
+            return 0;
+        NSNumber *displayId = [[screen deviceDescription] objectForKey:@"NSScreenNumber"];
+        return displayId ? (uint32_t)[displayId unsignedIntValue] : 0;
+    }
+}
+
+// Mirror the OS's monitor assignment into the atomic word; fires adapters on
+// flip. Thread 0 only.
+static void refreshMonitorId(Window *window) {
+    if (!window)
+        return;
+    uint32_t next = resolveMonitorId(window);
+    uint32_t prev = atomic_exchange_explicit(&(*window).monitorId, next,
+                                             memory_order_acq_rel);
+    if (prev != next)
+        windowFireMonitorChanged(window, prev, next);
 }
 
 // Re-centre the cursor during the pump while locked, so the warp registers
@@ -470,6 +508,10 @@ void Window_pollEvents(void) {
                 (*handle).lastFocused = focused;
                 windowFireFocus(handle, focused);
             }
+
+            // Monitor mirror: resolve the carrying display, flip the atomic,
+            // fire adapters only when the window changed screens.
+            refreshMonitorId(handle);
         }
     }
 }
@@ -537,6 +579,7 @@ static Window *windowAlloc(const WindowDesc *desc) {
         atomic_store_explicit(&(*w).container, NULL, memory_order_relaxed);
         atomic_store_explicit(&(*w).enabled, true, memory_order_relaxed);
         (*w).lastFocused = false;
+        atomic_store_explicit(&(*w).monitorId, 0, memory_order_relaxed);
         (*w).windowAdapterCount = 0;
         (*w).id = windowIdAcquire(window, w);
         delegate.shouldClosePtr = &(*w).shouldClose;
@@ -792,6 +835,9 @@ void Window_show(Window *window) {
         [[NSRunningApplication currentApplication]
             activateWithOptions:NSApplicationActivateAllWindows];
         [(*window).nsWindow makeKeyAndOrderFront:nil];
+        // Prime the monitor mirror eagerly: a window that just became
+        // visible should know where it lives before the first pump.
+        refreshMonitorId(window);
     }
 }
 
@@ -1068,6 +1114,10 @@ void Window_focus(Window *window) {
 
 bool Window_isFocused(Window *window) {
     return window && Focus_isFocused((*window).id);
+}
+
+uint32_t Window_getMonitorId(const Window *window) {
+    return window ? atomic_load_explicit(&(*window).monitorId, memory_order_acquire) : 0;
 }
 
 // --- Resize reflection ---
