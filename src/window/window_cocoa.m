@@ -522,6 +522,31 @@ void Window_pollEvents(void) {
             // every pass on thread 0 before any present can sample the
             // layer. There is no stretch mode to fall back into.
             applyLayerGravity(handle);
+
+            // Discriminator probe: who is stretching? Log what the layer
+            // ACTUALLY carries while the window is being abused. If gravity
+            // ever reads anything but topLeft, someone replaced our layer.
+            static int s_probeInit = 0;
+            static bool s_probe = false;
+            static uint64_t s_probeTick = 0;
+            if (!s_probeInit) {
+                s_probeInit = 1;
+                s_probe = getenv("ANTI_VK_TRACE") != NULL;
+            }
+            if (s_probe && (++s_probeTick % 30 == 0)) {
+                @autoreleasepool {
+                    NSView *view = [(*handle).nsWindow contentView];
+                    NSString *g = [(id)view.layer contentsGravity];
+                    CGSize ds = CGSizeZero;
+                    if ([view.layer isKindOfClass:[CAMetalLayer class]])
+                        ds = ((CAMetalLayer *)view.layer).drawableSize;
+                    NSLog(@"vk:probe frame=%.0fx%.0f content=%dx%d gravity=%@ drawable=%.0fx%.0f",
+                          [(*handle).nsWindow frame].size.width,
+                          [(*handle).nsWindow frame].size.height,
+                          (*handle).cachedWidth, (*handle).cachedHeight,
+                          g, ds.width, ds.height);
+                }
+            }
         }
     }
 }
@@ -1237,9 +1262,20 @@ static void applyLayerGravity(Window *window) {
 }
 
 void Window_setGravityTopLeft(Window *window) {
-    // Nothing to decide: the pump re-asserts TopLeft on every window every
-    // pass, so the property is already true by the time anyone could ask.
-    // Kept as a seam for renderer call sites; applying here would be a
-    // second write of a fact the pump never lets go stale.
-    (void) window;
+    // Rebuild-moment reassertion: the present worker calls this the instant
+    // a fresh swapchain lands, and the block fires on thread 0 the moment
+    // the runloop can service it — beating the next scheduled pump pass in
+    // the common case. Safety: capture the NSWindow STRONGLY and resolve
+    // the live C handle inside the block, so a window destroyed between
+    // enqueue and execution cannot dangle.
+    if (!window)
+        return;
+    @autoreleasepool {
+        NSWindow *nsw = (*window).nsWindow;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            Window *live = windowHandleOf(nsw);
+            if (live)
+                applyLayerGravity(live);
+        });
+    }
 }
