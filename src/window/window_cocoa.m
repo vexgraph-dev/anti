@@ -121,7 +121,6 @@ struct Window {
     _Atomic bool enabled;    // false mutes ALL OS input for this window
     bool lastFocused;        // focus-flip detection during the pump
     _Atomic uint32_t monitorId; // CGDirectDisplayID mirror; 0 = unmapped
-    _Atomic bool gravityQueued; // setGravityTopLeft intent, applied on thread 0
 
     // --- window-lifecycle adapters (thread 0 only) ---
     const WindowEvent *windowAdapters[WINDOW_ADAPTER_MAX];
@@ -519,13 +518,10 @@ void Window_pollEvents(void) {
             // fire adapters only when the window changed screens.
             refreshMonitorId(handle);
 
-            // Gravity contract: apply any queued TopLeft assertion here on
-            // thread 0, synchronously, BEFORE the next present can sample
-            // the layer with stale placement.
-            if (atomic_load_explicit(&(*handle).gravityQueued, memory_order_acquire)) {
-                atomic_store_explicit(&(*handle).gravityQueued, false, memory_order_relaxed);
-                applyLayerGravity(handle);
-            }
+            // Gravity contract: TopLeft is UNCONDITIONAL POLICY, asserted
+            // every pass on thread 0 before any present can sample the
+            // layer. There is no stretch mode to fall back into.
+            applyLayerGravity(handle);
         }
     }
 }
@@ -597,7 +593,6 @@ static Window *windowAlloc(const WindowDesc *desc) {
         atomic_store_explicit(&(*w).enabled, true, memory_order_relaxed);
         (*w).lastFocused = false;
         atomic_store_explicit(&(*w).monitorId, 0, memory_order_relaxed);
-        atomic_store_explicit(&(*w).gravityQueued, false, memory_order_relaxed);
         (*w).windowAdapterCount = 0;
         (*w).id = windowIdAcquire(window, w);
         delegate.shouldClosePtr = &(*w).shouldClose;
@@ -1242,10 +1237,9 @@ static void applyLayerGravity(Window *window) {
 }
 
 void Window_setGravityTopLeft(Window *window) {
-    // Renderer threads never touch AppKit here anymore: queue the intent,
-    // the next pump (<= 1ms away at the standard 1000Hz event rate) applies
-    // it synchronously on the thread AppKit trusts.
-    if (!window)
-        return;
-    atomic_store_explicit(&(*window).gravityQueued, true, memory_order_release);
+    // Nothing to decide: the pump re-asserts TopLeft on every window every
+    // pass, so the property is already true by the time anyone could ask.
+    // Kept as a seam for renderer call sites; applying here would be a
+    // second write of a fact the pump never lets go stale.
+    (void) window;
 }
