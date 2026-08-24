@@ -111,6 +111,10 @@ void Window_setSize(Window *window, int width, int height);
 void Window_setLocation(Window *window, int x, int y);
 // Top-left corner in global desktop points (the space setLocation speaks).
 void Window_getLocation(const Window *window, int *outX, int *outY);
+// Top-left of the CONTENT area (below the title bar) in desktop points —
+// the space darling layouts and GPU caches speak. This is what renderers
+// should join against, not getLocation (the frame includes chrome).
+void Window_getContentOrigin(const Window *window, int *outX, int *outY);
 void Window_center(Window *window);
 void Window_show(Window *window);
 void Window_hide(Window *window);
@@ -138,27 +142,14 @@ Panel *Window_getContainer(const Window *window);
 // loads. presentMode and transparent participate in the swapchain, so a
 // change bumps Window_renderGeneration(); the consumer compares generations
 // and rebuilds targets on drift (same reflection contract as resize).
+//
+// NOTE: there is deliberately NO background color here. Color is content —
+// it lives on the container panel hung in Window_setContainer, and the
+// renderer clears its monitor cache to that panel's color. Unset panel
+// color (PANEL_COLOR_CLEAR) means transparent across the board.
 
 void     Window_setPresentMode(Window *window, int mode);
 int      Window_getPresentMode(const Window *window);
-
-// Clear color behind everything, 0xAARRGGBB. Overload by arity, the
-// constructor-chooser way: two args take the packed hex, five args take
-// bytes. Wrong arities fail to compile against the real functions.
-void Window_setBackgroundColorHex(Window *window, uint32_t rgba);
-void Window_setBackgroundColorRGBA(Window *window, uint8_t r, uint8_t g,
-                                   uint8_t b, uint8_t a);
-
-#define WINDOW_SET_BG_PICK(_a, _b, _c, _d, _e, _f, NAME, ...) NAME
-
-#define Window_setBackgroundColor(...)                             \
-    WINDOW_SET_BG_PICK(dummy, ##__VA_ARGS__,                       \
-        Window_setBackgroundColorRGBA, /* (w, r, g, b, a) */       \
-        Window_setBackgroundColorRGBA, /* 4 args: compile error */ \
-        Window_setBackgroundColorRGBA, /* 3 args: compile error */ \
-        Window_setBackgroundColorHex)(__VA_ARGS__) /* (w, rgba) */
-
-uint32_t Window_getBackgroundColor(const Window *window);
 
 // Composite transparency for the swapchain surface. Selecting true asks the
 // rebuild path to pick a non-opaque compositeAlpha from what the driver
@@ -168,8 +159,7 @@ bool Window_isTransparent(const Window *window);
 
 // Monotonic counter bumped by thread 0 whenever presentMode or transparent
 // changed. Renderers compare their last-applied generation against this and
-// rebuild the swapchain when it moved. Color/container edits do NOT bump it —
-// those are per-frame polled values.
+// rebuild the swapchain when it moved.
 uint64_t Window_renderGeneration(const Window *window);
 
 // --- Runtime state ---
