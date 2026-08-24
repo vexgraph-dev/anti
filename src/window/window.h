@@ -20,16 +20,37 @@
 // lived in legacy-java): title/size/position, chrome capability toggles
 // (resizable/closable/miniaturizable/traffic lights), fullscreen, minimize,
 // undecorated (naked) chrome, DRM (sharing) mode, and size constraints.
+//
+// Three state families live on the handle:
+//   POLICY    — present pacing + clear color + transparency. Written by
+//               thread 0 any time; the GPU consumer polls them through
+//               atomic words and watches renderGeneration for swapchain
+//               rebuilds. Zero allocation, zero locks.
+//   CONTENT   — exactly ONE container slot. NULL root => the renderer has
+//               nothing to draw and degrades to a clear-only pass. All
+//               nesting happens INSIDE that root via Panel_addContainer;
+//               the window influences whatever hangs under it.
+//   ADAPTERS  — key/mouse/touch/window listener vtables attached by
+//               pointer identity, dispatched on thread 0 during
+//               Window_dispatchEvents. A disabled window mutes its input.
 
 // Opaque handle; contents live in the backend file. The tag stays INCOMPLETE
 // here on purpose (exception to preferences rule 3): the backend translation
 // unit completes struct Window with its real fields.
 typedef struct Window Window;
 
+typedef struct Panel Panel;
+
 // Undecorated chrome modes for Window_setUndecorated.
 #define WINDOW_UNDECORATED_DECORATED  0 // standard opaque title bar, title visible
 #define WINDOW_UNDECORATED_BORDERLESS 1 // no title bar and no traffic lights
 #define WINDOW_UNDECORATED_NAKED      2 // transparent title bar, hidden title, traffic lights kept
+
+// Present pacing. What MoltenVK actually exposes — FIFO paces frames to the
+// display (vsync), IMMEDIATE submits unthrottled. Naming follows the Vulkan
+// present modes they map onto, not marketing words.
+#define WINDOW_PRESENT_FIFO      0 // display-synced, capped (default)
+#define WINDOW_PRESENT_IMMEDIATE 1 // uncapped, no sync
 
 // Constructor parameters. Every field has a default; a call site names only
 // what it wants to change. Zero it for pure defaults.
@@ -82,21 +103,80 @@ bool Window_shouldClose(Window *window);
 // Drain the OS event queue. Call once per frame from the engine loop.
 void Window_pollEvents(void);
 
-// Toggle vsync. No-op until the swapchain lands.
-void Window_setVsync(Window *window, bool enabled);
-
 // --- Title / size / position ---
 void Window_setTitle(Window *window, const char *title);
 int  Window_width(Window *window);
 int  Window_height(Window *window);
-void Window_setDimension(Window *window, int width, int height);
-void Window_setWidth(Window *window, int width);
-void Window_setHeight(Window *window, int height);
+void Window_setSize(Window *window, int width, int height);
 void Window_setLocation(Window *window, int x, int y);
 void Window_center(Window *window);
 void Window_show(Window *window);
 void Window_hide(Window *window);
 void Window_setVisible(Window *window, bool visible);
+
+// --- Content: the ONE container slot -----------------------------------------
+//
+// The root is a Panel (the basket); the game panel, UI panels, everything
+// nests UNDER it via Panel_addContainer — the scene3d is just a child like
+// any other. The basket MIRRORS the window: its width/height are rewritten
+// to the window's content size whenever the window resizes (size-generation
+// reflection), so percentage layouts and edge anchors inside it track the
+// real window without anyone forwarding sizes by hand.
+//
+// Setting NULL detaches content and the renderer falls back to a clear-only
+// pass — nothing is displayed. The renderer re-reads this pointer every frame
+// (relaxed atomic), so swaps land on the next presented frame.
+
+void   Window_setContainer(Window *window, Panel *root);
+Panel *Window_getContainer(const Window *window);
+
+// --- Present policy -----------------------------------------------------------
+//
+// Written by thread 0 whenever; consumed by the GPU thread through atomic
+// loads. presentMode and transparent participate in the swapchain, so a
+// change bumps Window_renderGeneration(); the consumer compares generations
+// and rebuilds targets on drift (same reflection contract as resize).
+
+void     Window_setPresentMode(Window *window, int mode);
+int      Window_getPresentMode(const Window *window);
+
+// Clear color behind everything, 0xAARRGGBB. Overload by arity, the
+// constructor-chooser way: two args take the packed hex, five args take
+// bytes. Wrong arities fail to compile against the real functions.
+void Window_setBackgroundColorHex(Window *window, uint32_t rgba);
+void Window_setBackgroundColorRGBA(Window *window, uint8_t r, uint8_t g,
+                                   uint8_t b, uint8_t a);
+
+#define WINDOW_SET_BG_PICK(_a, _b, _c, _d, _e, _f, NAME, ...) NAME
+
+#define Window_setBackgroundColor(...)                             \
+    WINDOW_SET_BG_PICK(dummy, ##__VA_ARGS__,                       \
+        Window_setBackgroundColorRGBA, /* (w, r, g, b, a) */       \
+        Window_setBackgroundColorRGBA, /* 4 args: compile error */ \
+        Window_setBackgroundColorRGBA, /* 3 args: compile error */ \
+        Window_setBackgroundColorHex)(__VA_ARGS__) /* (w, rgba) */
+
+uint32_t Window_getBackgroundColor(const Window *window);
+
+// Composite transparency for the swapchain surface. Selecting true asks the
+// rebuild path to pick a non-opaque compositeAlpha from what the driver
+// actually supports.
+void Window_setTransparent(Window *window, bool transparent);
+bool Window_isTransparent(const Window *window);
+
+// Monotonic counter bumped by thread 0 whenever presentMode or transparent
+// changed. Renderers compare their last-applied generation against this and
+// rebuild the swapchain when it moved. Color/container edits do NOT bump it —
+// those are per-frame polled values.
+uint64_t Window_renderGeneration(const Window *window);
+
+// --- Runtime state ---
+
+// Input-only kill switch: a disabled window delivers NO OS input — events
+// never enter the device rings, adapters stay silent, polling freezes.
+// Presentation and rendering are untouched.
+void Window_setEnabled(Window *window, bool enabled);
+bool Window_isEnabled(const Window *window);
 
 // --- Chrome capability toggles (style-mask API) ---
 bool Window_isResizable(Window *window);
@@ -152,22 +232,35 @@ void Window_setGravityTopLeft(Window *window);
 typedef struct Buffer Buffer;
 bool Window_present(Window *window, const Buffer *frame);
 
-// --- Event wiring ---
+// --- Event wiring (adapters) ---
 //
 // The window is the registration surface for the event contracts: implement
 // a KeyEvent/MouseEvent/TouchEvent vtable (with .self = your object) and
 // attach it here. Every queued event carries the id of the window the OS
-// delivered it to, so an attached listener only hears events for ITS window
+// delivered it to, so an attached adapter only hears events for ITS window
 // (broadcast-tagged synthetic events reach every window). Removal is by
 // pointer identity. Destroying the window detaches its listeners.
-void Window_addKeyEvent(Window *window, const KeyEvent *listener);
-bool Window_removeKeyEvent(Window *window, const KeyEvent *listener);
-void Window_addMouseEvent(Window *window, const MouseEvent *listener);
-bool Window_removeMouseEvent(Window *window, const MouseEvent *listener);
-void Window_addTouchEvent(Window *window, const TouchEvent *listener);
-bool Window_removeTouchEvent(Window *window, const TouchEvent *listener);
+void Window_addKeyAdapter(Window *window, const KeyEvent *adapter);
+bool Window_removeKeyAdapter(Window *window, const KeyEvent *adapter);
+void Window_addMouseAdapter(Window *window, const MouseEvent *adapter);
+bool Window_removeMouseAdapter(Window *window, const MouseEvent *adapter);
+void Window_addTouchAdapter(Window *window, const TouchEvent *adapter);
+bool Window_removeTouchAdapter(Window *window, const TouchEvent *adapter);
 
-// The running: drain all three device rings into the registered listeners.
+// Window-lifecycle adapter: close requests, focus flips, resize/move moves.
+// Fired from the pump pass on thread 0, AFTER the OS event is processed.
+typedef struct WindowEvent {
+    void *self;
+    void (*onCloseRequested)(void *self, Window *window);
+    void (*onFocusChanged)(void *self, Window *window, bool focused);
+    void (*onResized)(void *self, Window *window, int width, int height);
+    void (*onMoved)(void *self, Window *window, int x, int y);
+} WindowEvent;
+
+void Window_addWindowAdapter(Window *window, const WindowEvent *adapter);
+bool Window_removeWindowAdapter(Window *window, const WindowEvent *adapter);
+
+// The running: drain all three device rings into the registered adapters.
 // Call ONCE per frame from the game loop, after Window_pollEvents(). If you
 // never call it, polling (Key_isDown/Mouse_x) still works but queued events
 // pile up and drop once the rings fill.
