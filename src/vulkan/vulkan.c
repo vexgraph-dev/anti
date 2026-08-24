@@ -12,7 +12,6 @@
 
 #include "darling/container.h"
 #include "darling/panel.h"
-#include "darling/scene.h"
 #include "window/window.h"
 
 // vulkan/vulkan.c — runtime-loaded Vulkan chain (Legacy: none — the Java tree
@@ -32,6 +31,15 @@ static char s_status[64] = "not started";
 // chain (fullscreen, resize). Renderpass/pipeline are extent-independent.
 static bool rebuildTargets(void);
 static void destroyTargets(void);
+
+// Last-applied Window_renderGeneration. A drift means presentMode or
+// transparent changed on thread 0 and the swapchain wants a rebuild.
+static uint64_t s_appliedRenderGen = 0;
+
+// Last-applied Window_sizeGeneration for the container mirror. The basket
+// panel's w/h are rewritten to the window's content size whenever this
+// drifts — the "root mirrors its window" law.
+static uint64_t s_mirroredSizeGen = UINT64_MAX;
 
 static VkInstance s_instance;
 static VkSurfaceKHR s_surface;
@@ -326,7 +334,7 @@ static bool rebuildTargets(void) {
 
     VkSwapchainCreateInfoKHR swci = { .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     swci.surface = s_surface;
-    swci.minImageCount = caps.minImageCount;
+    swci.minImageCount = imageCount; // triple-buffer bias, clamped to caps
     swci.imageFormat = s_format;
     swci.imageColorSpace = formatCount ? formats[0].colorSpace : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     swci.imageExtent = caps.currentExtent;
@@ -335,8 +343,24 @@ static bool rebuildTargets(void) {
     swci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     swci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     swci.preTransform = caps.currentTransform;
+
+    // Transparency is a request, not an order: pick the best non-opaque
+    // composite mode the driver actually reports, fall back to opaque.
     swci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    if (Window_isTransparent(s_window)) {
+        if (caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR)
+            swci.compositeAlpha = VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
+        else if (caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)
+            swci.compositeAlpha = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
+        else if (caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)
+            swci.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+    }
+
+    // Pacing policy lives on the window: FIFO paces to the display,
+    // IMMEDIATE submits unthrottled.
+    swci.presentMode = (Window_getPresentMode(s_window) == WINDOW_PRESENT_IMMEDIATE)
+                       ? VK_PRESENT_MODE_IMMEDIATE_KHR
+                       : VK_PRESENT_MODE_FIFO_KHR;
     swci.clipped = VK_TRUE;
     swci.oldSwapchain = oldSwapchain;
 
@@ -396,7 +420,9 @@ static bool rebuildTargets(void) {
         }
     }
 
-    fprintf(stderr, "vk: swapchain live %ux%u fmt=%d\n", s_extent.width, s_extent.height, (int)s_format);
+    fprintf(stderr, "vk: swapchain live %ux%u fmt=%d present=%d\n", s_extent.width, s_extent.height, (int)s_format,
+            (int)(swci.presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR));
+    s_appliedRenderGen = Window_renderGeneration(s_window);
     return true;
 }
 
@@ -423,12 +449,6 @@ static void destroyTargets(void) {
     if (s_swapchain != VK_NULL_HANDLE && DestroySwapchainKHR_fn)
         DestroySwapchainKHR_fn(s_device, s_swapchain, NULL);
     s_swapchain = VK_NULL_HANDLE;
-}
-
-static Scene3D *s_scene3D = NULL;
-
-void Vk_setScene3D(Scene3D *scene) {
-    s_scene3D = scene;
 }
 
 bool Vk_ready(void) {
@@ -784,17 +804,29 @@ bool Vk_helloTriangle(float timeSeconds) {
     VkRect2D scissor = {0};
     scissor.extent = s_extent;
 
-    if (s_scene3D != NULL) {
-        int winW = s_window ? Window_width(s_window) : 0;
-        int winH = s_window ? Window_height(s_window) : 0;
-        if (winW <= 0) winW = (int)s_extent.width;
-        if (winH <= 0) winH = (int)s_extent.height;
+    // Content root: whatever Panel hangs under the window's ONE container
+    // slot. NULL => full-extent viewport, no scissor clamp.
+    Panel *root = s_window ? Window_getContainer(s_window) : NULL;
+
+    int winW = s_window ? Window_width(s_window) : 0;
+    int winH = s_window ? Window_height(s_window) : 0;
+    if (winW <= 0) winW = (int)s_extent.width;
+    if (winH <= 0) winH = (int)s_extent.height;
+
+    if (root != NULL) {
+        // The basket mirrors the window: rewrite its w/h on resize drift so
+        // percent layouts and edge anchors inside it track the real window.
+        uint64_t sizeGen = Window_sizeGeneration(s_window);
+        if (sizeGen != s_mirroredSizeGen) {
+            s_mirroredSizeGen = sizeGen;
+            Container_setSize(&(*root).base, (float)winW, (float)winH);
+        }
 
         float scaleX = (float)s_extent.width / (float)winW;
         float scaleY = (float)s_extent.height / (float)winH;
 
         Vec4 rect;
-        Container_resolve(&(*s_scene3D).base.base.base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
+        Container_resolve(&(*root).base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
 
         if (rect.z > 0.0f && rect.w > 0.0f) {
             viewport.x = rect.x * scaleX;
@@ -836,8 +868,12 @@ bool Vk_helloTriangle(float timeSeconds) {
     return true;
 }
 
-bool Vk_clearPresent(float r, float g, float b) {
+bool Vk_clearPresent(void) {
     if (!Vk_ready() || s_cmdBuffer == VK_NULL_HANDLE) return false;
+
+    // Policy drift (presentMode / transparent changed) wants a fresh chain.
+    uint64_t renderGen = Window_renderGeneration(s_window);
+    if (renderGen != s_appliedRenderGen && !rebuildTargets()) return false;
 
     VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceCapabilitiesKHR)
     VkSurfaceCapabilitiesKHR live;
@@ -856,7 +892,7 @@ bool Vk_clearPresent(float r, float g, float b) {
                                          s_semAcquire, VK_NULL_HANDLE, &imageIndex);
     if (ar == VK_ERROR_OUT_OF_DATE_KHR) {
         if (!rebuildTargets()) return false;
-        return Vk_clearPresent(r, g, b);
+        return Vk_clearPresent();
     }
     if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR) return false;
 
@@ -885,18 +921,21 @@ bool Vk_clearPresent(float r, float g, float b) {
     VkCommandBufferBeginInfo bbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
     BeginCommandBuffer_fn(s_cmdBuffer, &bbi);
 
+    // Clear color precedence: the attached root panel's own color wins while
+    // one exists (PANEL_COLOR_CLEAR falls through), else the window default.
     VkClearValue clear = {0};
-    uint32_t bg = s_scene3D ? Panel_getBackgroundColor(&(*s_scene3D).base.base) : 0xFF141414;
+    uint32_t bg = Window_getBackgroundColor(s_window);
+    Panel *clearRoot = Window_getContainer(s_window);
+    if (clearRoot != NULL) {
+        uint32_t panelBg = Panel_getBackgroundColor(clearRoot);
+        if (panelBg != 0)
+            bg = panelBg;
+    }
     if (bg != 0) {
         clear.color.float32[0] = ((bg >> 16) & 0xFF) / 255.0f;
         clear.color.float32[1] = ((bg >> 8) & 0xFF) / 255.0f;
         clear.color.float32[2] = (bg & 0xFF) / 255.0f;
         clear.color.float32[3] = ((bg >> 24) & 0xFF) / 255.0f;
-    } else {
-        clear.color.float32[0] = r;
-        clear.color.float32[1] = g;
-        clear.color.float32[2] = b;
-        clear.color.float32[3] = 1.0f;
     }
 
     VkRenderPassBeginInfo rbi = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };

@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// vulkan/vulkan.h — the GPU backend seam (MoltenVK on macOS, software stays).
+// vulkan/vk.h — the GPU backend seam (MoltenVK on macOS, software stays).
 //
 // Runtime loading only: the loader dylib is dlopen'd, every entry point is
 // fetched through vkGetInstanceProcAddr. No link-time dependency, so a machine
@@ -14,22 +14,22 @@
 // swapchain; clearPresent acquires an image, clears it to a solid color and
 // presents. THREAD CONTRACT: init and clearPresent run on thread 0 (the
 // surface wraps the window's AppKit view).
+//
+// Content + policy come from the Window handle itself: the renderer reads the
+// root container via Window_getContainer, pacing via Window_getPresentMode,
+// and watches Window_renderGeneration for swapchain rebuilds.
 
 typedef struct Window Window;
-typedef struct Scene3D Scene3D;
 
 bool Vk_init(Window *window);
 void Vk_shutdown(void);
 bool Vk_ready(void);
 
-// Update the layout constraints (safely read by draw thread to set viewport/scissor)
-typedef struct Scene3D Scene3D;
-
-void Vk_setScene3D(Scene3D *scene);
-
-// Acquire, clear the frame to (r,g,b) in linear-ish [0..1], present. False
-// when not ready or the swapchain is out of date.
-bool Vk_clearPresent(float r, float g, float b);
+// Acquire, clear the frame to the window's background color (or the root
+// panel's own color while one is attached), execute the latest recorded
+// scene commands, present. False when not ready or the swapchain is out of
+// date. Present pacing follows Window_getPresentMode(window).
+bool Vk_clearPresent(void);
 
 // The hello triangle: your legacy shaders (gradient + bouncing glow triangle)
 // driven by u_time. Builds pipeline/framebuffers/sync on first call.
