@@ -15,6 +15,7 @@
 #include "nio/mem.h"
 #include "oop/type.h"
 #include "time/nanotime.h"
+#include "atomic/spin.h"
 #include "vulkan/vk_view.h"
 #include "window/window.h"
 
@@ -43,6 +44,8 @@ static char s_status[64] = "not started";
 static bool rebuildTargets(void);
 static void destroyTargets(void);
 static bool buildPipelines(void);
+static bool presentFrameLocked(void);
+static void resizeRenderTrampoline(void *userdata);
 
 // Last-applied Window_renderGeneration. A drift means presentMode or
 // transparent changed on thread 0 and the swapchain wants a rebuild.
@@ -56,6 +59,10 @@ static uint64_t s_mirroredSizeGen = UINT64_MAX;
 // Animation clock anchor for scene children (u_time seconds since init).
 static uint64_t s_animStartNanos = 0;
 
+// Serializes whole-frame submission between the present worker and thread 0's
+// resize-cadence bridge. Try-lock semantics: whoever is busy loses this tick.
+static SpinLock s_presentLock = SPIN_LOCK_INIT;
+
 // Swapchain graveyard: destroying a swapchain whose present-completion
 // callbacks are still queued on Metal's dispatch queues is a use-after-free
 // (SIGSEGV in MVKSwapchain::beginPresentation). The Vulkan fence covers
@@ -67,6 +74,9 @@ static VkSwapchainKHR s_retiredSwapchains[VK_RETIRED_SWAPCHAINS_MAX];
 static uint32_t s_retiredGenerations[VK_RETIRED_SWAPCHAINS_MAX];
 static uint32_t s_retiredCount = 0;
 static uint32_t s_swapchainGeneration = 0;
+static bool s_dumpEnabled = false;
+static int s_dumpStage = 0;
+static bool s_dumpEnvRead = false;
 
 static VkInstance s_instance;
 static VkSurfaceKHR s_surface;
@@ -310,6 +320,10 @@ bool Vk_init(Window *window) {
     if (CreateFence_fn && CreateFence_fn(s_device, &fci2, NULL, &s_fence) != VK_SUCCESS) return false;
 
     s_animStartNanos = NanoTime_now();
+
+    // The c -> objc -> c bridge: AppKit's resize servicing drives frames at
+    // the OS's own rhythm through this hook.
+    Window_setResizeRenderHook(s_window, resizeRenderTrampoline, NULL);
     return true;
 }
 
@@ -637,6 +651,111 @@ static void decodeColor(uint32_t rgba, float *out) {
     out[3] = ((rgba >> 24) & 0xFF) / 255.0f;
 }
 
+// --- collage verification: read the monitor cache back to a TGA -------------
+// ANTI_VK_DUMP=1. Phase 1 records a cache->buffer copy INSIDE the present
+// command buffer (correct layout by construction, GPU-ordered); phase 2,
+// next frame after the fence proves it retired, maps and writes
+// /tmp/vk_cache_dump.tga. No timing or layout assumptions.
+static VkBuffer s_dumpBuffer;
+static VkDeviceMemory s_dumpMem;
+static VkDeviceSize s_dumpSize = 0;
+static int32_t s_dumpW = 0, s_dumpH = 0;
+
+static bool dumpAllocStage(VkView *view) {
+    VK_LOAD_DEVICE(CreateBuffer)
+    VK_LOAD_DEVICE(GetBufferMemoryRequirements)
+    VK_LOAD_DEVICE(AllocateMemory)
+    VK_LOAD_DEVICE(BindBufferMemory)
+    VK_LOAD_INSTANCE(GetPhysicalDeviceMemoryProperties)
+
+    s_dumpW = VkView_getWidth(view);
+    s_dumpH = VkView_getHeight(view);
+    s_dumpSize = (VkDeviceSize)s_dumpW * s_dumpH * 4;
+
+    VkBufferCreateInfo bci = { .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    bci.size = s_dumpSize;
+    bci.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (CreateBuffer_fn(s_device, &bci, NULL, &s_dumpBuffer) != VK_SUCCESS)
+        return false;
+
+    VkMemoryRequirements req;
+    GetBufferMemoryRequirements_fn(s_device, s_dumpBuffer, &req);
+    VkPhysicalDeviceMemoryProperties props;
+    GetPhysicalDeviceMemoryProperties_fn(s_phys, &props);
+    uint32_t typeIdx = UINT32_MAX;
+    for (uint32_t i = 0; i < props.memoryTypeCount; i++) {
+        if (!(req.memoryTypeBits & (1u << i)))
+            continue;
+        if ((props.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+            && (props.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+            typeIdx = i;
+            break;
+        }
+    }
+    if (typeIdx == UINT32_MAX)
+        return false;
+
+    VkMemoryAllocateInfo mai = { .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    mai.allocationSize = req.size;
+    mai.memoryTypeIndex = typeIdx;
+    if (AllocateMemory_fn(s_device, &mai, NULL, &s_dumpMem) != VK_SUCCESS)
+        return false;
+    BindBufferMemory_fn(s_device, s_dumpBuffer, s_dumpMem, 0);
+    return true;
+}
+
+static bool dumpRecordCopy(VkView *view, VkCommandBuffer cb) {
+    // Called mid-recording, immediately after VkView_endPass: the cache is
+    // in TRANSFER_SRC_OPTIMAL and the barrier ordering is already correct.
+    VK_LOAD_DEVICE(CmdCopyImageToBuffer)
+    VkBufferImageCopy region = {0};
+    region.bufferRowLength = (uint32_t)s_dumpW;
+    region.bufferImageHeight = (uint32_t)s_dumpH;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.layerCount = 1;
+    region.imageExtent.width = (uint32_t)s_dumpW;
+    region.imageExtent.height = (uint32_t)s_dumpH;
+    region.imageExtent.depth = 1;
+    CmdCopyImageToBuffer_fn(cb, VkView_image(view),
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                            s_dumpBuffer, 1, &region);
+    return true;
+}
+
+static bool dumpWriteFile(void) {
+    VK_LOAD_DEVICE(MapMemory)
+    VK_LOAD_DEVICE(UnmapMemory)
+    VK_LOAD_DEVICE(FreeMemory)
+    VK_LOAD_DEVICE(DestroyBuffer)
+
+    void *mapped = NULL;
+    if (MapMemory_fn(s_device, s_dumpMem, 0, s_dumpSize, 0, &mapped) == VK_SUCCESS) {
+        FILE *f = fopen("/tmp/vk_cache_dump.tga", "wb");
+        if (f) {
+            uint8_t hdr[18] = {0};
+            hdr[2] = 2;                 // uncompressed true-color
+            hdr[12] = (uint8_t)(s_dumpW & 0xFF);  hdr[13] = (uint8_t)(s_dumpW >> 8);
+            hdr[14] = (uint8_t)(s_dumpH & 0xFF);  hdr[15] = (uint8_t)(s_dumpH >> 8);
+            hdr[16] = 32;               // bits per pixel
+            hdr[17] = 0x20;             // top-left origin
+            fwrite(hdr, 1, 18, f);
+            fwrite(mapped, 1, (size_t)s_dumpSize, f);
+            fclose(f);
+            fprintf(stderr, "vk:dump -> /tmp/vk_cache_dump.tga (%dx%d)\n", s_dumpW, s_dumpH);
+        }
+        UnmapMemory_fn(s_device, s_dumpMem);
+    } else {
+        fprintf(stderr, "vk:dump map failed\n");
+    }
+    DestroyBuffer_fn(s_device, s_dumpBuffer, NULL);
+    FreeMemory_fn(s_device, s_dumpMem, NULL);
+    s_dumpBuffer = VK_NULL_HANDLE;
+    s_dumpMem = VK_NULL_HANDLE;
+    return true;
+}
+
+
 // Build both child pipelines against the monitor view's cache renderpass,
 // plus the command pool and primary buffer that record each present loop.
 // Runs once at init — no more lazy first-frame building, no retry leaks.
@@ -805,6 +924,22 @@ static bool buildPipelines(void) {
 }
 
 bool Vk_clearPresent(void) {
+    // Resize-cadence calls arrive on thread 0 while the worker may be mid-
+    // frame. Try-lock: the busy side wins, the other drops this tick — the
+    // regular loop always carries fresher state one tick later.
+    if (!SpinLock_tryLock(&s_presentLock))
+        return false;
+    bool ok = presentFrameLocked();
+    SpinLock_unlock(&s_presentLock);
+    return ok;
+}
+
+static void resizeRenderTrampoline(void *userdata) {
+    (void)userdata;
+    (void)Vk_clearPresent();
+}
+
+static bool presentFrameLocked(void) {
     if (!Vk_ready() || !s_pipelinesBuilt) return false;
 
     // Retire the PREVIOUS frame through its fence BEFORE touching the chain.
@@ -816,6 +951,15 @@ bool Vk_clearPresent(void) {
     WaitForFences_fn(s_device, 1, &s_fence, VK_TRUE, UINT64_MAX);
     ResetFences_fn(s_device, 1, &s_fence);
     ResetCommandBuffer_fn(s_cmdBuffer, 0);
+
+    if (!s_dumpEnvRead) {
+        s_dumpEnvRead = true;
+        s_dumpEnabled = getenv("ANTI_VK_DUMP") != NULL;
+    }
+    if (s_dumpEnabled && s_dumpStage == 1) {
+        dumpWriteFile();
+        s_dumpStage = 2;
+    }
 
     // Policy drift (presentMode / transparent changed) wants a fresh chain.
     uint64_t renderGen = Window_renderGeneration(s_window);
@@ -862,6 +1006,7 @@ bool Vk_clearPresent(void) {
         return false;
     float kx = cacheW / pointW; // cache px per desktop point
     float ky = cacheH / pointH;
+
 
     // Basket mirror: rewrite its w/h to the window's content size on drift.
     Panel *root = Window_getContainer(s_window);
@@ -1010,6 +1155,15 @@ bool Vk_clearPresent(void) {
 
     // Cache is complete by construction; hand it to the blit.
     VkView_endPass(view, s_cmdBuffer);
+
+    if (s_dumpEnabled && s_dumpStage == 0) {
+        if (dumpAllocStage(view)) {
+            dumpRecordCopy(view, s_cmdBuffer);
+            s_dumpStage = 1;
+        } else {
+            s_dumpStage = 2;
+        }
+    }
 
     // --- 2. blit the window's region, top-left anchored -------------------
     VkImageMemoryBarrier toDst = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
