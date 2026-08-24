@@ -774,11 +774,13 @@ bool Vk_clearPresent(void) {
         if (!rebuildTargets()) return false;
     }
 
-    // Window geometry: desktop top-left + content size, in AppKit points.
+    // Window geometry: CONTENT top-left (below the title bar) + content
+    // size, in desktop points. Children live in this space; the blit source
+    // must start here too, or everything shifts by the chrome height.
     int winX = 0, winY = 0;
     int winW = s_window ? Window_width(s_window) : 0;
     int winH = s_window ? Window_height(s_window) : 0;
-    Window_getLocation(s_window, &winX, &winY);
+    Window_getContentOrigin(s_window, &winX, &winY);
     if (winW <= 0 || winH <= 0)
         return false;
 
@@ -811,15 +813,14 @@ bool Vk_clearPresent(void) {
         Container_setSize(&(*root).base, (float)winW, (float)winH);
     }
 
-    // Clear color precedence: basket color wins while set, else window bg.
-    float bg[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    uint32_t bgColor = Window_getBackgroundColor(s_window);
+    // Clear law: the basket's own color IS the board's color. No container,
+    // or PANEL_COLOR_CLEAR, means transparent across the whole cache.
+    float bg[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
     if (root != NULL) {
-        uint32_t panelBg = Panel_getBackgroundColor(root);
-        if (panelBg != 0)
-            bgColor = panelBg;
+        uint32_t bgColor = Panel_getBackgroundColor(root);
+        if (bgColor != 0)
+            decodeColor(bgColor, bg);
     }
-    decodeColor(bgColor, bg);
 
     // --- acquire first: the blit needs its target index ------------------
     uint32_t imageIndex = 0;
@@ -858,6 +859,18 @@ bool Vk_clearPresent(void) {
     VkView_beginPass(view, s_cmdBuffer, bg[0], bg[1], bg[2], bg[3]);
 
     float uTime = (float)((double)(NanoTime_now() - s_animStartNanos) / 1e9);
+
+    static uint32_t s_frameNo = 0;
+    static bool s_trace = false;
+    static int s_traceInit = 0;
+    if (!s_traceInit) {
+        s_traceInit = 1;
+        s_trace = getenv("ANTI_VK_TRACE") != NULL;
+    }
+    bool dump = s_trace && (s_frameNo++ % 60 == 0);
+    if (dump)
+        fprintf(stderr, "vk:trace: win=(%d,%d) %dx%d pts | view cache %.0fx%.0f px | k=%.2f\n",
+                winX, winY, winW, winH, cacheW, cacheH, kx);
 
     if (root != NULL) {
         size_t childCount = Panel_childCount(root);
@@ -899,6 +912,10 @@ bool Vk_clearPresent(void) {
             scissor.extent.height = (uint32_t)ph;
 
             uint32_t childType = Memory_type(child);
+            if (dump)
+                fprintf(stderr, "vk:trace:   child[%zu] type=0x%04x rect=(%.0f,%.0f %.0fx%.0f)px\n",
+                        i, childType, px, py, pw, ph);
+
             if (childType == TYPE_SCENE3D_SINGLETON || childType == TYPE_SCENE2D_SINGLETON
                 || childType == TYPE_SCENE_SINGLETON) {
                 // Scene child: legacy animated triangle inside its bounds.
