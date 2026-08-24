@@ -181,7 +181,7 @@ int main(void) {
 
     g_demo.window = Window();
     Window_setTitle(g_demo.window, "anti darling");
-    Window_setDimension(g_demo.window, DEFAULT_W, DEFAULT_H);
+    Window_setSize(g_demo.window, DEFAULT_W, DEFAULT_H);
     Window_setLocation(g_demo.window, 120, 120);
     Window_show(g_demo.window);
 
