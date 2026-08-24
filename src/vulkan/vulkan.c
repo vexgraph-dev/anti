@@ -310,13 +310,13 @@ bool Vk_init(Window *window) {
 static bool rebuildTargets(void) {
     VK_LOAD_DEVICE(CreateSwapchainKHR)
     VK_LOAD_DEVICE(DestroySwapchainKHR)
-    VK_LOAD_DEVICE(DeviceWaitIdle)
     VK_LOAD_DEVICE(GetSwapchainImagesKHR)
     VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceCapabilitiesKHR)
     VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceFormatsKHR)
 
-    // Wait for in-flight GPU & Metal completion queue work before recreating targets
-    DeviceWaitIdle_fn(s_device);
+    // NO DeviceWaitIdle here: the caller retired the previous frame through
+    // its fence, and the oldSwapchain handoff lets the driver settle any
+    // compositor-side presentation itself. The queue never stops.
 
     VkSurfaceCapabilitiesKHR caps;
     memset(&caps, 0, sizeof(caps));
@@ -759,6 +759,16 @@ static bool buildPipelines(void) {
 bool Vk_clearPresent(void) {
     if (!Vk_ready() || !s_pipelinesBuilt) return false;
 
+    // Retire the PREVIOUS frame through its fence BEFORE touching the chain.
+    // This is what lets extent-driven rebuilds happen every drag tick without
+    // stalling: no DeviceWaitIdle exists anywhere in this path.
+    VK_LOAD_DEVICE(WaitForFences)
+    VK_LOAD_DEVICE(ResetFences)
+    VK_LOAD_DEVICE(ResetCommandBuffer)
+    WaitForFences_fn(s_device, 1, &s_fence, VK_TRUE, UINT64_MAX);
+    ResetFences_fn(s_device, 1, &s_fence);
+    ResetCommandBuffer_fn(s_cmdBuffer, 0);
+
     // Policy drift (presentMode / transparent changed) wants a fresh chain.
     uint64_t renderGen = Window_renderGeneration(s_window);
     if (renderGen != s_appliedRenderGen && !rebuildTargets()) return false;
@@ -833,9 +843,11 @@ bool Vk_clearPresent(void) {
     }
     if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR) return false;
 
-    VK_LOAD_DEVICE(WaitForFences)
-    VK_LOAD_DEVICE(ResetFences)
-    VK_LOAD_DEVICE(ResetCommandBuffer)
+    // The blit destination is ALWAYS the acquired image's true size — the
+    // chain's creation extent. After the rebuild above they agree, so this
+    // stays a 1:1 NEAREST copy: crisp during drags, never stretched.
+    VkExtent2D dstExtent = s_extent;
+
     VK_LOAD_DEVICE(BeginCommandBuffer)
     VK_LOAD_DEVICE(EndCommandBuffer)
     VK_LOAD_DEVICE(CmdBindPipeline)
@@ -847,10 +859,6 @@ bool Vk_clearPresent(void) {
     VK_LOAD_DEVICE(CmdPipelineBarrier)
     VK_LOAD_DEVICE(QueueSubmit)
     VK_LOAD_DEVICE(QueuePresentKHR)
-
-    WaitForFences_fn(s_device, 1, &s_fence, VK_TRUE, UINT64_MAX);
-    ResetFences_fn(s_device, 1, &s_fence);
-    ResetCommandBuffer_fn(s_cmdBuffer, 0);
 
     VkCommandBufferBeginInfo bbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
     BeginCommandBuffer_fn(s_cmdBuffer, &bbi);
@@ -991,10 +999,10 @@ bool Vk_clearPresent(void) {
     region.srcOffsets[1].z = 1;
     region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     region.dstSubresource.layerCount = 1;
-    region.dstOffsets[1].x = (int32_t)s_extent.width;
-    region.dstOffsets[1].y = (int32_t)s_extent.height;
+    region.dstOffsets[1].x = (int32_t)dstExtent.width;
+    region.dstOffsets[1].y = (int32_t)dstExtent.height;
     region.dstOffsets[1].z = 1;
-    VkFilter filter = (sw == s_extent.width && sh == s_extent.height)
+    VkFilter filter = (sw == dstExtent.width && sh == dstExtent.height)
                       ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
     CmdBlitImage_fn(s_cmdBuffer, VkView_image(view), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     s_swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
