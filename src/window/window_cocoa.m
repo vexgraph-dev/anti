@@ -121,6 +121,7 @@ struct Window {
     _Atomic bool enabled;    // false mutes ALL OS input for this window
     bool lastFocused;        // focus-flip detection during the pump
     _Atomic uint32_t monitorId; // CGDirectDisplayID mirror; 0 = unmapped
+    _Atomic bool gravityQueued; // setGravityTopLeft intent, applied on thread 0
 
     // --- window-lifecycle adapters (thread 0 only) ---
     const WindowEvent *windowAdapters[WINDOW_ADAPTER_MAX];
@@ -198,6 +199,7 @@ static Window *windowHandleOf(NSWindow *window) {
 @end
 
 static void windowFireClose(Window *window);
+static void applyLayerGravity(Window *window);
 
 @implementation AntiWindowDelegate
 - (void) windowWillClose:(NSNotification *)notification {
@@ -516,6 +518,14 @@ void Window_pollEvents(void) {
             // Monitor mirror: resolve the carrying display, flip the atomic,
             // fire adapters only when the window changed screens.
             refreshMonitorId(handle);
+
+            // Gravity contract: apply any queued TopLeft assertion here on
+            // thread 0, synchronously, BEFORE the next present can sample
+            // the layer with stale placement.
+            if (atomic_load_explicit(&(*handle).gravityQueued, memory_order_acquire)) {
+                atomic_store_explicit(&(*handle).gravityQueued, false, memory_order_relaxed);
+                applyLayerGravity(handle);
+            }
         }
     }
 }
@@ -587,6 +597,7 @@ static Window *windowAlloc(const WindowDesc *desc) {
         atomic_store_explicit(&(*w).enabled, true, memory_order_relaxed);
         (*w).lastFocused = false;
         atomic_store_explicit(&(*w).monitorId, 0, memory_order_relaxed);
+        atomic_store_explicit(&(*w).gravityQueued, false, memory_order_relaxed);
         (*w).windowAdapterCount = 0;
         (*w).id = windowIdAcquire(window, w);
         delegate.shouldClosePtr = &(*w).shouldClose;
@@ -1209,19 +1220,32 @@ void *Window_metalLayer(Window *window) {
     }
 }
 
-void Window_setGravityTopLeft(Window *window) {
-    if (!window || !(*window).nsWindow)
+// Assert the layer geometry contract synchronously on thread 0. The layer's
+// DEFAULT contentsGravity is kCAGravityResize — stretch-to-bounds — so any
+// window where this has not yet run shows old drawables stretched during
+// resizes. Idempotent; CA dedups unchanged properties.
+static void applyLayerGravity(Window *window) {
+    if (!window)
         return;
     @autoreleasepool {
         NSView *view = [(*window).nsWindow contentView];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            view.layerContentsPlacement = NSViewLayerContentsPlacementTopLeft;
-            view.layerContentsRedrawPolicy = NSViewLayerContentsRedrawDuringViewResize;
-            if (view.layer) {
-                view.layer.contentsGravity = kCAGravityTopLeft;
-                view.layer.autoresizingMask = kCALayerHeightSizable | kCALayerWidthSizable;
-                view.layer.needsDisplayOnBoundsChange = YES;
-            }
-        });
+        if (!view)
+            return;
+        view.layerContentsPlacement = NSViewLayerContentsPlacementTopLeft;
+        view.layerContentsRedrawPolicy = NSViewLayerContentsRedrawDuringViewResize;
+        if (view.layer) {
+            view.layer.contentsGravity = kCAGravityTopLeft;
+            view.layer.autoresizingMask = kCALayerHeightSizable | kCALayerWidthSizable;
+            view.layer.needsDisplayOnBoundsChange = YES;
+        }
     }
+}
+
+void Window_setGravityTopLeft(Window *window) {
+    // Renderer threads never touch AppKit here anymore: queue the intent,
+    // the next pump (<= 1ms away at the standard 1000Hz event rate) applies
+    // it synchronously on the thread AppKit trusts.
+    if (!window)
+        return;
+    atomic_store_explicit(&(*window).gravityQueued, true, memory_order_release);
 }
