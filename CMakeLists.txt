@@ -131,6 +131,7 @@ endif()
 # Darling-tree live demo: scene panels + software raster + present.
 add_executable(darlingtest
     src/vulkan/vulkan.c
+    src/vulkan/vk_view.c
     src/buffers/buffer.c
     src/buffers/color_buffer.c
     src/main/darlingtest.c
@@ -205,6 +206,8 @@ add_executable(vk_test
     src/util/hash.c
     vk_test.c
     src/vulkan/vulkan.c
+    src/vulkan/vk_view.c
+    src/vulkan/vk_view.c
     src/buffers/buffer.c
     src/buffers/color_buffer.c
     src/window/window_cocoa.m
