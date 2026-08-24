@@ -6,7 +6,7 @@
 // (see tests/window_test.c); this demo polls state only.
 //
 //   Window *w = Window();            // default construct
-//   Window_setDimension(w, 800, 600);
+//   Window_setSize(w, 800, 600);
 //   Window_setLocation(w, 120, 120);
 //   Window_show(w);
 
@@ -40,7 +40,7 @@ int main(void) {
     // Construct hidden, mutate, then reveal — no half-configured flash.
     g_test.window = Window();
     Window_setTitle(g_test.window, "anti enginetest");
-    Window_setDimension(g_test.window, 800, 600);
+    Window_setSize(g_test.window, 800, 600);
     Window_setLocation(g_test.window, 120, 120);
     Window_show(g_test.window);
 
