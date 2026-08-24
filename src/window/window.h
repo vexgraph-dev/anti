@@ -249,14 +249,19 @@ bool Window_removeMouseAdapter(Window *window, const MouseEvent *adapter);
 void Window_addTouchAdapter(Window *window, const TouchEvent *adapter);
 bool Window_removeTouchAdapter(Window *window, const TouchEvent *adapter);
 
-// Window-lifecycle adapter: close requests, focus flips, resize/move moves.
-// Fired from the pump pass on thread 0, AFTER the OS event is processed.
+// Window-lifecycle adapter: close requests, focus flips, resize/move moves,
+// monitor hand-offs. Fired from the pump pass on thread 0, AFTER the OS
+// event is processed.
 typedef struct WindowEvent {
     void *self;
     void (*onCloseRequested)(void *self, Window *window);
     void (*onFocusChanged)(void *self, Window *window, bool focused);
     void (*onResized)(void *self, Window *window, int width, int height);
     void (*onMoved)(void *self, Window *window, int x, int y);
+    // oldId or newId is 0 when the window leaves/joins the mapped set
+    // (headless boot, screen unplugged with no successor).
+    void (*onMonitorChanged)(void *self, Window *window,
+                             uint32_t oldMonitorId, uint32_t newMonitorId);
 } WindowEvent;
 
 void Window_addWindowAdapter(Window *window, const WindowEvent *adapter);
@@ -275,6 +280,16 @@ void Window_dispatchEvents(Window *window);
 uint32_t Window_id(Window *window);      // 0 when window is NULL
 void Window_focus(Window *window);       // ask the OS to make this key
 bool Window_isFocused(Window *window);   // is THIS the spotlight right now?
+
+// --- Monitor identity ---
+//
+// The OS owns display topology; we mirror it. Every pump pass resolves which
+// screen carries the window (greatest intersection) and lands its
+// CGDirectDisplayID in one atomic word any thread can read. Primed eagerly
+// by Window_show; 0 means unknown (never shown, or headless). When the value
+// flips — drag across displays, screen unplugged — WindowEvent's
+// onMonitorChanged fires on thread 0.
+uint32_t Window_getMonitorId(const Window *window);
 
 // --- Resize reflection ---
 //
