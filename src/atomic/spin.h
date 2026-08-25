@@ -30,7 +30,7 @@ bool SpinLock_tryLock(SpinLock *lock);
 
 // Try with a deadline in nanoseconds. Returns false on timeout (never spins
 // forever); pass -1 for "spin forever".
-bool SpinLockry_lock_timeout(SpinLock *lock, int64_t timeout_nanos);
+bool SpinLock_tryLockTimeout(SpinLock *lock, int64_t timeout_nanos);
 
 // Release. Caller must own the lock.
 void SpinLock_unlock(SpinLock *lock);
