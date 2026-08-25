@@ -79,5 +79,5 @@ void SpinLock_unlock(SpinLock *lock) {
 
 // is_locked takes a const pointer, so cast away const for the atomic load.
 bool SpinLock_isLocked(const SpinLock *lock) {
-    return atomic_load_explicit(&((SpinLock *)lock)->word, memory_order_acquire) != 0;
+    return atomic_load_explicit(&(*(SpinLock*) lock).word, memory_order_acquire) != 0;
 }
