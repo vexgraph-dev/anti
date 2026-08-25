@@ -17,6 +17,7 @@
 #include "time/nanotime.h"
 #include "atomic/spin.h"
 #include "vulkan/vk_view.h"
+#include "vulkan/vk_scene.h"
 #include "window/window.h"
 
 // vulkan/vulkan.c — runtime-loaded Vulkan chain over the compositor model.
@@ -39,8 +40,9 @@ static char s_status[64] = "not started";
 #define VK_MARK(msg) do { snprintf(s_status, sizeof(s_status), msg); fprintf(stderr, "vk: %s\n", s_status); } while(0)
 
 // Swapchain: rebuilt whenever the surface outgrows the chain (fullscreen,
-// resize) or render policy drifts. No framebuffers live on it — the blit
-// writes its images directly.
+// resize) or render policy drift. Each chain carries its own per-image
+// views + framebuffers (the drawable pass renders straight onto acquired
+// images), and those die WITH the chain — never earlier.
 static bool rebuildTargets(void);
 static void destroyTargets(void);
 static bool buildPipelines(void);
@@ -68,10 +70,19 @@ static SpinLock s_presentLock = SPIN_LOCK_INIT;
 // (SIGSEGV in MVKSwapchain::beginPresentation). The Vulkan fence covers
 // QUEUE work only — the CAMetal callback runs later, off-queue. So old
 // chains are RETIRED here and destroyed three rebuild generations later,
-// when every callback they could ever own has long since fired.
+// when every callback they could ever own has long since fired. Each entry
+// carries the chain's image views + framebuffers so the whole generation
+// dies together.
+#define VK_SWAP_IMAGES_MAX 8
 #define VK_RETIRED_SWAPCHAINS_MAX 8
-static VkSwapchainKHR s_retiredSwapchains[VK_RETIRED_SWAPCHAINS_MAX];
-static uint32_t s_retiredGenerations[VK_RETIRED_SWAPCHAINS_MAX];
+typedef struct RetiredChain {
+    VkSwapchainKHR chain;
+    uint32_t generation;
+    uint32_t imageCount;
+    VkImageView views[VK_SWAP_IMAGES_MAX];
+    VkFramebuffer fbs[VK_SWAP_IMAGES_MAX];
+} RetiredChain;
+static RetiredChain s_retired[VK_RETIRED_SWAPCHAINS_MAX];
 static uint32_t s_retiredCount = 0;
 static uint32_t s_swapchainGeneration = 0;
 static bool s_dumpEnabled = false;
@@ -87,6 +98,20 @@ static VkQueue s_queue;
 static VkSwapchainKHR s_swapchain;
 static VkCommandPool s_cmdPool;
 static VkCommandBuffer s_cmdBuffer;
+
+// Phase 2/3 plumbing: scene passes submit on their OWN command buffer +
+// fence, decoupled from the collage submission. A slow scene stays in flight
+// across present frames while the collage keeps stamping finished fronts.
+#define VK_SCENE_BATCH_MAX 8
+typedef struct SceneBatchEntry {
+    VkSceneCanvas *canvas;
+    uint32_t gen;   // canvas generation at record time; mismatched = resized
+} SceneBatchEntry;
+static VkCommandBuffer s_sceneBuffer;
+static VkFence s_sceneFence;
+static SceneBatchEntry s_sceneBatch[VK_SCENE_BATCH_MAX];
+static uint32_t s_sceneBatchCount = 0;
+
 static VkSemaphore s_semAcquire;
 static VkSemaphore s_semRender;
 static VkFence s_fence;
@@ -95,9 +120,20 @@ static VkFormat s_format;
 static VkExtent2D s_extent;
 static Window *s_window = NULL;
 
-// Raw swapchain images — the blit writes these directly, no views needed.
-static VkImage s_swapchainImages[8];
+// Swapchain images plus their drawable-side plumbing: a view + framebuffer
+// per image lets the render pass draw straight onto the acquired image —
+// the window IS the canvas now. Created per chain, retired with it.
+static VkImage s_swapchainImages[VK_SWAP_IMAGES_MAX];
+static VkImageView s_swapchainViews[VK_SWAP_IMAGES_MAX];
+static VkFramebuffer s_swapchainFbs[VK_SWAP_IMAGES_MAX];
 static uint32_t s_swapchainImageCount = 0;
+
+// THE drawable renderpass: LOADs a pre-cleared TRANSFER_DST image (scene
+// stamps survive), leaves TRANSFER_SRC for the dump path; the explicit
+// final barrier walks it to PRESENT_SRC. Same format + single subpass as
+// the view passes — child pipelines run here unchanged.
+static VkRenderPass s_drawablePass = VK_NULL_HANDLE;
+static bool ensureDrawablePass(void);
 
 // Child pipelines, built against the monitor view's cache renderpass:
 //   triangle — legacy hello-triangle scene content (push: f32 u_time @0, VS)
@@ -303,6 +339,10 @@ bool Vk_init(Window *window) {
         snprintf(s_status, sizeof(s_status), "no monitor views");
         return false;
     }
+    if (!VkSceneCanvas_initModule(s_instance, s_gpa, s_phys, s_device)) {
+        snprintf(s_status, sizeof(s_status), "scene module failed");
+        return false;
+    }
     if (!buildPipelines())
         return false;
 
@@ -318,6 +358,11 @@ bool Vk_init(Window *window) {
     VkFenceCreateInfo fci2 = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
     fci2.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     if (CreateFence_fn && CreateFence_fn(s_device, &fci2, NULL, &s_fence) != VK_SUCCESS) return false;
+
+    // Scene-batch fence: polled non-blocking, never pre-signaled (TIMEOUT
+    // simply means "nothing in flight yet").
+    fci2.flags = 0;
+    if (CreateFence_fn && CreateFence_fn(s_device, &fci2, NULL, &s_sceneFence) != VK_SUCCESS) return false;
 
     s_animStartNanos = NanoTime_now();
 
@@ -422,14 +467,21 @@ static bool rebuildTargets(void) {
     // Drain retirees old enough that every Metal present-callback they own
     // has fired. Three generations of margin; no stalls.
     {
+        VK_LOAD_DEVICE(DestroyImageView)
+        VK_LOAD_DEVICE(DestroyFramebuffer)
         uint32_t keep = 0;
         for (uint32_t i = 0; i < s_retiredCount; i++) {
-            if (s_swapchainGeneration - s_retiredGenerations[i] >= 3) {
+            if (s_swapchainGeneration - s_retired[i].generation >= 3) {
                 if (DestroySwapchainKHR_fn)
-                    DestroySwapchainKHR_fn(s_device, s_retiredSwapchains[i], NULL);
+                    DestroySwapchainKHR_fn(s_device, s_retired[i].chain, NULL);
+                for (uint32_t v = 0; v < s_retired[i].imageCount; v++) {
+                    if (s_retired[i].fbs[v] != VK_NULL_HANDLE && DestroyFramebuffer_fn)
+                        DestroyFramebuffer_fn(s_device, s_retired[i].fbs[v], NULL);
+                    if (s_retired[i].views[v] != VK_NULL_HANDLE && DestroyImageView_fn)
+                        DestroyImageView_fn(s_device, s_retired[i].views[v], NULL);
+                }
             } else {
-                s_retiredSwapchains[keep] = s_retiredSwapchains[i];
-                s_retiredGenerations[keep] = s_retiredGenerations[i];
+                s_retired[keep] = s_retired[i];
                 keep++;
             }
         }
@@ -437,11 +489,17 @@ static bool rebuildTargets(void) {
     }
 
     // The old chain does NOT die here: its presentation callbacks are still
-    // in flight on Metal's queues. Retire it for deferred destruction.
+    // in flight on Metal's queues. Retire it — WITH its views/framebuffers —
+    // for deferred destruction.
     if (oldSwapchain != VK_NULL_HANDLE) {
         if (s_retiredCount < VK_RETIRED_SWAPCHAINS_MAX) {
-            s_retiredSwapchains[s_retiredCount] = oldSwapchain;
-            s_retiredGenerations[s_retiredCount] = s_swapchainGeneration;
+            s_retired[s_retiredCount].chain = oldSwapchain;
+            s_retired[s_retiredCount].generation = s_swapchainGeneration;
+            s_retired[s_retiredCount].imageCount = s_swapchainImageCount;
+            for (uint32_t v = 0; v < s_swapchainImageCount; v++) {
+                s_retired[s_retiredCount].views[v] = s_swapchainViews[v];
+                s_retired[s_retiredCount].fbs[v] = s_swapchainFbs[v];
+            }
             s_retiredCount++;
         } else {
             // Table full (pathological); last resort is the unsafe destroy.
@@ -451,16 +509,90 @@ static bool rebuildTargets(void) {
     s_swapchainGeneration++;
     s_swapchain = newSwapchain;
 
-    // Fetch the raw image handles for the blit path.
+    // Fetch the raw image handles, then give each one a view + framebuffer
+    // against the drawable pass — the render target of every present frame.
     s_swapchainImageCount = 0;
     GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_swapchainImageCount, NULL);
-    if (s_swapchainImageCount > 8)
-        s_swapchainImageCount = 8;
+    if (s_swapchainImageCount > VK_SWAP_IMAGES_MAX)
+        s_swapchainImageCount = VK_SWAP_IMAGES_MAX;
     GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_swapchainImageCount, s_swapchainImages);
+
+    if (!ensureDrawablePass())
+        return false;
+    {
+        VK_LOAD_DEVICE(CreateImageView)
+        VK_LOAD_DEVICE(CreateFramebuffer)
+        memset(s_swapchainViews, 0, sizeof(s_swapchainViews));
+        memset(s_swapchainFbs, 0, sizeof(s_swapchainFbs));
+        for (uint32_t i = 0; i < s_swapchainImageCount; i++) {
+            VkImageViewCreateInfo vci = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+            vci.image = s_swapchainImages[i];
+            vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            vci.format = s_format;
+            vci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            vci.subresourceRange.levelCount = 1;
+            vci.subresourceRange.layerCount = 1;
+            if (CreateImageView_fn(s_device, &vci, NULL, &s_swapchainViews[i]) != VK_SUCCESS) {
+                snprintf(s_status, sizeof(s_status), "drawable view failed");
+                return false;
+            }
+            VkFramebufferCreateInfo fci = { .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+            fci.renderPass = s_drawablePass;
+            fci.attachmentCount = 1;
+            fci.pAttachments = &s_swapchainViews[i];
+            fci.width = s_extent.width;
+            fci.height = s_extent.height;
+            fci.layers = 1;
+            if (CreateFramebuffer_fn(s_device, &fci, NULL, &s_swapchainFbs[i]) != VK_SUCCESS) {
+                snprintf(s_status, sizeof(s_status), "drawable framebuffer failed");
+                return false;
+            }
+        }
+    }
 
     fprintf(stderr, "vk: swapchain live %ux%u fmt=%d present=%d\n", s_extent.width, s_extent.height, (int)s_format,
             (int)(swci.presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR));
     s_appliedRenderGen = Window_renderGeneration(s_window);
+    return true;
+}
+
+// The drawable renderpass, built once per format. LOAD-on-store: the frame's
+// command stream clears the image to the board color and stamps scene
+// canvases BEFORE this pass opens, so LOAD preserves them while procedural
+// children draw on top — true child-order z-compositing for free.
+static bool ensureDrawablePass(void) {
+    if (s_drawablePass != VK_NULL_HANDLE)
+        return true;
+    VK_LOAD_DEVICE(CreateRenderPass)
+
+    VkAttachmentDescription att = {0};
+    att.format = s_format;
+    att.samples = VK_SAMPLE_COUNT_1_BIT;
+    att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    att.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    att.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+    VkAttachmentReference colorRef = {0};
+    colorRef.attachment = 0;
+    colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription sub = {0};
+    sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    sub.colorAttachmentCount = 1;
+    sub.pColorAttachments = &colorRef;
+
+    VkRenderPassCreateInfo rpci = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+    rpci.attachmentCount = 1;
+    rpci.pAttachments = &att;
+    rpci.subpassCount = 1;
+    rpci.pSubpasses = &sub;
+    if (CreateRenderPass_fn(s_device, &rpci, NULL, &s_drawablePass) != VK_SUCCESS) {
+        snprintf(s_status, sizeof(s_status), "drawable pass failed");
+        return false;
+    }
     return true;
 }
 
@@ -469,17 +601,38 @@ static void destroyTargets(void) {
         return;
     VK_LOAD_DEVICE_VOID(DeviceWaitIdle)
     VK_LOAD_DEVICE_VOID(DestroySwapchainKHR)
+    VK_LOAD_DEVICE_VOID(DestroyImageView)
+    VK_LOAD_DEVICE_VOID(DestroyFramebuffer)
+    VK_LOAD_DEVICE_VOID(DestroyRenderPass)
     if (DeviceWaitIdle_fn)
         DeviceWaitIdle_fn(s_device);
 
     // Final drain: shutdown idles, so every pending present callback has
     // fired and the graveyard can be flushed unconditionally.
-    if (DestroySwapchainKHR_fn) {
-        for (uint32_t i = 0; i < s_retiredCount; i++)
-            DestroySwapchainKHR_fn(s_device, s_retiredSwapchains[i], NULL);
+    for (uint32_t i = 0; i < s_retiredCount; i++) {
+        if (DestroySwapchainKHR_fn)
+            DestroySwapchainKHR_fn(s_device, s_retired[i].chain, NULL);
+        for (uint32_t v = 0; v < s_retired[i].imageCount; v++) {
+            if (s_retired[i].fbs[v] != VK_NULL_HANDLE && DestroyFramebuffer_fn)
+                DestroyFramebuffer_fn(s_device, s_retired[i].fbs[v], NULL);
+            if (s_retired[i].views[v] != VK_NULL_HANDLE && DestroyImageView_fn)
+                DestroyImageView_fn(s_device, s_retired[i].views[v], NULL);
+        }
     }
     s_retiredCount = 0;
     s_swapchainGeneration = 0;
+
+    for (uint32_t i = 0; i < s_swapchainImageCount; i++) {
+        if (s_swapchainFbs[i] != VK_NULL_HANDLE && DestroyFramebuffer_fn)
+            DestroyFramebuffer_fn(s_device, s_swapchainFbs[i], NULL);
+        if (s_swapchainViews[i] != VK_NULL_HANDLE && DestroyImageView_fn)
+            DestroyImageView_fn(s_device, s_swapchainViews[i], NULL);
+    }
+    s_swapchainImageCount = 0;
+
+    if (s_drawablePass != VK_NULL_HANDLE && DestroyRenderPass_fn)
+        DestroyRenderPass_fn(s_device, s_drawablePass, NULL);
+    s_drawablePass = VK_NULL_HANDLE;
 
     if (s_swapchain != VK_NULL_HANDLE && DestroySwapchainKHR_fn)
         DestroySwapchainKHR_fn(s_device, s_swapchain, NULL);
@@ -500,6 +653,14 @@ void Vk_shutdown(void) {
     if (s_device != VK_NULL_HANDLE) {
         destroyTargets();
         VkView_shutdown();
+        VkSceneCanvas_shutdownModule();
+        s_sceneBatchCount = 0;
+        {
+            VK_LOAD_DEVICE_VOID(DestroyFence)
+            if (s_sceneFence != VK_NULL_HANDLE && DestroyFence_fn)
+                DestroyFence_fn(s_device, s_sceneFence, NULL);
+            s_sceneFence = VK_NULL_HANDLE;
+        }
         s_pipelinesBuilt = false;
     }
     if (s_instance != VK_NULL_HANDLE) {
@@ -661,15 +822,15 @@ static VkDeviceMemory s_dumpMem;
 static VkDeviceSize s_dumpSize = 0;
 static int32_t s_dumpW = 0, s_dumpH = 0;
 
-static bool dumpAllocStage(VkView *view) {
+static bool dumpAllocStage(uint32_t width, uint32_t height) {
     VK_LOAD_DEVICE(CreateBuffer)
     VK_LOAD_DEVICE(GetBufferMemoryRequirements)
     VK_LOAD_DEVICE(AllocateMemory)
     VK_LOAD_DEVICE(BindBufferMemory)
     VK_LOAD_INSTANCE(GetPhysicalDeviceMemoryProperties)
 
-    s_dumpW = VkView_getWidth(view);
-    s_dumpH = VkView_getHeight(view);
+    s_dumpW = (int32_t)width;
+    s_dumpH = (int32_t)height;
     s_dumpSize = (VkDeviceSize)s_dumpW * s_dumpH * 4;
 
     VkBufferCreateInfo bci = { .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
@@ -705,9 +866,9 @@ static bool dumpAllocStage(VkView *view) {
     return true;
 }
 
-static bool dumpRecordCopy(VkView *view, VkCommandBuffer cb) {
-    // Called mid-recording, immediately after VkView_endPass: the cache is
-    // in TRANSFER_SRC_OPTIMAL and the barrier ordering is already correct.
+static bool dumpRecordCopy(VkImage image, VkCommandBuffer cb) {
+    // Called mid-recording, immediately after the drawable pass: the image
+    // is in TRANSFER_SRC_OPTIMAL and the barrier ordering is already correct.
     VK_LOAD_DEVICE(CmdCopyImageToBuffer)
     VkBufferImageCopy region = {0};
     region.bufferRowLength = (uint32_t)s_dumpW;
@@ -717,7 +878,7 @@ static bool dumpRecordCopy(VkView *view, VkCommandBuffer cb) {
     region.imageExtent.width = (uint32_t)s_dumpW;
     region.imageExtent.height = (uint32_t)s_dumpH;
     region.imageExtent.depth = 1;
-    CmdCopyImageToBuffer_fn(cb, VkView_image(view),
+    CmdCopyImageToBuffer_fn(cb, image,
                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                             s_dumpBuffer, 1, &region);
     return true;
@@ -765,14 +926,14 @@ static bool buildPipelines(void) {
     VK_LOAD_DEVICE(CreateCommandPool)
     VK_LOAD_DEVICE(AllocateCommandBuffers)
 
-    // Renderpass compatibility: every view shares format B8G8R8A8 + one
-    // subpass, so pass[0] works for all of them.
-    VkView *view0 = VkView_at(0);
-    if (!view0 || VkView_renderPass(view0) == VK_NULL_HANDLE) {
-        snprintf(s_status, sizeof(s_status), "no view renderpass");
+    // Renderpass compatibility: the drawable pass carries the same format +
+    // single-subpass shape the pipelines were designed against, so they run
+    // unchanged whether targeting a scene canvas or the window itself.
+    if (s_drawablePass == VK_NULL_HANDLE) {
+        snprintf(s_status, sizeof(s_status), "no drawable renderpass");
         return false;
     }
-    VkRenderPass pass = VkView_renderPass(view0);
+    VkRenderPass pass = s_drawablePass;
 
     // --- shared pipeline skeleton ---------------------------------------
     VkPipelineVertexInputStateCreateInfo vi = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
@@ -916,8 +1077,13 @@ static bool buildPipelines(void) {
     VkCommandBufferAllocateInfo cbai = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
     cbai.commandPool = s_cmdPool;
     cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cbai.commandBufferCount = 1;
-    AllocateCommandBuffers_fn(s_device, &cbai, &s_cmdBuffer);
+    cbai.commandBufferCount = 2;
+    {
+        VkCommandBuffer cbs[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+        AllocateCommandBuffers_fn(s_device, &cbai, cbs);
+        s_cmdBuffer = cbs[0];     // collage + present
+        s_sceneBuffer = cbs[1];   // scene production (phase 2)
+    }
 
     s_pipelinesBuilt = true;
     return true;
@@ -934,9 +1100,22 @@ bool Vk_clearPresent(void) {
     return ok;
 }
 
+bool Vk_clearPresentSync(void) {
+    // The resize cadence does NOT drop: thread 0 waits out any in-flight
+    // worker frame (bounded: the worker's acquire itself times out at ~2
+    // frames; 34 ms here is the matching paranoia stop), then presents
+    // inline. Serializing behind the worker here is correct — it is the
+    // same pipeline.
+    if (!SpinLock_tryLockTimeout(&s_presentLock, 34000000LL))
+        return false;
+    bool ok = presentFrameLocked();
+    SpinLock_unlock(&s_presentLock);
+    return ok;
+}
+
 static void resizeRenderTrampoline(void *userdata) {
     (void)userdata;
-    (void)Vk_clearPresent();
+    (void)Vk_clearPresentSync();
 }
 
 static bool presentFrameLocked(void) {
@@ -945,11 +1124,13 @@ static bool presentFrameLocked(void) {
     // Retire the PREVIOUS frame through its fence BEFORE touching the chain.
     // This is what lets extent-driven rebuilds happen every drag tick without
     // stalling: no DeviceWaitIdle exists anywhere in this path.
+    // NOTE: the fence is deliberately left SIGNALLED here — ResetFences moves
+    // to just before QueueSubmit, so EVERY early-return below leaves the fence
+    // in the signaled state and the next frame retires instantly instead of
+    // hanging on an unsignaled wait.
     VK_LOAD_DEVICE(WaitForFences)
-    VK_LOAD_DEVICE(ResetFences)
     VK_LOAD_DEVICE(ResetCommandBuffer)
     WaitForFences_fn(s_device, 1, &s_fence, VK_TRUE, UINT64_MAX);
-    ResetFences_fn(s_device, 1, &s_fence);
     ResetCommandBuffer_fn(s_cmdBuffer, 0);
 
     if (!s_dumpEnvRead) {
@@ -965,34 +1146,62 @@ static bool presentFrameLocked(void) {
     uint64_t renderGen = Window_renderGeneration(s_window);
     if (renderGen != s_appliedRenderGen && !rebuildTargets()) return false;
 
+    // Live caps: the surface outgrowing the chain is THE resize signal.
+    // Rebuild policy: ASAP by default — every diverged tick rebuilds and
+    // presents inline (the sync bridge carries them; the graveyard makes
+    // per-tick churn safe). ANTI_RESIZE_HZ can re-impose a cap (e.g. 30)
+    // on low-end machines. The first tick of any swing always passes
+    // instantly (zero timer), and settling re-arms instant response for
+    // the next swing. Skipped ticks present nothing: TopLeft gravity
+    // holds the last exact-sized frame cropped while the border runs —
+    // never stretched.
     VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceCapabilitiesKHR)
+    static uint64_t s_lastRebuildNs = 0;
+    static int s_hzInit = 0;
+    static int64_t s_minRebuildGapNs = 0;
+    if (!s_hzInit) {
+        s_hzInit = 1;
+        const char *hzEnv = getenv("ANTI_RESIZE_HZ");
+        int hz = hzEnv ? atoi(hzEnv) : 0; // 0 = uncapped: rebuild every tick
+        s_minRebuildGapNs = hz > 0 ? (int64_t)(1000000000LL / hz) : 0;
+    }
     VkSurfaceCapabilitiesKHR live;
     memset(&live, 0, sizeof(live));
     if (GetPhysicalDeviceSurfaceCapabilitiesKHR_fn(s_phys, s_surface, &live) == VK_SUCCESS
         && (live.currentExtent.width != s_extent.width || live.currentExtent.height != s_extent.height)) {
+        uint64_t nowNs = NanoTime_now();
+        if (s_lastRebuildNs != 0 && s_minRebuildGapNs > 0
+            && nowNs - s_lastRebuildNs < (uint64_t)s_minRebuildGapNs) {
+            return false; // throttled: hold the last good frame this tick
+        }
         fprintf(stderr, "vk: extent moved %ux%u -> %ux%u; rebuilding\n",
                 s_extent.width, s_extent.height,
                 live.currentExtent.width, live.currentExtent.height);
-        if (!rebuildTargets()) return false;
+        if (!rebuildTargets()) return false; // failed rebuild retries ASAP
+        s_lastRebuildNs = NanoTime_now();
+    } else {
+        s_lastRebuildNs = 0; // settled: next divergence reacts instantly
     }
 
-    // Window geometry: CONTENT top-left (below the title bar) + content
-    // size, in desktop points. Children live in this space; the blit source
-    // must start here too, or everything shifts by the chrome height.
-    int winX = 0, winY = 0;
+    // Window geometry: content SIZE in points. Position is irrelevant BY LAW
+    // now — the compositor is window-local; every child is stamped relative
+    // to the drawable's own top-left corner, so moving the window costs the
+    // GPU path literally nothing and nothing can go stale.
     int winW = s_window ? Window_width(s_window) : 0;
     int winH = s_window ? Window_height(s_window) : 0;
-    Window_getContentOrigin(s_window, &winX, &winY);
     if (winW <= 0 || winH <= 0)
         return false;
 
-    // The monitor this window lives on owns the cache it blits from. Join by
-    // the window's mirrored display id first; coordinate sniffing and view 0
-    // are fallbacks for a stale discovery list (fresh hotplug) or an
-    // unmapped window.
+    // Monitor scale oracle: kx/ky convert layout points to drawable pixels
+    // crisply (retina included). The view's CACHE is no longer read or
+    // written anywhere in this file — only its point/pixel ratio matters.
+    // Join by the window's mirrored display id; location sniffing and view 0
+    // are fallbacks for a stale discovery list or an unmapped window.
+    int locX = 0, locY = 0;
+    Window_getLocation(s_window, &locX, &locY);
     VkView *view = VkView_forMonitor(Window_getMonitorId(s_window));
     if (!view)
-        view = VkView_forPoint((float)winX, (float)winY);
+        view = VkView_forPoint((float)locX, (float)locY);
     if (!view)
         view = VkView_at(0);
     if (!view)
@@ -1004,7 +1213,7 @@ static bool presentFrameLocked(void) {
     float pointH = (float)VkView_getPointHeight(view);
     if (cacheW <= 0.0f || cacheH <= 0.0f || pointW <= 0.0f || pointH <= 0.0f)
         return false;
-    float kx = cacheW / pointW; // cache px per desktop point
+    float kx = cacheW / pointW; // drawable px per layout point
     float ky = cacheH / pointH;
 
 
@@ -1026,38 +1235,49 @@ static bool presentFrameLocked(void) {
     }
 
     // --- acquire first: the blit needs its target index ------------------
+    // FINITE timeout, never UINT64_MAX: during zoom/fullscreen transitions
+    // Core Animation can pause drawable recycling for a few hundred ms. An
+    // unbounded acquire would pin this thread — holding s_presentLock — and
+    // beachball every sync-bridge caller behind it. A timed-out tick simply
+    // holds the last good frame; nothing is lost.
     uint32_t imageIndex = 0;
     VK_LOAD_DEVICE(AcquireNextImageKHR)
-    VkResult ar = AcquireNextImageKHR_fn(s_device, s_swapchain, UINT64_MAX,
+    VkResult ar = AcquireNextImageKHR_fn(s_device, s_swapchain, 33333333ULL /* ~2 frames */,
                                          s_semAcquire, VK_NULL_HANDLE, &imageIndex);
     if (ar == VK_ERROR_OUT_OF_DATE_KHR) {
+        // Reactive repair; the rebuild lands on the NEXT tick (the caller's
+        // loop re-enters within microseconds). Never recurse while holding
+        // the present lock.
         if (!rebuildTargets()) return false;
-        return Vk_clearPresent();
+        return false;
+    }
+    if (ar == VK_TIMEOUT || ar == VK_NOT_READY) {
+        // No drawable freed in time (compositor busy / mid-transition).
+        // Fence is still signaled — safe to bail clean.
+        return false;
     }
     if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR) return false;
 
-    // The blit destination is ALWAYS the acquired image's true size — the
-    // chain's creation extent. After the rebuild above they agree, so this
-    // stays a 1:1 NEAREST copy: crisp during drags, never stretched.
-    VkExtent2D dstExtent = s_extent;
-
+    // The drawable IS the window now: its true size is the chain's creation
+    // extent, and every coordinate below lives in that space.
     VK_LOAD_DEVICE(BeginCommandBuffer)
     VK_LOAD_DEVICE(EndCommandBuffer)
+    VK_LOAD_DEVICE(CmdBeginRenderPass)
+    VK_LOAD_DEVICE(CmdEndRenderPass)
     VK_LOAD_DEVICE(CmdBindPipeline)
     VK_LOAD_DEVICE(CmdPushConstants)
     VK_LOAD_DEVICE(CmdSetViewport)
     VK_LOAD_DEVICE(CmdSetScissor)
     VK_LOAD_DEVICE(CmdDraw)
     VK_LOAD_DEVICE(CmdBlitImage)
+    VK_LOAD_DEVICE(CmdClearColorImage)
     VK_LOAD_DEVICE(CmdPipelineBarrier)
     VK_LOAD_DEVICE(QueueSubmit)
+    VK_LOAD_DEVICE(ResetFences)
     VK_LOAD_DEVICE(QueuePresentKHR)
 
     VkCommandBufferBeginInfo bbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
     BeginCommandBuffer_fn(s_cmdBuffer, &bbi);
-
-    // --- 1. clear + draw ONE layer of children onto the desktop cache ----
-    VkView_beginPass(view, s_cmdBuffer, bg[0], bg[1], bg[2], bg[3]);
 
     float uTime = (float)((double)(NanoTime_now() - s_animStartNanos) / 1e9);
 
@@ -1068,10 +1288,236 @@ static bool presentFrameLocked(void) {
         s_traceInit = 1;
         s_trace = getenv("ANTI_VK_TRACE") != NULL;
     }
+
+    // --- 0. scene canvases: flip-buffers + own clock (phases 2+3) ---------
+    // PRODUCTION records into back images on its OWN command buffer and
+    // submits under its own fence — a slow AAA pass stays in flight across
+    // many present frames. CONSUMPTION stamps the newest FINISHED front
+    // image every frame, whatever production is doing. ANTI_SCENE_HZ paces
+    // production independently of present rate.
+    struct SceneCut {
+        VkSceneCanvas *canvas;
+        int32_t dx, dy, dw, dh; // unclipped dest rect in drawable pixels
+    };
+    struct SceneCut scenes[8];
+    uint32_t sceneCount = 0;
+
+    // Harvest any completed batch: generation-matched flips land, fronts
+    // advance, and the graveyard frees whatever a resize retired before it.
+    bool productionBlocked = false;
+    if (s_sceneBatchCount > 0) {
+        if (WaitForFences_fn(s_device, 1, &s_sceneFence, VK_TRUE, 0) == VK_SUCCESS) {
+            for (uint32_t i = 0; i < s_sceneBatchCount; i++) {
+                SceneBatchEntry *e = &s_sceneBatch[i];
+                if (VkSceneCanvas_generation(e->canvas) == e->gen)
+                    VkSceneCanvas_flip(e->canvas);
+            }
+            s_sceneBatchCount = 0;
+            VkSceneCanvas_flushRetired();
+        } else {
+            // Previous batch still executing: one batch in flight at a time.
+            // Keeps ResetFences off a busy fence; production resumes next tick.
+            productionBlocked = true;
+        }
+    }
+
+    // Production pacing: ANTI_SCENE_HZ (default 60; 0 = every present tick).
+    static int s_sceneHzInit = 0;
+    static int64_t s_sceneGapNs = 0;
+    if (!s_sceneHzInit) {
+        s_sceneHzInit = 1;
+        const char *sceneHzEnv = getenv("ANTI_SCENE_HZ");
+        int hz = sceneHzEnv ? atoi(sceneHzEnv) : 60;
+        s_sceneGapNs = hz > 0 ? (int64_t)(1000000000LL / hz) : 0;
+    }
+    uint64_t sceneNowNs = NanoTime_now();
+    uint32_t rendered = 0;
+
+    ResetCommandBuffer_fn(s_sceneBuffer, 0);
+    VkCommandBufferBeginInfo sbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    BeginCommandBuffer_fn(s_sceneBuffer, &sbi);
+
+    if (root != NULL) {
+        size_t childCount = Panel_childCount(root);
+        for (size_t i = 0; i < childCount && sceneCount < 8; i++) {
+            Panel *child = Panel_getChild(root, i);
+            if (!child)
+                continue;
+            uint32_t childType = Memory_type(child);
+            if (!(childType == TYPE_SCENE3D_SINGLETON || childType == TYPE_SCENE2D_SINGLETON
+                  || childType == TYPE_SCENE_SINGLETON))
+                continue;
+
+            Vec4 rect;
+            Container_resolve(&(*child).base, 0.0f, 0.0f,
+                              (float)winW, (float)winH, &rect);
+            if (rect.z <= 0.0f || rect.w <= 0.0f)
+                continue;
+
+            // Canvas pixels = logical points scaled by THIS view's grid, so
+            // canvas->drawable blits stay pixel-exact on every monitor.
+            uint32_t wantW = (uint32_t)(rect.z * kx + 0.5f);
+            uint32_t wantH = (uint32_t)(rect.w * ky + 0.5f);
+            if (wantW == 0 || wantH == 0)
+                continue;
+            VkSceneCanvas *canvas = VkSceneCanvas_acquire((uintptr_t)child, wantW, wantH);
+            if (!canvas)
+                continue;
+
+            // PRODUCTION: only when the previous batch resolved, the clock
+            // says due, and no pass is in flight for THIS canvas. Otherwise
+            // the finished front simply serves again.
+            if (!productionBlocked && s_sceneBatchCount < VK_SCENE_BATCH_MAX
+                && VkSceneCanvas_needsRender(canvas, sceneNowNs, s_sceneGapNs)) {
+                VkSceneCanvas_beginBackPass(canvas, s_sceneBuffer, 0.0f, 0.0f, 0.0f, 1.0f);
+                VkViewport cvp = {0};
+                cvp.width = (float)wantW;
+                cvp.height = (float)wantH;
+                cvp.maxDepth = 1.0f;
+                VkRect2D csc = {0};
+                csc.extent.width = wantW;
+                csc.extent.height = wantH;
+                CmdBindPipeline_fn(s_sceneBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
+                CmdSetViewport_fn(s_sceneBuffer, 0, 1, &cvp);
+                CmdSetScissor_fn(s_sceneBuffer, 0, 1, &csc);
+                CmdPushConstants_fn(s_sceneBuffer, s_triLayout,
+                                    VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &uTime);
+                CmdDraw_fn(s_sceneBuffer, 3, 1, 0, 0);
+                VkSceneCanvas_endBackPass(canvas, s_sceneBuffer);
+                s_sceneBatch[s_sceneBatchCount].canvas = canvas;
+                s_sceneBatch[s_sceneBatchCount].gen = VkSceneCanvas_generation(canvas);
+                s_sceneBatchCount++;
+                rendered++;
+            }
+
+            struct SceneCut *cut = &scenes[sceneCount++];
+            cut->canvas = canvas;
+            // Window-local: a child hanging off the window's own edge goes
+            // negative here — the stamp clips it against the drawable.
+            cut->dx = (int32_t)(rect.x * kx);
+            cut->dy = (int32_t)(rect.y * ky);
+            cut->dw = (int32_t)wantW;
+            cut->dh = (int32_t)wantH;
+        }
+    }
+
+    if (rendered > 0) {
+        // Submit production independently: no swapchain contact, therefore
+        // no semaphores — just the batch fence the next frame polls.
+        VkSubmitInfo ssi = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
+        ssi.commandBufferCount = 1;
+        ssi.pCommandBuffers = &s_sceneBuffer;
+        ResetFences_fn(s_device, 1, &s_sceneFence);
+        QueueSubmit_fn(s_queue, 1, &ssi, s_sceneFence);
+        for (uint32_t i = 0; i < s_sceneBatchCount; i++)
+            VkSceneCanvas_markSubmitted(s_sceneBatch[i].canvas, sceneNowNs);
+        if (s_trace)
+            fprintf(stderr, "vk:trace:   scene tick: %u rendered, batch=%u\n",
+                    rendered, s_sceneBatchCount);
+    }
+    EndCommandBuffer_fn(s_sceneBuffer);
+
+    // --- 1. prep the drawable: park in board color, stamp scene canvases --
+    // Acquired images arrive layout-undefined; walk to TRANSFER_DST, clear
+    // unconditionally (the pass below LOADs, so first-frame garbage dies
+    // here whether or not scenes exist), then paste each scene canvas as a
+    // pixel-exact cut clipped to the drawable bounds.
+    VkImageMemoryBarrier toPrep = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+    toPrep.srcAccessMask = 0;
+    toPrep.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    toPrep.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    toPrep.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toPrep.image = s_swapchainImages[imageIndex];
+    toPrep.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    toPrep.subresourceRange.levelCount = 1;
+    toPrep.subresourceRange.layerCount = 1;
+    CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &toPrep);
+
+    {
+        VkClearValue cc = {0};
+        cc.color.float32[0] = bg[0];
+        cc.color.float32[1] = bg[1];
+        cc.color.float32[2] = bg[2];
+        cc.color.float32[3] = bg[3];
+        VkImageSubresourceRange rng = {0};
+        rng.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        rng.levelCount = 1;
+        rng.layerCount = 1;
+        CmdClearColorImage_fn(s_cmdBuffer, s_swapchainImages[imageIndex],
+                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                              &cc.color, 1, &rng);
+    }
+
+    if (sceneCount > 0) {
+        int32_t drawWi = (int32_t)s_extent.width;
+        int32_t drawHi = (int32_t)s_extent.height;
+        for (uint32_t si = 0; si < sceneCount; si++) {
+            struct SceneCut *cut = &scenes[si];
+            VkImage frontImg = VkSceneCanvas_frontImage(cut->canvas);
+            if (frontImg == VK_NULL_HANDLE)
+                continue; // first scene pass still in flight: board shows
+            int32_t cx0 = cut->dx < 0 ? 0 : cut->dx;
+            int32_t cy0 = cut->dy < 0 ? 0 : cut->dy;
+            int32_t cx1 = cut->dx + cut->dw > drawWi ? drawWi : cut->dx + cut->dw;
+            int32_t cy1 = cut->dy + cut->dh > drawHi ? drawHi : cut->dy + cut->dh;
+            if (cx0 >= cx1 || cy0 >= cy1)
+                continue; // child hangs fully off the window: pure crop
+
+            VkImageBlit sc = {0};
+            sc.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            sc.srcSubresource.layerCount = 1;
+            sc.srcOffsets[0].x = cx0 - cut->dx;   // crop offset INSIDE the canvas
+            sc.srcOffsets[0].y = cy0 - cut->dy;
+            sc.srcOffsets[1].x = cx0 - cut->dx + (cx1 - cx0);
+            sc.srcOffsets[1].y = cy0 - cut->dy + (cy1 - cy0);
+            sc.srcOffsets[1].z = 1;
+            sc.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            sc.dstSubresource.layerCount = 1;
+            sc.dstOffsets[0].x = cx0;
+            sc.dstOffsets[0].y = cy0;
+            sc.dstOffsets[1].x = cx1;
+            sc.dstOffsets[1].y = cy1;
+            sc.dstOffsets[1].z = 1;
+            // src cut == dst cut, pixel-for-pixel: NEAREST, zero resampling.
+            // The FRONT image serves — whatever production is doing.
+            CmdBlitImage_fn(s_cmdBuffer, frontImg,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                            s_swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                            1, &sc, VK_FILTER_NEAREST);
+        }
+
+        // Transfer writes must be visible to the color attachment stage the
+        // render pass is about to run on.
+        VkImageMemoryBarrier stampsReady = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+        stampsReady.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        stampsReady.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                                  | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        stampsReady.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        stampsReady.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        stampsReady.image = s_swapchainImages[imageIndex];
+        stampsReady.subresourceRange = toPrep.subresourceRange;
+        CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                              0, 0, NULL, 0, NULL, 1, &stampsReady);
+    }
+
+    // --- 2. procedural children straight onto the drawable -----------------
+    // loadOp=LOAD preserves the scene stamps above; sibling z-order is child
+    // order again. Quads draw in plain window-local pixels — no desktop
+    // space exists anywhere in this loop.
+    {
+        VkRenderPassBeginInfo rbi2 = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+        rbi2.renderPass = s_drawablePass;
+        rbi2.framebuffer = s_swapchainFbs[imageIndex];
+        rbi2.renderArea.extent = s_extent;
+        CmdBeginRenderPass_fn(s_cmdBuffer, &rbi2, VK_SUBPASS_CONTENTS_INLINE);
+    }
+
     bool dump = s_trace && (s_frameNo++ % 60 == 0);
     if (dump)
-        fprintf(stderr, "vk:trace: win=(%d,%d) %dx%d pts | view cache %.0fx%.0f px | k=%.2f\n",
-                winX, winY, winW, winH, cacheW, cacheH, kx);
+        fprintf(stderr, "vk:trace: %dx%d pts | drawable %ux%u px | k=%.2f\n",
+                winW, winH, s_extent.width, s_extent.height, kx);
 
     if (root != NULL) {
         size_t childCount = Panel_childCount(root);
@@ -1080,31 +1526,35 @@ static bool presentFrameLocked(void) {
             if (!child)
                 continue;
 
-            // Resolve against the mirrored basket (window-local points),
-            // then lift into absolute desktop points and onto this view's
-            // cache pixels.
+            // Resolve against the mirrored basket: plain window-local
+            // points, straight onto the drawable's pixel grid.
             Vec4 rect;
             Container_resolve(&(*child).base, 0.0f, 0.0f,
                               (float)winW, (float)winH, &rect);
             if (rect.z <= 0.0f || rect.w <= 0.0f)
                 continue;
 
-            float px = ((float)winX + rect.x - VkView_getOriginX(view)) * kx;
-            float py = ((float)winY + rect.y - VkView_getOriginY(view)) * ky;
+            float drawW = (float)s_extent.width;
+            float drawH = (float)s_extent.height;
+            float px = rect.x * kx;
+            float py = rect.y * ky;
             float pw = rect.z * kx;
             float ph = rect.w * ky;
             if (px < 0.0f) { pw += px; px = 0.0f; }
             if (py < 0.0f) { ph += py; py = 0.0f; }
             if (pw <= 0.0f || ph <= 0.0f) continue;
-            if (px + pw > cacheW) pw = cacheW - px;
-            if (py + ph > cacheH) ph = cacheH - py;
+            if (px + pw > drawW) pw = drawW - px;
+            if (py + ph > drawH) ph = drawH - py;
             if (pw <= 0.0f || ph <= 0.0f) continue;
 
+            // VIEWPORT/SCISSOR SEPARATION LAW: u_rectNdc already places the
+            // quad in clip space, so the viewport is the WHOLE drawable —
+            // a pure pass-through — and the scissor does the clipping.
+            // Viewport = child rect would apply the rect TWICE: panels
+            // magnify on small windows and drift right/down.
             VkViewport viewport = {0};
-            viewport.x = px;
-            viewport.y = py;
-            viewport.width = pw;
-            viewport.height = ph;
+            viewport.width = drawW;
+            viewport.height = drawH;
             viewport.maxDepth = 1.0f;
             VkRect2D scissor = {0};
             scissor.offset.x = (int32_t)px;
@@ -1119,13 +1569,9 @@ static bool presentFrameLocked(void) {
 
             if (childType == TYPE_SCENE3D_SINGLETON || childType == TYPE_SCENE2D_SINGLETON
                 || childType == TYPE_SCENE_SINGLETON) {
-                // Scene child: legacy animated triangle inside its bounds.
-                CmdBindPipeline_fn(s_cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
-                CmdSetViewport_fn(s_cmdBuffer, 0, 1, &viewport);
-                CmdSetScissor_fn(s_cmdBuffer, 0, 1, &scissor);
-                CmdPushConstants_fn(s_cmdBuffer, s_triLayout,
-                                    VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &uTime);
-                CmdDraw_fn(s_cmdBuffer, 3, 1, 0, 0);
+                // Scene child: already rendered into its canvas pre-pass;
+                // stamped onto the cache as a cut below.
+                continue;
             } else {
                 // Plain panel: solid quad in its own color.
                 uint32_t color = Panel_getBackgroundColor(child);
@@ -1134,10 +1580,10 @@ static bool presentFrameLocked(void) {
                 float rgba[4];
                 decodeColor(color, rgba);
                 float ndc[8]; // rectNdc.xyzw + color.rgba, push-constant block
-                ndc[0] = px / cacheW * 2.0f - 1.0f;
-                ndc[1] = py / cacheH * 2.0f - 1.0f;
-                ndc[2] = pw / cacheW * 2.0f;
-                ndc[3] = ph / cacheH * 2.0f;
+                ndc[0] = px / drawW * 2.0f - 1.0f;
+                ndc[1] = py / drawH * 2.0f - 1.0f;
+                ndc[2] = pw / drawW * 2.0f;
+                ndc[3] = ph / drawH * 2.0f;
                 ndc[4] = rgba[0];
                 ndc[5] = rgba[1];
                 ndc[6] = rgba[2];
@@ -1153,73 +1599,41 @@ static bool presentFrameLocked(void) {
         }
     }
 
-    // Cache is complete by construction; hand it to the blit.
-    VkView_endPass(view, s_cmdBuffer);
+    // Drawable complete; the pass leaves it in TRANSFER_SRC (finalLayout),
+    // one honest step short of PRESENT so the dump can read in between.
+    CmdEndRenderPass_fn(s_cmdBuffer);
+
+    // Availability hand-off: color writes must be visible to the transfers
+    // that follow (dump copy, and layout walk to present).
+    VkImageMemoryBarrier drawDone = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+    drawDone.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    drawDone.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    drawDone.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    drawDone.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    drawDone.image = s_swapchainImages[imageIndex];
+    drawDone.subresourceRange = toPrep.subresourceRange;
+    CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &drawDone);
 
     if (s_dumpEnabled && s_dumpStage == 0) {
-        if (dumpAllocStage(view)) {
-            dumpRecordCopy(view, s_cmdBuffer);
+        if (dumpAllocStage(s_extent.width, s_extent.height)) {
+            dumpRecordCopy(s_swapchainImages[imageIndex], s_cmdBuffer);
             s_dumpStage = 1;
         } else {
             s_dumpStage = 2;
         }
     }
 
-    // --- 2. blit the window's region, top-left anchored -------------------
-    VkImageMemoryBarrier toDst = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-    toDst.srcAccessMask = 0;
-    toDst.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    toDst.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    toDst.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    toDst.image = s_swapchainImages[imageIndex];
-    toDst.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    toDst.subresourceRange.levelCount = 1;
-    toDst.subresourceRange.layerCount = 1;
-    CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &toDst);
-
-    // Source region: the window's rect in cache pixels, clamped to the cache.
-    int32_t sx = (int32_t)(((float)winX - VkView_getOriginX(view)) * kx);
-    int32_t sy = (int32_t)(((float)winY - VkView_getOriginY(view)) * ky);
-    if (sx < 0) sx = 0;
-    if (sy < 0) sy = 0;
-    uint32_t sw = (uint32_t)((float)winW * kx);
-    uint32_t sh = (uint32_t)((float)winH * ky);
-    int32_t cacheWi = (int32_t)cacheW;
-    int32_t cacheHi = (int32_t)cacheH;
-    if (sx >= cacheWi || sy >= cacheHi) { EndCommandBuffer_fn(s_cmdBuffer); return false; }
-    if (sx + (int32_t)sw > cacheWi) sw = (uint32_t)(cacheWi - sx);
-    if (sy + (int32_t)sh > cacheHi) sh = (uint32_t)(cacheHi - sy);
-
-    VkImageBlit region = {0};
-    region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.srcSubresource.layerCount = 1;
-    region.srcOffsets[0].x = sx;
-    region.srcOffsets[0].y = sy;
-    region.srcOffsets[1].x = sx + (int32_t)sw;
-    region.srcOffsets[1].y = sy + (int32_t)sh;
-    region.srcOffsets[1].z = 1;
-    region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.dstSubresource.layerCount = 1;
-    region.dstOffsets[1].x = (int32_t)dstExtent.width;
-    region.dstOffsets[1].y = (int32_t)dstExtent.height;
-    region.dstOffsets[1].z = 1;
-    VkFilter filter = (sw == dstExtent.width && sh == dstExtent.height)
-                      ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
-    if (filter == VK_FILTER_LINEAR && s_trace)
-        fprintf(stderr, "vk:trace:   BLIT MISMATCH cut=%ux%u image=%ux%u (scaled)\n",
-                sw, sh, dstExtent.width, dstExtent.height);
-    CmdBlitImage_fn(s_cmdBuffer, VkView_image(view), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    s_swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    1, &region, filter);
-
+    // Walk TRANSFER_SRC -> PRESENT_SRC. The desktop indirection is gone:
+    // there is no window blit, no intersection law, nothing left to glue —
+    // the drawable has been the only canvas since step 1.
     VkImageMemoryBarrier toPresent = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-    toPresent.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    toPresent.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     toPresent.dstAccessMask = 0;
-    toPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     toPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     toPresent.image = s_swapchainImages[imageIndex];
-    toPresent.subresourceRange = toDst.subresourceRange;
+    toPresent.subresourceRange = toPrep.subresourceRange;
     CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
                           VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &toPresent);
 
@@ -1234,6 +1648,9 @@ static bool presentFrameLocked(void) {
     si.pCommandBuffers = &s_cmdBuffer;
     si.signalSemaphoreCount = 1;
     si.pSignalSemaphores = &s_semRender;
+    // Arm the fence for THIS frame at the last possible moment: every bail
+    // path above has already returned with the fence still signaled.
+    ResetFences_fn(s_device, 1, &s_fence);
     QueueSubmit_fn(s_queue, 1, &si, s_fence);
 
     VkPresentInfoKHR pi = { .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };

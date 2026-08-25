@@ -34,6 +34,14 @@ bool Vk_ready(void);
 // follows Window_getPresentMode(window).
 bool Vk_clearPresent(void);
 
+// Synchronous twin for the resize cadence: BLOCKS until any in-flight frame
+// completes (hard safety cap 34 ms — two display frames), then
+// acquires/rebuilds/renders/presents inline on the calling thread. This is
+// what lets thread-0 geometry events carry their own exactly-sized frame
+// instead of dropping the tick. Thread 0 only. False when not ready or the
+// safety deadline expired.
+bool Vk_clearPresentSync(void);
+
 // Human-readable stop point of the last init attempt ("ok", "no loader", ...).
 const char *Vk_status(void);
 
