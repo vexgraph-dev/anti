@@ -89,26 +89,26 @@ bool Http_perform(const HttpRequest *req, HttpResponse *resp) {
 
     if (!req || !(*req).host || !(*resp).body) return false;
 
-    const char *method = req->method ? req->method : "GET";
-    const char *path = req->path ? req->path : "/";
-    int port = req->port > 0 ? req->port : Url_defaultPort("http");
-    uint32_t timeoutMs = req->timeoutMs ? req->timeoutMs : RECV_TIMEOUT_DEFAULT_MS;
+    const char *method = (*req).method ? (*req).method : "GET";
+    const char *path = (*req).path ? (*req).path : "/";
+    int port = (*req).port > 0 ? (*req).port : Url_defaultPort("http");
+    uint32_t timeoutMs = (*req).timeoutMs ? (*req).timeoutMs : RECV_TIMEOUT_DEFAULT_MS;
 
     // --- Resolve ---
     char portStr[8];
     snprintf(portStr, sizeof(portStr), "%d", port);
     struct addrinfo hints = { .ai_family = AF_UNSPEC, .ai_socktype = SOCK_STREAM };
     struct addrinfo *res = NULL;
-    if (getaddrinfo(req->host, portStr, &hints, &res) != 0 || !res) return false;
+    if (getaddrinfo((*req).host, portStr, &hints, &res) != 0 || !res) return false;
 
-    int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    int fd = socket((*res).ai_family, (*res).ai_socktype, (*res).ai_protocol);
     if (fd < 0) {
         freeaddrinfo(res);
         return false;
     }
     applyTimeout(fd, timeoutMs);
 
-    bool ok = connect(fd, res->ai_addr, res->ai_addrlen) == 0;
+    bool ok = connect(fd, (*res).ai_addr, (*res).ai_addrlen) == 0;
     freeaddrinfo(res);
     if (!ok) {
         close(fd);
@@ -122,13 +122,13 @@ bool Http_perform(const HttpRequest *req, HttpResponse *resp) {
                      "Host: %s\r\n"
                      "Connection: close\r\n"
                      "Content-Length: %zu\r\n",
-                     method, path, req->host, req->bodyLen);
+                     method, path, (*req).host, (*req).bodyLen);
     if (h < 0 || (size_t)h >= sizeof(head)) {
         close(fd);
         return false;
     }
 
-    for (uint32_t i = 0; i < req->headerCount && i < HTTP_MAX_HEADERS; i++) {
+    for (uint32_t i = 0; i < (*req).headerCount && i < HTTP_MAX_HEADERS; i++) {
         int k = snprintf(head + h, sizeof(head) - (size_t)h, "%s: %s\r\n",
                          (*req).headers[i].name, (*req).headers[i].value);
         if (k < 0 || (size_t)k >= sizeof(head) - (size_t)h) {
