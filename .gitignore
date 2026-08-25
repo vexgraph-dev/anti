@@ -46,3 +46,5 @@ debug_code.txt
 clipboard.png
 build-demo/
 build-vk/
+.debug-obj/
+vk_test_debug
