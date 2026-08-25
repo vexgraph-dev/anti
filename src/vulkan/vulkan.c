@@ -1309,8 +1309,8 @@ static bool presentFrameLocked(void) {
         if (WaitForFences_fn(s_device, 1, &s_sceneFence, VK_TRUE, 0) == VK_SUCCESS) {
             for (uint32_t i = 0; i < s_sceneBatchCount; i++) {
                 SceneBatchEntry *e = &s_sceneBatch[i];
-                if (VkSceneCanvas_generation(e->canvas) == e->gen)
-                    VkSceneCanvas_flip(e->canvas);
+                if (VkSceneCanvas_generation((*e).canvas) == (*e).gen)
+                    VkSceneCanvas_flip((*e).canvas);
             }
             s_sceneBatchCount = 0;
             VkSceneCanvas_flushRetired();
@@ -1332,10 +1332,7 @@ static bool presentFrameLocked(void) {
     }
     uint64_t sceneNowNs = NanoTime_now();
     uint32_t rendered = 0;
-
-    ResetCommandBuffer_fn(s_sceneBuffer, 0);
-    VkCommandBufferBeginInfo sbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-    BeginCommandBuffer_fn(s_sceneBuffer, &sbi);
+    bool sceneCbOpen = false;
 
     if (root != NULL) {
         size_t childCount = Panel_childCount(root);
@@ -1369,6 +1366,15 @@ static bool presentFrameLocked(void) {
             // the finished front simply serves again.
             if (!productionBlocked && s_sceneBatchCount < VK_SCENE_BATCH_MAX
                 && VkSceneCanvas_needsRender(canvas, sceneNowNs, s_sceneGapNs)) {
+                if (!sceneCbOpen) {
+                    // Lazy open: reset+begin only when a batch is actually
+                    // forming AND the previous one has fully resolved —
+                    // resetting an executing command buffer is UB.
+                    ResetCommandBuffer_fn(s_sceneBuffer, 0);
+                    VkCommandBufferBeginInfo sbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+                    BeginCommandBuffer_fn(s_sceneBuffer, &sbi);
+                    sceneCbOpen = true;
+                }
                 VkSceneCanvas_beginBackPass(canvas, s_sceneBuffer, 0.0f, 0.0f, 0.0f, 1.0f);
                 VkViewport cvp = {0};
                 cvp.width = (float)wantW;
@@ -1391,17 +1397,18 @@ static bool presentFrameLocked(void) {
             }
 
             struct SceneCut *cut = &scenes[sceneCount++];
-            cut->canvas = canvas;
+            (*cut).canvas = canvas;
             // Window-local: a child hanging off the window's own edge goes
             // negative here — the stamp clips it against the drawable.
-            cut->dx = (int32_t)(rect.x * kx);
-            cut->dy = (int32_t)(rect.y * ky);
-            cut->dw = (int32_t)wantW;
-            cut->dh = (int32_t)wantH;
+            (*cut).dx = (int32_t)(rect.x * kx);
+            (*cut).dy = (int32_t)(rect.y * ky);
+            (*cut).dw = (int32_t)wantW;
+            (*cut).dh = (int32_t)wantH;
         }
     }
 
     if (rendered > 0) {
+        EndCommandBuffer_fn(s_sceneBuffer);
         // Submit production independently: no swapchain contact, therefore
         // no semaphores — just the batch fence the next frame polls.
         VkSubmitInfo ssi = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
@@ -1415,7 +1422,6 @@ static bool presentFrameLocked(void) {
             fprintf(stderr, "vk:trace:   scene tick: %u rendered, batch=%u\n",
                     rendered, s_sceneBatchCount);
     }
-    EndCommandBuffer_fn(s_sceneBuffer);
 
     // --- 1. prep the drawable: park in board color, stamp scene canvases --
     // Acquired images arrive layout-undefined; walk to TRANSFER_DST, clear
@@ -1454,23 +1460,23 @@ static bool presentFrameLocked(void) {
         int32_t drawHi = (int32_t)s_extent.height;
         for (uint32_t si = 0; si < sceneCount; si++) {
             struct SceneCut *cut = &scenes[si];
-            VkImage frontImg = VkSceneCanvas_frontImage(cut->canvas);
+            VkImage frontImg = VkSceneCanvas_frontImage((*cut).canvas);
             if (frontImg == VK_NULL_HANDLE)
                 continue; // first scene pass still in flight: board shows
-            int32_t cx0 = cut->dx < 0 ? 0 : cut->dx;
-            int32_t cy0 = cut->dy < 0 ? 0 : cut->dy;
-            int32_t cx1 = cut->dx + cut->dw > drawWi ? drawWi : cut->dx + cut->dw;
-            int32_t cy1 = cut->dy + cut->dh > drawHi ? drawHi : cut->dy + cut->dh;
+            int32_t cx0 = (*cut).dx < 0 ? 0 : (*cut).dx;
+            int32_t cy0 = (*cut).dy < 0 ? 0 : (*cut).dy;
+            int32_t cx1 = (*cut).dx + (*cut).dw > drawWi ? drawWi : (*cut).dx + (*cut).dw;
+            int32_t cy1 = (*cut).dy + (*cut).dh > drawHi ? drawHi : (*cut).dy + (*cut).dh;
             if (cx0 >= cx1 || cy0 >= cy1)
                 continue; // child hangs fully off the window: pure crop
 
             VkImageBlit sc = {0};
             sc.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             sc.srcSubresource.layerCount = 1;
-            sc.srcOffsets[0].x = cx0 - cut->dx;   // crop offset INSIDE the canvas
-            sc.srcOffsets[0].y = cy0 - cut->dy;
-            sc.srcOffsets[1].x = cx0 - cut->dx + (cx1 - cx0);
-            sc.srcOffsets[1].y = cy0 - cut->dy + (cy1 - cy0);
+            sc.srcOffsets[0].x = cx0 - (*cut).dx;   // crop offset INSIDE the canvas
+            sc.srcOffsets[0].y = cy0 - (*cut).dy;
+            sc.srcOffsets[1].x = cx0 - (*cut).dx + (cx1 - cx0);
+            sc.srcOffsets[1].y = cy0 - (*cut).dy + (cy1 - cy0);
             sc.srcOffsets[1].z = 1;
             sc.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             sc.dstSubresource.layerCount = 1;
