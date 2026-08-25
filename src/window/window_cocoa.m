@@ -210,6 +210,44 @@ static void applyLayerGravity(Window *window);
     if (self.shouldClosePtr) *self.shouldClosePtr = true;
     if (self.handlePtr) windowFireClose(self.handlePtr);
 }
+
+// Kill every animated frame change for this window. The OS's zoom animation
+// (double-click title bar) never renders in-process — WindowServer just scales
+// the window's stale committed bitmap between the two sizes, which reads as
+// smear/stretch no matter what the renderer does. Returning zero makes
+// setFrame:display:animate:YES land instantly: ONE real resize that the
+// TopLeft gravity law + resize-cadence bridge present honestly.
+- (NSTimeInterval)window:(NSWindow *)window animationResizeTime:(NSRect)newFrame {
+    (void) window;
+    (void) newFrame;
+    return 0.0;
+}
+
+// Resize-cadence choke points, both thread 0, both feeding the SAME render
+// hook the pump uses:
+//   willResize fires BEFORE the proposed size applies — the hook drains the
+//   runway (fence retire / final old-size present), so the frozen drawable
+//   CA shows during the border step is fresh and exact-sized (TopLeft crops
+//   it, never stretches).
+//   didResize fires AFTER each applied step — extents have moved, so the
+//   blocking sync present lands the new size's frame inside the same runloop
+//   turn the border moved.
+// Accept-always policy: return frameSize unchanged. Pacing lives in the
+// renderer's rebuild gate, not here.
+- (NSSize)windowWillResize:(NSWindow *)sender toSize:(NSSize)frameSize {
+    (void) sender;
+    Window *w = self.handlePtr;
+    if (w && (*w).resizeRenderFn)
+        (*w).resizeRenderFn((*w).resizeRenderUserdata);
+    return frameSize;
+}
+
+- (void)windowDidResize:(NSNotification *)notification {
+    (void) notification;
+    Window *w = self.handlePtr;
+    if (w && (*w).resizeRenderFn)
+        (*w).resizeRenderFn((*w).resizeRenderUserdata);
+}
 @end
 
 static AntiAppDelegate *sAppDelegate = nil; // one app delegate for the whole process

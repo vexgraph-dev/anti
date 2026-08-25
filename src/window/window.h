@@ -292,11 +292,15 @@ uint64_t Window_sizeGeneration(Window *window);
 // --- Resize-cadence rendering (the c -> objc -> c bridge) --------------------
 //
 // AppKit resizes windows inside its own nested tracking loop; a decoupled
-// present thread always trails that cadence by up to a frame. The hook below
-// closes the gap: fired synchronously ON THREAD 0 from the pump, the moment
-// the content rect has resized OR moved, letting the compositor render+present
-// at the OS's own resize rhythm. Implementations MUST be non-blocking-safe:
-// if the GPU path is busy, drop the frame (the regular loop catches up).
+// present thread always trails that cadence by up to a frame. One hook, two
+// bridges, both ON THREAD 0:
+//   - windowWillResize/windowDidResize (tracking ticks) route through the
+//     SYNC path: they wait out any in-flight frame, then render+present
+//     inline, so every border step carries an exactly-sized frame.
+//   - the pump pass keeps opportunistic catch-up for move-drags and
+//     programmatic changes.
+// Hook implementations may still drop internally under contention; the
+// regular loop catches up one tick later either way.
 typedef void (*WindowResizeRenderFn)(void *userdata);
 void Window_setResizeRenderHook(Window *window, WindowResizeRenderFn fn, void *userdata);
 
