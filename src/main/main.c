@@ -607,8 +607,8 @@ int main(void) {
     // Struct & Fields: size-based dynamic schema and polymorphic allocator.
     printf("== anti oop: Struct ==\n");
     Fields *pointFields = Fields(sizeof(int32_t), sizeof(int64_t), sizeof(float));
-    printf("generic=0x%X stride=%zu\n", pointFields->genericId, pointFields->stride);
-    printf("stride_via_registry=%zu\n", Stride_get(pointFields->genericId));
+    printf("generic=0x%X stride=%zu\n", (*pointFields).genericId, (*pointFields).stride);
+    printf("stride_via_registry=%zu\n", Stride_get((*pointFields).genericId));
 
     void *pt = Struct(pointFields); // allocates singleton
     Struct_setInt(pt, 0, 5);
