@@ -89,14 +89,15 @@ int main(void) {
     Scene3D *scene3D = Scene3D_0();
     Container_setLocation(&(*scene3D).base.base.base, 0.0f, 0.0f);
     Container_setSize(&(*scene3D).base.base.base, 640.0f, 400.0f);
+    Container_setParentAnchor(&(*scene3D).base.base.base, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
     Panel_addContainer(root, &(*scene3D).base.base);
 
     // Plain panel child: a solid quad floating over the scene.
     Panel *hud = Panel_0();
     Container_setLocation(&(*hud).base, 40.0f, 40.0f);
-    Container_setSize(&(*hud).base, 160.0f, 80.0f);
+    Container_setSize(&(*hud).base, 200.0f, 200.0f);
     Panel_setBackgroundColor(hud, 0xFF2E7D32);
-    // Panel_addContainer(root, hud); // just comment because it doesnt make sense for now
+    Panel_addContainer(root, hud);
 
     atomic_store(&g_state.running, true);
 
