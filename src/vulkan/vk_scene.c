@@ -42,6 +42,15 @@ struct VkSceneCanvas {
     uint32_t gen;          // bumped on every buffer-pair swap; batch flips
                             // only apply when the recorded generation matches
 
+    // STALE BRIDGE: the previous geometry's front image, kept alive across a
+    // resize so the collage stretches it into the cut instead of showing a
+    // hole. Only image+memory survive (blit needs no view); view/fb/pass of
+    // that slot still ride the graveyard. Retired at the first flip.
+    VkImage staleImage;
+    VkDeviceMemory staleMemory;
+    uint32_t staleWidth;
+    uint32_t staleHeight;
+
     // phase-2/3 hand-off state (fence + clock live with the caller)
     bool pending;          // back pass submitted, fence not yet confirmed
     uint64_t lastSubmitNs; // last scene-pass record time (clock pacing)
@@ -129,6 +138,13 @@ static void destroyCanvasObjects(VkSceneCanvas *c) {
 
     if (s_device == VK_NULL_HANDLE)
         return;
+    // The stale bridge lives OUTSIDE the pair arrays on purpose: callers
+    // stash it before tearing the pair down, so the blanket memset below
+    // must carry it across, not swallow it (leak + lost bridge).
+    VkImage staleImage = (*c).staleImage;
+    VkDeviceMemory staleMemory = (*c).staleMemory;
+    uint32_t staleWidth = (*c).staleWidth;
+    uint32_t staleHeight = (*c).staleHeight;
     for (uint32_t i = 0; i < 2; i++) {
         if ((*c).fb[i] != VK_NULL_HANDLE && DestroyFramebuffer_fn)
             DestroyFramebuffer_fn(s_device, (*c).fb[i], NULL);
@@ -142,6 +158,10 @@ static void destroyCanvasObjects(VkSceneCanvas *c) {
     if ((*c).pass != VK_NULL_HANDLE && DestroyRenderPass_fn)
         DestroyRenderPass_fn(s_device, (*c).pass, NULL);
     memset(c, 0, sizeof(VkSceneCanvas));
+    (*c).staleImage = staleImage;
+    (*c).staleMemory = staleMemory;
+    (*c).staleWidth = staleWidth;
+    (*c).staleHeight = staleHeight;
 }
 
 static bool buildCanvas(VkSceneCanvas *c) {
@@ -270,6 +290,53 @@ static void destroyRetiredEntry(SceneRetired *r) {
         DestroyRenderPass_fn(s_device, (*r).pass, NULL);
 }
 
+// Fence-law note: stale retirement only ever runs inside flip() — i.e. at a
+// completed batch harvest — or at shutdown (device idle), so anything any
+// submitted collage blit may still be reading is covered by the same FIFO
+// completion argument that governs flushRetired itself.
+static void retireStale(struct VkSceneCanvas *c) {
+    if ((*c).staleImage == VK_NULL_HANDLE)
+        return;
+    if (s_retiredCount < VK_SCENE_RETIRED_MAX) {
+        SceneRetired *r = &s_retired[s_retiredCount++];
+        (*r).image[0] = (*c).staleImage;
+        (*r).memory[0] = (*c).staleMemory;
+        (*r).image[1] = VK_NULL_HANDLE;
+        (*r).memory[1] = VK_NULL_HANDLE;
+        for (uint32_t i = 0; i < 2; i++) {
+            (*r).view[i] = VK_NULL_HANDLE;
+            (*r).fb[i] = VK_NULL_HANDLE;
+        }
+        (*r).pass = VK_NULL_HANDLE;
+    } else {
+        // Table full: the harvest fence already proves every pre-batch blit
+        // done, so direct disposal is covered by the same proof. Pathological.
+        fprintf(stderr, "vk_scene: retire table full; dropping stale directly\n");
+        destroyRetiredEntry(&(SceneRetired){ .image[0] = (*c).staleImage,
+                                             .memory[0] = (*c).staleMemory });
+    }
+    (*c).staleImage = VK_NULL_HANDLE;
+    (*c).staleMemory = VK_NULL_HANDLE;
+    (*c).staleWidth = 0;
+    (*c).staleHeight = 0;
+}
+
+// Move the current front's image+memory into the stale bridge BEFORE the
+// resize path retires/rebuilds the pair. The graveyard copies below must
+// not see these two handles again, so they are nulled in place first.
+static void stashStale(VkSceneCanvas *c) {
+    retireStale(c); // previous bridge yields to the newer one
+    if (!(*c).hasFront)
+        return; // nothing ever rendered: no front worth bridging
+    uint32_t f = (*c).front;
+    (*c).staleImage = (*c).image[f];
+    (*c).staleMemory = (*c).memory[f];
+    (*c).staleWidth = (*c).width;
+    (*c).staleHeight = (*c).height;
+    (*c).image[f] = VK_NULL_HANDLE;
+    (*c).memory[f] = VK_NULL_HANDLE;
+}
+
 void VkSceneCanvas_flushRetired(void) {
     for (uint32_t i = 0; i < s_retiredCount; i++)
         destroyRetiredEntry(&s_retired[i]);
@@ -302,6 +369,9 @@ VkSceneCanvas *VkSceneCanvas_acquire(uintptr_t key, uint32_t width, uint32_t hei
                 fprintf(stderr, "vk_scene: retire table full; deferring resize\n");
                 return existing; // pathological; old defer as last resort
             }
+            // Bridge first: the old front becomes the collage's stretch
+            // source while the fresh pair earns its own flip.
+            stashStale(existing);
             SceneRetired *r = &s_retired[s_retiredCount++];
             for (uint32_t i = 0; i < 2; i++) {
                 (*r).image[i] = (*existing).image[i];
@@ -333,7 +403,9 @@ VkSceneCanvas *VkSceneCanvas_acquire(uintptr_t key, uint32_t width, uint32_t hei
                     (size_t)key, width, height);
             return existing;
         }
-        // Size drift with nothing in flight: rebuild directly.
+        // Size drift with nothing in flight: rebuild directly. Same bridge
+        // law — the old front serves stretched until the new pair flips.
+        stashStale(existing);
         destroyCanvasObjects(existing);
         (*existing).width = width;
         (*existing).height = height;
@@ -385,6 +457,21 @@ VkImage VkSceneCanvas_frontImage(const VkSceneCanvas *canvas) {
     return (*canvas).image[(*canvas).front];
 }
 
+VkImage VkSceneCanvas_staleImage(const VkSceneCanvas *canvas,
+                                 uint32_t *outWidth, uint32_t *outHeight) {
+    if (outWidth)
+        *outWidth = 0;
+    if (outHeight)
+        *outHeight = 0;
+    if (!canvas || (*canvas).staleImage == VK_NULL_HANDLE)
+        return VK_NULL_HANDLE;
+    if (outWidth)
+        *outWidth = (*canvas).staleWidth;
+    if (outHeight)
+        *outHeight = (*canvas).staleHeight;
+    return (*canvas).staleImage;
+}
+
 bool VkSceneCanvas_needsRender(const VkSceneCanvas *canvas, uint64_t nowNs, int64_t minGapNs) {
     if (!canvas)
         return false;
@@ -412,6 +499,10 @@ void VkSceneCanvas_flip(VkSceneCanvas *canvas) {
     (*canvas).pending = false;
     (*canvas).front ^= 1u;
     (*canvas).hasFront = true;
+    // Fresh front landed: realtime preference resumes. The bridge image is
+    // no longer served; send it through the graveyard under this harvest's
+    // fence proof.
+    retireStale(canvas);
 }
 
 bool VkSceneCanvas_beginBackPass(VkSceneCanvas *canvas, VkCommandBuffer cb,
@@ -465,6 +556,16 @@ void VkSceneCanvas_shutdownModule(void) {
     VkSceneCanvas_flushRetired();
     for (size_t i = 0; i < VK_SCENE_CANVASES_MAX; i++) {
         if (s_slots[i].key != 0) {
+            // Stale bridges ride outside destroyCanvasObjects' arrays; the
+            // device is idle here, so direct disposal is fence-safe. Zeroed
+            // BEFORE teardown so its preserve-across-memset can't resurrect
+            // already-freed handles.
+            SceneRetired stale = {0};
+            stale.image[0] = s_slots[i].canvas.staleImage;
+            stale.memory[0] = s_slots[i].canvas.staleMemory;
+            s_slots[i].canvas.staleImage = VK_NULL_HANDLE;
+            s_slots[i].canvas.staleMemory = VK_NULL_HANDLE;
+            destroyRetiredEntry(&stale);
             destroyCanvasObjects(&s_slots[i].canvas);
             s_slots[i].key = 0;
         }

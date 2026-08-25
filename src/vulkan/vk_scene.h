@@ -33,8 +33,9 @@ bool VkSceneCanvas_initModule(VkInstance instance, PFN_vkGetInstanceProcAddr gpa
 
 // Get-or-create the canvas bound to `key` at exactly width x height pixels.
 // Size drift swaps in a fresh buffer pair IMMEDIATELY (the collage tracks
-// geometry every tick); the old pair — even with a scene pass in flight —
-// is generation-retired and dies at the next completed batch harvest, the
+// geometry every tick); the old FRONT image survives as the canvas's STALE
+// bridge — see VkSceneCanvas_staleImage — while the rest of the old pair is
+// generation-retired and dies at the next completed batch harvest, the
 // same discipline the swapchain graveyard uses. NULL on failure/exhaustion.
 VkSceneCanvas *VkSceneCanvas_acquire(uintptr_t key, uint32_t width, uint32_t height);
 
@@ -46,9 +47,17 @@ uint32_t VkSceneCanvas_width(const VkSceneCanvas *canvas);
 uint32_t VkSceneCanvas_height(const VkSceneCanvas *canvas);
 
 // The FINISHED image (last flipped back buffer), ready as a TRANSFER_SRC
-// blit source. VK_NULL_HANDLE until the first scene pass completes — the
-// collage skips stamping until then and the board color shows.
+// blit source. VK_NULL_HANDLE until the first scene pass completes — and
+// again while a resize swap is pending its first flip.
 VkImage  VkSceneCanvas_frontImage(const VkSceneCanvas *canvas);
+
+// The STALE BRIDGE: the front image of the PREVIOUS geometry, kept alive
+// across a resize so the collage never shows a hole mid-drag. Valid only
+// while VkSceneCanvas_frontImage returns VK_NULL_HANDLE (callers check
+// front first); the next flip retires it through the graveyard. Reports
+// its own pixel size via out params — it does NOT match width/height.
+VkImage  VkSceneCanvas_staleImage(const VkSceneCanvas *canvas,
+                                  uint32_t *outWidth, uint32_t *outHeight);
 
 // Record the BACK buffer pass: clears the entire back image to (r,g,b,a),
 // leaves the pass open for inline draws. Full-canvas viewport/scissor are

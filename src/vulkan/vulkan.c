@@ -812,6 +812,64 @@ static void decodeColor(uint32_t rgba, float *out) {
     out[3] = ((rgba >> 24) & 0xFF) / 255.0f;
 }
 
+// --- Vk_fillRect: the default panel draw as a public primitive --------------
+// The quad path extracted verbatim so Panel_RenderFn overrides can point at
+// real content instead of poking renderer internals. Each call is self-
+// contained: viewport spans the whole drawable (u_rectNdc places the quad in
+// clip space), the scissor clips to THIS rect — stacking several fills in
+// one handler just works.
+void Vk_fillRect(void *cmdBuffer, float x, float y, float w, float h,
+                 float r, float g, float b, float a) {
+    if (!cmdBuffer || w <= 0.0f || h <= 0.0f)
+        return;
+    if (!s_pipelinesBuilt || s_quadPipeline == VK_NULL_HANDLE)
+        return;
+
+    VK_LOAD_DEVICE_VOID(CmdBindPipeline)
+    VK_LOAD_DEVICE_VOID(CmdSetViewport)
+    VK_LOAD_DEVICE_VOID(CmdSetScissor)
+    VK_LOAD_DEVICE_VOID(CmdPushConstants)
+    VK_LOAD_DEVICE_VOID(CmdDraw)
+
+    float drawW = (float)s_extent.width;
+    float drawH = (float)s_extent.height;
+    // Clip against the drawable here: handlers receive pre-clipped rects,
+    // but defensive clipping keeps stacked sub-rects honest for free.
+    float fx = x < 0.0f ? 0.0f : x;
+    float fy = y < 0.0f ? 0.0f : y;
+    if (fx + w > drawW) w = drawW - fx;
+    if (fy + h > drawH) h = drawH - fy;
+    if (w <= 0.0f || h <= 0.0f)
+        return;
+
+    VkViewport viewport = {0};
+    viewport.width = drawW;
+    viewport.height = drawH;
+    viewport.maxDepth = 1.0f;
+    VkRect2D scissor = {0};
+    scissor.offset.x = (int32_t)fx;
+    scissor.offset.y = (int32_t)fy;
+    scissor.extent.width = (uint32_t)w;
+    scissor.extent.height = (uint32_t)h;
+
+    float ndc[8]; // rectNdc.xyzw + color.rgba, push-constant block
+    ndc[0] = fx / drawW * 2.0f - 1.0f;
+    ndc[1] = fy / drawH * 2.0f - 1.0f;
+    ndc[2] = w / drawW * 2.0f;
+    ndc[3] = h / drawH * 2.0f;
+    ndc[4] = r;
+    ndc[5] = g;
+    ndc[6] = b;
+    ndc[7] = a;
+    CmdBindPipeline_fn(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_quadPipeline);
+    CmdSetViewport_fn(cmdBuffer, 0, 1, &viewport);
+    CmdSetScissor_fn(cmdBuffer, 0, 1, &scissor);
+    CmdPushConstants_fn(cmdBuffer, s_quadLayout,
+                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                        0, 32, ndc);
+    CmdDraw_fn(cmdBuffer, 6, 1, 0, 0);
+}
+
 // --- collage verification: read the monitor cache back to a TGA -------------
 // ANTI_VK_DUMP=1. Phase 1 records a cache->buffer copy INSIDE the present
 // command buffer (correct layout by construction, GPU-ordered); phase 2,
@@ -1461,8 +1519,19 @@ static bool presentFrameLocked(void) {
         for (uint32_t si = 0; si < sceneCount; si++) {
             struct SceneCut *cut = &scenes[si];
             VkImage frontImg = VkSceneCanvas_frontImage((*cut).canvas);
+            uint32_t srcW = VkSceneCanvas_width((*cut).canvas);
+            uint32_t srcH = VkSceneCanvas_height((*cut).canvas);
+            bool stretch = false;
+            if (frontImg == VK_NULL_HANDLE) {
+                // RESIZE BRIDGE: the fresh pair hasn't earned its first flip
+                // yet — serve the previous geometry's front STRETCHED into
+                // today's cut instead of dropping to board color. Motion
+                // beats a hole; one flip later this path goes quiet.
+                frontImg = VkSceneCanvas_staleImage((*cut).canvas, &srcW, &srcH);
+                stretch = frontImg != VK_NULL_HANDLE;
+            }
             if (frontImg == VK_NULL_HANDLE)
-                continue; // first scene pass still in flight: board shows
+                continue; // genuinely nothing rendered yet: board shows
             int32_t cx0 = (*cut).dx < 0 ? 0 : (*cut).dx;
             int32_t cy0 = (*cut).dy < 0 ? 0 : (*cut).dy;
             int32_t cx1 = (*cut).dx + (*cut).dw > drawWi ? drawWi : (*cut).dx + (*cut).dw;
@@ -1473,24 +1542,50 @@ static bool presentFrameLocked(void) {
             VkImageBlit sc = {0};
             sc.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             sc.srcSubresource.layerCount = 1;
-            sc.srcOffsets[0].x = cx0 - (*cut).dx;   // crop offset INSIDE the canvas
-            sc.srcOffsets[0].y = cy0 - (*cut).dy;
-            sc.srcOffsets[1].x = cx0 - (*cut).dx + (cx1 - cx0);
-            sc.srcOffsets[1].y = cy0 - (*cut).dy + (cy1 - cy0);
-            sc.srcOffsets[1].z = 1;
+            if (stretch) {
+                // Whole stale canvas -> whole cut, scaled. No crop math:
+                // the bridge is about continuity, not pixel exactness.
+                sc.srcOffsets[1].x = (int32_t)srcW;
+                sc.srcOffsets[1].y = (int32_t)srcH;
+                sc.srcOffsets[1].z = 1;
+                sc.dstOffsets[0].x = cx0;
+                sc.dstOffsets[0].y = cy0;
+                sc.dstOffsets[1].x = cx1;
+                sc.dstOffsets[1].y = cy1;
+            } else {
+                // The cut geometry is THIS tick's request; a deferred resize
+                // (retire table full) can leave the live canvas smaller than
+                // it. Clamp the crop INSIDE the real canvas and shrink the
+                // stamp by the same amount — an out-of-bounds src rect is
+                // invalid blit territory, not a visual nit.
+                int32_t sx0 = cx0 - (*cut).dx;
+                int32_t sy0 = cy0 - (*cut).dy;
+                int32_t sx1 = sx0 + (cx1 - cx0);
+                int32_t sy1 = sy0 + (cy1 - cy0);
+                if ((uint32_t)sx1 > srcW) sx1 = (int32_t)srcW;
+                if ((uint32_t)sy1 > srcH) sy1 = (int32_t)srcH;
+                if (sx1 <= sx0 || sy1 <= sy0)
+                    continue; // canvas smaller than its window position here
+
+                sc.srcOffsets[0].x = sx0;           // crop offset INSIDE the canvas
+                sc.srcOffsets[0].y = sy0;
+                sc.srcOffsets[1].x = sx1;
+                sc.srcOffsets[1].y = sy1;
+                sc.srcOffsets[1].z = 1;
+                sc.dstOffsets[0].x = cx0;
+                sc.dstOffsets[0].y = cy0;
+                sc.dstOffsets[1].x = cx0 + (sx1 - sx0);
+                sc.dstOffsets[1].y = cy0 + (sy1 - sy0);
+            }
             sc.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             sc.dstSubresource.layerCount = 1;
-            sc.dstOffsets[0].x = cx0;
-            sc.dstOffsets[0].y = cy0;
-            sc.dstOffsets[1].x = cx1;
-            sc.dstOffsets[1].y = cy1;
-            sc.dstOffsets[1].z = 1;
-            // src cut == dst cut, pixel-for-pixel: NEAREST, zero resampling.
-            // The FRONT image serves — whatever production is doing.
+            // Fresh path: src cut == dst cut, pixel-for-pixel, NEAREST, zero
+            // resampling. Bridge path: LINEAR — a stretched stopgap should
+            // not alias while it lasts.
             CmdBlitImage_fn(s_cmdBuffer, frontImg,
                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                             s_swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                            1, &sc, VK_FILTER_NEAREST);
+                            1, &sc, stretch ? VK_FILTER_LINEAR : VK_FILTER_NEAREST);
         }
 
         // Transfer writes must be visible to the color attachment stage the
@@ -1553,20 +1648,9 @@ static bool presentFrameLocked(void) {
             if (py + ph > drawH) ph = drawH - py;
             if (pw <= 0.0f || ph <= 0.0f) continue;
 
-            // VIEWPORT/SCISSOR SEPARATION LAW: u_rectNdc already places the
-            // quad in clip space, so the viewport is the WHOLE drawable —
-            // a pure pass-through — and the scissor does the clipping.
-            // Viewport = child rect would apply the rect TWICE: panels
-            // magnify on small windows and drift right/down.
-            VkViewport viewport = {0};
-            viewport.width = drawW;
-            viewport.height = drawH;
-            viewport.maxDepth = 1.0f;
-            VkRect2D scissor = {0};
-            scissor.offset.x = (int32_t)px;
-            scissor.offset.y = (int32_t)py;
-            scissor.extent.width = (uint32_t)pw;
-            scissor.extent.height = (uint32_t)ph;
+            // VIEWPORT/SCISSOR SEPARATION LAW lives inside Vk_fillRect now:
+            // u_rectNdc places each quad in clip space against a full-drawable
+            // viewport; scissoring is per-fill. Handlers get the same law.
 
             uint32_t childType = Memory_type(child);
             if (dump)
@@ -1578,29 +1662,23 @@ static bool presentFrameLocked(void) {
                 // Scene child: already rendered into its canvas pre-pass;
                 // stamped onto the cache as a cut below.
                 continue;
+            }
+
+            // METHOD-SLOT DISPATCH ("@Override"): a set renderHandler replaces
+            // the default draw entirely — it receives an open render pass on
+            // this drawable, the clipped pixel rect, and the command buffer.
+            // NULL falls through to the built-in solid quad.
+            Panel_RenderFn handler = Panel_getRenderHandler(child);
+            if (handler != NULL) {
+                handler(child, NULL, s_cmdBuffer, px, py, pw, ph);
             } else {
-                // Plain panel: solid quad in its own color.
                 uint32_t color = Panel_getBackgroundColor(child);
                 if (color == 0)
                     continue; // PANEL_COLOR_CLEAR draws nothing without blending
                 float rgba[4];
                 decodeColor(color, rgba);
-                float ndc[8]; // rectNdc.xyzw + color.rgba, push-constant block
-                ndc[0] = px / drawW * 2.0f - 1.0f;
-                ndc[1] = py / drawH * 2.0f - 1.0f;
-                ndc[2] = pw / drawW * 2.0f;
-                ndc[3] = ph / drawH * 2.0f;
-                ndc[4] = rgba[0];
-                ndc[5] = rgba[1];
-                ndc[6] = rgba[2];
-                ndc[7] = rgba[3];
-                CmdBindPipeline_fn(s_cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_quadPipeline);
-                CmdSetViewport_fn(s_cmdBuffer, 0, 1, &viewport);
-                CmdSetScissor_fn(s_cmdBuffer, 0, 1, &scissor);
-                CmdPushConstants_fn(s_cmdBuffer, s_quadLayout,
-                                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                                    0, 32, ndc);
-                CmdDraw_fn(s_cmdBuffer, 6, 1, 0, 0);
+                Vk_fillRect(s_cmdBuffer, px, py, pw, ph,
+                            rgba[0], rgba[1], rgba[2], rgba[3]);
             }
         }
     }

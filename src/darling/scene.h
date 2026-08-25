@@ -48,4 +48,34 @@ void Scene_setMode(Scene *s, int mode);
 float Scene_getVirtualWidth(const Scene *s);   // legacy parity: reads Container w/h
 float Scene_getVirtualHeight(const Scene *s);
 
+// Layout facade — the delegation chain's middle link:
+//   Scene3D_setLocation -> Scene_setLocation -> Panel_setLocation
+//   -> Container_setLocation(&(*panel).base)
+// Each level re-exports the common accessors over ITS OWN embedded prefix,
+// so callers never spell .base.base.base. Static inline: Java-style
+// inherited methods with static binding and zero runtime cost.
+static inline void Scene_setLocation(Scene *s, float x, float y)
+    { if (s) Panel_setLocation(&(*s).base, x, y); }
+static inline void Scene_setSize(Scene *s, float w, float h)
+    { if (s) Panel_setSize(&(*s).base, w, h); }
+static inline void Scene_setParentAnchor(Scene *s, int anchor)
+    { if (s) Panel_setParentAnchor(&(*s).base, anchor); }
+static inline void Scene_setBackgroundColor(Scene *s, uint32_t color) {
+    if (s) Panel_setBackgroundColor(&(*s).base, color);
+}
+
+static inline void Scene2D_setLocation(Scene2D *s, float x, float y)
+    { if (s) Scene_setLocation(&(*s).base, x, y); }
+static inline void Scene2D_setSize(Scene2D *s, float w, float h)
+    { if (s) Scene_setSize(&(*s).base, w, h); }
+static inline void Scene2D_setParentAnchor(Scene2D *s, int anchor)
+    { if (s) Scene_setParentAnchor(&(*s).base, anchor); }
+
+static inline void Scene3D_setLocation(Scene3D *s, float x, float y)
+    { if (s) Scene_setLocation(&(*s).base, x, y); }
+static inline void Scene3D_setSize(Scene3D *s, float w, float h)
+    { if (s) Scene_setSize(&(*s).base, w, h); }
+static inline void Scene3D_setParentAnchor(Scene3D *s, int anchor)
+    { if (s) Scene_setParentAnchor(&(*s).base, anchor); }
+
 #endif

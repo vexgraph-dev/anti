@@ -24,6 +24,7 @@ Panel *Panel_0(void) {
     (*p).color = PANEL_COLOR_CLEAR;
     (*p).filters = NULL;
     (*p).image = NULL;
+    (*p).renderHandler = NULL;
     (*p).source = NULL;
     (*p).parent = NULL;
     (*p).children = NULL;
@@ -51,6 +52,19 @@ void Panel_setBackgroundColor(Panel *p, uint32_t color) {
 void Panel_setBackgroundColorRGBA(Panel *p, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     Panel_setBackgroundColor(p, ((uint32_t)a << 24) | ((uint32_t)r << 16)
         | ((uint32_t)g << 8) | (uint32_t)b);
+}
+
+// Method-slot accessors: setting a handler is the @Override; NULL restores
+// the renderer default. Marked dirty so every holder re-renders this tick.
+Panel_RenderFn Panel_getRenderHandler(const Panel *p) {
+    return p ? (*p).renderHandler : NULL;
+}
+
+void Panel_setRenderHandler(Panel *p, Panel_RenderFn fn) {
+    if (!p)
+        return;
+    (*p).renderHandler = fn;
+    Container_markDirty(&(*p).base);
 }
 
 void Panel_setBackgroundColorAndMark(Panel *p, uint32_t color) {
@@ -216,6 +230,8 @@ Panel *Panel_add(Panel *parent, const Panel *node) {
     (*cb).percentX = (*nb).percentX;
     (*cb).percentY = (*nb).percentY;
     (*copy).color = (*node).color;
+    // behavior travels with structure: a view renders exactly like its source
+    (*copy).renderHandler = (*node).renderHandler;
 
     // payloads alias through the source slot (read/write-through above)
     (*copy).source = (Panel *)node;

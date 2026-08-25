@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdatomic.h>
@@ -24,6 +25,24 @@ typedef struct {
 } VkProbeState;
 
 static VkProbeState g_state = {0};
+
+// METHOD-SLOT OVERRIDE DEMO: this function is pointed at the HUD panel via
+// Panel_setRenderHandler — the C equivalent of @Override. It replaces the
+// built-in solid quad entirely and composes out of the public Vk_fillRect
+// primitive instead: dark glass backing plus a sweeping accent bar whose
+// width breathes with a 1-second sine.
+static void hud_pulse(Panel *panel, void *renderer, void *cmdBuffer,
+                      float x, float y, float w, float h) {
+    (void)panel;
+    (void)renderer;
+
+    double t = (double)(NanoTime_now() % 1000000000ULL) / 1e9;
+    float pulse = 0.5f + 0.5f * sinf((float)(t * 6.28318530718));
+
+    float barH = h * 0.08f;
+    Vk_fillRect(cmdBuffer, x, y, w, h - barH, 0.07f, 0.09f, 0.11f, 0.92f);
+    Vk_fillRect(cmdBuffer, x, y + h - barH, w * pulse, barH, 0.18f, 0.80f, 0.44f, 1.0f);
+}
 
 // Present Worker: clears the monitor cache, renders the basket's children
 // onto it, blits the window region and presents — the whole loop.
@@ -67,6 +86,7 @@ int main(void) {
     Window *w = Window();
     Window_setTitle(w, "anti vk probe");
     Window_setSize(w, 640, 400);
+    Window_setUndecorated(w, WINDOW_DECORATED);
     Window_show(w);
 
     int vkResult = Vk_init(w);
@@ -81,22 +101,28 @@ int main(void) {
     // The basket: one empty panel on the window's container slot. Its w/h
     // mirror the window's content size (resize-reflection), and everything
     // else hangs under it as children. ONE layer renders: these children.
-    Panel *root = Panel_0();
+    Panel *root = Panel();
     Panel_setBackgroundColor(root,0xffffffffl);
+
     Window_setContainer(w, root);
 
     // Scene3D child: legacy animated triangle content in its bounds.
+    // The facade chain keeps this flat — no .base.base.base spelling:
+    //   Scene3D_setLocation -> Scene_setLocation -> Panel_setLocation
+    //   -> Container_setLocation(&(*panel).base)
     Scene3D *scene3D = Scene3D_0();
-    Container_setLocation(&(*scene3D).base.base.base, 0.0f, 0.0f);
-    Container_setSize(&(*scene3D).base.base.base, 640.0f, 400.0f);
-    Container_setParentAnchor(&(*scene3D).base.base.base, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
+    Scene3D_setLocation(scene3D, 0.0f, 0.0f);
+    Scene3D_setSize(scene3D, 640.0f, 400.0f);
+    Scene3D_setParentAnchor(scene3D, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
     Panel_addContainer(root, &(*scene3D).base.base);
 
-    // Plain panel child: a solid quad floating over the scene.
-    Panel *hud = Panel_0();
-    Container_setLocation(&(*hud).base, 40.0f, 40.0f);
-    Container_setSize(&(*hud).base, 200.0f, 200.0f);
-    Panel_setBackgroundColor(hud, 0xFF2E7D32);
+    // Plain panel child with a DRAW OVERRIDE: hud_pulse replaces the solid
+    // quad the built-in path would stamp (NULL would restore it).
+    Panel *hud = Panel();
+    Panel_setLocation(hud, 40.0f, 40.0f);
+    Panel_setSize(hud, 200.0f, 200.0f);
+    Panel_setBackgroundColor(hud, 0xFF2E7D32); // serves while handler unset
+    Panel_setRenderHandler(hud, hud_pulse);
     Panel_addContainer(root, hud);
 
     atomic_store(&g_state.running, true);

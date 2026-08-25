@@ -45,4 +45,13 @@ bool Vk_clearPresentSync(void);
 // Human-readable stop point of the last init attempt ("ok", "no loader", ...).
 const char *Vk_status(void);
 
+// Solid-quad primitive: the default Panel draw, exposed so Panel_RenderFn
+// overrides can compose real content out of it ("pointing one function at
+// another"). Records an axis-aligned fill at drawable-pixel coords into an
+// open render pass; sets its own viewport (whole drawable) and scissor (the
+// rect), per the VIEWPORT/SCISSOR SEPARATION LAW. Safe to call several times
+// per handler for layered rects.
+void Vk_fillRect(void *cmdBuffer, float x, float y, float w, float h,
+                 float r, float g, float b, float a);
+
 #endif
