@@ -207,7 +207,7 @@ add_executable(vk_test
     vk_test.c
     src/vulkan/vulkan.c
     src/vulkan/vk_view.c
-    src/vulkan/vk_view.c
+    src/vulkan/vk_scene.c
     src/buffers/buffer.c
     src/buffers/color_buffer.c
     src/window/window_cocoa.m
