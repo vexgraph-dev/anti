@@ -73,6 +73,10 @@ static inline void Panel_setLocation(Panel *p, float x, float y)
     { if (p) Container_setLocation(&(*p).base, x, y); }
 static inline void Panel_setSize(Panel *p, float w, float h)
     { if (p) Container_setSize(&(*p).base, w, h); }
+static inline void Panel_setMinSize(Panel *p, float w, float h)
+    { if (p) Container_setMinSize(&(*p).base, w, h); }
+static inline void Panel_setMaxSize(Panel *p, float w, float h)
+    { if (p) Container_setMaxSize(&(*p).base, w, h); }
 static inline void Panel_setParentAnchor(Panel *p, int anchor)
     { if (p) Container_setParentAnchor(&(*p).base, anchor); }
 static inline void Panel_setSelfAnchor(Panel *p, int anchor)

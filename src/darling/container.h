@@ -37,6 +37,8 @@ typedef struct Container {
     uint8_t dirty;
     uint8_t clipping;
     float baseW, baseH;     // parent size at last layout (resize-delta reference)
+    float minW, minH;       // size constraints (default 0,0)
+    float maxW, maxH;       // size constraints (default 0 = unset)
 } Container;
 
 // Parent anchor: where on the parent the element tracks during resize.
@@ -50,11 +52,15 @@ typedef struct Container {
 #define CONTAINER_PARENT_ANCHOR_BOTTOM_CENTER 7
 #define CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT  8
 
-// Self anchor: which corner of THIS element sits at the location margin.
-#define CONTAINER_SELF_ANCHOR_TOP_LEFT     0
-#define CONTAINER_SELF_ANCHOR_TOP_RIGHT    1
-#define CONTAINER_SELF_ANCHOR_BOTTOM_LEFT  2
-#define CONTAINER_SELF_ANCHOR_BOTTOM_RIGHT 3
+#define CONTAINER_SELF_ANCHOR_TOP_LEFT      0
+#define CONTAINER_SELF_ANCHOR_TOP_CENTER    1
+#define CONTAINER_SELF_ANCHOR_TOP_RIGHT     2
+#define CONTAINER_SELF_ANCHOR_MIDDLE_LEFT   3
+#define CONTAINER_SELF_ANCHOR_MIDDLE_CENTER 4
+#define CONTAINER_SELF_ANCHOR_MIDDLE_RIGHT  5
+#define CONTAINER_SELF_ANCHOR_BOTTOM_LEFT   6
+#define CONTAINER_SELF_ANCHOR_BOTTOM_CENTER 7
+#define CONTAINER_SELF_ANCHOR_BOTTOM_RIGHT  8
 
 // Pivot reference: the element's source-of-truth point.
 #define CONTAINER_PIVOT_REFERENCE_TOP_LEFT      0
@@ -79,6 +85,8 @@ void Container_setWidth(Container *c, float w);
 void Container_setHeight(Container *c, float h);
 void Container_setLocation(Container *c, float x, float y);
 void Container_setSize(Container *c, float w, float h);
+void Container_setMinSize(Container *c, float w, float h);
+void Container_setMaxSize(Container *c, float w, float h);
 float Container_getScaleWidth(const Container *c);
 float Container_getScaleHeight(const Container *c);
 void Container_setScale(Container *c, float sx, float sy);

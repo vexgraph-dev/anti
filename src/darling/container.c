@@ -53,8 +53,47 @@ void Container_setLocation(Container *c, float x, float y) {
 }
 
 void Container_setSize(Container *c, float w, float h) {
+    if (!c) return;
+    // First call sets the max (the "allocate once" ceiling)
+    if ((*c).maxW <= 0.0f) (*c).maxW = w;
+    if ((*c).maxH <= 0.0f) (*c).maxH = h;
+    // Clamp to [min, max]
+    if (w < (*c).minW) w = (*c).minW;
+    if (h < (*c).minH) h = (*c).minH;
+    if (w > (*c).maxW) w = (*c).maxW;
+    if (h > (*c).maxH) h = (*c).maxH;
     Container_setWidth(c, w);
     Container_setHeight(c, h);
+}
+
+void Container_setMinSize(Container *c, float w, float h) {
+    if (!c) return;
+    (*c).minW = w;
+    (*c).minH = h;
+    // Re-clamp current size
+    float cw = (*c).w;
+    float ch = (*c).h;
+    if (cw < w) cw = w;
+    if (ch < h) ch = h;
+    if ((*c).maxW > 0.0f && cw > (*c).maxW) cw = (*c).maxW;
+    if ((*c).maxH > 0.0f && ch > (*c).maxH) ch = (*c).maxH;
+    Container_setWidth(c, cw);
+    Container_setHeight(c, ch);
+}
+
+void Container_setMaxSize(Container *c, float w, float h) {
+    if (!c) return;
+    (*c).maxW = w;
+    (*c).maxH = h;
+    // Re-clamp current size
+    float cw = (*c).w;
+    float ch = (*c).h;
+    if (w > 0.0f && cw > w) cw = w;
+    if (h > 0.0f && ch > h) ch = h;
+    if (cw < (*c).minW) cw = (*c).minW;
+    if (ch < (*c).minH) ch = (*c).minH;
+    Container_setWidth(c, cw);
+    Container_setHeight(c, ch);
 }
 
 float Container_getScaleWidth(const Container *c) { return c ? (*c).scaleX : 1.0f; }
@@ -154,58 +193,51 @@ void Container_resolve(Container *c, float parentX, float parentY,
     float sw = (*c).w * (*c).scaleX;
     float sh = (*c).h * (*c).scaleY;
 
-    // Resize-delta reference: captured once, and again only after layout edits.
-    float baseW = (*c).baseW;
-    float baseH = (*c).baseH;
-    if (baseW <= 0.0f || baseH <= 0.0f) {
-        baseW = parentW;
-        baseH = parentH;
-        (*c).baseW = baseW;
-        (*c).baseH = baseH;
-    }
+    // Resize-delta reference: no longer needed for new clean layout!
     (*c).dirty = 0;
 
     float x = (*c).x;
     float y = (*c).y;
 
-    // Self anchor: initial margin placement against the BASE size.
-    float selfX = x;
-    float selfY = y;
-    switch (Container_getSelfAnchor(c)) {
-        case CONTAINER_SELF_ANCHOR_TOP_RIGHT:
-            selfX = baseW - sw - x;
-            break;
-        case CONTAINER_SELF_ANCHOR_BOTTOM_LEFT:
-            selfY = baseH - sh - y;
-            break;
-        case CONTAINER_SELF_ANCHOR_BOTTOM_RIGHT:
-            selfX = baseW - sw - x;
-            selfY = baseH - sh - y;
-            break;
-        default:
-            break;
-    }
-
-    // Parent anchor: follow this point's movement since the base layout.
-    float dW = parentW - baseW;
-    float dH = parentH - baseH;
-    float dx = 0.0f;
-    float dy = 0.0f;
+    // Parent anchor: find the absolute position on the parent bounds
+    float px = 0.0f;
+    float py = 0.0f;
     switch (Container_getParentAnchor(c)) {
-        case CONTAINER_PARENT_ANCHOR_TOP_CENTER:    dx = dW * 0.5f; break;
-        case CONTAINER_PARENT_ANCHOR_TOP_RIGHT:     dx = dW; break;
-        case CONTAINER_PARENT_ANCHOR_MIDDLE_LEFT:   dy = dH * 0.5f; break;
-        case CONTAINER_PARENT_ANCHOR_MIDDLE_CENTER: dx = dW * 0.5f; dy = dH * 0.5f; break;
-        case CONTAINER_PARENT_ANCHOR_MIDDLE_RIGHT:  dx = dW; dy = dH * 0.5f; break;
-        case CONTAINER_PARENT_ANCHOR_BOTTOM_LEFT:   dy = dH; break;
-        case CONTAINER_PARENT_ANCHOR_BOTTOM_CENTER: dx = dW * 0.5f; dy = dH; break;
-        case CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT:  dx = dW; dy = dH; break;
-        default:
-            break;
+        case 1: px = parentW * 0.5f; break; // TOP_CENTER
+        case 2: px = parentW;        break; // TOP_RIGHT
+        case 3: py = parentH * 0.5f; break; // MIDDLE_LEFT
+        case 4: px = parentW * 0.5f; py = parentH * 0.5f; break; // MIDDLE_CENTER
+        case 5: px = parentW;        py = parentH * 0.5f; break; // MIDDLE_RIGHT
+        case 6: py = parentH;        break; // BOTTOM_LEFT
+        case 7: px = parentW * 0.5f; py = parentH;        break; // BOTTOM_CENTER
+        case 8: px = parentW;        py = parentH;        break; // BOTTOM_RIGHT
+        default: break; // TOP_LEFT
     }
 
-    float screenX = selfX + dx + parentX;
-    float screenY = selfY + dy + parentY;
+    // Self anchor: find the absolute position on the child bounds
+    float sx = 0.0f;
+    float sy = 0.0f;
+    switch (Container_getSelfAnchor(c)) {
+        case 1: sx = sw * 0.5f; break; // TOP_CENTER
+        case 2: sx = sw;        break; // TOP_RIGHT
+        case 3: sy = sh * 0.5f; break; // MIDDLE_LEFT
+        case 4: sx = sw * 0.5f; sy = sh * 0.5f; break; // MIDDLE_CENTER
+        case 5: sx = sw;        sy = sh * 0.5f; break; // MIDDLE_RIGHT
+        case 6: sy = sh;        break; // BOTTOM_LEFT
+        case 7: sx = sw * 0.5f; sy = sh;        break; // BOTTOM_CENTER
+        case 8: sx = sw;        sy = sh;        break; // BOTTOM_RIGHT
+        default: break; // TOP_LEFT
+    }
+
+    // Margins push INWARD based on the self anchor, as requested
+    float marginX = x;
+    float marginY = y;
+    int sA = Container_getSelfAnchor(c);
+    if (sA == 2 || sA == 5 || sA == 8) marginX = -x; // right-anchored margins pull left
+    if (sA == 6 || sA == 7 || sA == 8) marginY = -y; // bottom-anchored margins pull up
+
+    float screenX = parentX + px - sx + marginX;
+    float screenY = parentY + py - sy + marginY;
 
     // Percent overrides placement against the LIVE parent size.
     if (Container_hasPercentX(c))
