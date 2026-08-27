@@ -216,7 +216,16 @@ void Window_setMiniaturizable(Window *window, bool miniaturizable);
 void Window_setFullscreenButton(Window *window, bool enabled);
 
 // Switch window chrome at runtime: one of WINDOW_UNDECORATED_*.
-void Window_setUndecorated(Window *window, int mode);
+void Window_setUndecorated(Window *window, int type);
+void Window_setFloatingTrafficLights(Window *window, bool floating); // Transparent titlebar, leaves just traffic lights over content
+
+void Window_setOpacity(Window *window, float opacity); // 0.0 to 1.0
+void Window_setTransparentBackground(Window *window, bool transparent); // Makes the window backdrop fully clear so Vulkan can draw holes
+void Window_setBlur(Window *window, float blur);       // 0.0 to 1.0 (adds frosted glass behind content)
+void Window_setAlwaysOnTop(Window *window, bool onTop);
+void Window_setClickThrough(Window *window, bool clickThrough);
+void Window_setShadow(Window *window, bool shadow);
+void Window_setMovableByBackground(Window *window, bool movable);
 
 // --- Minimize ---
 void Window_minimize(Window *window);

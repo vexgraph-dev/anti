@@ -114,10 +114,13 @@ struct Window {
     _Atomic bool transparent;
     _Atomic uint64_t renderGeneration;
 
-    // --- content root: NULL => clear-only pass ---
+    // --- content root: NULL => clear-only pass --
     _Atomic(Panel *) container;
+    _Atomic(Panel *) contentPanel;  // UI tree (IOSurface-backed when native)
+    _Atomic(Panel *) scenePanel;    // Scene tree (Vulkan-backed)
+    _Atomic(bool) nativeContainer;  // IOSurface backing for content panel
 
-    // --- runtime state ---
+    // --- runtime state --
     _Atomic bool enabled;    // false mutes ALL OS input for this window
     bool lastFocused;        // focus-flip detection during the pump
     _Atomic uint32_t monitorId; // CGDirectDisplayID mirror; 0 = unmapped
@@ -172,6 +175,17 @@ static Window *windowHandleOf(NSWindow *window) {
         if (s_idToWindow[i] == window) return s_idToHandle[i];
     return NULL;
 }
+
+// Flipped content view so all sublayers and Cocoa geometry natively speak
+// TOP-LEFT coordinates (matching darling Container_resolve layout 1:1).
+@interface AntiContentView : NSView
+@end
+
+@implementation AntiContentView
+- (BOOL)isFlipped {
+    return YES;
+}
+@end
 
 // App-level delegate: receives lifecycle events for the whole application.
 // applicationShouldTerminateAfterLastWindowClosed lets the process end when
@@ -237,16 +251,38 @@ static void applyLayerGravity(Window *window);
 - (NSSize)windowWillResize:(NSWindow *)sender toSize:(NSSize)frameSize {
     (void) sender;
     Window *w = self.handlePtr;
-    if (w && (*w).resizeRenderFn)
-        (*w).resizeRenderFn((*w).resizeRenderUserdata);
+    if (w) {
+        NSRect content = [(*w).nsWindow contentRectForFrameRect:NSMakeRect(0, 0, frameSize.width, frameSize.height)];
+        (*w).cachedWidth = (int)content.size.width;
+        (*w).cachedHeight = (int)content.size.height;
+        if (atomic_load_explicit(&(*w).nativeContainer, memory_order_acquire)) {
+            Panel *contentPanel = atomic_load_explicit(&(*w).contentPanel, memory_order_acquire);
+            if (contentPanel) {
+                Window_compositeIOSurfaceChildren(w, contentPanel);
+            }
+        }
+        if ((*w).resizeRenderFn)
+            (*w).resizeRenderFn((*w).resizeRenderUserdata);
+    }
     return frameSize;
 }
 
 - (void)windowDidResize:(NSNotification *)notification {
     (void) notification;
     Window *w = self.handlePtr;
-    if (w && (*w).resizeRenderFn)
-        (*w).resizeRenderFn((*w).resizeRenderUserdata);
+    if (w) {
+        NSRect content = [(*w).nsWindow contentRectForFrameRect:[(*w).nsWindow frame]];
+        (*w).cachedWidth = (int)content.size.width;
+        (*w).cachedHeight = (int)content.size.height;
+        if (atomic_load_explicit(&(*w).nativeContainer, memory_order_acquire)) {
+            Panel *contentPanel = atomic_load_explicit(&(*w).contentPanel, memory_order_acquire);
+            if (contentPanel) {
+                Window_compositeIOSurfaceChildren(w, contentPanel);
+            }
+        }
+        if ((*w).resizeRenderFn)
+            (*w).resizeRenderFn((*w).resizeRenderUserdata);
+    }
 }
 @end
 
@@ -574,6 +610,14 @@ void Window_pollEvents(void) {
             if (rectChanged && (*handle).resizeRenderFn)
                 (*(*handle).resizeRenderFn)((*handle).resizeRenderUserdata);
 
+            // IOSurface content panel: attach/position child CALayers on the content view
+            if (atomic_load_explicit(&(*handle).nativeContainer, memory_order_acquire)) {
+                Panel *contentPanel = atomic_load_explicit(&(*handle).contentPanel, memory_order_acquire);
+                if (contentPanel) {
+                    Window_compositeIOSurfaceChildren(handle, contentPanel);
+                }
+            }
+
             // Discriminator probe: who is stretching? Log what the layer
             // ACTUALLY carries while the window is being abused. If gravity
             // ever reads anything but topLeft, someone replaced our layer.
@@ -631,6 +675,9 @@ static Window *windowAlloc(const WindowDesc *desc) {
                            defer:NO];
         [window setTitle:[NSString stringWithUTF8String:(*desc).title]];
         [window setReleasedWhenClosed:NO];   // we own the window object; close must not free it
+
+        AntiContentView *contentView = [[AntiContentView alloc] initWithFrame:frame];
+        [window setContentView:contentView];
 
         // Green traffic light enters native fullscreen (mirrors legacy allocate()).
         [window setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
@@ -794,6 +841,144 @@ void Window_setContainer(Window *window, Panel *root) {
 
 Panel *Window_getContainer(const Window *window) {
     return window ? atomic_load_explicit(&(*window).container, memory_order_acquire) : NULL;
+}
+
+void Window_setContentPanel(Window *window, Panel *panel) {
+    if (!window)
+        return;
+    atomic_store_explicit(&(*window).contentPanel, panel, memory_order_release);
+    // Content panel itself is a logical placeholder — IOSurface backing
+    // goes on its children, not the panel itself.
+}
+
+Panel *Window_getContentPanel(const Window *window) {
+    return window ? atomic_load_explicit(&(*window).contentPanel, memory_order_acquire) : NULL;
+}
+
+void Window_setScenePanel(Window *window, Panel *panel) {
+    if (!window)
+        return;
+    atomic_store_explicit(&(*window).scenePanel, panel, memory_order_release);
+}
+
+Panel *Window_getScenePanel(const Window *window) {
+    return window ? atomic_load_explicit(&(*window).scenePanel, memory_order_acquire) : NULL;
+}
+
+void Window_forceNativeContainerOnRoot(Window *window, bool flag) {
+    if (!window)
+        return;
+    bool wasFlag = atomic_load_explicit(&(*window).nativeContainer, memory_order_acquire);
+    atomic_store_explicit(&(*window).nativeContainer, flag, memory_order_release);
+    // When enabling, attach IOSurface backing to non-scene children
+    // of the content panel. The content panel itself stays as a logical
+    // placeholder.
+    if (flag && !wasFlag) {
+        Panel *contentPanel = atomic_load_explicit(&(*window).contentPanel, memory_order_acquire);
+        if (contentPanel) {
+            int w = Window_width(window);
+            int h = Window_height(window);
+            if (w <= 0) w = (*window).cachedWidth > 0 ? (*window).cachedWidth : 800;
+            if (h <= 0) h = (*window).cachedHeight > 0 ? (*window).cachedHeight : 600;
+            Window_attachPanelIOSurface(window, contentPanel, w, h);
+        }
+        // Ensure the contentView has a layer for compositing
+        NSWindow *nsWindow = (*window).nsWindow;
+        if (nsWindow) {
+            NSView *contentView = [nsWindow contentView];
+            if (contentView) [contentView setWantsLayer:YES];
+        }
+    }
+}
+
+bool Window_isNativeContainerOnRoot(const Window *window) {
+    return window ? atomic_load_explicit(&(*window).nativeContainer, memory_order_acquire) : false;
+}
+
+// --- IOSurface panel bridge (C callable from renderer) ------------------------
+//
+// Child-iteration logic lives in panel_bridge.c (a pure-C file that can
+// see panel.h). This file just calls into it. Thread 0 only.
+
+bool Window_attachPanelIOSurface(Window *window, Panel *panel, int width, int height) {
+    if (!window || !panel) return false;
+    extern int anti_AttachPanelIOSurfaceChildren(Window *, Panel *, int, int);
+    // Attach IOSurface backing to ALL children of the content panel
+    return anti_AttachPanelIOSurfaceChildren(window, panel, width, height) >= 0;
+}
+
+bool Window_resizePanelIOSurface(Window *window, Panel *panel, int width, int height) {
+    if (!window || !panel) return false;
+    extern int anti_ResizePanelIOSurfaceChildren(Window *, Panel *, int, int);
+    return anti_ResizePanelIOSurfaceChildren(window, panel, width, height) >= 0;
+}
+
+void Window_renderPanelIOSurface(Window *window, Panel *panel) {
+    if (!window || !panel) return;
+    extern void anti_RenderPanelIOSurfaceChildren(Window *w, Panel *p);
+    anti_RenderPanelIOSurfaceChildren(window, panel);
+}
+
+void *Window_getPanelLayer(Window *window, Panel *panel) {
+    if (!window || !panel) return NULL;
+    extern void *PanelCocoa_fromPanel(void *panel);
+    extern void *PanelCocoa_layer(void *pc);
+    void *pc = PanelCocoa_fromPanel(panel);
+    return pc ? PanelCocoa_layer(pc) : NULL;
+}
+
+void Window_compositeIOSurfaceChildren(Window *window, Panel *contentPanel) {
+    if (!window || !contentPanel) return;
+    NSWindow *nsWindow = (*window).nsWindow;
+    if (!nsWindow) return;
+    NSView *contentView = [nsWindow contentView];
+    if (!contentView) return;
+    [contentView setWantsLayer:YES];
+    CALayer *rootLayer = [contentView layer];
+    if (!rootLayer) return;
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+
+    extern int anti_GetChildCount(Panel *contentPanel);
+    extern Panel *anti_GetChildAt(Panel *contentPanel, int index);
+    extern void anti_GetChildLayout(Panel *child, float winW, float winH, float *outX, float *outY, float *outW, float *outH);
+    extern int anti_GetChildParentAnchor(Panel *child);
+    extern int anti_GetChildSelfAnchor(Panel *child);
+
+    // Add/update CALayers for each child
+    int childCount = anti_GetChildCount(contentPanel);
+    for (int i = 0; i < childCount; i++) {
+        Panel *child = anti_GetChildAt(contentPanel, i);
+        if (!child) continue;
+        extern void *PanelCocoa_fromPanel(void *panel);
+        void *pc = PanelCocoa_fromPanel(child);
+        if (!pc) continue;
+
+        extern void *PanelCocoa_layer(void *pc);
+        CALayer *childLayer = (__bridge CALayer *)PanelCocoa_layer(pc);
+        if (!childLayer) continue;
+
+        // Ensure high-DPI surfaces aren't drawn 2x oversized
+        childLayer.contentsScale = [nsWindow backingScaleFactor];
+
+        // Apply anchor settings to layer (contentsGravity + autoresizingMask)
+        extern void PanelCocoa_setAnchors(void *pc, int parentAnchor, int selfAnchor);
+        int parentAnchor = anti_GetChildParentAnchor(child);
+        int selfAnchor = anti_GetChildSelfAnchor(child);
+        PanelCocoa_setAnchors(pc, parentAnchor, selfAnchor);
+
+        // Get layout rect for positioning
+        float rx, ry, rw, rh;
+        anti_GetChildLayout(child, (float)Window_width(window), (float)Window_height(window), &rx, &ry, &rw, &rh);
+        [childLayer setFrame:CGRectMake(rx, ry, rw, rh)];
+
+        // Add to root layer if not already there
+        if ([childLayer superlayer] != rootLayer) {
+            [rootLayer addSublayer:childLayer];
+        }
+    }
+    [CATransaction commit];
 }
 
 // --- Runtime state -------------------------------------------------------------
@@ -1005,6 +1190,99 @@ void Window_setUndecorated(Window *window, int mode) {
         bool transparent = (mode == WINDOW_UNDECORATED_NAKED);
         [(*window).nsWindow setTitlebarAppearsTransparent:transparent];
         [(*window).nsWindow setTitleVisibility:(transparent ? NSWindowTitleHidden : NSWindowTitleVisible)];
+    }
+}
+
+void Window_setFloatingTrafficLights(Window *window, bool floating) {
+    if (!window) return;
+    @autoreleasepool {
+        if (floating) {
+            updateStyleMask(window, NSWindowStyleMaskFullSizeContentView, 0);
+            [(*window).nsWindow setTitlebarAppearsTransparent:YES];
+            [(*window).nsWindow setTitleVisibility:NSWindowTitleHidden];
+        } else {
+            updateStyleMask(window, 0, NSWindowStyleMaskFullSizeContentView);
+            [(*window).nsWindow setTitlebarAppearsTransparent:NO];
+            [(*window).nsWindow setTitleVisibility:NSWindowTitleVisible];
+        }
+    }
+}
+
+void Window_setOpacity(Window *window, float opacity) {
+    if (!window) return;
+    @autoreleasepool {
+        [(*window).nsWindow setAlphaValue:(CGFloat)opacity];
+    }
+}
+
+void Window_setTransparentBackground(Window *window, bool transparent) {
+    if (!window) return;
+    @autoreleasepool {
+        [(*window).nsWindow setOpaque:!transparent];
+        [(*window).nsWindow setBackgroundColor:(transparent ? [NSColor clearColor] : [NSColor windowBackgroundColor])];
+    }
+}
+
+void Window_setBlur(Window *window, float blur) {
+    if (!window) return;
+    @autoreleasepool {
+        NSWindow *nsw = (*window).nsWindow;
+        NSView *contentView = [nsw contentView];
+        
+        // Find existing blur view
+        NSVisualEffectView *blurView = nil;
+        for (NSView *v in [contentView subviews]) {
+            if ([v isKindOfClass:[NSVisualEffectView class]]) {
+                blurView = (NSVisualEffectView *)v;
+                break;
+            }
+        }
+        
+        if (blur > 0.01f) {
+            if (!blurView) {
+                blurView = [[NSVisualEffectView alloc] initWithFrame:[contentView bounds]];
+                [blurView setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable)];
+                [blurView setBlendingMode:NSVisualEffectBlendingModeBehindWindow];
+                [blurView setMaterial:NSVisualEffectMaterialHUDWindow];
+                [blurView setState:NSVisualEffectStateActive];
+                // Add it below everything else
+                [contentView addSubview:blurView positioned:NSWindowBelow relativeTo:nil];
+            }
+            [blurView setAlphaValue:(CGFloat)blur];
+            // Ensure the window background is transparent so the blur shows through
+            [nsw setBackgroundColor:[NSColor clearColor]];
+            [nsw setOpaque:NO];
+        } else if (blurView) {
+            [blurView removeFromSuperview];
+        }
+    }
+}
+
+void Window_setAlwaysOnTop(Window *window, bool onTop) {
+    if (!window) return;
+    @autoreleasepool {
+        [(*window).nsWindow setLevel:(onTop ? NSFloatingWindowLevel : NSNormalWindowLevel)];
+    }
+}
+
+void Window_setClickThrough(Window *window, bool clickThrough) {
+    if (!window) return;
+    @autoreleasepool {
+        [(*window).nsWindow setIgnoresMouseEvents:clickThrough];
+    }
+}
+
+void Window_setShadow(Window *window, bool shadow) {
+    if (!window) return;
+    @autoreleasepool {
+        [(*window).nsWindow setHasShadow:shadow];
+    }
+}
+
+void Window_setMovableByBackground(Window *window, bool movable) {
+    if (!window) return;
+    @autoreleasepool {
+        [(*window).nsWindow setMovableByWindowBackground:movable];
     }
 }
 
