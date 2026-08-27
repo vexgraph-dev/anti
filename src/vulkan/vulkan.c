@@ -248,9 +248,9 @@ bool Vk_init(Window *window) {
     for (uint32_t i = 0; i < extCount; i++) {
         if (strcmp(names[i], "VK_KHR_surface") == 0)
             exts[n++] = "VK_KHR_surface";
-        else if (strcmp(names[i], "VK_MVK_macos_surface") == 0) {
+        else if (strcmp(names[i], "VK_EXT_metal_surface") == 0) {
             surfaceExt = 1;
-            exts[n++] = "VK_MVK_macos_surface";
+            exts[n++] = "VK_EXT_metal_surface";
         }
     }
     if (n < 2 || surfaceExt == 0) {
@@ -275,13 +275,13 @@ bool Vk_init(Window *window) {
 
     s_gdpa = (PFN_vkGetDeviceProcAddr)s_gpa(s_instance, "vkGetDeviceProcAddr");
 
-    // 3. surface over the window's AppKit view (MoltenVK wraps it in metal)
-    VK_LOAD_INSTANCE(CreateMacOSSurfaceMVK)
-    Window_metalLayer(window); // install CAMetalLayer first — MVK refuses bare views
-    VkMacOSSurfaceCreateInfoMVK sci = { .sType = VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK };
-    sci.pView = Window_contentView(window);
-    VkResult sr = CreateMacOSSurfaceMVK_fn(s_instance, &sci, NULL, &s_surface);
-    if (!sci.pView || sr != VK_SUCCESS) {
+    // 3. surface over the window's CAMetalLayer
+    VK_LOAD_INSTANCE(CreateMetalSurfaceEXT)
+    void *metalLayer = Window_metalLayer(window); // install CAMetalLayer first
+    VkMetalSurfaceCreateInfoEXT sci = { .sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT };
+    sci.pLayer = metalLayer;
+    VkResult sr = CreateMetalSurfaceEXT_fn(s_instance, &sci, NULL, &s_surface);
+    if (!sci.pLayer || sr != VK_SUCCESS) {
         snprintf(s_status, sizeof(s_status), "surface failed r=%d", sr); fprintf(stderr, "vk: %s\n", s_status);
         return false;
     }
