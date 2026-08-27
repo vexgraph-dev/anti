@@ -24,19 +24,23 @@ CFLAGS=(-std=gnu11 -g -O0 -fno-omit-frame-pointer -mcpu=native -Wall -Wextra)
 if [[ "${QUICK:-0}" != "1" ]]; then
     CFLAGS+=(-Werror)
 fi
-COMMON=(-I"$ROOT/src" -I/opt/homebrew/include
+COMMON=(-I"$ROOT/src" -I"$ROOT/objc" -I/opt/homebrew/include
         -DANTI_SPV_DIR="\"$ROOT/src/vulkan/spv\""
         -D_DEBUG=1)
 FRAMEWORKS=(-framework Cocoa -framework AppKit -framework QuartzCore
-            -framework CoreGraphics -framework Metal -framework IOKit)
+            -framework CoreGraphics -framework Metal -framework IOKit
+            -framework IOSurface)
 
 # --- the tree that matters ----------------------------------------------------
 SOURCES=(
-    vk_test.c
+    src/main/vk_test.c
     src/vulkan/vulkan.c
     src/vulkan/vk_view.c
     src/vulkan/vk_scene.c
-    src/window/window_cocoa.m
+    src/vulkan/vk_iosurface.c
+    objc/window_cocoa.m
+    objc/panel_cocoa.m
+    src/window/panel_bridge.c
     src/atomic/ring.c
     src/atomic/spin.c
     src/buffers/buffer.c
@@ -62,7 +66,7 @@ SOURCES=(
     src/system/display_info.c
     src/system/hardware_info.c
     src/system/graphics_info.c
-    src/system/discovery.m
+    objc/discovery.m
     src/lang/mat4.c
     src/lang/vec2.c
     src/lang/vec4.c

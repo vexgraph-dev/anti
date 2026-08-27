@@ -109,7 +109,7 @@ target_compile_options(anti PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_link_libraries(anti PRIVATE pthread)
 
 if(APPLE)
-    target_sources(anti PRIVATE src/security/touchid_cocoa.m)
+    target_sources(anti PRIVATE objc/touchid_cocoa.m)
     target_link_libraries(anti PRIVATE
         "-framework Foundation"
         "-framework LocalAuthentication"
@@ -120,8 +120,8 @@ endif()
 
 # Audio: AVFoundation backend on macOS, silence elsewhere.
 if(APPLE)
-    target_sources(anti PRIVATE src/audio/audio_cocoa.m)
-    set_source_files_properties(src/audio/audio_cocoa.m PROPERTIES
+    target_sources(anti PRIVATE objc/audio_cocoa.m)
+    set_source_files_properties(objc/audio_cocoa.m PROPERTIES
         COMPILE_OPTIONS "-fobjc-arc")
     target_link_libraries(anti PRIVATE "-framework AVFoundation")
 else()
@@ -132,10 +132,13 @@ endif()
 add_executable(darlingtest
     src/vulkan/vulkan.c
     src/vulkan/vk_view.c
+    src/vulkan/vk_scene.c
+    src/vulkan/vk_iosurface.c
     src/buffers/buffer.c
     src/buffers/color_buffer.c
     src/main/darlingtest.c
-    src/window/window_cocoa.m
+    objc/window_cocoa.m
+    objc/panel_cocoa.m
     src/render/raster.c
     src/render/surface.c
     src/darling/container.c
@@ -168,13 +171,14 @@ add_executable(darlingtest
     src/system/display_info.c
     src/system/hardware_info.c
     src/system/graphics_info.c
-    src/system/discovery.m
+    objc/discovery.m
     src/nio/mem.c
     src/oop/type.c
 )
-set_source_files_properties(src/window/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
-set_source_files_properties(src/system/discovery.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
-target_include_directories(darlingtest PRIVATE src /opt/homebrew/include)
+set_source_files_properties(objc/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+set_source_files_properties(objc/discovery.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+set_source_files_properties(objc/panel_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+target_include_directories(darlingtest PRIVATE src objc /opt/homebrew/include)
 target_compile_options(darlingtest PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_compile_definitions(darlingtest PRIVATE ANTI_SPV_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/spv")
 target_link_libraries(darlingtest PRIVATE
@@ -185,6 +189,7 @@ target_link_libraries(darlingtest PRIVATE
     "-framework CoreGraphics"
     "-framework Metal"
     "-framework IOKit"
+    "-framework IOSurface"
 )
 
 # Vulkan chain probe: loader -> instance -> surface -> device -> swapchain.
@@ -204,13 +209,16 @@ add_executable(vk_test
     src/struct/list.c
     src/struct/collection.c
     src/util/hash.c
-    vk_test.c
+    src/main/vk_test.c
     src/vulkan/vulkan.c
     src/vulkan/vk_view.c
     src/vulkan/vk_scene.c
+    src/vulkan/vk_iosurface.c
     src/buffers/buffer.c
     src/buffers/color_buffer.c
-    src/window/window_cocoa.m
+    objc/window_cocoa.m
+    objc/panel_cocoa.m
+    src/window/panel_bridge.c
     src/darling/container.c
     src/darling/panel.c
     src/darling/scene.c
@@ -222,15 +230,15 @@ add_executable(vk_test
     src/system/display_info.c
     src/system/hardware_info.c
     src/system/graphics_info.c
-    src/system/discovery.m
+    objc/discovery.m
     src/nio/mem.c
     src/oop/stride.c
     src/oop/struct.c
     src/oop/fields.c
     src/oop/type.c
 )
-set_source_files_properties(src/window/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
-set_source_files_properties(src/system/discovery.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+set_source_files_properties(objc/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+set_source_files_properties(objc/discovery.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 target_include_directories(vk_test PRIVATE src /opt/homebrew/include)
 target_compile_options(vk_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_compile_definitions(vk_test PRIVATE ANTI_SPV_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/spv")
@@ -242,6 +250,7 @@ target_link_libraries(vk_test PRIVATE
     "-framework CoreGraphics"
     "-framework Metal"
     "-framework IOKit"
+    "-framework IOSurface"
 )
 
 # System Discovery & Hardware / Display probe target
@@ -251,14 +260,14 @@ add_executable(system_test
     src/system/display_info.c
     src/system/hardware_info.c
     src/system/graphics_info.c
-    src/system/discovery.m
+    objc/discovery.m
     src/nio/mem.c
     src/oop/stride.c
     src/oop/struct.c
     src/oop/fields.c
     src/oop/type.c
 )
-set_source_files_properties(src/system/discovery.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+set_source_files_properties(objc/discovery.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 target_include_directories(system_test PRIVATE src)
 target_compile_options(system_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_link_libraries(system_test PRIVATE
@@ -274,7 +283,7 @@ target_link_libraries(system_test PRIVATE
 if(APPLE)
     add_executable(touchid_demo
         tests/touchid_demo.c
-        src/security/touchid_cocoa.m
+        objc/touchid_cocoa.m
     )
     target_include_directories(touchid_demo PRIVATE src)
     target_compile_options(touchid_demo PRIVATE -Wall -Wextra -mcpu=native)
@@ -294,7 +303,7 @@ endif()
 # Windowed engine demo (Legacy: process/EngineTest.java)
 add_executable(enginetest
     src/main/enginetest.c
-    src/window/window_cocoa.m
+    objc/window_cocoa.m
     src/nio/mem.c
     src/oop/type.c
     src/buffers/buffer.c
@@ -368,7 +377,7 @@ target_compile_options(input_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
 
 # Cocoa shim/s
 add_executable(anti_window
-    src/window/window_cocoa.m
+    objc/window_cocoa.m
     src/nio/mem.c
     src/oop/type.c
     src/buffers/buffer.c

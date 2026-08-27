@@ -18,6 +18,8 @@
 typedef struct {
     _Atomic bool running;
 
+
+
     // Honest present telemetry: one loop owns clear -> render -> blit ->
     // present for the whole compositor model, so there is exactly one FPS.
     _Atomic uint32_t presentFps;
@@ -36,7 +38,9 @@ static void hud_pulse(Panel *panel, void *renderer, void *cmdBuffer,
     (void)panel;
     (void)renderer;
 
-    double t = (double)(NanoTime_now() % 1000000000ULL) / 1e9;
+    // Monotonic seconds: no 1s wrap, so the pulse never stutters on
+    // frametimes that don't divide the second evenly.
+    double t = (double)NanoTime_now() / 1e9;
     float pulse = 0.5f + 0.5f * sinf((float)(t * 6.28318530718));
 
     float barH = h * 0.08f;
@@ -98,32 +102,47 @@ int main(void) {
         return 1;
     }
 
-    // The basket: one empty panel on the window's container slot. Its w/h
-    // mirror the window's content size (resize-reflection), and everything
-    // else hangs under it as children. ONE layer renders: these children.
-    Panel *root = Panel();
-    Panel_setBackgroundColor(root,0xffffffffl);
-
-    Window_setContainer(w, root);
-
-    // Scene3D child: legacy animated triangle content in its bounds.
-    // The facade chain keeps this flat — no .base.base.base spelling:
-    //   Scene3D_setLocation -> Scene_setLocation -> Panel_setLocation
-    //   -> Container_setLocation(&(*panel).base)
+    // 1. Scene3D (background triangle scene) -> Window Scene Panel
+    // Renders directly into the native Vulkan swapchain (CAMetalLayer).
+    // The window background / clear color inherits from this panel.
     Scene3D *scene3D = Scene3D_0();
     Scene3D_setLocation(scene3D, 0.0f, 0.0f);
-    Scene3D_setSize(scene3D, 640.0f, 400.0f);
-    Scene3D_setParentAnchor(scene3D, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
-    Panel_addContainer(root, &(*scene3D).base.base);
+    Scene3D_setSize(scene3D, 8192.0f, 8192.0f); // first call = max buffer allocation ceiling
+    Scene3D_setSize(scene3D, 640.0f, 400.0f);   // second call = actual size
+    Scene3D_setBackgroundColor(scene3D, 0xFF14141Eu); // dark background
+    Window_setScenePanel(w, &(*scene3D).base.base);
+    Window_setContainer(w, &(*scene3D).base.base);
 
-    // Plain panel child with a DRAW OVERRIDE: hud_pulse replaces the solid
-    // quad the built-in path would stamp (NULL would restore it).
+    // 2. Content panel: logical placeholder for UI & floating layers
+    // Note: its background color (e.g. black) is ignored and transparent.
+    Panel *contentPanel = Panel();
+    Panel_setLocation(contentPanel, 0.0f, 0.0f);
+    Panel_setSize(contentPanel, 8192.0f, 8192.0f); // max ceiling
+    Panel_setSize(contentPanel, 640.0f, 400.0f);   // actual size
+    Panel_setBackgroundColor(contentPanel, 0xFF000000u); // ignored placeholder color
+    Window_setContentPanel(w, contentPanel);
+
+    // 3. HUD: child in contentPanel, IOSurface-backed, renders via Vulkan into its own buffer
     Panel *hud = Panel();
     Panel_setLocation(hud, 40.0f, 40.0f);
-    Panel_setSize(hud, 200.0f, 200.0f);
-    Panel_setBackgroundColor(hud, 0xFF2E7D32); // serves while handler unset
+    Panel_setSize(hud, 640.0f, 400.0f); // first call = max buffer allocation size
+    Panel_setSize(hud, 220.0f, 100.0f); // second call = actual size (clamped)
+    Panel_setBackgroundColor(hud, 0xFF2E7D32u);
     Panel_setRenderHandler(hud, hud_pulse);
-    Panel_addContainer(root, hud);
+    Panel_addContainer(contentPanel, hud);
+
+    // 4. Mini-3D viewport: floating 3D scene inside contentPanel (IOSurface-backed)
+    Scene3D *mini3D = Scene3D_0();
+    Scene3D_setLocation(mini3D, 0.0f, 0.0f);
+    Scene3D_setSize(mini3D, 640.0f, 400.0f); // max buffer allocation size
+    Scene3D_setSize(mini3D, 640.0f, 400.0f); // actual size
+    Scene3D_setParentAnchor(mini3D, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
+    Scene3D_setSelfAnchor(mini3D, CONTAINER_SELF_ANCHOR_BOTTOM_RIGHT);
+    Panel_addContainer(contentPanel, &(*mini3D).base.base);
+
+    // Enable native IOSurface backing on content panel
+    Window_forceNativeContainerOnRoot(w, true);
+    printf("native IOSurface: ON (background=Vulkan swapchain, overlays=Vulkan->IOSurface)\n");
 
     atomic_store(&g_state.running, true);
 
@@ -134,8 +153,10 @@ int main(void) {
         fprintf(stderr, "failed to start Vulkan present worker thread\n");
         atomic_store(&g_state.running, false);
         Vk_shutdown();
+        Memory_free(mini3D);
+        Memory_free(hud);
+        Memory_free(contentPanel);
         Memory_free(scene3D);
-        Memory_free(root);
         Window_destroy(w);
         Key_shutdown();
         return 1;
@@ -179,10 +200,12 @@ int main(void) {
     }
 
     Vk_shutdown();
-    Memory_free(scene3D);
+    Memory_free(mini3D);
     Memory_free(hud);
-    Memory_free(root);
+    Memory_free(contentPanel);
+    Memory_free(scene3D);
     Window_destroy(w);
     Key_shutdown();
+    printf("hello");
     return 0;
 }
