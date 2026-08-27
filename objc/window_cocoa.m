@@ -1220,6 +1220,9 @@ void Window_setTransparentBackground(Window *window, bool transparent) {
     @autoreleasepool {
         [(*window).nsWindow setOpaque:!transparent];
         [(*window).nsWindow setBackgroundColor:(transparent ? [NSColor clearColor] : [NSColor windowBackgroundColor])];
+        if ([(*window).nsWindow contentView].layer) {
+            [(*window).nsWindow contentView].layer.opaque = !transparent;
+        }
     }
 }
 
@@ -1249,9 +1252,12 @@ void Window_setBlur(Window *window, float blur) {
                 [contentView addSubview:blurView positioned:NSWindowBelow relativeTo:nil];
             }
             [blurView setAlphaValue:(CGFloat)blur];
-            // Ensure the window background is transparent so the blur shows through
+            // Ensure the window and the root Vulkan layer are transparent so the blur shows through
             [nsw setBackgroundColor:[NSColor clearColor]];
             [nsw setOpaque:NO];
+            if (contentView.layer) {
+                contentView.layer.opaque = NO;
+            }
         } else if (blurView) {
             [blurView removeFromSuperview];
         }
@@ -1579,6 +1585,7 @@ void *Window_metalLayer(Window *window) {
             s_pinnedLayer = [[CAMetalLayer alloc] init];
             s_pinnedLayer.contentsGravity = kCAGravityTopLeft;
             s_pinnedLayer.contentsScale = [(*window).nsWindow backingScaleFactor];
+            s_pinnedLayer.opaque = NO;
             view.layer = s_pinnedLayer;
         }
         return (__bridge void *)view.layer;
