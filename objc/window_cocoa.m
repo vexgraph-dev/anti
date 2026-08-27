@@ -1228,10 +1228,11 @@ void Window_setBlur(Window *window, float blur) {
     @autoreleasepool {
         NSWindow *nsw = (*window).nsWindow;
         NSView *contentView = [nsw contentView];
+        NSView *themeFrame = [contentView superview]; // The actual root of the window
         
         // Find existing blur view
         NSVisualEffectView *blurView = nil;
-        for (NSView *v in [contentView subviews]) {
+        for (NSView *v in [themeFrame subviews]) {
             if ([v isKindOfClass:[NSVisualEffectView class]]) {
                 blurView = (NSVisualEffectView *)v;
                 break;
@@ -1240,13 +1241,13 @@ void Window_setBlur(Window *window, float blur) {
         
         if (blur > 0.01f) {
             if (!blurView) {
-                blurView = [[NSVisualEffectView alloc] initWithFrame:[contentView bounds]];
+                blurView = [[NSVisualEffectView alloc] initWithFrame:[themeFrame bounds]];
                 [blurView setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable)];
                 [blurView setBlendingMode:NSVisualEffectBlendingModeBehindWindow];
                 [blurView setMaterial:NSVisualEffectMaterialHUDWindow];
                 [blurView setState:NSVisualEffectStateActive];
-                // Add it below everything else
-                [contentView addSubview:blurView positioned:NSWindowBelow relativeTo:nil];
+                // Add it strictly BEHIND the Vulkan contentView
+                [themeFrame addSubview:blurView positioned:NSWindowBelow relativeTo:contentView];
             }
             [blurView setAlphaValue:(CGFloat)blur];
             // Ensure the window background is transparent so the blur shows through
