@@ -227,6 +227,10 @@ void Window_setClickThrough(Window *window, bool clickThrough);
 void Window_setShadow(Window *window, bool shadow);
 void Window_setMovableByBackground(Window *window, bool movable);
 
+// --- Z-Order & Presentation ---
+void Window_bringToFront(Window *window); // Pulls window to the top of its level without stealing keyboard focus
+
+
 // --- Minimize ---
 void Window_minimize(Window *window);
 void Window_restore(Window *window);

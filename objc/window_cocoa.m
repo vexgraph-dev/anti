@@ -1466,6 +1466,15 @@ void Window_focus(Window *window) {
     }
 }
 
+// Pulls the window to the absolute front of the screen without forcing the 
+// OS to steal keyboard focus from whatever app the user is typing in.
+void Window_bringToFront(Window *window) {
+    if (!window) return;
+    @autoreleasepool {
+        [(*window).nsWindow orderFrontRegardless];
+    }
+}
+
 bool Window_isFocused(Window *window) {
     return window && Focus_isFocused((*window).id);
 }
