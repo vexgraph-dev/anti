@@ -937,8 +937,17 @@ void Window_compositeIOSurfaceChildren(Window *window, Panel *contentPanel) {
         if (!nsWindow) return;
         NSView *contentView = [nsWindow contentView];
         if (!contentView) return;
-        [contentView setWantsLayer:YES];
-        CALayer *rootLayer = [contentView layer];
+        
+        NSView *vulkanView = nil;
+        for (NSView *v in [contentView subviews]) {
+            if ([NSStringFromClass([v class]) isEqualToString:@"AntiVulkanView"]) {
+                vulkanView = v;
+                break;
+            }
+        }
+        if (!vulkanView) return;
+
+        CALayer *rootLayer = [vulkanView layer];
         if (!rootLayer) return;
 
         [CATransaction begin];
@@ -1578,12 +1587,35 @@ void *Window_contentView(Window *window) {
     return (__bridge void *)[(*window).nsWindow contentView];
 }
 
+@interface AntiVulkanView : NSView
+@end
+@implementation AntiVulkanView
+- (BOOL)isFlipped { return YES; }
+- (NSView *)hitTest:(NSPoint)point { return nil; } // Let events pass through to AntiContentView
+@end
+
 void *Window_metalLayer(Window *window) {
     if (!window || !(*window).nsWindow)
         return NULL;
     @autoreleasepool {
-        NSView *view = [(*window).nsWindow contentView];
-        [view setWantsLayer:YES];
+        NSView *contentView = [(*window).nsWindow contentView];
+        
+        // Find existing Vulkan view or create it
+        AntiVulkanView *vulkanView = nil;
+        for (NSView *v in [contentView subviews]) {
+            if ([v isKindOfClass:[AntiVulkanView class]]) {
+                vulkanView = (AntiVulkanView *)v;
+                break;
+            }
+        }
+        
+        if (!vulkanView) {
+            vulkanView = [[AntiVulkanView alloc] initWithFrame:contentView.bounds];
+            [vulkanView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+            [contentView addSubview:vulkanView]; // Goes on top of NSVisualEffectView!
+        }
+        
+        [vulkanView setWantsLayer:YES];
         
         static CAMetalLayer *s_pinnedLayer = NULL;
         if (!s_pinnedLayer) {
@@ -1591,13 +1623,11 @@ void *Window_metalLayer(Window *window) {
             s_pinnedLayer.contentsGravity = kCAGravityTopLeft;
             s_pinnedLayer.contentsScale = [(*window).nsWindow backingScaleFactor];
             s_pinnedLayer.opaque = NO;
-            s_pinnedLayer.autoresizingMask = kCALayerWidthSizable | kCALayerHeightSizable;
-            s_pinnedLayer.frame = view.bounds;
-            
-            // Add as a sublayer so the view remains layer-backed, NOT layer-hosted.
-            // This is required so NSVisualEffectView can sit underneath it natively!
-            [view.layer addSublayer:s_pinnedLayer];
         }
+        
+        // Set it as layer-HOSTED, so we own the layer and AppKit won't delete our IOSurface sublayers!
+        vulkanView.layer = s_pinnedLayer;
+        
         return (__bridge void *)s_pinnedLayer;
     }
 }
@@ -1607,24 +1637,26 @@ static void applyLayerGravity(Window *window) {
     if (!window)
         return;
     @autoreleasepool {
-        NSView *view = [(*window).nsWindow contentView];
-        if (!view || !view.layer)
+        NSView *contentView = [(*window).nsWindow contentView];
+        if (!contentView) return;
+        
+        AntiVulkanView *vulkanView = nil;
+        for (NSView *v in [contentView subviews]) {
+            if ([v isKindOfClass:[AntiVulkanView class]]) {
+                vulkanView = (AntiVulkanView *)v;
+                break;
+            }
+        }
+        
+        if (!vulkanView || !vulkanView.layer)
             return;
         
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
-        view.layerContentsPlacement = NSViewLayerContentsPlacementTopLeft;
-        view.layerContentsRedrawPolicy = NSViewLayerContentsRedrawDuringViewResize;
-        
-        // Find our metal sublayer
-        for (CALayer *sub in view.layer.sublayers) {
-            if ([sub isKindOfClass:[CAMetalLayer class]]) {
-                sub.contentsGravity = kCAGravityTopLeft;
-                sub.needsDisplayOnBoundsChange = YES;
-                sub.frame = view.layer.bounds;
-                break;
-            }
-        }
+        vulkanView.layerContentsPlacement = NSViewLayerContentsPlacementTopLeft;
+        vulkanView.layerContentsRedrawPolicy = NSViewLayerContentsRedrawDuringViewResize;
+        vulkanView.layer.contentsGravity = kCAGravityTopLeft;
+        vulkanView.layer.needsDisplayOnBoundsChange = YES;
         [CATransaction commit];
     }
 }
