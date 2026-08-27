@@ -929,56 +929,61 @@ void *Window_getPanelLayer(Window *window, Panel *panel) {
 
 void Window_compositeIOSurfaceChildren(Window *window, Panel *contentPanel) {
     if (!window || !contentPanel) return;
-    NSWindow *nsWindow = (*window).nsWindow;
-    if (!nsWindow) return;
-    NSView *contentView = [nsWindow contentView];
-    if (!contentView) return;
-    [contentView setWantsLayer:YES];
-    CALayer *rootLayer = [contentView layer];
-    if (!rootLayer) return;
+    
+    // CoreAnimation strictly requires layer tree mutations to occur on the main thread.
+    // If the Vulkan background worker calls this, it must be asynchronously dispatched.
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSWindow *nsWindow = (*window).nsWindow;
+        if (!nsWindow) return;
+        NSView *contentView = [nsWindow contentView];
+        if (!contentView) return;
+        [contentView setWantsLayer:YES];
+        CALayer *rootLayer = [contentView layer];
+        if (!rootLayer) return;
 
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
 
-    extern int anti_GetChildCount(Panel *contentPanel);
-    extern Panel *anti_GetChildAt(Panel *contentPanel, int index);
-    extern void anti_GetChildLayout(Panel *child, float winW, float winH, float *outX, float *outY, float *outW, float *outH);
-    extern int anti_GetChildParentAnchor(Panel *child);
-    extern int anti_GetChildSelfAnchor(Panel *child);
-
-    // Add/update CALayers for each child
-    int childCount = anti_GetChildCount(contentPanel);
-    for (int i = 0; i < childCount; i++) {
-        Panel *child = anti_GetChildAt(contentPanel, i);
-        if (!child) continue;
+        extern int anti_GetChildCount(Panel *contentPanel);
+        extern Panel *anti_GetChildAt(Panel *contentPanel, int index);
+        extern void anti_GetChildLayout(Panel *child, float winW, float winH, float *outX, float *outY, float *outW, float *outH);
+        extern int anti_GetChildParentAnchor(Panel *child);
+        extern int anti_GetChildSelfAnchor(Panel *child);
         extern void *PanelCocoa_fromPanel(void *panel);
-        void *pc = PanelCocoa_fromPanel(child);
-        if (!pc) continue;
-
         extern void *PanelCocoa_layer(void *pc);
-        CALayer *childLayer = (__bridge CALayer *)PanelCocoa_layer(pc);
-        if (!childLayer) continue;
-
-        // Ensure high-DPI surfaces aren't drawn 2x oversized
-        childLayer.contentsScale = [nsWindow backingScaleFactor];
-
-        // Apply anchor settings to layer (contentsGravity + autoresizingMask)
         extern void PanelCocoa_setAnchors(void *pc, int parentAnchor, int selfAnchor);
-        int parentAnchor = anti_GetChildParentAnchor(child);
-        int selfAnchor = anti_GetChildSelfAnchor(child);
-        PanelCocoa_setAnchors(pc, parentAnchor, selfAnchor);
 
-        // Get layout rect for positioning
-        float rx, ry, rw, rh;
-        anti_GetChildLayout(child, (float)Window_width(window), (float)Window_height(window), &rx, &ry, &rw, &rh);
-        [childLayer setFrame:CGRectMake(rx, ry, rw, rh)];
+        // Add/update CALayers for each child
+        int childCount = anti_GetChildCount(contentPanel);
+        for (int i = 0; i < childCount; i++) {
+            Panel *child = anti_GetChildAt(contentPanel, i);
+            if (!child) continue;
+            void *pc = PanelCocoa_fromPanel(child);
+            if (!pc) continue;
 
-        // Add to root layer if not already there
-        if ([childLayer superlayer] != rootLayer) {
-            [rootLayer addSublayer:childLayer];
+            CALayer *childLayer = (__bridge CALayer *)PanelCocoa_layer(pc);
+            if (!childLayer) continue;
+
+            // Ensure high-DPI surfaces aren't drawn 2x oversized
+            childLayer.contentsScale = [nsWindow backingScaleFactor];
+
+            // Apply anchor settings to layer (contentsGravity + autoresizingMask)
+            int parentAnchor = anti_GetChildParentAnchor(child);
+            int selfAnchor = anti_GetChildSelfAnchor(child);
+            PanelCocoa_setAnchors(pc, parentAnchor, selfAnchor);
+
+            // Get layout rect for positioning
+            float rx, ry, rw, rh;
+            anti_GetChildLayout(child, (float)Window_width(window), (float)Window_height(window), &rx, &ry, &rw, &rh);
+            [childLayer setFrame:CGRectMake(rx, ry, rw, rh)];
+
+            // Add to root layer if not already there
+            if ([childLayer superlayer] != rootLayer) {
+                [rootLayer addSublayer:childLayer];
+            }
         }
-    }
-    [CATransaction commit];
+        [CATransaction commit];
+    });
 }
 
 // --- Runtime state -------------------------------------------------------------
@@ -1579,40 +1584,46 @@ void *Window_metalLayer(Window *window) {
     @autoreleasepool {
         NSView *view = [(*window).nsWindow contentView];
         [view setWantsLayer:YES];
-        if (![view.layer isKindOfClass:[CAMetalLayer class]]) {
-            // pin for C callers: static strong ref keeps the layer immortal
-            static CAMetalLayer *s_pinnedLayer = NULL;
+        
+        static CAMetalLayer *s_pinnedLayer = NULL;
+        if (!s_pinnedLayer) {
             s_pinnedLayer = [[CAMetalLayer alloc] init];
             s_pinnedLayer.contentsGravity = kCAGravityTopLeft;
             s_pinnedLayer.contentsScale = [(*window).nsWindow backingScaleFactor];
             s_pinnedLayer.opaque = NO;
-            view.layer = s_pinnedLayer;
+            s_pinnedLayer.autoresizingMask = kCALayerWidthSizable | kCALayerHeightSizable;
+            s_pinnedLayer.frame = view.bounds;
+            
+            // Add as a sublayer so the view remains layer-backed, NOT layer-hosted.
+            // This is required so NSVisualEffectView can sit underneath it natively!
+            [view.layer addSublayer:s_pinnedLayer];
         }
-        return (__bridge void *)view.layer;
+        return (__bridge void *)s_pinnedLayer;
     }
 }
 
-// Assert the layer geometry contract synchronously on thread 0. The layer's
-// DEFAULT contentsGravity is kCAGravityResize — stretch-to-bounds — so any
-// window where this has not yet run shows old drawables stretched during
-// resizes. Idempotent; CA dedups unchanged properties.
+// Assert the layer geometry contract synchronously on thread 0.
 static void applyLayerGravity(Window *window) {
     if (!window)
         return;
     @autoreleasepool {
         NSView *view = [(*window).nsWindow contentView];
-        if (!view)
+        if (!view || !view.layer)
             return;
-        // Policy writes ride no implicit CA actions — same discipline as
-        // the software path's setDisableActions around layer.contents.
+        
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
         view.layerContentsPlacement = NSViewLayerContentsPlacementTopLeft;
         view.layerContentsRedrawPolicy = NSViewLayerContentsRedrawDuringViewResize;
-        if (view.layer) {
-            view.layer.contentsGravity = kCAGravityTopLeft;
-            view.layer.autoresizingMask = kCALayerHeightSizable | kCALayerWidthSizable;
-            view.layer.needsDisplayOnBoundsChange = YES;
+        
+        // Find our metal sublayer
+        for (CALayer *sub in view.layer.sublayers) {
+            if ([sub isKindOfClass:[CAMetalLayer class]]) {
+                sub.contentsGravity = kCAGravityTopLeft;
+                sub.needsDisplayOnBoundsChange = YES;
+                sub.frame = view.layer.bounds;
+                break;
+            }
         }
         [CATransaction commit];
     }
