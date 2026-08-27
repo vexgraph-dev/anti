@@ -1303,7 +1303,7 @@ static struct {
 
 // Forward declarations
 static void renderChildToIOSurface(Panel *child, void *surface, int w, int h);
-static void renderNativeContent(Window *window, Panel *contentPanel, int winW, int winH);
+static void renderNativeContent(Window *window, Panel *contentPanel, int winW, int winH, float kx, float ky);
 
 static void renderChildToIOSurface(Panel *child, void *surface, int w, int h) {
     if (!child || !surface || w <= 0 || h <= 0) return;
@@ -1458,13 +1458,18 @@ static void renderChildToIOSurface(Panel *child, void *surface, int w, int h) {
 // Render content panel children via Vulkan into IOSurfaces, then
 // composite via AppKit. Each child renders independently; resize =
 // IOSurface realloc + framebuffer rebuild, anchor pins the corner.
-static void renderNativeContent(Window *window, Panel *contentPanel, int winW, int winH) {
+static void renderNativeContent(Window *window, Panel *contentPanel, int winW, int winH, float kx, float ky) {
     if (!window || !contentPanel) return;
 
     Panel *scenePanel = Window_getScenePanel(window);
 
-    // Resize IOSurface backings for all children based on layout
-    Window_resizePanelIOSurface(window, contentPanel, winW, winH);
+    // Resize IOSurface backings at native pixel resolution.
+    // The bridge resolves each child's rect from winW/winH (points),
+    // then we'll override with pixel dimensions per-child below.
+    // Pass native pixel window size so the max-ceiling math is correct.
+    int nativePxW = (int)(winW * kx + 0.5f);
+    int nativePxH = (int)(winH * ky + 0.5f);
+    Window_resizePanelIOSurface(window, contentPanel, nativePxW, nativePxH);
 
     size_t childCount = Panel_childCount(contentPanel);
     for (size_t i = 0; i < childCount; i++) {
@@ -1472,8 +1477,6 @@ static void renderNativeContent(Window *window, Panel *contentPanel, int winW, i
         if (!child) continue;
 
         // Skip the scene panel — it renders directly to the swapchain
-        // at a fixed size, NOT into an IOSurface. This prevents the
-        // triangle from scaling during live resize.
         if (child == scenePanel) continue;
 
         // Get the IOSurface for this child
@@ -1484,15 +1487,15 @@ static void renderNativeContent(Window *window, Panel *contentPanel, int winW, i
         void *surface = PanelCocoa_surface(pc);
         if (!surface) continue;
 
-        // Get layout rect for this child
+        // Resolve layout in logical POINTS, then scale to native PIXELS
         Vec4 rect;
         Container_resolve(&(*child).base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
-        int w = (int)(rect.z + 0.5f);
-        int h = (int)(rect.w + 0.5f);
-        if (w <= 0 || h <= 0) continue;
+        int pxW = (int)(rect.z * kx + 0.5f);
+        int pxH = (int)(rect.w * ky + 0.5f);
+        if (pxW <= 0 || pxH <= 0) continue;
 
-        // Render into IOSurface via Vulkan
-        renderChildToIOSurface(child, surface, w, h);
+        // Render into IOSurface at native pixel resolution
+        renderChildToIOSurface(child, surface, pxW, pxH);
     }
 }
 
@@ -1609,9 +1612,12 @@ static bool presentFrameLocked(void) {
         Container_setSize(&(*contentPanel).base, (float)winW, (float)winH);
         if (Window_isNativeContainerOnRoot(s_window)) {
             s_frame.nativeContent = true;
-            s_frame.contentW = winW;
-            s_frame.contentH = winH;
-            renderNativeContent(s_window, contentPanel, winW, winH);
+            // Native pixel dimensions: points × scale factor
+            int nativePxW = (int)(winW * s_frame.kx + 0.5f);
+            int nativePxH = (int)(winH * s_frame.ky + 0.5f);
+            s_frame.contentW = nativePxW;
+            s_frame.contentH = nativePxH;
+            renderNativeContent(s_window, contentPanel, winW, winH, s_frame.kx, s_frame.ky);
             // Composite CALayers into window's layer tree
             Window_compositeIOSurfaceChildren(s_window, contentPanel);
             // DO NOT RETURN TRUE HERE. We must continue to render the background swapchain

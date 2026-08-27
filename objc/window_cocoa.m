@@ -973,8 +973,8 @@ void Window_compositeIOSurfaceChildren(Window *window, Panel *contentPanel) {
             CALayer *childLayer = (__bridge CALayer *)PanelCocoa_layer(pc);
             if (!childLayer) continue;
 
-            // Ensure high-DPI surfaces aren't drawn 2x oversized
-            childLayer.contentsScale = [nsWindow backingScaleFactor];
+            // Surface is pre-rendered at native pixel resolution — tell CA not to scale it.
+            childLayer.contentsScale = 1.0;
 
             // Apply anchor settings to layer (contentsGravity + autoresizingMask)
             int parentAnchor = anti_GetChildParentAnchor(child);
@@ -1237,6 +1237,7 @@ void Window_setTransparentBackground(Window *window, bool transparent) {
         if ([(*window).nsWindow contentView].layer) {
             [(*window).nsWindow contentView].layer.opaque = !transparent;
         }
+        Window_setTransparent(window, transparent);
     }
 }
 
@@ -1272,8 +1273,11 @@ void Window_setBlur(Window *window, float blur) {
             if (contentView.layer) {
                 contentView.layer.opaque = NO;
             }
+            // CRITICAL: Signal Vulkan to rebuild the swapchain with alpha blending enabled!
+            Window_setTransparent(window, true);
         } else if (blurView) {
             [blurView removeFromSuperview];
+            Window_setTransparent(window, false);
         }
     }
 }
@@ -1623,6 +1627,7 @@ void *Window_metalLayer(Window *window) {
             s_pinnedLayer.contentsGravity = kCAGravityTopLeft;
             s_pinnedLayer.contentsScale = [(*window).nsWindow backingScaleFactor];
             s_pinnedLayer.opaque = NO;
+            s_pinnedLayer.geometryFlipped = YES;
         }
         
         // Set it as layer-HOSTED, so we own the layer and AppKit won't delete our IOSurface sublayers!

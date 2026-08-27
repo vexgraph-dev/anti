@@ -175,18 +175,19 @@ void *PanelCocoa_fromPanel(void *panel) {
 void PanelCocoa_setAnchors(PanelCocoa *pc, int parentAnchor, int selfAnchor) {
     if (!pc || !pc->layer) return;
 
-    // Port selfAnchor to CoreAnimation anchorPoint
+    // Port selfAnchor to CoreAnimation anchorPoint and contentsGravity
     // (0,0) is top-left in flipped coordinates, (1,1) is bottom-right
     CGPoint anchorPoint = CGPointMake(0.0, 0.0);
+    NSString *gravity = kCAGravityTopLeft;
     switch (selfAnchor) {
-        case 1: anchorPoint = CGPointMake(0.5, 0.0); break; // TOP_CENTER
-        case 2: anchorPoint = CGPointMake(1.0, 0.0); break; // TOP_RIGHT
-        case 3: anchorPoint = CGPointMake(0.0, 0.5); break; // MIDDLE_LEFT
-        case 4: anchorPoint = CGPointMake(0.5, 0.5); break; // MIDDLE_CENTER
-        case 5: anchorPoint = CGPointMake(1.0, 0.5); break; // MIDDLE_RIGHT
-        case 6: anchorPoint = CGPointMake(0.0, 1.0); break; // BOTTOM_LEFT
-        case 7: anchorPoint = CGPointMake(0.5, 1.0); break; // BOTTOM_CENTER
-        case 8: anchorPoint = CGPointMake(1.0, 1.0); break; // BOTTOM_RIGHT
+        case 1: anchorPoint = CGPointMake(0.5, 0.0); gravity = kCAGravityTop; break; // TOP_CENTER
+        case 2: anchorPoint = CGPointMake(1.0, 0.0); gravity = kCAGravityTopRight; break; // TOP_RIGHT
+        case 3: anchorPoint = CGPointMake(0.0, 0.5); gravity = kCAGravityLeft; break; // MIDDLE_LEFT
+        case 4: anchorPoint = CGPointMake(0.5, 0.5); gravity = kCAGravityCenter; break; // MIDDLE_CENTER
+        case 5: anchorPoint = CGPointMake(1.0, 0.5); gravity = kCAGravityRight; break; // MIDDLE_RIGHT
+        case 6: anchorPoint = CGPointMake(0.0, 1.0); gravity = kCAGravityBottomLeft; break; // BOTTOM_LEFT
+        case 7: anchorPoint = CGPointMake(0.5, 1.0); gravity = kCAGravityBottom; break; // BOTTOM_CENTER
+        case 8: anchorPoint = CGPointMake(1.0, 1.0); gravity = kCAGravityBottomRight; break; // BOTTOM_RIGHT
         default: break; // TOP_LEFT
     }
 
@@ -207,6 +208,7 @@ void PanelCocoa_setAnchors(PanelCocoa *pc, int parentAnchor, int selfAnchor) {
     }
 
     pc->layer.anchorPoint = anchorPoint;
+    pc->layer.contentsGravity = gravity;
     pc->layer.autoresizingMask = mask;
 }
 

@@ -90,7 +90,7 @@ int main(void) {
     Window *w = Window();
     Window_setTitle(w, "anti vk probe");
     Window_setSize(w, 640, 400);
-    Window_setUndecorated(w, WINDOW_DECORATED);
+    Window_setUndecorated(w, WINDOW_UNDECORATED_NAKED);
     Window_show(w);
 
     int vkResult = Vk_init(w);
@@ -102,16 +102,8 @@ int main(void) {
         return 1;
     }
 
-    // 1. Scene3D (background triangle scene) -> Window Scene Panel
-    // Renders directly into the native Vulkan swapchain (CAMetalLayer).
-    // The window background / clear color inherits from this panel.
-    Scene3D *scene3D = Scene3D_0();
-    Scene3D_setLocation(scene3D, 0.0f, 0.0f);
-    Scene3D_setSize(scene3D, 8192.0f, 8192.0f); // first call = max buffer allocation ceiling
-    Scene3D_setSize(scene3D, 640.0f, 400.0f);   // second call = actual size
-    Scene3D_setBackgroundColor(scene3D, 0xFF14141Eu); // dark background
-    Window_setScenePanel(w, &(*scene3D).base.base);
-    Window_setContainer(w, &(*scene3D).base.base);
+    Window_setBlur(w, 30);
+    Window_setScenePanel(w, NULL);
 
     // 2. Content panel: logical placeholder for UI & floating layers
     // Note: its background color (e.g. black) is ignored and transparent.
@@ -135,7 +127,6 @@ int main(void) {
     Scene3D *mini3D = Scene3D_0();
     Scene3D_setLocation(mini3D, 0.0f, 0.0f);
     Scene3D_setSize(mini3D, 640.0f, 400.0f); // max buffer allocation size
-    Scene3D_setSize(mini3D, 640.0f, 400.0f); // actual size
     Scene3D_setParentAnchor(mini3D, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
     Scene3D_setSelfAnchor(mini3D, CONTAINER_SELF_ANCHOR_BOTTOM_RIGHT);
     Panel_addContainer(contentPanel, &(*mini3D).base.base);
@@ -156,7 +147,6 @@ int main(void) {
         Memory_free(mini3D);
         Memory_free(hud);
         Memory_free(contentPanel);
-        Memory_free(scene3D);
         Window_destroy(w);
         Key_shutdown();
         return 1;
@@ -203,7 +193,6 @@ int main(void) {
     Memory_free(mini3D);
     Memory_free(hud);
     Memory_free(contentPanel);
-    Memory_free(scene3D);
     Window_destroy(w);
     Key_shutdown();
     printf("hello");
