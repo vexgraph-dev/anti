@@ -42,7 +42,7 @@ typedef struct Window Window;
 typedef struct Panel Panel;
 
 // Undecorated chrome modes for Window_setUndecorated.
-#define WINDOW_UNDECORATED_DECORATED  0 // standard opaque title bar, title visible
+#define WINDOW_DECORATED  0 // standard opaque title bar, title visible
 #define WINDOW_UNDECORATED_BORDERLESS 1 // no title bar and no traffic lights
 #define WINDOW_UNDECORATED_NAKED      2 // transparent title bar, hidden title, traffic lights kept
 
@@ -120,7 +120,7 @@ void Window_show(Window *window);
 void Window_hide(Window *window);
 void Window_setVisible(Window *window, bool visible);
 
-// --- Content: the ONE container slot -----------------------------------------
+// --- Content: the ONE container slot ------------------------------------------
 //
 // The root is a Panel (the basket); the game panel, UI panels, everything
 // nests UNDER it via Panel_addContainer — the scene3d is just a child like
@@ -132,9 +132,42 @@ void Window_setVisible(Window *window, bool visible);
 // Setting NULL detaches content and the renderer falls back to a clear-only
 // pass — nothing is displayed. The renderer re-reads this pointer every frame
 // (relaxed atomic), so swaps land on the next presented frame.
+//
+// NEW: two slots for the IOSurface split:
+//   - contentPanel: the UI tree (IOSurface-backed when native)
+//   - scenePanel: the scene tree (Vulkan-backed)
+// When forceNativeContainerOnRoot(true), the contentPanel gets IOSurface
+// backing and AppKit composites it; the scenePanel renders via Vulkan.
 
 void   Window_setContainer(Window *window, Panel *root);
 Panel *Window_getContainer(const Window *window);
+
+// Set the content panel (the UI tree). When forceNativeContainerOnRoot(true),
+// this panel gets IOSurface backing for native AppKit compositing.
+void   Window_setContentPanel(Window *window, Panel *panel);
+Panel *Window_getContentPanel(const Window *window);
+
+// Set the scene panel (the Vulkan-rendered scene tree).
+void   Window_setScenePanel(Window *window, Panel *panel);
+Panel *Window_getScenePanel(const Window *window);
+
+// Toggle native IOSurface backing for the content panel root. When true,
+// the content panel is rendered via IOSurface+AppKit instead of Vulkan.
+// Call BEFORE setting the content panel so the backing is attached.
+void Window_forceNativeContainerOnRoot(Window *window, bool flag);
+bool Window_isNativeContainerOnRoot(const Window *window);
+
+// --- IOSurface panel bridge (C callable from renderer) ------------------------
+//
+// When nativeContainer is true, the content panel gets IOSurface backing and
+// AppKit composites it via CALayer. These functions let the renderer attach,
+// resize, render, and get the CALayer for IOSurface-backed panels. Thread 0 only.
+
+bool Window_attachPanelIOSurface(Window *window, Panel *panel, int width, int height);
+bool Window_resizePanelIOSurface(Window *window, Panel *panel, int width, int height);
+void Window_renderPanelIOSurface(Window *window, Panel *panel);
+void *Window_getPanelLayer(Window *window, Panel *panel);
+void Window_compositeIOSurfaceChildren(Window *window, Panel *contentPanel);
 
 // --- Present policy -----------------------------------------------------------
 //
