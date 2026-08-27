@@ -1614,7 +1614,8 @@ static bool presentFrameLocked(void) {
             renderNativeContent(s_window, contentPanel, winW, winH);
             // Composite CALayers into window's layer tree
             Window_compositeIOSurfaceChildren(s_window, contentPanel);
-            return true; // skip swapchain present — AppKit composites
+            // DO NOT RETURN TRUE HERE. We must continue to render the background swapchain
+            // for the Scene3D and window clearing!
         }
     }
     Panel *scenePanel = Window_getScenePanel(s_window);
@@ -2025,6 +2026,16 @@ static bool presentFrameTail(uint32_t imageIndex) {
                               (float)s_frame.winW, (float)s_frame.winH, &rect);
             if (rect.z <= 0.0f || rect.w <= 0.0f)
                 continue;
+
+            // DOUBLE-RENDER FIX: If native compositing is ON, all UI panels 
+            // are already rendered into individual IOSurfaces and composited 
+            // by AppKit. Do NOT draw them into the background Vulkan swapchain!
+            if (s_frame.nativeContent) {
+                uint32_t cType = Memory_type(child);
+                if (cType != TYPE_SCENE3D_SINGLETON && cType != TYPE_SCENE2D_SINGLETON && cType != TYPE_SCENE_SINGLETON) {
+                    continue; // Skip UI panels; they live in IOSurface land now.
+                }
+            }
 
             float drawW = (float)s_extent.width;
             float drawH = (float)s_extent.height;
