@@ -38,6 +38,7 @@ add_executable(anti
     src/nio/mem.c
     src/darling/container.c
     src/darling/panel.c
+    src/darling/picture.c
     src/darling/scene.c
     src/darling/picture.c
     src/darling/canvas.c
@@ -147,6 +148,7 @@ add_executable(darlingtest
     src/render/surface.c
     src/darling/container.c
     src/darling/panel.c
+    src/darling/picture.c
     src/darling/scene.c
     src/lang/mat4.c
     src/lang/vec2.c
@@ -235,6 +237,7 @@ add_executable(vk_test
     src/window/panel_bridge.c
     src/darling/container.c
     src/darling/panel.c
+    src/darling/picture.c
     src/darling/scene.c
     src/lang/mat4.c
     src/lang/vec2.c
