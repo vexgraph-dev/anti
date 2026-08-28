@@ -245,7 +245,7 @@ bool Vk_init(Window *window) {
 
     VkApplicationInfo app = { .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO };
     app.pApplicationName = "anti";
-    app.apiVersion = VK_API_VERSION_1_1;
+    app.apiVersion = VK_API_VERSION_1_2;
 
     VkInstanceCreateInfo ici = { .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
     ici.pApplicationInfo = &app;
@@ -316,7 +316,15 @@ bool Vk_init(Window *window) {
     qci.pQueuePriorities = &prio;
 
     const char *devExts[] = { "VK_KHR_swapchain", "VK_EXT_metal_objects" };
+    
+    VkPhysicalDeviceDescriptorIndexingFeatures idxFeat = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES };
+    idxFeat.descriptorBindingPartiallyBound = VK_TRUE;
+    idxFeat.descriptorBindingVariableDescriptorCount = VK_TRUE;
+    idxFeat.runtimeDescriptorArray = VK_TRUE;
+    idxFeat.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+
     VkDeviceCreateInfo dci = { .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+    dci.pNext = &idxFeat;
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &qci;
     dci.enabledExtensionCount = 2;
