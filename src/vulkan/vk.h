@@ -53,4 +53,8 @@ const char *Vk_status(void);
 void Vk_fillRect(void *cmdBuffer, float surfaceW, float surfaceH, float x, float y, float w, float h,
                  float r, float g, float b, float a);
 
+// Renders a textured quad using the bindless texture array.
+void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH, float x, float y, float w, float h,
+                    float r, float g, float b, float a, int32_t textureId);
+
 #endif

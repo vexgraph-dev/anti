@@ -394,3 +394,7 @@ int32_t Texture_load(const char *vfsPath) {
 void *Texture_getDescriptorSet(void) {
     return s_bindlessSet;
 }
+
+void *Texture_getDescriptorSetLayout(void) {
+    return s_descLayout;
+}

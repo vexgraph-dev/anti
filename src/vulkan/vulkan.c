@@ -157,6 +157,8 @@ static VkPipelineLayout s_triLayout;
 static VkPipeline s_triPipeline;
 static VkPipelineLayout s_quadLayout;
 static VkPipeline s_quadPipeline;
+static VkPipelineLayout s_texLayout;
+static VkPipeline s_texPipeline;
 static bool s_pipelinesBuilt = false;
 
 static void *s_libLoad(void) {
@@ -354,6 +356,11 @@ bool Vk_init(Window *window) {
     extern bool VkIOSurface_initModule(VkInstance, PFN_vkGetInstanceProcAddr, VkPhysicalDevice, VkDevice);
     if (!VkIOSurface_initModule(s_instance, s_gpa, s_phys, s_device)) {
         snprintf(s_status, sizeof(s_status), "iosurface module failed");
+        return false;
+    }
+    extern bool Texture_initModule(void*, void*, void*, void*, void*, uint32_t);
+    if (!Texture_initModule(s_instance, s_gpa, s_phys, s_device, s_queue, s_queueFamily)) {
+        snprintf(s_status, sizeof(s_status), "texture module failed");
         return false;
     }
     if (!buildPipelines())
@@ -1912,4 +1919,41 @@ static bool presentFrameTail(uint32_t imageIndex) {
         return pr == VK_SUBOPTIMAL_KHR;
     }
     return pr == VK_SUCCESS;
+}
+
+void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH, float x, float y, float w, float h,
+                    float r, float g, float b, float a, int32_t textureId) {
+    if (!cmdBuffer || s_texPipeline == VK_NULL_HANDLE) return;
+    VkCommandBuffer cb = (VkCommandBuffer)cmdBuffer;
+
+    VK_LOAD_DEVICE_VOID(CmdBindPipeline)
+    VK_LOAD_DEVICE_VOID(CmdPushConstants)
+    VK_LOAD_DEVICE_VOID(CmdDraw)
+    VK_LOAD_DEVICE_VOID(CmdBindDescriptorSets)
+    VK_LOAD_DEVICE_VOID(CmdSetViewport)
+    VK_LOAD_DEVICE_VOID(CmdSetScissor)
+
+    CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_texPipeline);
+    
+    VkViewport vp = { .width = surfaceW, .height = surfaceH, .maxDepth = 1.0f };
+    VkRect2D sc = { .offset.x = (int32_t)x, .offset.y = (int32_t)y, .extent.width = (uint32_t)w, .extent.height = (uint32_t)h };
+    CmdSetViewport_fn(cb, 0, 1, &vp);
+    CmdSetScissor_fn(cb, 0, 1, &sc);
+
+    extern void* Texture_getDescriptorSet(void);
+    VkDescriptorSet bindlessSet = (VkDescriptorSet)Texture_getDescriptorSet();
+    CmdBindDescriptorSets_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_texLayout, 0, 1, &bindlessSet, 0, NULL);
+
+    struct { float rect[4]; float color[4]; uint32_t tex; } push;
+    push.rect[0] = (x / surfaceW) * 2.0f - 1.0f;
+    push.rect[1] = (y / surfaceH) * 2.0f - 1.0f;
+    push.rect[2] = (w / surfaceW) * 2.0f;
+    push.rect[3] = (h / surfaceH) * 2.0f;
+    push.color[0] = r; push.color[1] = g; push.color[2] = b; push.color[3] = a;
+    push.tex = (uint32_t)textureId;
+
+    CmdPushConstants_fn(cb, s_texLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 16, push.rect);
+    CmdPushConstants_fn(cb, s_texLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 16, 20, push.color);
+
+    CmdDraw_fn(cb, 6, 1, 0, 0);
 }

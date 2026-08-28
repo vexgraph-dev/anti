@@ -34,6 +34,24 @@ static VkProbeState g_state = {0};
 // built-in solid quad entirely and composes out of the public Vk_fillRect
 // primitive instead: dark glass backing plus a sweeping accent bar whose
 // width breathes with a 1-second sine.
+
+extern int32_t Texture_load(const char *vfsPath);
+extern void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH, float x, float y, float w, float h,
+                           float r, float g, float b, float a, int32_t textureId);
+
+static int32_t s_sunflowerId = -1;
+
+static void pic_render(Panel *p, void *data, void *cmdBuffer, float x, float y, float w, float h) { (void)p; (void)x; (void)y;
+    (void)data;
+    if (s_sunflowerId >= 0) {
+        Vk_drawTexture(cmdBuffer, w, h, 0, 0, w, h, 1.0f, 1.0f, 1.0f, 1.0f, s_sunflowerId);
+    } else {
+        // Fallback to yellow background
+        extern void Vk_fillRect(void *, float, float, float, float, float, float, float, float, float, float);
+        Vk_fillRect(cmdBuffer, w, h, 0, 0, w, h, 1.0f, 0.8f, 0.0f, 1.0f);
+    }
+}
+
 static void hud_pulse(Panel *panel, void *renderer, void *cmdBuffer,
                       float x, float y, float w, float h) {
     (void)panel;
@@ -131,13 +149,15 @@ int main(void) {
     Scene3D_setParentAnchor(mini3D, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
     Scene3D_setSelfAnchor(mini3D, CONTAINER_SELF_ANCHOR_BOTTOM_RIGHT);
     Panel_addContainer(contentPanel, &(*mini3D).base.base);
+
     // 5. Picture testing node (Middle Center anchoring)
     Picture *pic = Picture_0();
     Picture_setSize(pic, 1024.0f, 1024.0f); // first call allocates max bounds
-    Picture_setSize(pic, 150.0f, 150.0f);   // second call clamps actual visual size
-    Picture_setBackgroundColor(pic, 0xFFFFCC00u); // Yellow/Orange background to easily spot it
+    Picture_setSize(pic, 300.0f, 300.0f);   // Make it bigger to see the flower!
     
-    // Set parent anchor to the middle of the window
+    s_sunflowerId = Texture_load("/Users/vexgraph/Downloads/sunflower.png");
+    Panel_setRenderHandler(&(*pic).base, pic_render);
+
     Picture_setParentAnchor(pic, CONTAINER_PARENT_ANCHOR_MIDDLE_CENTER);
     // Set self anchor to its own middle (pivot point)
     Picture_setSelfAnchor(pic, CONTAINER_SELF_ANCHOR_MIDDLE_CENTER);
