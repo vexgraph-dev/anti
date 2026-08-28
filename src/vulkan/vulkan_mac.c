@@ -241,6 +241,18 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
         Panel_RenderFn handler = Panel_getRenderHandler(child);
         if (handler) {
             handler(child, NULL, cb, 0.0f, 0.0f, (float)canvasW, (float)canvasH);
+        } else {
+            uint32_t color = Panel_getBackgroundColor(child);
+            if (color != 0) {
+                float r = (float)((color >> 16) & 0xFF) / 255.0f;
+                float g = (float)((color >> 8)  & 0xFF) / 255.0f;
+                float b = (float)( color        & 0xFF) / 255.0f;
+                float a = (float)((color >> 24) & 0xFF) / 255.0f;
+                
+                extern void Vk_fillRect(void *cmdBuffer, float x, float y, float w, float h,
+                                        float r, float g, float b, float a);
+                Vk_fillRect(cb, 0.0f, 0.0f, (float)canvasW, (float)canvasH, r, g, b, a);
+            }
         }
     }
 
