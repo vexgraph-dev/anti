@@ -2,20 +2,24 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "atomic/spin.h"
 
 // mem.c — ForeignMemory port. The lens of all things: every byte in the
 // engine is reached through a block that knows its own type + length.
 //
 // Layout of one allocation (userPtr points at the aligned payload):
 //
-//     [ typeId ][ length ][ pad ][ payload ... ]
-//     `----------- 16-byte header ----------'
+//     [ prev ][ next ][ typeId ][ length ][ pad ][ payload ... ]
+//     `----------------- 32-byte header -----------------'
 //
-// Memory_alloc returns the payload pointer. Walking back 16 bytes gives the
+// Memory_alloc returns the payload pointer. Walking back 32 bytes gives the
 // header, so Memory_type()/Memory_length() cost nothing — just a subtract.
 
-static const size_t HEADER_SIZE = 16;
+static const size_t HEADER_SIZE = 32;
 static const size_t ALIGN = 8;
+
+static Block *s_head = NULL;
+static SpinLock s_lock = SPIN_LOCK_INIT;
 
 // Allocate a block, stamp the type, align the payload, return the payload.
 void* Memory_alloc(const uint32_t typeId, const size_t numBytes) {
@@ -27,6 +31,7 @@ void* Memory_alloc(const uint32_t typeId, const size_t numBytes) {
         return NULL;
 
     // Align the payload to 8 bytes so doubles/pointers sit naturally.
+    // Assuming malloc returns >= 8-byte alignment, hdr will exactly equal raw.
     uintptr_t aligned = (uintptr_t)(raw + HEADER_SIZE);
     aligned = (aligned + ALIGN - 1) & ~(ALIGN - 1);
 
@@ -34,6 +39,14 @@ void* Memory_alloc(const uint32_t typeId, const size_t numBytes) {
     (*hdr).typeId = typeId;
     (*hdr).length = (uint32_t)numBytes;
     (*hdr).pad = 0;
+
+    SpinLock_lock(&s_lock);
+    (*hdr).prev = NULL;
+    (*hdr).next = s_head;
+    if (s_head)
+        (*s_head).prev = hdr;
+    s_head = hdr;
+    SpinLock_unlock(&s_lock);
 
     // return the payload, its like a pointer of that allocated memory
     return (void*) aligned;
@@ -58,8 +71,32 @@ void* Memory_realloc(void *userPtr, size_t newBytes) {
 void Memory_free(void *userPtr) {
     if (!userPtr)
         return;
-    void *hdr = (unsigned char *)userPtr - HEADER_SIZE;
+    Block *hdr = (Block *)((unsigned char *)userPtr - HEADER_SIZE);
+    
+    SpinLock_lock(&s_lock);
+    if ((*hdr).prev)
+        (*(*hdr).prev).next = (*hdr).next;
+    else
+        s_head = (*hdr).next;
+        
+    if ((*hdr).next)
+        (*(*hdr).next).prev = (*hdr).prev;
+    SpinLock_unlock(&s_lock);
+
     free(hdr);
+}
+
+void Memory_freeAll(void) {
+    SpinLock_lock(&s_lock);
+    Block *curr = s_head;
+    s_head = NULL;
+    SpinLock_unlock(&s_lock);
+    
+    while (curr) {
+        Block *next = (*curr).next;
+        free(curr);
+        curr = next;
+    }
 }
 
 size_t Memory_length(void *userPtr) {

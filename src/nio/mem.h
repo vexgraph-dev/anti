@@ -14,6 +14,8 @@
 // validation, serialization, and the hot-swap system can trust a raw pointer.
 
 typedef struct Block {
+    struct Block *prev;
+    struct Block *next;
     uint32_t typeId;
     uint32_t length;
     uint64_t pad;
@@ -29,6 +31,9 @@ void *Memory_realloc(void *userPtr, size_t newBytes);
 
 // Free a block (userPtr may be NULL). The header is found by walking back.
 void Memory_free(void *userPtr);
+
+// Free all currently allocated blocks. Catch-all for teardown.
+void Memory_freeAll(void);
 
 // Metadata accessors: cost a single pointer subtract.
 size_t Memory_length(void *userPtr);

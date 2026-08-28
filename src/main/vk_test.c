@@ -102,7 +102,7 @@ int main(void) {
         return 1;
     }
 
-    Window_setBlur(w, 30);
+    Window_setBlur(w, 1);
     Window_setScenePanel(w, NULL);
 
     // 2. Content panel: logical placeholder for UI & floating layers
@@ -126,7 +126,7 @@ int main(void) {
     // 4. Mini-3D viewport: floating 3D scene inside contentPanel (IOSurface-backed)
     Scene3D *mini3D = Scene3D_0();
     Scene3D_setLocation(mini3D, 0.0f, 0.0f);
-    Scene3D_setSize(mini3D, 640.0f, 400.0f); // max buffer allocation size
+    Scene3D_setSize(mini3D, 1000.0f, 1000.0f); // max buffer allocation size
     Scene3D_setParentAnchor(mini3D, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
     Scene3D_setSelfAnchor(mini3D, CONTAINER_SELF_ANCHOR_BOTTOM_RIGHT);
     Panel_addContainer(contentPanel, &(*mini3D).base.base);
@@ -195,6 +195,7 @@ int main(void) {
     Memory_free(contentPanel);
     Window_destroy(w);
     Key_shutdown();
-    printf("hello");
+
+    Memory_freeAll();
     return 0;
 }
