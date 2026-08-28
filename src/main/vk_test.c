@@ -130,6 +130,7 @@ int main(void) {
     Scene3D_setSize(mini3D, 1000.0f, 1000.0f); // max buffer allocation size
     Scene3D_setParentAnchor(mini3D, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
     Scene3D_setSelfAnchor(mini3D, CONTAINER_SELF_ANCHOR_BOTTOM_RIGHT);
+    Panel_addContainer(contentPanel, &(*mini3D).base.base);
     // 5. Picture testing node (Middle Center anchoring)
     Picture *pic = Picture_0();
     Picture_setSize(pic, 1024.0f, 1024.0f); // first call allocates max bounds
