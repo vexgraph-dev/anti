@@ -10,4 +10,8 @@
 #include "system/hardware_info.h"
 #include "system/graphics_info.h"
 
+// Master initializer: boots all core engine subsystems (time, input, cli, io).
+// Called exactly once at process start.
+void System_initializeAll(void);
+
 #endif
