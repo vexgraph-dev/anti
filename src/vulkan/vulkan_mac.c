@@ -223,24 +223,26 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
     };
     CmdBeginRenderPass_fn(cb, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    // Set viewport and scissor to MAX size (render once at full resolution)
-    VkViewport vp = { .width = (float)canvasW, .height = (float)canvasH, .maxDepth = 1.0f };
-    VkRect2D sc = { .extent.width = (uint32_t)canvasW, .extent.height = (uint32_t)canvasH };
+    // Set viewport and scissor to the CURRENT clamped size (w, h)
+    // The IOSurface may be larger (canvasW x canvasH) to avoid reallocations,
+    // but the CALayer's contentsRect only displays the current w x h region.
+    VkViewport vp = { .width = (float)w, .height = (float)h, .maxDepth = 1.0f };
+    VkRect2D sc = { .extent.width = (uint32_t)w, .extent.height = (uint32_t)h };
     CmdSetViewport_fn(cb, 0, 1, &vp);
     CmdSetScissor_fn(cb, 0, 1, &sc);
 
     if (isScene) {
-        // Render triangle scene at MAX size (fixed resolution, never scales)
+        // Render triangle scene
         float uTime = (float)((double)(NanoTime_now() - Vk_getAnimStartNanos()) / 1e9);
         CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, Vk_getTriPipeline());
         CmdPushConstants_fn(cb, Vk_getTriLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &uTime);
         CmdDraw_fn(cb, 3, 1, 0, 0);
     } else {
-        // Call panel's render handler (e.g. hud_pulse) at MAX size
+        // Call panel's render handler (e.g. hud_pulse) at CURRENT clamped size
         extern Panel_RenderFn Panel_getRenderHandler(const Panel *p);
         Panel_RenderFn handler = Panel_getRenderHandler(child);
         if (handler) {
-            handler(child, NULL, cb, 0.0f, 0.0f, (float)canvasW, (float)canvasH);
+            handler(child, NULL, cb, 0.0f, 0.0f, (float)w, (float)h);
         } else {
             uint32_t color = Panel_getBackgroundColor(child);
             if (color != 0) {
@@ -251,7 +253,7 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
                 
                 extern void Vk_fillRect(void *cmdBuffer, float x, float y, float w, float h,
                                         float r, float g, float b, float a);
-                Vk_fillRect(cb, 0.0f, 0.0f, (float)canvasW, (float)canvasH, r, g, b, a);
+                Vk_fillRect(cb, 0.0f, 0.0f, (float)w, (float)h, r, g, b, a);
             }
         }
     }
