@@ -139,8 +139,10 @@ add_executable(darlingtest
     src/vulkan/vk_view.c
     src/vulkan/vk_scene.c
     src/vulkan/vk_iosurface.c
+    src/vulkan/texture/texture.c
     src/buffers/buffer.c
     src/buffers/color_buffer.c
+    src/system/image_mac.m
     src/main/darlingtest.c
         src/objc/window_cocoa.m
         src/objc/panel_cocoa.m
@@ -230,8 +232,10 @@ add_executable(vk_test
     src/vulkan/vk_view.c
     src/vulkan/vk_scene.c
     src/vulkan/vk_iosurface.c
+    src/vulkan/texture/texture.c
     src/buffers/buffer.c
     src/buffers/color_buffer.c
+    src/system/image_mac.m
         src/objc/window_cocoa.m
         src/objc/panel_cocoa.m
     src/window/panel_bridge.c
