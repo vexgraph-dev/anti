@@ -142,7 +142,7 @@ bool PanelCocoa_setSize(PanelCocoa *pc, int width, int height) {
         CGFloat rectW = (CGFloat)width / (CGFloat)(*pc).maxWidth;
         CGFloat rectH = (CGFloat)height / (CGFloat)(*pc).maxHeight;
         CGFloat rectX = 0.0f;
-        CGFloat rectY = 1.0f - rectH; // extract from TOP-LEFT of IOSurface since geometryFlipped=YES makes 0,0 bottom-left
+        CGFloat rectY = 0.0f;
         (*pc).layer.contentsRect = CGRectMake(rectX, rectY, rectW, rectH);
     }
 
