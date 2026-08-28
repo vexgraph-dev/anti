@@ -51,6 +51,9 @@ bool VkMac_createSurface(Window *window, VkInstance instance,
 // Ensure the IOSurface render pass exists.
 bool VkMac_ensureIOSurfacePass(void);
 
+// Get the IOSurface render pass (call VkMac_ensureIOSurfacePass first).
+VkRenderPass VkMac_getIOSurfacePass(void);
+
 // Render a panel child into an IOSurface.
 void VkMac_renderChildToIOSurface(Panel *child, void *surface, int w, int h);
 

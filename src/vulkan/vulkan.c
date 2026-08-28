@@ -1923,7 +1923,89 @@ static bool presentFrameTail(uint32_t imageIndex) {
 
 void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH, float x, float y, float w, float h,
                     float r, float g, float b, float a, int32_t textureId) {
-    if (!cmdBuffer || s_texPipeline == VK_NULL_HANDLE) return;
+    if (!cmdBuffer) return;
+
+    // Lazily build the texture pipeline on first call — must use the IOSurface
+    // renderpass (BGRA8), which is itself lazy and not available inside buildPipelines().
+    if (s_texPipeline == VK_NULL_HANDLE) {
+        extern bool VkMac_ensureIOSurfacePass(void);
+        extern VkRenderPass VkMac_getIOSurfacePass(void);
+        if (!VkMac_ensureIOSurfacePass()) return;
+        VkRenderPass iosurfPass = VkMac_getIOSurfacePass();
+
+        VK_LOAD_DEVICE_VOID(CreatePipelineLayout)
+        VK_LOAD_DEVICE_VOID(CreateGraphicsPipelines)
+
+        VkPushConstantRange texPush[2];
+        texPush[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        texPush[0].offset = 0;
+        texPush[0].size = 16; // vec4 u_rectNdc
+        texPush[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        texPush[1].offset = 16;
+        texPush[1].size = 20; // vec4 color + uint textureId
+
+        extern void *Texture_getDescriptorSetLayout(void);
+        VkDescriptorSetLayout bindlessLayout = (VkDescriptorSetLayout)Texture_getDescriptorSetLayout();
+
+        VkPipelineLayoutCreateInfo tlci = { .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+        tlci.pushConstantRangeCount = 2;
+        tlci.pPushConstantRanges = texPush;
+        tlci.setLayoutCount = 1;
+        tlci.pSetLayouts = &bindlessLayout;
+        if (CreatePipelineLayout_fn(s_device, &tlci, NULL, &s_texLayout) != VK_SUCCESS) return;
+
+        VkShaderModule texVert = createShaderModule("texture_quad_vert.spv", NULL);
+        VkShaderModule texFrag = createShaderModule("texture_quad_frag.spv", NULL);
+        if (texVert == VK_NULL_HANDLE || texFrag == VK_NULL_HANDLE) return;
+
+        // Re-use the same fixed-function skeleton as the quad pipeline
+        VkPipelineVertexInputStateCreateInfo vi = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+        VkPipelineInputAssemblyStateCreateInfo ia = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        VkPipelineViewportStateCreateInfo vp = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+        vp.viewportCount = 1; vp.scissorCount = 1;
+        VkPipelineRasterizationStateCreateInfo rs = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+        rs.lineWidth = 1.0f; rs.cullMode = VK_CULL_MODE_NONE; rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        VkPipelineMultisampleStateCreateInfo ms = { .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkPipelineColorBlendAttachmentState blendAtt = {0};
+        blendAtt.colorWriteMask = 0xF;
+        blendAtt.blendEnable = VK_TRUE;
+        blendAtt.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        blendAtt.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        blendAtt.colorBlendOp = VK_BLEND_OP_ADD;
+        blendAtt.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        blendAtt.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        blendAtt.alphaBlendOp = VK_BLEND_OP_ADD;
+        VkPipelineColorBlendStateCreateInfo cb2 = { .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+        cb2.attachmentCount = 1; cb2.pAttachments = &blendAtt;
+        VkDynamicState dynStates[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo ds = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+        ds.dynamicStateCount = 2; ds.pDynamicStates = dynStates;
+
+        VkPipelineShaderStageCreateInfo tstages[2] = {{0},{0}};
+        tstages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        tstages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; tstages[0].module = texVert; tstages[0].pName = "main";
+        tstages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        tstages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; tstages[1].module = texFrag; tstages[1].pName = "main";
+
+        VkGraphicsPipelineCreateInfo gpci = { .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+        gpci.stageCount = 2; gpci.pStages = tstages;
+        gpci.pVertexInputState = &vi; gpci.pInputAssemblyState = &ia;
+        gpci.pViewportState = &vp; gpci.pRasterizationState = &rs;
+        gpci.pMultisampleState = &ms; gpci.pColorBlendState = &cb2;
+        gpci.pDynamicState = &ds;
+        gpci.layout = s_texLayout;
+        gpci.renderPass = iosurfPass;  // BGRA8, matches IOSurface panels
+        gpci.subpass = 0;
+
+        if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &gpci, NULL, &s_texPipeline) != VK_SUCCESS) {
+            s_texPipeline = VK_NULL_HANDLE;
+            return;
+        }
+        printf("vk: texture pipeline built (IOSurface pass)\n");
+    }
+
     VkCommandBuffer cb = (VkCommandBuffer)cmdBuffer;
 
     VK_LOAD_DEVICE_VOID(CmdBindPipeline)
@@ -1934,13 +2016,14 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH, float x, fl
     VK_LOAD_DEVICE_VOID(CmdSetScissor)
 
     CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_texPipeline);
-    
-    VkViewport vp = { .width = surfaceW, .height = surfaceH, .maxDepth = 1.0f };
-    VkRect2D sc = { .offset.x = (int32_t)x, .offset.y = (int32_t)y, .extent.width = (uint32_t)w, .extent.height = (uint32_t)h };
-    CmdSetViewport_fn(cb, 0, 1, &vp);
-    CmdSetScissor_fn(cb, 0, 1, &sc);
 
-    extern void* Texture_getDescriptorSet(void);
+    VkViewport viewport = { .width = surfaceW, .height = surfaceH, .maxDepth = 1.0f };
+    VkRect2D scissor = { .offset.x = (int32_t)x, .offset.y = (int32_t)y,
+                         .extent.width = (uint32_t)w, .extent.height = (uint32_t)h };
+    CmdSetViewport_fn(cb, 0, 1, &viewport);
+    CmdSetScissor_fn(cb, 0, 1, &scissor);
+
+    extern void *Texture_getDescriptorSet(void);
     VkDescriptorSet bindlessSet = (VkDescriptorSet)Texture_getDescriptorSet();
     CmdBindDescriptorSets_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_texLayout, 0, 1, &bindlessSet, 0, NULL);
 

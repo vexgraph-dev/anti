@@ -127,6 +127,10 @@ bool VkMac_ensureIOSurfacePass(void) {
     return true;
 }
 
+VkRenderPass VkMac_getIOSurfacePass(void) {
+    return s_iosurfacePass;
+}
+
 // Record a panel child into an IOSurface render pass.
 // Returns the child state pointer if successfully recorded, NULL otherwise.
 struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *child, void *surface, int w, int h) {
