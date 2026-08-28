@@ -142,7 +142,7 @@ bool PanelCocoa_setSize(PanelCocoa *pc, int width, int height) {
         CGFloat rectW = (CGFloat)width / (CGFloat)(*pc).maxWidth;
         CGFloat rectH = (CGFloat)height / (CGFloat)(*pc).maxHeight;
         CGFloat rectX = 0.0f;
-        CGFloat rectY = 1.0f - rectH; // CA y=0 is bottom when geometryFlipped=YES; Vulkan rendered to the top!
+        CGFloat rectY = 0.0f;
         (*pc).layer.contentsRect = CGRectMake(rectX, rectY, rectW, rectH);
     }
 
