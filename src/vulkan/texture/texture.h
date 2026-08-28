@@ -21,4 +21,7 @@ void *Texture_getDescriptorSet(void);
 // Gets the descriptor set layout used for the bindless array
 void *Texture_getDescriptorSetLayout(void);
 
+// Returns the pixel dimensions of a loaded texture by ID. Returns false if ID is invalid.
+bool Texture_getSize(int32_t id, uint32_t *outW, uint32_t *outH);
+
 #endif // ANTI_TEXTURE_H

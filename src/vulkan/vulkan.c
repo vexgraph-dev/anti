@@ -1921,8 +1921,12 @@ static bool presentFrameTail(uint32_t imageIndex) {
     return pr == VK_SUCCESS;
 }
 
-void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH, float x, float y, float w, float h,
-                    float r, float g, float b, float a, int32_t textureId) {
+void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
+                    float x, float y, float w, float h,
+                    float r, float g, float b, float a,
+                    int32_t textureId,
+                    PictureScaleMode mode, PictureFillParam fillParam,
+                    float imgAspect, float quadAspect) {
     if (!cmdBuffer) return;
 
     // Lazily build the texture pipeline on first call — must use the IOSurface
@@ -1936,13 +1940,15 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH, float x, fl
         VK_LOAD_DEVICE_VOID(CreatePipelineLayout)
         VK_LOAD_DEVICE_VOID(CreateGraphicsPipelines)
 
+        // Vertex: offset=0 size=16 (rectNdc)
+        // Fragment: offset=16 size=36 (color[16] + texId[4] + imgAspect[4] + quadAspect[4] + mode[4] + fillParam[4])
         VkPushConstantRange texPush[2];
         texPush[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         texPush[0].offset = 0;
-        texPush[0].size = 16; // vec4 u_rectNdc
+        texPush[0].size = 16;
         texPush[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         texPush[1].offset = 16;
-        texPush[1].size = 20; // vec4 color + uint textureId
+        texPush[1].size = 36;
 
         extern void *Texture_getDescriptorSetLayout(void);
         VkDescriptorSetLayout bindlessLayout = (VkDescriptorSetLayout)Texture_getDescriptorSetLayout();
@@ -2027,16 +2033,37 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH, float x, fl
     VkDescriptorSet bindlessSet = (VkDescriptorSet)Texture_getDescriptorSet();
     CmdBindDescriptorSets_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_texLayout, 0, 1, &bindlessSet, 0, NULL);
 
-    struct { float rect[4]; float color[4]; uint32_t tex; } push;
+    // Push constant layout (must match texture_quad.frag):
+    //   [0..15]  vec4  rectNdc        (vertex)
+    //   [16..31] vec4  color          (fragment)
+    //   [32..35] uint  textureId      (fragment)
+    //   [36..39] float imgAspect      (fragment)
+    //   [40..43] float quadAspect     (fragment)
+    //   [44..47] uint  mode           (fragment)
+    //   [48..51] uint  fillParam      (fragment)
+    struct {
+        float    rect[4];       // offset 0
+        float    color[4];      // offset 16
+        uint32_t texId;         // offset 32
+        float    imgAspect;     // offset 36
+        float    quadAspect;    // offset 40
+        uint32_t scaleMode;     // offset 44
+        uint32_t fillParam;     // offset 48
+    } push;
+
     push.rect[0] = (x / surfaceW) * 2.0f - 1.0f;
     push.rect[1] = (y / surfaceH) * 2.0f - 1.0f;
     push.rect[2] = (w / surfaceW) * 2.0f;
     push.rect[3] = (h / surfaceH) * 2.0f;
     push.color[0] = r; push.color[1] = g; push.color[2] = b; push.color[3] = a;
-    push.tex = (uint32_t)textureId;
+    push.texId      = (uint32_t)textureId;
+    push.imgAspect  = imgAspect;
+    push.quadAspect = quadAspect;
+    push.scaleMode  = (uint32_t)mode;
+    push.fillParam  = (uint32_t)fillParam;
 
-    CmdPushConstants_fn(cb, s_texLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 16, push.rect);
-    CmdPushConstants_fn(cb, s_texLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 16, 20, push.color);
+    CmdPushConstants_fn(cb, s_texLayout, VK_SHADER_STAGE_VERTEX_BIT,   0,  16, push.rect);
+    CmdPushConstants_fn(cb, s_texLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 16, 36, push.color);
 
     CmdDraw_fn(cb, 6, 1, 0, 0);
 }

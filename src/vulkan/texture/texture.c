@@ -23,6 +23,8 @@ static VkImage s_images[MAX_BINDLESS_TEXTURES];
 static VkDeviceMemory s_memories[MAX_BINDLESS_TEXTURES];
 static VkImageView s_views[MAX_BINDLESS_TEXTURES];
 static VkSampler s_samplers[MAX_BINDLESS_TEXTURES];
+static uint32_t s_widths[MAX_BINDLESS_TEXTURES];
+static uint32_t s_heights[MAX_BINDLESS_TEXTURES];
 static int s_textureCount = 0;
 
 static VkDescriptorPool s_descPool;
@@ -385,6 +387,8 @@ int32_t Texture_load(const char *vfsPath) {
     s_memories[id] = textureImageMemory;
     s_views[id] = textureImageView;
     s_samplers[id] = textureSampler;
+    s_widths[id]  = (uint32_t)width;
+    s_heights[id] = (uint32_t)height;
     
     s_textureCount++;
     printf("Successfully bound texture %s to ID %d\n", vfsPath, id);
@@ -397,4 +401,11 @@ void *Texture_getDescriptorSet(void) {
 
 void *Texture_getDescriptorSetLayout(void) {
     return s_descLayout;
+}
+
+bool Texture_getSize(int32_t id, uint32_t *outW, uint32_t *outH) {
+    if (id < 0 || id >= s_textureCount) return false;
+    if (outW) *outW = s_widths[id];
+    if (outH) *outH = s_heights[id];
+    return true;
 }

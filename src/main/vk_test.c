@@ -36,21 +36,52 @@ static VkProbeState g_state = {0};
 // width breathes with a 1-second sine.
 
 extern int32_t Texture_load(const char *vfsPath);
-extern void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH, float x, float y, float w, float h,
-                           float r, float g, float b, float a, int32_t textureId);
+extern bool    Texture_getSize(int32_t id, uint32_t *outW, uint32_t *outH);
+
+#include "vulkan/vk.h"
 
 static int32_t s_sunflowerId = -1;
 
-static void pic_render(Panel *p, void *data, void *cmdBuffer, float x, float y, float w, float h) { (void)p; (void)x; (void)y;
-    (void)data;
-    if (s_sunflowerId >= 0) {
-        Vk_drawTexture(cmdBuffer, w, h, 0, 0, w, h, 1.0f, 1.0f, 1.0f, 1.0f, s_sunflowerId);
-    } else {
-        // Fallback to yellow background
+// All 11 mode + fillParam combos for the cycling test
+typedef struct { PictureScaleMode mode; PictureFillParam param; const char *label; } ModeEntry;
+static const ModeEntry s_modes[] = {
+    { PICTURE_SCALE_FIT,       PICTURE_FILL_CENTER,       "FIT" },
+    { PICTURE_SCALE_ZOOM_FILL, PICTURE_FILL_CENTER,       "ZOOM_FILL  CENTER"       },
+    { PICTURE_SCALE_ZOOM_FILL, PICTURE_FILL_TOP_LEFT,     "ZOOM_FILL  TOP_LEFT"     },
+    { PICTURE_SCALE_ZOOM_FILL, PICTURE_FILL_TOP_RIGHT,    "ZOOM_FILL  TOP_RIGHT"    },
+    { PICTURE_SCALE_ZOOM_FILL, PICTURE_FILL_BOTTOM_LEFT,  "ZOOM_FILL  BOTTOM_LEFT"  },
+    { PICTURE_SCALE_ZOOM_FILL, PICTURE_FILL_BOTTOM_RIGHT, "ZOOM_FILL  BOTTOM_RIGHT" },
+    { PICTURE_SCALE_ZOOM_FIT,  PICTURE_FILL_CENTER,       "ZOOM_FIT   CENTER"       },
+    { PICTURE_SCALE_ZOOM_FIT,  PICTURE_FILL_TOP_LEFT,     "ZOOM_FIT   TOP_LEFT"     },
+    { PICTURE_SCALE_ZOOM_FIT,  PICTURE_FILL_TOP_RIGHT,    "ZOOM_FIT   TOP_RIGHT"    },
+    { PICTURE_SCALE_ZOOM_FIT,  PICTURE_FILL_BOTTOM_LEFT,  "ZOOM_FIT   BOTTOM_LEFT"  },
+    { PICTURE_SCALE_ZOOM_FIT,  PICTURE_FILL_BOTTOM_RIGHT, "ZOOM_FIT   BOTTOM_RIGHT" },
+};
+#define NUM_MODES ((int)(sizeof(s_modes)/sizeof(s_modes[0])))
+
+static int s_modeIndex = 0;
+
+static void pic_render(Panel *p, void *data, void *cmdBuffer, float x, float y, float w, float h) {
+    (void)p; (void)data; (void)x; (void)y;
+    if (s_sunflowerId < 0) {
         extern void Vk_fillRect(void *, float, float, float, float, float, float, float, float, float, float);
         Vk_fillRect(cmdBuffer, w, h, 0, 0, w, h, 1.0f, 0.8f, 0.0f, 1.0f);
+        return;
     }
+
+    uint32_t imgW = 1, imgH = 1;
+    Texture_getSize(s_sunflowerId, &imgW, &imgH);
+    float imgAspect  = (float)imgW / (float)imgH;
+    float quadAspect = w / h;
+
+    const ModeEntry *m = &s_modes[s_modeIndex];
+    Vk_drawTexture(cmdBuffer, w, h, 0, 0, w, h,
+                   1.0f, 1.0f, 1.0f, 1.0f,
+                   s_sunflowerId,
+                   m->mode, m->param,
+                   imgAspect, quadAspect);
 }
+
 
 static void hud_pulse(Panel *panel, void *renderer, void *cmdBuffer,
                       float x, float y, float w, float h) {
@@ -191,6 +222,10 @@ int main(void) {
     uint64_t lastReport = NanoTime_now();
     char titleBuf[256];
 
+    uint64_t lastModeSwitch = NanoTime_now();
+    printf("[texture-test] mode[%d] = %s\n", s_modeIndex, s_modes[s_modeIndex].label);
+    fflush(stdout);
+
     while (!Window_shouldClose(w) && !Key_isDown(KEY_ESCAPE)) {
         Window_pollEvents();
         int winW = Window_width(w);
@@ -202,6 +237,15 @@ int main(void) {
 
         uint64_t now = NanoTime_now();
         uint64_t elapsed = now - lastReport;
+
+        // Cycle mode every 3 seconds
+        if (now - lastModeSwitch >= 3000000000ULL) {
+            lastModeSwitch = now;
+            s_modeIndex = (s_modeIndex + 1) % NUM_MODES;
+            printf("[texture-test] mode[%d] = %s\n", s_modeIndex, s_modes[s_modeIndex].label);
+            fflush(stdout);
+        }
+
         if (elapsed >= 250000000ULL) { // update title every 250ms
             lastReport = now;
 
@@ -209,8 +253,8 @@ int main(void) {
             float pMs = (float)atomic_load_explicit(&g_state.presentFrametimeUs, memory_order_relaxed) / 1000.0f;
 
             snprintf(titleBuf, sizeof(titleBuf),
-                     "anti vk probe | Present FPS: %u (%.2f ms) | %dx%d",
-                     pFps, pMs, winW, winH);
+                     "anti | %s | %u FPS (%.2f ms) | %dx%d",
+                     s_modes[s_modeIndex].label, pFps, pMs, winW, winH);
             Window_setTitle(w, titleBuf);
             printf("[telemetry] Present FPS: %u (%.2f ms) | %dx%d\n",
                    pFps, pMs, winW, winH);
