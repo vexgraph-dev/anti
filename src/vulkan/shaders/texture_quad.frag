@@ -85,6 +85,8 @@ void main() {
         }
     }
 
-    vec4 texColor = texture(u_textures[nonuniformEXT(push.u_textureId)], uv);
+    // CoreGraphics decodes image pixel data bottom-up in memory, but Vulkan expects top-down.
+    // By flipping the Y coordinate right before sampling, our top-left cropping math works natively.
+    vec4 texColor = texture(u_textures[nonuniformEXT(push.u_textureId)], vec2(uv.x, 1.0 - uv.y));
     fragColor = texColor * push.u_color;
 }

@@ -59,7 +59,7 @@ static const ModeEntry s_modes[] = {
 };
 #define NUM_MODES ((int)(sizeof(s_modes)/sizeof(s_modes[0])))
 
-static int s_modeIndex = 0;
+static int s_modeIndex = 2; // Default to ZOOM_FILL TOP_LEFT as requested
 
 static void pic_render(Panel *p, void *data, void *cmdBuffer, float x, float y, float w, float h) {
     (void)p; (void)data; (void)x; (void)y;

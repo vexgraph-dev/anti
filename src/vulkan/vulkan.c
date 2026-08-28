@@ -902,11 +902,12 @@ void Vk_fillRect(void *cmdBuffer, float surfaceW, float surfaceH,
 
     VkViewport viewport = {0};
     viewport.width = drawW;
-    viewport.height = drawH;
+    viewport.height = -drawH; // Negative for top-down UI map to bottom-up frame
+    viewport.y = drawH;
     viewport.maxDepth = 1.0f;
     VkRect2D scissor = {0};
     scissor.offset.x = (int32_t)fx;
-    scissor.offset.y = (int32_t)fy;
+    scissor.offset.y = (int32_t)(drawH - fy - h);
     scissor.extent.width = (uint32_t)w;
     scissor.extent.height = (uint32_t)h;
 
@@ -2023,8 +2024,8 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
 
     CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_texPipeline);
 
-    VkViewport viewport = { .width = surfaceW, .height = surfaceH, .maxDepth = 1.0f };
-    VkRect2D scissor = { .offset.x = (int32_t)x, .offset.y = (int32_t)y,
+    VkViewport viewport = { .x = 0.0f, .y = surfaceH, .width = surfaceW, .height = -surfaceH, .maxDepth = 1.0f };
+    VkRect2D scissor = { .offset.x = (int32_t)x, .offset.y = (int32_t)(surfaceH - y - h),
                          .extent.width = (uint32_t)w, .extent.height = (uint32_t)h };
     CmdSetViewport_fn(cb, 0, 1, &viewport);
     CmdSetScissor_fn(cb, 0, 1, &scissor);

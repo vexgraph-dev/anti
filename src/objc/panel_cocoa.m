@@ -95,7 +95,7 @@ PanelCocoa *PanelCocoa_new(void *panel, int width, int height) {
 
     (*pc).layer = [[CALayer alloc] init];
     (*pc).layer.contentsGravity = kCAGravityTopLeft;
-    (*pc).layer.geometryFlipped = YES; // Flip the layer so the Vulkan top-down IOSurface renders right-side up
+    (*pc).layer.geometryFlipped = NO; // Negative viewport in Vulkan correctly maps top-down to bottom-up framebuffers
     (*pc).layer.contents = (__bridge id)(*pc).surface;
     (*pc).layer.opaque = NO;
     (*pc).layer.anchorPoint = CGPointMake(0, 0);
