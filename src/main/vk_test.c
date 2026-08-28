@@ -7,6 +7,7 @@
 #include "darling/container.h"
 #include "darling/panel.h"
 #include "darling/scene.h"
+#include "darling/picture.h"
 #include "input/key.h"
 #include "nio/mem.h"
 #include "oop/type.h"
@@ -129,7 +130,20 @@ int main(void) {
     Scene3D_setSize(mini3D, 1000.0f, 1000.0f); // max buffer allocation size
     Scene3D_setParentAnchor(mini3D, CONTAINER_PARENT_ANCHOR_BOTTOM_RIGHT);
     Scene3D_setSelfAnchor(mini3D, CONTAINER_SELF_ANCHOR_BOTTOM_RIGHT);
-    Panel_addContainer(contentPanel, &(*mini3D).base.base);
+    // 5. Picture testing node (Middle Center anchoring)
+    Picture *pic = Picture_0();
+    Picture_setSize(pic, 1024.0f, 1024.0f); // first call allocates max bounds
+    Picture_setSize(pic, 150.0f, 150.0f);   // second call clamps actual visual size
+    Picture_setBackgroundColor(pic, 0xFFFFCC00u); // Yellow/Orange background to easily spot it
+    
+    // Set parent anchor to the middle of the window
+    Picture_setParentAnchor(pic, CONTAINER_PARENT_ANCHOR_MIDDLE_CENTER);
+    // Set self anchor to its own middle (pivot point)
+    Picture_setSelfAnchor(pic, CONTAINER_SELF_ANCHOR_MIDDLE_CENTER);
+    
+    // x=0, y=0 offset from the anchor point (which is now exactly in the center)
+    Picture_setLocation(pic, 0.0f, 0.0f);
+    Panel_addContainer(contentPanel, &(*pic).base);
 
     // Enable native IOSurface backing on content panel
     Window_forceNativeContainerOnRoot(w, true);
@@ -144,6 +158,7 @@ int main(void) {
         fprintf(stderr, "failed to start Vulkan present worker thread\n");
         atomic_store(&g_state.running, false);
         Vk_shutdown();
+        Memory_free(pic);
         Memory_free(mini3D);
         Memory_free(hud);
         Memory_free(contentPanel);
@@ -190,6 +205,7 @@ int main(void) {
     }
 
     Vk_shutdown();
+    Memory_free(pic);
     Memory_free(mini3D);
     Memory_free(hud);
     Memory_free(contentPanel);
