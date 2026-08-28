@@ -50,7 +50,7 @@ const char *Vk_status(void);
 // open render pass; sets its own viewport (whole drawable) and scissor (the
 // rect), per the VIEWPORT/SCISSOR SEPARATION LAW. Safe to call several times
 // per handler for layered rects.
-void Vk_fillRect(void *cmdBuffer, float x, float y, float w, float h,
+void Vk_fillRect(void *cmdBuffer, float surfaceW, float surfaceH, float x, float y, float w, float h,
                  float r, float g, float b, float a);
 
 #endif

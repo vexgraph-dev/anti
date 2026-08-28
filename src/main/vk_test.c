@@ -45,8 +45,8 @@ static void hud_pulse(Panel *panel, void *renderer, void *cmdBuffer,
     float pulse = 0.5f + 0.5f * sinf((float)(t * 6.28318530718));
 
     float barH = h * 0.08f;
-    Vk_fillRect(cmdBuffer, x, y, w, h - barH, 0.07f, 0.09f, 0.11f, 0.92f);
-    Vk_fillRect(cmdBuffer, x, y + h - barH, w * pulse, barH, 0.18f, 0.80f, 0.44f, 1.0f);
+    Vk_fillRect(cmdBuffer, w, h, x, y, w, h - barH, 0.07f, 0.09f, 0.11f, 0.92f);
+    Vk_fillRect(cmdBuffer, w, h, x, y + h - barH, w * pulse, barH, 0.18f, 0.80f, 0.44f, 1.0f);
 }
 
 // Present Worker: clears the monitor cache, renders the basket's children

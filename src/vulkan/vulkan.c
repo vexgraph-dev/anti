@@ -860,9 +860,10 @@ static void decodeColor(uint32_t rgba, float *out) {
 // contained: viewport spans the whole drawable (u_rectNdc places the quad in
 // clip space), the scissor clips to THIS rect — stacking several fills in
 // one handler just works.
-void Vk_fillRect(void *cmdBuffer, float x, float y, float w, float h,
+void Vk_fillRect(void *cmdBuffer, float surfaceW, float surfaceH,
+                 float x, float y, float w, float h,
                  float r, float g, float b, float a) {
-    if (!cmdBuffer || w <= 0.0f || h <= 0.0f)
+    if (!cmdBuffer || w <= 0.0f || h <= 0.0f || surfaceW <= 0.0f || surfaceH <= 0.0f)
         return;
     if (!s_pipelinesBuilt || s_quadPipeline == VK_NULL_HANDLE)
         return;
@@ -873,8 +874,8 @@ void Vk_fillRect(void *cmdBuffer, float x, float y, float w, float h,
     VK_LOAD_DEVICE_VOID(CmdPushConstants)
     VK_LOAD_DEVICE_VOID(CmdDraw)
 
-    float drawW = (float)s_extent.width;
-    float drawH = (float)s_extent.height;
+    float drawW = surfaceW;
+    float drawH = surfaceH;
     // Clip against the drawable here: handlers receive pre-clipped rects,
     // but defensive clipping keeps stacked sub-rects honest for free.
     float fx = x < 0.0f ? 0.0f : x;
@@ -1825,7 +1826,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
                     continue; // PANEL_COLOR_CLEAR draws nothing without blending
                 float rgba[4];
                 decodeColor(color, rgba);
-                Vk_fillRect(s_cmdBuffer, px, py, pw, ph,
+                Vk_fillRect(s_cmdBuffer, drawW, drawH, px, py, pw, ph,
                             rgba[0], rgba[1], rgba[2], rgba[3]);
             }
         }

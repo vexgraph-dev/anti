@@ -251,9 +251,9 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
                 float b = (float)( color        & 0xFF) / 255.0f;
                 float a = (float)((color >> 24) & 0xFF) / 255.0f;
                 
-                extern void Vk_fillRect(void *cmdBuffer, float x, float y, float w, float h,
+                extern void Vk_fillRect(void *cmdBuffer, float surfaceW, float surfaceH, float x, float y, float w, float h,
                                         float r, float g, float b, float a);
-                Vk_fillRect(cb, 0.0f, 0.0f, (float)w, (float)h, r, g, b, a);
+                Vk_fillRect(cb, (float)w, (float)h, 0.0f, 0.0f, (float)w, (float)h, r, g, b, a);
             }
         }
     }

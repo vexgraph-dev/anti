@@ -139,10 +139,10 @@ bool PanelCocoa_setSize(PanelCocoa *pc, int width, int height) {
 
     // Update contentsRect to show only the current-size portion of the max-size IOSurface
     if ((*pc).maxWidth > 0 && (*pc).maxHeight > 0) {
-        CGFloat rectX = 0.0f;
-        CGFloat rectY = 0.0f;
         CGFloat rectW = (CGFloat)width / (CGFloat)(*pc).maxWidth;
         CGFloat rectH = (CGFloat)height / (CGFloat)(*pc).maxHeight;
+        CGFloat rectX = 0.0f;
+        CGFloat rectY = 1.0f - rectH; // CA y=0 is bottom when geometryFlipped=YES; Vulkan rendered to the top!
         (*pc).layer.contentsRect = CGRectMake(rectX, rectY, rectW, rectH);
     }
 
