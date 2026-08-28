@@ -240,7 +240,7 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
         extern Panel_RenderFn Panel_getRenderHandler(const Panel *p);
         Panel_RenderFn handler = Panel_getRenderHandler(child);
         if (handler) {
-            handler(child, NULL, cb, 0.0f, 0.0f, (float)w, (float)h);
+            handler(child, NULL, cb, 0.0f, 0.0f, (float)canvasW, (float)canvasH);
         } else {
             uint32_t color = Panel_getBackgroundColor(child);
             if (color != 0) {
