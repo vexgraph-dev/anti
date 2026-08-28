@@ -2,7 +2,6 @@
 #define OBJC_PANEL_COCOA_H
 
 #include <stdbool.h>
-#include <stdint.h>
 
 // objc/panel_cocoa.h — IOSurface-backed panel compositor.
 //

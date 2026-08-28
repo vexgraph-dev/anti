@@ -79,28 +79,28 @@ PanelCocoa *PanelCocoa_new(void *panel, int width, int height) {
     PanelCocoa *pc = (PanelCocoa *)calloc(1, sizeof(PanelCocoa));
     if (!pc) return NULL;
 
-    pc->panel = panel;
-    pc->width = width;
-    pc->height = height;
-    pc->maxWidth = width;
-    pc->maxHeight = height;
-    atomic_init(&pc->dirty, true);
+    (*pc).panel = panel;
+    (*pc).width = width;
+    (*pc).height = height;
+    (*pc).maxWidth = width;
+    (*pc).maxHeight = height;
+    atomic_init(&(*pc).dirty, true);
 
     // Allocate IOSurface at MAX size (fixed, never reallocates)
-    pc->surface = makeSurface(width, height);
-    if (!pc->surface) {
+    (*pc).surface = makeSurface(width, height);
+    if (!(*pc).surface) {
         free(pc);
         return NULL;
     }
 
-    pc->layer = [[CALayer alloc] init];
-    pc->layer.contentsGravity = kCAGravityTopLeft;
-    pc->layer.geometryFlipped = YES; // Flip the layer so the Vulkan top-down IOSurface renders right-side up
-    pc->layer.contents = (__bridge id)pc->surface;
-    pc->layer.opaque = NO;
-    pc->layer.anchorPoint = CGPointMake(0, 0);
-    pc->layer.drawsAsynchronously = NO;
-    pc->layer.contentsRect = CGRectMake(0, 0, 1, 1); // show full surface
+    (*pc).layer = [[CALayer alloc] init];
+    (*pc).layer.contentsGravity = kCAGravityTopLeft;
+    (*pc).layer.geometryFlipped = YES; // Flip the layer so the Vulkan top-down IOSurface renders right-side up
+    (*pc).layer.contents = (__bridge id)(*pc).surface;
+    (*pc).layer.opaque = NO;
+    (*pc).layer.anchorPoint = CGPointMake(0, 0);
+    (*pc).layer.drawsAsynchronously = NO;
+    (*pc).layer.contentsRect = CGRectMake(0, 0, 1, 1); // show full surface
 
     // Register in the lookup table
     for (int i = 0; i < kMaxPanels; i++) {
@@ -124,42 +124,42 @@ void PanelCocoa_free(PanelCocoa *pc) {
             break;
         }
     }
-    if (pc->layer) [pc->layer removeFromSuperlayer];
-    if (pc->surface) CFRelease(pc->surface);
+    if ((*pc).layer) [(*pc).layer removeFromSuperlayer];
+    if ((*pc).surface) CFRelease((*pc).surface);
     free(pc);
 }
 
 bool PanelCocoa_setSize(PanelCocoa *pc, int width, int height) {
     if (!pc || width <= 0 || height <= 0) return false;
-    if (width == pc->width && height == pc->height) return true;
+    if (width == (*pc).width && height == (*pc).height) return true;
 
     // Update display size (IOSurface stays at max size, never reallocates)
-    pc->width = width;
-    pc->height = height;
+    (*pc).width = width;
+    (*pc).height = height;
 
     // Update contentsRect to show only the current-size portion of the max-size IOSurface
-    if (pc->maxWidth > 0 && pc->maxHeight > 0) {
+    if ((*pc).maxWidth > 0 && (*pc).maxHeight > 0) {
         CGFloat rectX = 0.0f;
         CGFloat rectY = 0.0f;
-        CGFloat rectW = (CGFloat)width / (CGFloat)pc->maxWidth;
-        CGFloat rectH = (CGFloat)height / (CGFloat)pc->maxHeight;
-        pc->layer.contentsRect = CGRectMake(rectX, rectY, rectW, rectH);
+        CGFloat rectW = (CGFloat)width / (CGFloat)(*pc).maxWidth;
+        CGFloat rectH = (CGFloat)height / (CGFloat)(*pc).maxHeight;
+        (*pc).layer.contentsRect = CGRectMake(rectX, rectY, rectW, rectH);
     }
 
-    atomic_store(&pc->dirty, true);
+    atomic_store(&(*pc).dirty, true);
     return true;
 }
 
 void *PanelCocoa_layer(PanelCocoa *pc) {
-    return pc ? (__bridge void *)pc->layer : NULL;
+    return pc ? (__bridge void *)(*pc).layer : NULL;
 }
 
-int PanelCocoa_width(const PanelCocoa *pc) { return pc ? pc->width : 0; }
-int PanelCocoa_height(const PanelCocoa *pc) { return pc ? pc->height : 0; }
-void *PanelCocoa_surface(PanelCocoa *pc) { return pc ? (void *)pc->surface : NULL; }
+int PanelCocoa_width(const PanelCocoa *pc) { return pc ? (*pc).width : 0; }
+int PanelCocoa_height(const PanelCocoa *pc) { return pc ? (*pc).height : 0; }
+void *PanelCocoa_surface(PanelCocoa *pc) { return pc ? (void *)(*pc).surface : NULL; }
 
 void PanelCocoa_markDirty(PanelCocoa *pc) {
-    if (pc) atomic_store(&pc->dirty, true);
+    if (pc) atomic_store(&(*pc).dirty, true);
 }
 
 // Lookup: retrieve the PanelCocoa backing for a Panel. Returns NULL if the
@@ -173,7 +173,7 @@ void *PanelCocoa_fromPanel(void *panel) {
 }
 
 void PanelCocoa_setAnchors(PanelCocoa *pc, int parentAnchor, int selfAnchor) {
-    if (!pc || !pc->layer) return;
+    if (!pc || !(*pc).layer) return;
 
     // Port selfAnchor to CoreAnimation anchorPoint and contentsGravity
     // (0,0) is top-left in flipped coordinates, (1,1) is bottom-right
@@ -207,35 +207,35 @@ void PanelCocoa_setAnchors(PanelCocoa *pc, int parentAnchor, int selfAnchor) {
         default: break;
     }
 
-    pc->layer.anchorPoint = anchorPoint;
-    pc->layer.contentsGravity = gravity;
-    pc->layer.autoresizingMask = mask;
+    (*pc).layer.anchorPoint = anchorPoint;
+    (*pc).layer.contentsGravity = gravity;
+    (*pc).layer.autoresizingMask = mask;
 }
 
 bool PanelCocoa_isDirty(const PanelCocoa *pc) {
-    return pc ? atomic_load(&pc->dirty) : false;
+    return pc ? atomic_load(&(*pc).dirty) : false;
 }
 
 void PanelCocoa_render(PanelCocoa *pc) {
-    if (!pc || !pc->surface) return;
-    if (!atomic_load(&pc->dirty)) return; // nothing changed
+    if (!pc || !(*pc).surface) return;
+    if (!atomic_load(&(*pc).dirty)) return; // nothing changed
 
     // CPU paint path: solid color from the panel's background color.
     // Lock the IOSurface, paint with Raster, unlock.
-    IOReturn lock = IOSurfaceLock(pc->surface, 0, NULL);
+    IOReturn lock = IOSurfaceLock((*pc).surface, 0, NULL);
     if (lock != kIOReturnSuccess) return;
 
-    void *base = IOSurfaceGetBaseAddress(pc->surface);
-    size_t row = IOSurfaceGetBytesPerRow(pc->surface);
-    int w = (int)IOSurfaceGetWidth(pc->surface);
-    int h = (int)IOSurfaceGetHeight(pc->surface);
+    void *base = IOSurfaceGetBaseAddress((*pc).surface);
+    size_t row = IOSurfaceGetBytesPerRow((*pc).surface);
+    int w = (int)IOSurfaceGetWidth((*pc).surface);
+    int h = (int)IOSurfaceGetHeight((*pc).surface);
 
     if (base && w > 0 && h > 0) {
         // Clear to transparent first
         memset(base, 0, row * h);
 
         // Decode panel color (0xAARRGGBB)
-        struct Panel *p = (struct Panel *)pc->panel;
+        struct Panel *p = (struct Panel *)(*pc).panel;
         uint32_t color = Panel_getBackgroundColor(p);
         if (color != 0) {
             uint8_t a = (uint8_t)(color >> 24);
@@ -255,6 +255,6 @@ void PanelCocoa_render(PanelCocoa *pc) {
         }
     }
 
-    IOSurfaceUnlock(pc->surface, 0, NULL);
-    atomic_store(&pc->dirty, false);
+    IOSurfaceUnlock((*pc).surface, 0, NULL);
+    atomic_store(&(*pc).dirty, false);
 }

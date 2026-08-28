@@ -5,7 +5,10 @@
 #include "vulkan/vk_iosurface.h"
 #include "vulkan/vk_scene.h"
 #include "vulkan/vk_view.h"
+#include "vulkan/vulkan_mac.h"
 
+#include "annotation/platform_exclusive.h"
+#include "annotation/intention.h"
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_macos.h>
 #include <dlfcn.h>
@@ -37,6 +40,16 @@ static void *s_lib = NULL;
 static PFN_vkGetInstanceProcAddr s_gpa = NULL;
 static PFN_vkGetDeviceProcAddr s_gdpa = NULL;
 static char s_status[64] = "not started";
+
+// Shared state exported to vulkan_mac.c (macOS-specific backend).
+VkDevice s_instanceDevice;
+VkQueue s_instanceQueue;
+VkCommandBuffer s_instanceCmdBuffer;
+VkPipeline s_instanceTriPipeline;
+VkPipelineLayout s_instanceTriLayout;
+uint64_t s_instanceAnimStartNanos;
+PFN_vkGetDeviceProcAddr s_instanceGdpa;
+
 #define VK_MARK(msg) do { snprintf(s_status, sizeof(s_status), msg); fprintf(stderr, "vk: %s\n", s_status); } while(0)
 
 // Swapchain: rebuilt whenever the surface outgrows the chain (fullscreen,
@@ -47,7 +60,6 @@ static bool rebuildTargets(void);
 static void destroyTargets(void);
 static bool buildPipelines(void);
 static bool presentFrameLocked(void);
-static void resizeRenderTrampoline(void *userdata);
 
 // Last-applied Window_renderGeneration. A drift means presentMode or
 // transparent changed on thread 0 and the swapchain wants a rebuild.
@@ -108,7 +120,7 @@ typedef struct SceneBatchEntry {
     uint32_t gen;   // canvas generation at record time; mismatched = resized
 } SceneBatchEntry;
 static VkCommandBuffer s_sceneBuffer;
-static VkCommandBuffer s_childCmdBuffer;
+static VkCommandBuffer s_childCmdBuffer; // havent used yet for some reason, remove when being used now
 static VkFence s_sceneFence;
 static SceneBatchEntry s_sceneBatch[VK_SCENE_BATCH_MAX];
 static uint32_t s_sceneBatchCount = 0;
@@ -136,21 +148,7 @@ static uint32_t s_swapchainImageCount = 0;
 static VkRenderPass s_drawablePass = VK_NULL_HANDLE;
 static bool ensureDrawablePass(void);
 
-// IOSurface render pass: renders directly into IOSurface-backed VkImages.
-static VkRenderPass s_iosurfacePass = VK_NULL_HANDLE;
-static bool ensureIOSurfacePass(void);
-
-// IOSurface child state: wraps the PanelCocoa's IOSurface for Vulkan rendering.
-// One per content-panel child, keyed by Panel *. Small fixed array.
-#define IOSURFACE_CHILD_MAX 16
-struct IOSurfaceChild {
-    Panel *panel;
-    VkIOSurface *surf; // VkImage = IOSurfaceRef
-    VkFramebuffer fb;
-    bool valid;
-};
-static struct IOSurfaceChild s_iosurfaceChildren[IOSURFACE_CHILD_MAX];
-static int s_iosurfaceChildCount = 0;
+// IOSurface state is owned by vulkan_mac.c (macOS-specific).
 
 // Child pipelines, built against the monitor view's cache renderpass:
 //   triangle — legacy hello-triangle scene content (push: f32 u_time @0, VS)
@@ -162,23 +160,9 @@ static VkPipeline s_quadPipeline;
 static bool s_pipelinesBuilt = false;
 
 static void *s_libLoad(void) {
-    // MoltenVK first: the ICD exports everything itself, no loader manifest
-    // needed. The Khronos loader stays as fallback for manifest setups.
-    const char *candidates[] = {
-        "libMoltenVK.dylib",
-        "/opt/homebrew/lib/libMoltenVK.dylib",
-        "/usr/local/lib/libMoltenVK.dylib",
-        "libvulkan.dylib",
-        "/opt/homebrew/lib/libvulkan.dylib",
-        "/usr/local/lib/libvulkan.dylib",
-        NULL,
-    };
-    for (int i = 0; candidates[i]; i++) {
-        void *lib = dlopen(candidates[i], RTLD_NOW | RTLD_LOCAL);
-        if (lib)
-            return lib;
-    }
-    return NULL;
+    void *lib = VkMac_loadLib();
+    s_lib = lib;
+    return lib;
 }
 
 #define VK_LOAD_GLOBAL(name) \
@@ -229,6 +213,7 @@ bool Vk_init(Window *window) {
 
     VK_LOAD_GLOBAL(CreateInstance)
     // 2. instance — request only the extensions this driver actually exposes
+    // ;;PLATFORM_EXCLUSIVE("Mac") — VK_EXT_metal_surface is macOS-only.
     VK_LOAD_GLOBAL(EnumerateInstanceExtensionProperties)
     uint32_t extCount = 0;
     EnumerateInstanceExtensionProperties_fn(NULL, &extCount, NULL);
@@ -276,13 +261,9 @@ bool Vk_init(Window *window) {
     s_gdpa = (PFN_vkGetDeviceProcAddr)s_gpa(s_instance, "vkGetDeviceProcAddr");
 
     // 3. surface over the window's CAMetalLayer
-    VK_LOAD_INSTANCE(CreateMetalSurfaceEXT)
-    void *metalLayer = Window_metalLayer(window); // install CAMetalLayer first
-    VkMetalSurfaceCreateInfoEXT sci = { .sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT };
-    sci.pLayer = metalLayer;
-    VkResult sr = CreateMetalSurfaceEXT_fn(s_instance, &sci, NULL, &s_surface);
-    if (!sci.pLayer || sr != VK_SUCCESS) {
-        snprintf(s_status, sizeof(s_status), "surface failed r=%d", sr); fprintf(stderr, "vk: %s\n", s_status);
+    if (!VkMac_createSurface(window, s_instance, s_gpa, &s_surface)) {
+        snprintf(s_status, sizeof(s_status), "surface failed");
+        fprintf(stderr, "vk: %s\n", s_status);
         return false;
     }
 
@@ -390,9 +371,18 @@ bool Vk_init(Window *window) {
 
     s_animStartNanos = NanoTime_now();
 
+    // Export shared state to vulkan_mac.c AFTER all init succeeds.
+    s_instanceDevice = s_device;
+    s_instanceQueue = s_queue;
+    s_instanceCmdBuffer = s_cmdBuffer;
+    s_instanceTriPipeline = s_triPipeline;
+    s_instanceTriLayout = s_triLayout;
+    s_instanceAnimStartNanos = s_animStartNanos;
+    s_instanceGdpa = s_gdpa;
+
     // The c -> objc -> c bridge: AppKit's resize servicing drives frames at
     // the OS's own rhythm through this hook.
-    Window_setResizeRenderHook(s_window, resizeRenderTrampoline, NULL);
+    Window_setResizeRenderHook(s_window, VkMac_resizeRenderTrampoline, NULL);
     return true;
 }
 
@@ -643,45 +633,7 @@ static bool ensureDrawablePass(void) {
     return true;
 }
 
-// IOSurface render pass: renders directly into IOSurface-backed VkImages.
-// Format is BGRA8, clears to transparent black, final layout is color attachment
-// (VkIOSurface_export handles the handoff to AppKit).
-static bool ensureIOSurfacePass(void) {
-    if (s_iosurfacePass != VK_NULL_HANDLE)
-        return true;
-    VK_LOAD_DEVICE(CreateRenderPass)
-
-    VkAttachmentDescription att = {0};
-    att.format = VK_FORMAT_B8G8R8A8_UNORM;
-    att.samples = VK_SAMPLE_COUNT_1_BIT;
-    att.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    att.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentReference colorRef = {0};
-    colorRef.attachment = 0;
-    colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkSubpassDescription sub = {0};
-    sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    sub.colorAttachmentCount = 1;
-    sub.pColorAttachments = &colorRef;
-
-    VkRenderPassCreateInfo rpci = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
-    rpci.attachmentCount = 1;
-    rpci.pAttachments = &att;
-    rpci.subpassCount = 1;
-    rpci.pSubpasses = &sub;
-
-    if (CreateRenderPass_fn(s_device, &rpci, NULL, &s_iosurfacePass) != VK_SUCCESS) {
-        snprintf(s_status, sizeof(s_status), "iosurface pass failed");
-        return false;
-    }
-    return true;
-}
+// IOSurface render pass is owned by vulkan_mac.c (macOS-specific).
 
 static void destroyTargets(void) {
     if (s_device == VK_NULL_HANDLE)
@@ -721,23 +673,8 @@ static void destroyTargets(void) {
         DestroyRenderPass_fn(s_device, s_drawablePass, NULL);
     s_drawablePass = VK_NULL_HANDLE;
 
-    // Cleanup IOSurface children
-    for (int i = 0; i < s_iosurfaceChildCount; i++) {
-        struct IOSurfaceChild *ioChild = &s_iosurfaceChildren[i];
-        if (ioChild->fb != VK_NULL_HANDLE && DestroyFramebuffer_fn)
-            DestroyFramebuffer_fn(s_device, ioChild->fb, NULL);
-        if (ioChild->surf)
-            VkIOSurface_free(ioChild->surf);
-        ioChild->panel = NULL;
-        ioChild->surf = NULL;
-        ioChild->fb = VK_NULL_HANDLE;
-        ioChild->valid = false;
-    }
-    s_iosurfaceChildCount = 0;
-
-    if (s_iosurfacePass != VK_NULL_HANDLE && DestroyRenderPass_fn)
-        DestroyRenderPass_fn(s_device, s_iosurfacePass, NULL);
-    s_iosurfacePass = VK_NULL_HANDLE;
+    // Cleanup IOSurface children (owned by vulkan_mac.c).
+    VkMac_cleanupIOSurfaceState();
 
     if (s_swapchain != VK_NULL_HANDLE && DestroySwapchainKHR_fn)
         DestroySwapchainKHR_fn(s_device, s_swapchain, NULL);
@@ -1279,14 +1216,6 @@ bool Vk_clearPresentSync(void) {
     return Vk_clearPresent();
 }
 
-static void resizeRenderTrampoline(void *userdata) {
-    (void)userdata;
-    // Do absolutely nothing on the main thread!
-    // Vulkan has its own dedicated worker thread (vk_present_job) spinning.
-    // If we call Vk_clearPresentSync() here, we block the AppKit resize loop
-    // (windowDidResize) waiting for the GPU, causing severe UI stutter.
-}
-
 static bool presentFrameTail(uint32_t imageIndex);
 
 // Per-frame geometry handed from the head (presentFrameLocked) to the tail
@@ -1302,201 +1231,12 @@ static struct {
 } s_frame;
 
 // Forward declarations
-static void renderChildToIOSurface(Panel *child, void *surface, int w, int h);
-static void renderNativeContent(Window *window, Panel *contentPanel, int winW, int winH, float kx, float ky);
 
-static void renderChildToIOSurface(Panel *child, void *surface, int w, int h) {
-    if (!child || !surface || w <= 0 || h <= 0) return;
+;;PLATFORM_EXCLUSIVE("Mac")
+;;INTENTION("Thin wrappers that delegate IOSurface rendering to vulkan_mac.c.")
 
-    // Ensure IOSurface render pass exists
-    if (!ensureIOSurfacePass()) return;
-
-    // Load function pointers
-    VK_LOAD_DEVICE_VOID(ResetCommandBuffer)
-    VK_LOAD_DEVICE_VOID(BeginCommandBuffer)
-    VK_LOAD_DEVICE_VOID(EndCommandBuffer)
-    VK_LOAD_DEVICE_VOID(CmdBeginRenderPass)
-    VK_LOAD_DEVICE_VOID(CmdEndRenderPass)
-    VK_LOAD_DEVICE_VOID(CmdSetViewport)
-    VK_LOAD_DEVICE_VOID(CmdSetScissor)
-    VK_LOAD_DEVICE_VOID(CmdBindPipeline)
-    VK_LOAD_DEVICE_VOID(CmdPushConstants)
-    VK_LOAD_DEVICE_VOID(CmdDraw)
-    VK_LOAD_DEVICE_VOID(QueueSubmit)
-    VK_LOAD_DEVICE_VOID(WaitForFences)
-    VK_LOAD_DEVICE_VOID(ResetFences)
-    VK_LOAD_DEVICE_VOID(CreateFence)
-    VK_LOAD_DEVICE_VOID(DestroyFramebuffer)
-
-    // Get panel's max size (first setSize = max, subsequent = clamped current)
-    float maxW = (*child).base.maxW;
-    float maxH = (*child).base.maxH;
-    if (maxW <= 0.0f || maxH <= 0.0f) {
-        maxW = (float)w;
-        maxH = (float)h;
-    }
-    int canvasW = (int)(maxW + 0.5f);
-    int canvasH = (int)(maxH + 0.5f);
-    if (canvasW <= 0 || canvasH <= 0) return;
-
-    // Find or create IOSurface child state
-    struct IOSurfaceChild *ioChild = NULL;
-    for (int i = 0; i < s_iosurfaceChildCount; i++) {
-        if (s_iosurfaceChildren[i].panel == child) {
-            ioChild = &s_iosurfaceChildren[i];
-            break;
-        }
-    }
-    if (!ioChild) {
-        if (s_iosurfaceChildCount >= IOSURFACE_CHILD_MAX) return;
-        ioChild = &s_iosurfaceChildren[s_iosurfaceChildCount++];
-        ioChild->panel = child;
-        ioChild->surf = NULL;
-        ioChild->fb = VK_NULL_HANDLE;
-        ioChild->valid = false;
-    }
-
-    // Check if max size changed (IOSurface needs realloc)
-    if (ioChild->surf && (VkIOSurface_width(ioChild->surf) != (uint32_t)canvasW ||
-                          VkIOSurface_height(ioChild->surf) != (uint32_t)canvasH)) {
-        if (ioChild->fb) DestroyFramebuffer_fn(s_device, ioChild->fb, NULL);
-        VkIOSurface_free(ioChild->surf);
-        ioChild->surf = NULL;
-        ioChild->fb = VK_NULL_HANDLE;
-        ioChild->valid = false;
-    }
-
-    // Create IOSurface wrapper at MAX size (fixed allocation, never reallocates on resize)
-    if (!ioChild->surf) {
-        ioChild->surf = VkIOSurface_wrap(surface, (uint32_t)canvasW, (uint32_t)canvasH);
-        if (!ioChild->surf) return;
-    }
-
-    // Create framebuffer if needed
-    if (ioChild->fb == VK_NULL_HANDLE) {
-        ioChild->fb = VkIOSurface_createFramebuffer(ioChild->surf, s_iosurfacePass);
-        if (ioChild->fb == VK_NULL_HANDLE) {
-            VkIOSurface_free(ioChild->surf);
-            ioChild->surf = NULL;
-            return;
-        }
-    }
-
-    // Determine child type
-    uint32_t childType = Memory_type(child);
-    bool isScene = (childType == TYPE_SCENE3D_SINGLETON || childType == TYPE_SCENE2D_SINGLETON
-                    || childType == TYPE_SCENE_SINGLETON);
-
-    // Record command buffer
-    VkCommandBuffer cb = s_cmdBuffer;
-
-    ResetCommandBuffer_fn(cb, 0);
-    VkCommandBufferBeginInfo bi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-    BeginCommandBuffer_fn(cb, &bi);
-
-    // Begin render pass (clears to transparent black)
-    VkClearValue clear = {0};
-    clear.color.float32[0] = 0.0f;
-    clear.color.float32[1] = 0.0f;
-    clear.color.float32[2] = 0.0f;
-    clear.color.float32[3] = 0.0f;
-
-    VkRenderPassBeginInfo rpbi = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass = s_iosurfacePass,
-        .framebuffer = ioChild->fb,
-        .renderArea.extent.width = (uint32_t)canvasW,
-        .renderArea.extent.height = (uint32_t)canvasH,
-        .clearValueCount = 1,
-        .pClearValues = &clear,
-    };
-    CmdBeginRenderPass_fn(cb, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
-
-    // Set viewport and scissor to MAX size (render once at full resolution)
-    VkViewport vp = { .width = (float)canvasW, .height = (float)canvasH, .maxDepth = 1.0f };
-    VkRect2D sc = { .extent.width = (uint32_t)canvasW, .extent.height = (uint32_t)canvasH };
-    CmdSetViewport_fn(cb, 0, 1, &vp);
-    CmdSetScissor_fn(cb, 0, 1, &sc);
-
-    if (isScene) {
-        // Render triangle scene at MAX size (fixed resolution, never scales)
-        float uTime = (float)((double)(NanoTime_now() - s_animStartNanos) / 1e9);
-        CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
-        CmdPushConstants_fn(cb, s_triLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &uTime);
-        CmdDraw_fn(cb, 3, 1, 0, 0);
-    } else {
-        // Call panel's render handler (e.g. hud_pulse) at MAX size
-        extern Panel_RenderFn Panel_getRenderHandler(const Panel *p);
-        Panel_RenderFn handler = Panel_getRenderHandler(child);
-        if (handler) {
-            handler(child, NULL, cb, 0.0f, 0.0f, (float)canvasW, (float)canvasH);
-        }
-    }
-
-    CmdEndRenderPass_fn(cb);
-    EndCommandBuffer_fn(cb);
-
-    // Submit and wait
-    static VkFence s_childFence = VK_NULL_HANDLE;
-    if (s_childFence == VK_NULL_HANDLE) {
-        VkFenceCreateInfo fi = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-        CreateFence_fn(s_device, &fi, NULL, &s_childFence);
-    }
-
-    VkSubmitInfo si = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &cb;
-    ResetFences_fn(s_device, 1, &s_childFence);
-    QueueSubmit_fn(s_queue, 1, &si, s_childFence);
-    WaitForFences_fn(s_device, 1, &s_childFence, VK_TRUE, UINT64_MAX);
-
-    // Export IOSurface for AppKit compositing
-    VkIOSurface_export(ioChild->surf);
-    ioChild->valid = true;
-}
-
-// Render content panel children via Vulkan into IOSurfaces, then
-// composite via AppKit. Each child renders independently; resize =
-// IOSurface realloc + framebuffer rebuild, anchor pins the corner.
 static void renderNativeContent(Window *window, Panel *contentPanel, int winW, int winH, float kx, float ky) {
-    if (!window || !contentPanel) return;
-
-    Panel *scenePanel = Window_getScenePanel(window);
-
-    // Resize IOSurface backings at native pixel resolution.
-    // The bridge resolves each child's rect from winW/winH (points),
-    // then we'll override with pixel dimensions per-child below.
-    // Pass native pixel window size so the max-ceiling math is correct.
-    int nativePxW = (int)(winW * kx + 0.5f);
-    int nativePxH = (int)(winH * ky + 0.5f);
-    Window_resizePanelIOSurface(window, contentPanel, nativePxW, nativePxH);
-
-    size_t childCount = Panel_childCount(contentPanel);
-    for (size_t i = 0; i < childCount; i++) {
-        Panel *child = Panel_getChild(contentPanel, i);
-        if (!child) continue;
-
-        // Skip the scene panel — it renders directly to the swapchain
-        if (child == scenePanel) continue;
-
-        // Get the IOSurface for this child
-        extern void *PanelCocoa_fromPanel(void *panel);
-        void *pc = PanelCocoa_fromPanel(child);
-        if (!pc) continue;
-        extern void *PanelCocoa_surface(void *pc);
-        void *surface = PanelCocoa_surface(pc);
-        if (!surface) continue;
-
-        // Resolve layout in logical POINTS, then scale to native PIXELS
-        Vec4 rect;
-        Container_resolve(&(*child).base, 0.0f, 0.0f, (float)winW, (float)winH, &rect);
-        int pxW = (int)(rect.z * kx + 0.5f);
-        int pxH = (int)(rect.w * ky + 0.5f);
-        if (pxW <= 0 || pxH <= 0) continue;
-
-        // Render into IOSurface at native pixel resolution
-        renderChildToIOSurface(child, surface, pxW, pxH);
-    }
+    VkMac_renderNativeContent(window, contentPanel, winW, winH, kx, ky, &s_frame.nativeContent);
 }
 
 static bool presentFrameLocked(void) {

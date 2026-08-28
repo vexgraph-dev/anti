@@ -84,13 +84,13 @@ VkIOSurface *VkIOSurface_create(uint32_t width, uint32_t height) {
     VkIOSurface *surf = (VkIOSurface *)calloc(1, sizeof(VkIOSurface));
     if (!surf) return NULL;
 
-    surf->width = width;
-    surf->height = height;
-    surf->ownsSurface = true;
+    (*surf).width = width;
+    (*surf).height = height;
+    (*surf).ownsSurface = true;
 
     // 1. Create IOSurface at the requested size, BGRA8
-    surf->surface = makeIOSurface(width, height);
-    if (!surf->surface) {
+    (*surf).surface = makeIOSurface(width, height);
+    if (!(*surf).surface) {
         free(surf);
         return NULL;
     }
@@ -101,7 +101,7 @@ VkIOSurface *VkIOSurface_create(uint32_t width, uint32_t height) {
 
     VkImportMetalIOSurfaceInfoEXT importInfo = {
         .sType = VK_STRUCTURE_TYPE_IMPORT_METAL_IO_SURFACE_INFO_EXT,
-        .ioSurface = surf->surface,
+        .ioSurface = (*surf).surface,
     };
 
     VkImageCreateInfo ici = {
@@ -121,9 +121,9 @@ VkIOSurface *VkIOSurface_create(uint32_t width, uint32_t height) {
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
 
-    if (CreateImage_fn(s_device, &ici, NULL, &surf->image) != VK_SUCCESS) {
+    if (CreateImage_fn(s_device, &ici, NULL, &(*surf).image) != VK_SUCCESS) {
         fprintf(stderr, "vk_iosurface: import CreateImage failed\n");
-        CFRelease(surf->surface);
+        CFRelease((*surf).surface);
         free(surf);
         return NULL;
     }
@@ -139,18 +139,18 @@ VkIOSurface *VkIOSurface_wrap(void *ioSurface, uint32_t width, uint32_t height) 
     VkIOSurface *surf = (VkIOSurface *)calloc(1, sizeof(VkIOSurface));
     if (!surf) return NULL;
 
-    surf->width = width;
-    surf->height = height;
-    surf->ownsSurface = false;
-    surf->surface = (IOSurfaceRef)ioSurface;
-    CFRetain(surf->surface);
+    (*surf).width = width;
+    (*surf).height = height;
+    (*surf).ownsSurface = false;
+    (*surf).surface = (IOSurfaceRef)ioSurface;
+    CFRetain((*surf).surface);
 
     // Import IOSurface as VkImage — zero copy, same GPU memory
     IOS_LOAD_DEVICE(CreateImage);
 
     VkImportMetalIOSurfaceInfoEXT importInfo = {
         .sType = VK_STRUCTURE_TYPE_IMPORT_METAL_IO_SURFACE_INFO_EXT,
-        .ioSurface = surf->surface,
+        .ioSurface = (*surf).surface,
     };
 
     VkImageCreateInfo ici = {
@@ -171,11 +171,11 @@ VkIOSurface *VkIOSurface_wrap(void *ioSurface, uint32_t width, uint32_t height) 
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
 
-    VkResult res = CreateImage_fn(s_device, &ici, NULL, &surf->image);
+    VkResult res = CreateImage_fn(s_device, &ici, NULL, &(*surf).image);
     if (res != VK_SUCCESS) {
         fprintf(stderr, "vk_iosurface: wrap CreateImage failed with error %d (req=%dx%d, surface=%dx%d)\n", 
-            res, width, height, (int)IOSurfaceGetWidth(surf->surface), (int)IOSurfaceGetHeight(surf->surface));
-        CFRelease(surf->surface);
+            res, width, height, (int)IOSurfaceGetWidth((*surf).surface), (int)IOSurfaceGetHeight((*surf).surface));
+        CFRelease((*surf).surface);
         free(surf);
         return NULL;
     }
@@ -186,13 +186,13 @@ VkIOSurface *VkIOSurface_wrap(void *ioSurface, uint32_t width, uint32_t height) 
 // After Vulkan renders into the image, export the IOSurface for AppKit
 // compositing. The IOSurface now contains the rendered content.
 bool VkIOSurface_export(VkIOSurface *surf) {
-    if (!surf || !surf->image || !surf->surface) return false;
+    if (!surf || !(*surf).image || !(*surf).surface) return false;
 
     IOS_LOAD_DEVICE(ExportMetalObjectsEXT);
 
     VkExportMetalIOSurfaceInfoEXT exportInfo = {
         .sType = VK_STRUCTURE_TYPE_EXPORT_METAL_IO_SURFACE_INFO_EXT,
-        .image = surf->image,
+        .image = (*surf).image,
         // ioSurface is an OUT field — gets populated by the function
     };
 
@@ -210,41 +210,41 @@ bool VkIOSurface_export(VkIOSurface *surf) {
 
 void VkIOSurface_free(VkIOSurface *surf) {
     if (!surf) return;
-    if (surf->image) {
+    if ((*surf).image) {
         IOS_LOAD_DEVICE(DestroyImage);
-        DestroyImage_fn(s_device, surf->image, NULL);
+        DestroyImage_fn(s_device, (*surf).image, NULL);
     }
-    if (surf->surface) {
-        if (surf->ownsSurface) {
-            CFRelease(surf->surface);
+    if ((*surf).surface) {
+        if ((*surf).ownsSurface) {
+            CFRelease((*surf).surface);
         } else {
-            CFRelease(surf->surface); // just release our retain from wrap
+            CFRelease((*surf).surface); // just release our retain from wrap
         }
     }
     free(surf);
 }
 
 void *VkIOSurface_getSurface(const VkIOSurface *surf) {
-    return surf ? (void *)surf->surface : NULL;
+    return surf ? (void *)(*surf).surface : NULL;
 }
 
 void *VkIOSurface_getImage(const VkIOSurface *surf) {
-    return surf ? (void *)surf->image : NULL;
+    return surf ? (void *)(*surf).image : NULL;
 }
 
 uint32_t VkIOSurface_width(const VkIOSurface *surf) {
-    return surf ? surf->width : 0;
+    return surf ? (*surf).width : 0;
 }
 
 uint32_t VkIOSurface_height(const VkIOSurface *surf) {
-    return surf ? surf->height : 0;
+    return surf ? (*surf).height : 0;
 }
 
 // Create a framebuffer for rendering into this IOSurface's VkImage.
 // The render pass must be compatible (BGRA8, color attachment).
 // Returns VK_NULL_HANDLE on failure.
 VkFramebuffer VkIOSurface_createFramebuffer(const VkIOSurface *surf, VkRenderPass pass) {
-    if (!surf || !surf->image || !pass) return VK_NULL_HANDLE;
+    if (!surf || !(*surf).image || !pass) return VK_NULL_HANDLE;
 
     IOS_LOAD_DEVICE(CreateImageView);
     IOS_LOAD_DEVICE(CreateFramebuffer);
@@ -252,7 +252,7 @@ VkFramebuffer VkIOSurface_createFramebuffer(const VkIOSurface *surf, VkRenderPas
     // Create image view
     VkImageViewCreateInfo ivci = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = surf->image,
+        .image = (*surf).image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = VK_FORMAT_B8G8R8A8_UNORM,
         .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -270,8 +270,8 @@ VkFramebuffer VkIOSurface_createFramebuffer(const VkIOSurface *surf, VkRenderPas
         .renderPass = pass,
         .attachmentCount = 1,
         .pAttachments = &view,
-        .width = surf->width,
-        .height = surf->height,
+        .width = (*surf).width,
+        .height = (*surf).height,
         .layers = 1,
     };
 
