@@ -25,6 +25,7 @@ add_executable(anti
     src/cli/commandparser.c
     src/cli/commandregistry.c
     src/cli/console.c
+    src/primitive/string.c
     src/cli/logcommands.c
     src/cli/scanner.c
     src/engine/loop.c
@@ -49,6 +50,8 @@ add_executable(anti
     src/input/key.c
     src/input/mouse.c
     src/input/touch.c
+    src/cli/console.c
+    src/primitive/string.c
     src/lang/fastmath.c
     src/lang/mat4.c
     src/lang/vec2.c
@@ -164,6 +167,8 @@ add_executable(darlingtest
     src/input/key.c
     src/input/mouse.c
     src/input/touch.c
+    src/cli/console.c
+    src/primitive/string.c
     src/atomic/ring.c
     src/atomic/spin.c
     src/time/clock.c
@@ -172,6 +177,11 @@ add_executable(darlingtest
     src/system/display_info.c
     src/system/hardware_info.c
     src/system/graphics_info.c
+    src/system/system.c
+    src/io/hot_file.c
+    src/io/mmap.c
+    src/io/bake.c
+    src/io/vfs.c
         src/objc/discovery.m
     src/nio/mem.c
     src/oop/type.c
@@ -199,6 +209,8 @@ add_executable(vk_test
     src/input/key.c
     src/input/mouse.c
     src/input/touch.c
+    src/cli/console.c
+    src/primitive/string.c
     src/atomic/ring.c
     src/atomic/spin.c
     src/time/clock.c
@@ -232,6 +244,11 @@ add_executable(vk_test
     src/system/display_info.c
     src/system/hardware_info.c
     src/system/graphics_info.c
+    src/system/system.c
+    src/io/hot_file.c
+    src/io/mmap.c
+    src/io/bake.c
+    src/io/vfs.c
         src/objc/discovery.m
     src/nio/mem.c
     src/oop/stride.c
@@ -262,6 +279,11 @@ add_executable(system_test
     src/system/display_info.c
     src/system/hardware_info.c
     src/system/graphics_info.c
+    src/system/system.c
+    src/io/hot_file.c
+    src/io/mmap.c
+    src/io/bake.c
+    src/io/vfs.c
         src/objc/discovery.m
     src/nio/mem.c
     src/oop/stride.c
@@ -315,6 +337,8 @@ add_executable(enginetest
     src/input/key.c
     src/input/mouse.c
     src/input/touch.c
+    src/cli/console.c
+    src/primitive/string.c
         src/atomic/ring.c
         src/atomic/spin.c
     src/time/clock.c
@@ -369,6 +393,8 @@ add_executable(input_test
     src/input/key.c
     src/input/mouse.c
     src/input/touch.c
+    src/cli/console.c
+    src/primitive/string.c
         src/atomic/ring.c
         src/atomic/spin.c
     src/time/clock.c
@@ -390,6 +416,8 @@ add_executable(anti_window
     src/input/key.c
     src/input/mouse.c
     src/input/touch.c
+    src/cli/console.c
+    src/primitive/string.c
         src/atomic/ring.c
         src/atomic/spin.c
     src/time/clock.c

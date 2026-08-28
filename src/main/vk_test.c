@@ -84,8 +84,8 @@ static void vk_present_job(Thread *self, void *task) {
 }
 
 int main(void) {
-    Key_init();
-    NanoTime_init();
+    extern void System_initializeAll(void);
+    System_initializeAll();
 
     Window *w = Window();
     Window_setTitle(w, "anti vk probe");
