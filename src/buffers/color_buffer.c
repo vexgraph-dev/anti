@@ -4,8 +4,8 @@
 
 // color_buffer.c — 4-channel RGBA color buffer implementation.
 
-Buffer *ColorBuffer_allocate(size_t width, size_t height) {
-    return Buffer_allocate(ID_COLOR_BUFFER, width, height, 4);
+Buffer *ColorBuffer_2(size_t width, size_t height) {
+    return Buffer(ID_COLOR_BUFFER, width, height, 4);
 }
 
 void ColorBuffer_setRGBA(Buffer *buf, size_t x, size_t y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {

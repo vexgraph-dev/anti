@@ -6,8 +6,8 @@
 
 // height_buffer.c — HeightBuffer implementation.
 
-Buffer *HeightBuffer_allocate(size_t width, size_t height) {
-    return Buffer_allocate(ID_HEIGHT_BUFFER, width, height, 1);
+Buffer *HeightBuffer_2(size_t width, size_t height) {
+    return Buffer(ID_HEIGHT_BUFFER, width, height, 1);
 }
 
 float HeightBuffer_getHeight(const Buffer *buf, size_t x, size_t y) {

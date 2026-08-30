@@ -8,7 +8,7 @@
 
 // buffer.c — Core 2D multi-channel raster buffer implementation.
 
-Buffer *Buffer_allocate(uint32_t classId, size_t width, size_t height, size_t channels) {
+Buffer *Buffer_4(uint32_t classId, size_t width, size_t height, size_t channels) {
     if (width == 0 || height == 0 || channels == 0)
         return nullptr;
 
@@ -35,7 +35,7 @@ Buffer *Buffer_expand(Buffer *buf, size_t newWidth, size_t newHeight) {
     if (!buf) return nullptr;
     uint32_t cid = Buffer_classId(buf);
     size_t channels = (*buf).channels;
-    Buffer *newBuf = Buffer_allocate(cid, newWidth, newHeight, channels);
+    Buffer *newBuf = Buffer_4(cid, newWidth, newHeight, channels);
     if (!newBuf) return nullptr;
 
     size_t copyW = (*buf).width < newWidth ? (*buf).width : newWidth;

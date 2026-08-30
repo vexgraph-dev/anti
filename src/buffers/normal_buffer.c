@@ -6,8 +6,8 @@
 
 // normal_buffer.c — 3-channel normal buffer implementation.
 
-Buffer *NormalBuffer_allocate(size_t width, size_t height) {
-    return Buffer_allocate(ID_NORMAL_BUFFER, width, height, 3);
+Buffer *NormalBuffer_2(size_t width, size_t height) {
+    return Buffer(ID_NORMAL_BUFFER, width, height, 3);
 }
 
 void NormalBuffer_setNormal(Buffer *buf, size_t x, size_t y, float nx, float ny, float nz) {

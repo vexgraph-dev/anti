@@ -4,8 +4,8 @@
 
 // stencil_buffer.c — StencilBuffer implementation.
 
-Buffer *StencilBuffer_allocate(size_t width, size_t height) {
-    return Buffer_allocate(ID_STENCIL_BUFFER, width, height, 1);
+Buffer *StencilBuffer_2(size_t width, size_t height) {
+    return Buffer(ID_STENCIL_BUFFER, width, height, 1);
 }
 
 uint8_t StencilBuffer_get(const Buffer *buf, size_t x, size_t y) {

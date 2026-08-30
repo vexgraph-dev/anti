@@ -4,6 +4,6 @@
 
 // frame_buffer.c — FrameBuffer implementation.
 
-Buffer *FrameBuffer_allocate(size_t width, size_t height) {
-    return Buffer_allocate(ID_FRAME_BUFFER, width, height, 4);
+Buffer *FrameBuffer_2(size_t width, size_t height) {
+    return Buffer(ID_FRAME_BUFFER, width, height, 4);
 }

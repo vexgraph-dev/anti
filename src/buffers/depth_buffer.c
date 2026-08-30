@@ -6,8 +6,8 @@
 
 // depth_buffer.c — 1-channel depth buffer implementation.
 
-Buffer *DepthBuffer_allocate(size_t width, size_t height) {
-    return Buffer_allocate(ID_DEPTH_BUFFER, width, height, 1);
+Buffer *DepthBuffer_2(size_t width, size_t height) {
+    return Buffer(ID_DEPTH_BUFFER, width, height, 1);
 }
 
 float DepthBuffer_get(const Buffer *buf, size_t x, size_t y) {

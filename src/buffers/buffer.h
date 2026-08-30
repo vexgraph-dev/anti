@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 // buffers/buffer.h — Core 2D multi-channel raster buffer engine.
 // Ported from legacy buffers/Buffer.java.
@@ -22,7 +23,7 @@ typedef struct Buffer {
 } Buffer;
 
 // Allocate a buffer of (width * height * channels) elements
-Buffer *Buffer_allocate(uint32_t classId, size_t width, size_t height, size_t channels);
+Buffer *Buffer_4(uint32_t classId, size_t width, size_t height, size_t channels);
 
 // Expand an existing buffer to new dimensions, preserving overlapping content
 Buffer *Buffer_expand(Buffer *buf, size_t newWidth, size_t newHeight);
@@ -54,4 +55,6 @@ void Buffer_copy(const Buffer *src, Buffer *dst);
 void Buffer_blit(const Buffer *src, Buffer *dst, size_t srcX, size_t srcY, size_t dstX, size_t dstY, size_t width, size_t height);
 float Buffer_sample(const Buffer *buf, float u, float v, size_t channel);
 
+
+#define Buffer(...) CONSTRUCTOR_DISPATCH(Buffer, ##__VA_ARGS__)
 #endif
