@@ -1,6 +1,6 @@
 # anti, by Vex, truly.
 
-A zero-allocation, relational C11 game engine — everything is a pointer.
+A zero-allocation, relational C23 game engine — everything is a pointer.
 
 `anti` is an absolute rejection of the traditional engine paradigm. There are no
 object graphs, no garbage collectors, no hidden allocations. Memory is a
@@ -47,7 +47,7 @@ latency: C stripped of its comfort abstractions, rebuilt for raw performance.
 
 ## Requirements
 
-* A C11 compiler (Clang recommended) on macOS (arm64).
+* A C23 compiler (Clang recommended) on macOS (arm64).
 * CMake ≥ 4.3 and a macOS SDK for the `anti_window` target.
 
 ## Building & running
