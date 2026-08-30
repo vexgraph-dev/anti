@@ -129,7 +129,7 @@ void SystemDiscovery_bootstrap(void) {
 
             for (uint32_t i = 0; i < displayCount; i++) {
                 CGDirectDisplayID dId = displayList[i];
-                DisplayMonitor *m = DisplayMonitor_allocate();
+                DisplayMonitor *m = DisplayMonitor();
                 if (!m) continue;
 
                 DisplayMonitor_setId(m, (uint32_t)dId);

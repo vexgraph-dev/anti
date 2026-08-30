@@ -14,7 +14,7 @@ static Map *registry_map = nullptr;
 
 static Map *ensure_map(void) {
     if (!registry_map)
-        registry_map = Map_allocate(ID_STRING, ID_LONG, 0);
+        registry_map = Map(ID_STRING, ID_LONG, 0);
     return registry_map;
 }
 

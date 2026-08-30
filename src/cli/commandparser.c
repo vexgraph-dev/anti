@@ -61,7 +61,7 @@ Command *CommandParser_parse(const char *line) {
         return nullptr;
     }
 
-    Command *cmd = Command_allocate(name, args, argc);
+    Command *cmd = Command(name, args, argc);
     if (!cmd) {
         string_free(name);
         for (size_t k = 0; k < argc; k++)

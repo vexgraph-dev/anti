@@ -20,7 +20,7 @@ struct DisplayMonitor {
     float dpi;              // scale factor / density
 };
 
-DisplayMonitor *DisplayMonitor_allocate(void) {
+DisplayMonitor *DisplayMonitor_0(void) {
     DisplayMonitor *m = (DisplayMonitor *)Memory_alloc(TYPE_DISPLAY_MONITOR_SINGLETON, sizeof(DisplayMonitor));
     if (!m)
         return nullptr;

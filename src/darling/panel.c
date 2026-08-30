@@ -177,7 +177,7 @@ void Panel_addContainer(Panel *p, Panel *child) {
     (*child).parent = p;
 
     if (!(*p).children)
-        (*p).children = List_allocate(ID_LONG, PANEL_CHILDREN_INITIAL);
+        (*p).children = List(ID_LONG, PANEL_CHILDREN_INITIAL);
     if (!(*p).children) {
         (*child).parent = nullptr;
         return;

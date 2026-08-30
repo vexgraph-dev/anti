@@ -316,8 +316,8 @@ int main(void) {
 
     // Vec2: off-heap 2D vector ops.
     printf("== anti lang: Vec2 ==\n");
-    Vec2 *va = Vec2_allocateXY(3.0f, 4.0f);
-    Vec2 *vb = Vec2_allocateXY(1.0f, 2.0f);
+    Vec2 *va = Vec2(3.0f, 4.0f);
+    Vec2 *vb = Vec2(1.0f, 2.0f);
     Vec2 tmp;
     Vec2_add(va, vb, &tmp);
     printf("add=(%.1f,%.1f) dot=%f len=%.3f\n", (double)tmp.x, (double)tmp.y,
@@ -335,18 +335,18 @@ int main(void) {
 
     // Vec3: off-heap 3D vector ops (cross, normalize, reflect).
     printf("== anti lang: Vec3 ==\n");
-    Vec3 *v3a = Vec3_allocateXYZ(1.0f, 0.0f, 0.0f);
-    Vec3 *v3b = Vec3_allocateXYZ(0.0f, 1.0f, 0.0f);
+    Vec3 *v3a = Vec3(1.0f, 0.0f, 0.0f);
+    Vec3 *v3b = Vec3(0.0f, 1.0f, 0.0f);
     Vec3 r3;
     Vec3_cross(v3a, v3b, &r3);
     printf("cross=(%.1f,%.1f,%.1f) dot=%f len=%f\n", (double)r3.x, (double)r3.y,
            (double)r3.z, (double)Vec3_dot(v3a, v3b), (double)Vec3_length(v3a));
-    Vec3 *v3c = Vec3_allocateXYZ(3.0f, 4.0f, 0.0f);
+    Vec3 *v3c = Vec3(3.0f, 4.0f, 0.0f);
     Vec3_fastNormalize(v3c, &r3);
     printf("fastNormalized=(%.4f,%.4f,%.4f)\n", (double)r3.x, (double)r3.y,
            (double)r3.z);
-    Vec3 *normal = Vec3_allocateXYZ(0.0f, 1.0f, 0.0f);
-    Vec3 *incident = Vec3_allocateXYZ(1.0f, -1.0f, 0.0f);
+    Vec3 *normal = Vec3(0.0f, 1.0f, 0.0f);
+    Vec3 *incident = Vec3(1.0f, -1.0f, 0.0f);
     Vec3_reflect(incident, normal, &r3);
     printf("reflect=(%.1f,%.1f,%.1f)\n", (double)r3.x, (double)r3.y, (double)r3.z);
     Vec3_free(v3a);
@@ -357,8 +357,8 @@ int main(void) {
 
     // Vec4: off-heap 4D vector ops.
     printf("== anti lang: Vec4 ==\n");
-    Vec4 *v4a = Vec4_allocateXYZW(1.0f, 2.0f, 3.0f, 4.0f);
-    Vec4 *v4b = Vec4_allocateXYZW(2.0f, 0.0f, 0.0f, 1.0f);
+    Vec4 *v4a = Vec4(1.0f, 2.0f, 3.0f, 4.0f);
+    Vec4 *v4b = Vec4(2.0f, 0.0f, 0.0f, 1.0f);
     Vec4 r4;
     Vec4_add(v4a, v4b, &r4);
     printf("add=(%.1f,%.1f,%.1f,%.1f) dot=%f len=%.3f\n", (double)r4.x,
@@ -372,26 +372,26 @@ int main(void) {
 
     // Mat4: column-major 4x4 transforms.
     printf("== anti lang: Mat4 ==\n");
-    Mat4 *m = Mat4_allocate();
-    Mat4 *mi = Mat4_allocateIdentity();
+    Mat4 *m = Mat4();
+    Mat4 *mi = Mat4_identityAlloc();
     printf("identity m00=%f m11=%f m33=%f m30=%f\n", (double)Mat4_get(m, 0, 0),
            (double)Mat4_get(m, 1, 1), (double)Mat4_get(m, 3, 3),
            (double)Mat4_get(m, 3, 0));
     Mat4_translate(mi, 10.0f, 20.0f, 30.0f, m);
-    Vec3 *pt3 = Vec3_allocateXYZ(1.0f, 2.0f, 3.0f);
+    Vec3 *pt3 = Vec3(1.0f, 2.0f, 3.0f);
     Vec3 out;
     Mat4_transformVec3(m, pt3, &out);
     printf("translate(10,20,30) * (1,2,3) = (%.1f,%.1f,%.1f)\n", (double)out.x,
            (double)out.y, (double)out.z);
-    Mat4 *view = Mat4_allocate();
+    Mat4 *view = Mat4();
     Mat4_createViewMatrix(0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, view);
     printf("view[2][2]=%f view[3][2]=%f\n", (double)Mat4_get(view, 2, 2),
            (double)Mat4_get(view, 3, 2));
-    Mat4 *proj = Mat4_allocate();
+    Mat4 *proj = Mat4();
     Mat4_perspective(FastMath_HALF_PI, 16.0f / 9.0f, 0.1f, 100.0f, proj);
     printf("proj[0][0]=%f proj[3][2]=%f\n", (double)Mat4_get(proj, 0, 0),
            (double)Mat4_get(proj, 3, 2));
-    Mat4 *trs = Mat4_allocate();
+    Mat4 *trs = Mat4();
     Mat4_createTransformationMatrix(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 90.0f, 1.0f, 1.0f, 1.0f, trs);
     printf("rotZ90 m00=%f m10=%f m01=%f m11=%f\n", (double)Mat4_get(trs, 0, 0),
            (double)Mat4_get(trs, 1, 0), (double)Mat4_get(trs, 0, 1),
@@ -452,7 +452,7 @@ int main(void) {
 
     // List: dynamic stride-based list.
     printf("== anti struct: List ==\n");
-    List *list = List_allocate(ID_INT, 16);
+    List *list = List(ID_INT, 16);
     for (uint64_t i = 0; i < 10; i++)
         List_add(list, i * 10);
     printf("size=%zu get0=%llu get9=%llu stride=%zu\n", List_size(list),
@@ -465,7 +465,7 @@ int main(void) {
 
     // Array: fixed stride-based array.
     printf("== anti struct: Array ==\n");
-    Array *arr = Array_allocate(ID_LONG, 5);
+    Array *arr = Array(ID_LONG, 5);
     for (size_t i = 0; i < 5; i++)
         Array_set(arr, i, 100 + i);
     printf("len=%zu sum=%llu\n", Array_length(arr),
@@ -476,7 +476,7 @@ int main(void) {
 
     // Stack: LIFO.
     printf("== anti struct: Stack ==\n");
-    Stack *stack = Stack_allocate(ID_INT, 4);
+    Stack *stack = Stack(ID_INT, 4);
     Stack_push(stack, 1);
     Stack_push(stack, 2);
     Stack_push(stack, 3);
@@ -486,7 +486,7 @@ int main(void) {
 
     // Deque: circular double-ended.
     printf("== anti struct: Deque ==\n");
-    Deque *deque = Deque_allocate(ID_INT, 4);
+    Deque *deque = Deque(ID_INT, 4);
     Deque_addFirst(deque, 1);
     Deque_addLast(deque, 2);
     Deque_addFirst(deque, 3);
@@ -500,7 +500,7 @@ int main(void) {
 
     // Queue: FIFO.
     printf("== anti struct: Queue ==\n");
-    Queue *queue = Queue_allocate(ID_INT, 4);
+    Queue *queue = Queue(ID_INT, 4);
     Queue_push(queue, 7);
     Queue_push(queue, 8);
     Queue_push(queue, 9);
@@ -510,7 +510,7 @@ int main(void) {
 
     // Map: open-addressing int -> int.
     printf("== anti struct: Map ==\n");
-    Map *map = Map_allocate(ID_INT, ID_LONG, 8);
+    Map *map = Map(ID_INT, ID_LONG, 8);
     for (uint64_t k = 1; k <= 20; k++)
         Map_put(map, k, k * k);
     printf("size=%zu get7=%llu contains20=%d missing100=%d\n", Map_size(map),
@@ -526,7 +526,7 @@ int main(void) {
 
     // Set: unique elements.
     printf("== anti struct: Set ==\n");
-    Set *set = Set_allocate(ID_INT, 8);
+    Set *set = Set(ID_INT, 8);
     for (int32_t i = 0; i < 12; i++)
         Set_add(set, (uint64_t)(i % 6));
     printf("size=%zu contains5=%d contains9=%d\n", Set_size(set),
@@ -544,7 +544,7 @@ int main(void) {
 
     // MinHeap: priority queue.
     printf("== anti struct: MinHeap ==\n");
-    MinHeap *heap = MinHeap_allocate(8);
+    MinHeap *heap = MinHeap(8);
     MinHeap_push(heap, 10, 5.0f);
     MinHeap_push(heap, 20, 1.0f);
     MinHeap_push(heap, 30, 3.0f);
@@ -554,7 +554,7 @@ int main(void) {
 
     // SparseSet: ECS-style entity -> component.
     printf("== anti struct: SparseSet ==\n");
-    SparseSet *ss = SparseSet_allocate(8, 100, (size_t)sizeof(int32_t));
+    SparseSet *ss = SparseSet(8, 100, (size_t)sizeof(int32_t));
     uint8_t *comp = SparseSet_add(ss, 42);
     *(int32_t *)comp = 4242;
     printf("count=%zu contains42=%d value=%d\n", SparseSet_count(ss),
@@ -572,7 +572,7 @@ int main(void) {
 
     // Random: chaotic PRNG + weighted draws.
     printf("== anti util: Random ==\n");
-    Random *rng = Random_allocate(12345);
+    Random *rng = Random(12345);
     printf("r0=%016llX f1=%f d1=%f\n", (unsigned long long)Random_nextLong(rng),
            (double)Random_nextFloat(rng), Random_nextDouble(rng));
     printf("weight(25,100) hit count=");
@@ -581,14 +581,14 @@ int main(void) {
         hits += Random_getWeight(rng, 25, 100) ? 1 : 0;
     printf("%d\n", hits);
 
-    Probable *p = Probable_allocate((uintptr_t)0xCAFE, 1, 2);
+    Probable *p = Probable((uintptr_t)0xCAFE, 1, 2);
     printf("sample=%llu\n", (unsigned long long)Random_sample(rng, p));
     Probable_free(p);
 
     Scanner_hasNextLine();
 
 
-    ProbableObjects *objpool = ProbableObjects_allocate(3);
+    ProbableObjects *objpool = ProbableObjects(3);
     ProbableObjects_add(objpool, 0x1111, 200);
     ProbableObjects_add(objpool, 0x2222, 40);
     ProbableObjects_add(objpool, 0x3333, 1);
@@ -627,13 +627,13 @@ int main(void) {
 
     // Buffers: 2D multi-channel raster engine
     printf("== anti buffers: Buffer & ColorBuffer ==\n");
-    Buffer *colorBuf = ColorBuffer_allocate(64, 64);
+    Buffer *colorBuf = ColorBuffer(64, 64);
     ColorBuffer_setRGBA(colorBuf, 10, 20, 255, 128, 64, 255);
     uint8_t cr = 0, cg = 0, cb = 0, ca = 0;
     ColorBuffer_getRGBA(colorBuf, 10, 20, &cr, &cg, &cb, &ca);
     printf("color[10,20] = rgba(%u,%u,%u,%u)\n", cr, cg, cb, ca);
 
-    Buffer *depthBuf = DepthBuffer_allocate(64, 64);
+    Buffer *depthBuf = DepthBuffer(64, 64);
     DepthBuffer_set(depthBuf, 10, 20, 0.75f);
     printf("depth[10,20] = %.2f\n", (double)DepthBuffer_get(depthBuf, 10, 20));
 
@@ -642,23 +642,23 @@ int main(void) {
 
     // Objects: Future, Reactive, Passive, Choice, Global, Local
     printf("== anti objects: Future & Reactive & Passive & Global ==\n");
-    Future *fut = Future_allocate();
+    Future *fut = Future();
     printf("future isGiven=%d\n", Future_isGiven(fut));
     Future_setDesiredValue(fut, 4242);
     printf("future isGiven=%d val=%llu\n", Future_isGiven(fut), (unsigned long long)Future_get(fut));
     Future_free(fut);
 
-    Reactive *rx = Reactive_allocate(100);
+    Reactive *rx = Reactive(100);
     Reactive_setOnChanged(rx, on_reactive_change, nullptr);
     Reactive_set(rx, 250);
     Reactive_free(rx);
 
     int factor = 21;
-    Passive *pv = Passive_allocate(passive_lazy_calc, nullptr, &factor);
+    Passive *pv = Passive(passive_lazy_calc, nullptr, &factor);
     printf("passive lazy val=%llu\n", (unsigned long long)Passive_get(pv));
     Passive_free(pv);
 
-    Global *g = Global_allocate(999);
+    Global *g = Global(999);
     Global_set(g, 1000);
     printf("global val=%llu\n", (unsigned long long)Global_get(g));
     Global_free(g);

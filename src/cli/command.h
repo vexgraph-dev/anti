@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 // cli/command.h — the Command class, ported from cli/Command.java.
 //
@@ -21,7 +22,7 @@ typedef struct Command Command;
 
 // Allocate a command block owning name_ptr and arg_ptrs (all string blocks).
 // Returns nullptr on failure.
-Command *Command_allocate(uint8_t *name_ptr, uint8_t **arg_ptrs, size_t argc);
+Command *Command_3(uint8_t *name_ptr, uint8_t **arg_ptrs, size_t argc);
 
 // Block-header type id of a command (0 if nullptr).
 uint32_t Command_type(const Command *command);
@@ -38,4 +39,6 @@ uint8_t *Command_argument(const Command *command, size_t index);
 // Free name, every argument, then the command block itself (Java free).
 void Command_free(Command *command);
 
+
+#define Command(...) CONSTRUCTOR_DISPATCH(Command, ##__VA_ARGS__)
 #endif

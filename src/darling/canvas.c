@@ -128,7 +128,7 @@ void Canvas_resolveRoot(const Canvas *c, void *node, float fbW, float fbH, Vec4 
 
     uint32_t classId = Type_class(Memory_type(node));
     if (classId == ID_PICTURE)
-        Container_resolve(&(*((Picture *)node)).base, 0.0f, 0.0f, cw, ch, outRect);
+        Container_resolve(&(*((Picture *)node)).base.base, 0.0f, 0.0f, cw, ch, outRect);
     else
         Container_resolve((Container *)node, 0.0f, 0.0f, cw, ch, outRect);
 }

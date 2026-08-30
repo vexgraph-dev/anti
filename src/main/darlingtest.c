@@ -187,7 +187,7 @@ int main(void) {
 
     g_demo.masterW = DEFAULT_W;
     g_demo.masterH = DEFAULT_H;
-    g_demo.master = ColorBuffer_allocate(g_demo.masterW, g_demo.masterH);
+    g_demo.master = ColorBuffer(g_demo.masterW, g_demo.masterH);
 
     // --- Darling Scene Tree (Layout Truth) ---
     g_demo.scene = Scene((float)DEFAULT_W, (float)DEFAULT_H, SCENE_MODE_PIXEL);
@@ -250,7 +250,7 @@ int main(void) {
             Buffer_free(g_demo.master);
             g_demo.masterW = (size_t)winW;
             g_demo.masterH = (size_t)winH;
-            g_demo.master = ColorBuffer_allocate(g_demo.masterW, g_demo.masterH);
+            g_demo.master = ColorBuffer(g_demo.masterW, g_demo.masterH);
         }
 
         // Clear master canvas

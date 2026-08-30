@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 #include <stddef.h>
 
 // system/display_monitor.h — single display monitor representation (Legacy: system/DisplayMonitor.java)
@@ -12,7 +13,7 @@
 
 typedef struct DisplayMonitor DisplayMonitor;
 
-DisplayMonitor *DisplayMonitor_allocate(void);
+DisplayMonitor *DisplayMonitor_0(void);
 void            DisplayMonitor_free(DisplayMonitor *monitor);
 
 uint32_t        DisplayMonitor_getId(const DisplayMonitor *m);
@@ -51,4 +52,6 @@ void            DisplayMonitor_setHdrSupported(DisplayMonitor *m, bool val);
 float           DisplayMonitor_getDpi(const DisplayMonitor *m);
 void            DisplayMonitor_setDpi(DisplayMonitor *m, float val);
 
+
+#define DisplayMonitor(...) CONSTRUCTOR_DISPATCH(DisplayMonitor, ##__VA_ARGS__)
 #endif

@@ -11,7 +11,7 @@
 static const size_t COMMAND_HEADER_BYTES = 16; // namePtr + argc + pad
 static const size_t ARG_POINTER_BYTES = 8;
 
-Command *Command_allocate(uint8_t *name_ptr, uint8_t **arg_ptrs, size_t argc) {
+Command *Command_3(uint8_t *name_ptr, uint8_t **arg_ptrs, size_t argc) {
     size_t total = COMMAND_HEADER_BYTES + ARG_POINTER_BYTES * argc;
     Command *cmd = (Command *)Memory_alloc(TYPE_COMMAND_SINGLETON, total);
     if (!cmd)

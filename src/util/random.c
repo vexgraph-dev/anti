@@ -19,7 +19,7 @@ static uint64_t system_seed(void) {
     return ticks ^ (uint64_t)(uintptr_t)&system_rng;
 }
 
-Random *Random_allocate(uint64_t seed) {
+Random *Random_1(uint64_t seed) {
     Random *r = (Random *)Memory_alloc(TYPE_RANDOM, sizeof(Random));
     if (!r) return nullptr;
     (*r).seed = seed;
@@ -34,7 +34,7 @@ void Random_free(Random *r) {
 
 Random *Random_system(void) {
     if (!system_rng)
-        system_rng = Random_allocate(system_seed());
+        system_rng = Random_1(system_seed());
     return system_rng;
 }
 

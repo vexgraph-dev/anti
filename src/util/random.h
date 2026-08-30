@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 #include "objects/probable.h"
 #include "objects/probable_objects.h"
@@ -20,7 +21,7 @@ typedef struct Random {
 } Random;
 
 // New PRNG stream seeded from the given value.
-Random *Random_allocate(uint64_t seed);
+Random *Random_1(uint64_t seed);
 
 void Random_free(Random *r);
 
@@ -43,4 +44,6 @@ uintptr_t Random_sample(Random *r, const Probable *probable);
 // Draw one object from a weighted ProbableObjects pool.
 uintptr_t Random_probablePool(Random *r, const ProbableObjects *pool);
 
+
+#define Random(...) CONSTRUCTOR_DISPATCH(Random, ##__VA_ARGS__)
 #endif

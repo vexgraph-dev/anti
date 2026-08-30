@@ -21,8 +21,8 @@ Surface *Surface_new(size_t width, size_t height, int x, int y) {
     Surface *p = (Surface *)Memory_alloc(FORM_STRUCT_SINGLETON | ID_CUSTOM_STRUCT, sizeof(Surface));
     if (!p)
         return nullptr;
-    (*p).canvas[0] = ColorBuffer_allocate(width, height);
-    (*p).canvas[1] = ColorBuffer_allocate(width, height);
+    (*p).canvas[0] = ColorBuffer(width, height);
+    (*p).canvas[1] = ColorBuffer(width, height);
     if (!(*p).canvas[0] || !(*p).canvas[1]) {
         if ((*p).canvas[0])
             Buffer_free((*p).canvas[0]);

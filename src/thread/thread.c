@@ -32,7 +32,7 @@ static void *platform_main(void *arg);
 
 static Map *workers(void) {
     if (!s_workers)
-        s_workers = Map_allocate(ID_LONG, ID_LONG, 16);
+        s_workers = Map(ID_LONG, ID_LONG, 16);
     return s_workers;
 }
 
