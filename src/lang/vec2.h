@@ -2,6 +2,7 @@
 #define LANG_VEC2_H
 
 #include <stddef.h>
+#include "c23/constructor.h"
 
 // lang/vec2.h — the Vec2 class, ported from lang/Vec2.java.
 //
@@ -17,8 +18,8 @@ typedef struct Vec2 {
 #define VEC2_BYTES 8u
 
 // Allocate a zeroed Vec2 block, or one seeded with (x, y). nullptr on OOM.
-Vec2 *Vec2_allocate(void);
-Vec2 *Vec2_allocateXY(float x, float y);
+Vec2 *Vec2_0(void);
+Vec2 *Vec2_2(float x, float y);
 
 void Vec2_free(Vec2 *v);
 
@@ -59,4 +60,6 @@ void Vec2_clamp(const Vec2 *src, float min_val, float max_val, Vec2 *dest);
 void Vec2_abs(const Vec2 *src, Vec2 *dest);
 void Vec2_lerp(const Vec2 *a, const Vec2 *b, float t, Vec2 *dest);
 
+
+#define Vec2(...) CONSTRUCTOR_DISPATCH(Vec2, ##__VA_ARGS__)
 #endif

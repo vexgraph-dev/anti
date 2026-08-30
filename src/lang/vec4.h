@@ -2,6 +2,7 @@
 #define LANG_VEC4_H
 
 #include <stddef.h>
+#include "c23/constructor.h"
 
 // lang/vec4.h — the Vec4 class, ported from lang/Vec4.java.
 //
@@ -18,8 +19,8 @@ typedef struct Vec4 {
 // Fixed byte width of a Vec4 payload (legacy BYTES).
 #define VEC4_BYTES 16u
 
-Vec4 *Vec4_allocate(void);
-Vec4 *Vec4_allocateXYZW(float x, float y, float z, float w);
+Vec4 *Vec4_0(void);
+Vec4 *Vec4_4(float x, float y, float z, float w);
 
 void Vec4_free(Vec4 *v);
 
@@ -53,4 +54,6 @@ void Vec4_clamp(const Vec4 *src, float min_val, float max_val, Vec4 *dest);
 void Vec4_abs(const Vec4 *src, Vec4 *dest);
 void Vec4_lerp(const Vec4 *a, const Vec4 *b, float t, Vec4 *dest);
 
+
+#define Vec4(...) CONSTRUCTOR_DISPATCH(Vec4, ##__VA_ARGS__)
 #endif

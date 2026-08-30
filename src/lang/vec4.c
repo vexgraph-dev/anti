@@ -8,7 +8,7 @@
 
 // vec4.c — Vec4 port (Legacy: lang/Vec4.java). 16-byte vector block.
 
-Vec4 *Vec4_allocate(void) {
+Vec4 *Vec4_0(void) {
     Vec4 *v = Memory_alloc(TYPE_VEC4_SINGLETON, sizeof(Vec4));
     if (v) {
         (*v).x = 0.0f;
@@ -19,7 +19,7 @@ Vec4 *Vec4_allocate(void) {
     return v;
 }
 
-Vec4 *Vec4_allocateXYZW(float x, float y, float z, float w) {
+Vec4 *Vec4_4(float x, float y, float z, float w) {
     Vec4 *v = Memory_alloc(TYPE_VEC4_SINGLETON, sizeof(Vec4));
     if (v) {
         (*v).x = x;

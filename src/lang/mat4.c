@@ -6,15 +6,15 @@
 
 // mat4.c — Mat4 port (Legacy: lang/Mat4.java). 64-byte column-major matrix.
 
-Mat4 *Mat4_allocate(void) {
+Mat4 *Mat4_0(void) {
     Mat4 *m = Memory_alloc(TYPE_MAT4_SINGLETON, sizeof(Mat4));
     if (m)
         Mat4_identity(m);
     return m;
 }
 
-Mat4 *Mat4_allocateIdentity(void) {
-    return Mat4_allocate();
+Mat4 *Mat4_identityAlloc(void) {
+    return Mat4_0();
 }
 
 void Mat4_free(Mat4 *m) {

@@ -1,3 +1,4 @@
+#include "c23/constructor.h"
 #ifndef LANG_MAT4_H
 #define LANG_MAT4_H
 
@@ -23,8 +24,8 @@ typedef struct Mat4 {
 
 // Allocate a Mat4 block, initialized to identity (or zeroed via Mat4_zero).
 // nullptr on OOM.
-Mat4 *Mat4_allocate(void);
-Mat4 *Mat4_allocateIdentity(void);
+Mat4 *Mat4_0(void);
+Mat4 *Mat4_identityAlloc(void);
 
 void Mat4_free(Mat4 *m);
 
@@ -83,3 +84,4 @@ void Mat4_transform(const Mat4 *m, const Vec4 *src_vec, Vec4 *dest_vec);
 void Mat4_transformVec3(const Mat4 *m, const Vec3 *src_vec, Vec3 *dest_vec);
 
 #endif
+#define Mat4(...) CONSTRUCTOR_DISPATCH(Mat4, ##__VA_ARGS__)

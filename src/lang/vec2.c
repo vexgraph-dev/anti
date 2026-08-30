@@ -8,7 +8,7 @@
 
 // vec2.c — Vec2 port (Legacy: lang/Vec2.java). 8-byte vector block.
 
-Vec2 *Vec2_allocate(void) {
+Vec2 *Vec2_0(void) {
     Vec2 *v = (Vec2 *)Memory_alloc(TYPE_VEC2_SINGLETON, sizeof(Vec2));
     if (v) {
         (*v).x = 0.0f;
@@ -17,7 +17,7 @@ Vec2 *Vec2_allocate(void) {
     return v;
 }
 
-Vec2 *Vec2_allocateXY(float x, float y) {
+Vec2 *Vec2_2(float x, float y) {
     Vec2 *v = (Vec2 *)Memory_alloc(TYPE_VEC2_SINGLETON, sizeof(Vec2));
     if (v) {
         (*v).x = x;

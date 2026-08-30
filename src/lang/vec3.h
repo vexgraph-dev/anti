@@ -2,6 +2,7 @@
 #define LANG_VEC3_H
 
 #include <stddef.h>
+#include "c23/constructor.h"
 
 // lang/vec3.h — the Vec3 class, ported from lang/Vec3.java.
 //
@@ -17,8 +18,8 @@ typedef struct Vec3 {
 // Fixed byte width of a Vec3 payload (legacy BYTES).
 #define VEC3_BYTES 12u
 
-Vec3 *Vec3_allocate(void);
-Vec3 *Vec3_allocateXYZ(float x, float y, float z);
+Vec3 *Vec3_0(void);
+Vec3 *Vec3_3(float x, float y, float z);
 
 void Vec3_free(Vec3 *v);
 
@@ -68,4 +69,6 @@ void Vec3_clamp(const Vec3 *src, float min_val, float max_val, Vec3 *dest);
 void Vec3_abs(const Vec3 *src, Vec3 *dest);
 void Vec3_lerp(const Vec3 *a, const Vec3 *b, float t, Vec3 *dest);
 
+
+#define Vec3(...) CONSTRUCTOR_DISPATCH(Vec3, ##__VA_ARGS__)
 #endif
