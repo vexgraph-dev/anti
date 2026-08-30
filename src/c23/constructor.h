@@ -1,7 +1,7 @@
 #ifndef C11_CONSTRUCTOR_H
 #define C11_CONSTRUCTOR_H
 
-// c11/constructor.h — Java-style constructor overloading for C11.
+// c23/constructor.h — Java-style constructor overloading for C11.
 //
 // C has no overloading; this header fakes the arity half of it with pure
 // preprocessor dispatch. A class exports one function per accepted arity,
