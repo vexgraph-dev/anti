@@ -12,7 +12,7 @@
 // Default ports per scheme ("https" -> 443, else 80).
 int Url_defaultPort(const char *scheme);
 
-// Build "scheme://host[:port]/path" into out. NULL scheme/host/path fall
+// Build "scheme://host[:port]/path" into out. nullptr scheme/host/path fall
 // back to "http", "", "/". Returns length written or -1 when out is small.
 int64_t Url_build(const char *scheme, const char *host, int port,
                      const char *path, char *out, size_t cap);

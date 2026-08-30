@@ -19,7 +19,7 @@ static Queue *instant(uint32_t elementClass, size_t capacity, size_t count) {
     size_t cap = capacity < DEFAULT_CAPACITY ? DEFAULT_CAPACITY : capacity;
     Queue *queue = (Queue *)Memory_alloc(TYPE_QUEUE, sizeof(Queue));
     if (!queue)
-        return NULL;
+        return nullptr;
 
     Collection *c = asCollection(queue);
     (*c).typeId = TYPE_QUEUE;
@@ -34,7 +34,7 @@ static Queue *instant(uint32_t elementClass, size_t capacity, size_t count) {
     (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(queue);
-        return NULL;
+        return nullptr;
     }
     memset((*c).data, 0, bytes);
     return queue;
@@ -114,10 +114,10 @@ uint64_t Queue_peek(Queue *queue) {
 }
 
 uint8_t *Queue_slot(Queue *queue, size_t index) {
-    if (!queue) return NULL;
+    if (!queue) return nullptr;
     Collection *c = asCollection(queue);
     if (index >= (*c).activeCount)
-        return NULL;
+        return nullptr;
     size_t phys = ((*c).head + index) % (*c).capacity;
     return (*c).data + phys * (*c).stride;
 }

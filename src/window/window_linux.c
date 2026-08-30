@@ -22,12 +22,12 @@
 ;;INTENTION("Fills the Window API seam (window.h) on Linux so the engine can be built there; mirrors the legacy linuxWindow.java.")
 ;;DRAFT
 
-;;;;INCOMPLETE // XCreateSimpleWindow; returns NULL until implemented.
+;;;;INCOMPLETE // XCreateSimpleWindow; returns nullptr until implemented.
 Window *Window_create(const char *title, int width, int height) {
     (void) title;
     (void) width;
     (void) height;
-    return NULL;
+    return nullptr;
 }
 
 ;;INCOMPLETE // XDestroyWindow; no-op until implemented.
@@ -80,7 +80,7 @@ void Window_setContainer(Window *window, Panel *root) {
 
 Panel *Window_getContainer(const Window *window) {
     (void) window;
-    return NULL;
+    return nullptr;
 }
 
 ;;INCOMPLETE // Input kill switch; no-op until implemented.

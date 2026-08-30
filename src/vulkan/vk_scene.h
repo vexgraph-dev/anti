@@ -36,7 +36,7 @@ bool VkSceneCanvas_initModule(VkInstance instance, PFN_vkGetInstanceProcAddr gpa
 // geometry every tick); the old FRONT image survives as the canvas's STALE
 // bridge — see VkSceneCanvas_staleImage — while the rest of the old pair is
 // generation-retired and dies at the next completed batch harvest, the
-// same discipline the swapchain graveyard uses. NULL on failure/exhaustion.
+// same discipline the swapchain graveyard uses. nullptr on failure/exhaustion.
 VkSceneCanvas *VkSceneCanvas_acquire(uintptr_t key, uint32_t width, uint32_t height);
 
 // Free every retired buffer pair. Call exactly once per completed batch

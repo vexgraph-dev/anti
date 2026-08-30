@@ -23,7 +23,7 @@ static uint8_t *bufferGrow(Collection *c, size_t needed) {
     uint32_t bufType = Type_make(FORM_ARRAY, (*c).elementClass);
     uint8_t *next = (uint8_t *)Memory_alloc(bufType, bytes);
     if (!next)
-        return NULL;
+        return nullptr;
     size_t oldBytes = (*c).activeCount * (*c).stride;
     memcpy(next, (*c).data, oldBytes);
     Memory_free((*c).data);
@@ -37,7 +37,7 @@ static List *instant(uint32_t elementClass, size_t capacity, size_t count) {
     size_t cap = capacity < DEFAULT_CAPACITY ? DEFAULT_CAPACITY : capacity;
     List *list = (List *)Memory_alloc(TYPE_LIST, sizeof(List));
     if (!list)
-        return NULL;
+        return nullptr;
 
     Collection *c = asCollection(list);
     (*c).typeId = TYPE_LIST;
@@ -52,7 +52,7 @@ static List *instant(uint32_t elementClass, size_t capacity, size_t count) {
     (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(list);
-        return NULL;
+        return nullptr;
     }
     memset((*c).data, 0, bytes);
     return list;
@@ -86,11 +86,11 @@ void List_add(List *list, uint64_t valueOrPointer) {
 }
 
 uint8_t *List_addSlot(List *list) {
-    if (!list) return NULL;
+    if (!list) return nullptr;
     Collection *c = asCollection(list);
     if ((*c).activeCount >= (*c).capacity) {
         if (!bufferGrow(c, (*c).activeCount + 1))
-            return NULL;
+            return nullptr;
     }
     uint8_t *slot = (*c).data + (*c).activeCount * (*c).stride;
     memset(slot, 0, (*c).stride);
@@ -115,10 +115,10 @@ void List_set(List *list, size_t index, uint64_t value) {
 }
 
 uint8_t *List_slot(List *list, size_t index) {
-    if (!list) return NULL;
+    if (!list) return nullptr;
     Collection *c = asCollection(list);
     if (index >= (*c).activeCount)
-        return NULL;
+        return nullptr;
     return (*c).data + index * (*c).stride;
 }
 

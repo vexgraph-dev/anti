@@ -11,7 +11,7 @@
 ;;INCOMPLETE // net/PollRequest lands. The queue, lifecycle, and core guard
 ;;INCOMPLETE // are fully live.
 
-static Thread *s_core = NULL;
+static Thread *s_core = nullptr;
 
 static void networking_job(Thread *self, void *task) {
     (void)self;

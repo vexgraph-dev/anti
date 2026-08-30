@@ -9,7 +9,7 @@
 
 Fields *Struct_constructArray(const uint32_t *fieldClasses, size_t fieldCount) {
     size_t *buf = Memory_alloc(Type_make(FORM_ARRAY, ID_STRIDE), fieldCount * sizeof(size_t));
-    if (!buf) return NULL;
+    if (!buf) return nullptr;
     for (size_t i = 0; i < fieldCount; i++) buf[i] = fieldClasses[i];
     Fields *res = Fields_create(buf, fieldCount);
     Memory_free(buf);
@@ -55,42 +55,42 @@ static uint32_t genericOfPtr(const void *userPtr) {
 // =========================================================================
 
 void *Struct_allocate(const Fields *fields) {
-    if (!fields) return NULL;
+    if (!fields) return nullptr;
     return Struct_allocateSingletonRaw((*fields).genericId);
 }
 
 void *Struct_allocateSingletonRaw(uint32_t generic) {
     size_t stride = Fields_stride(generic);
-    if (stride == 0) return NULL;
+    if (stride == 0) return nullptr;
     void *ptr = Memory_alloc(Type_make(FORM_STRUCT_SINGLETON, generic), stride);
-    if (!ptr) return NULL;
+    if (!ptr) return nullptr;
     memset(ptr, 0, stride);
     return ptr;
 }
 
 void *Struct_allocateArrayFrom(const Fields *fields, size_t amount) {
-    if (!fields) return NULL;
+    if (!fields) return nullptr;
     return Struct_allocateArrayRaw((*fields).genericId, amount);
 }
 
 void *Struct_allocateArrayRaw(uint32_t generic, size_t amount) {
     size_t stride = Fields_stride(generic);
-    if (stride == 0 || amount == 0) return NULL;
+    if (stride == 0 || amount == 0) return nullptr;
     void *ptr = Memory_alloc(Type_make(FORM_STRUCT_ARRAY, generic), amount * stride);
-    if (!ptr) return NULL;
+    if (!ptr) return nullptr;
     memset(ptr, 0, amount * stride);
     return ptr;
 }
 
 void *Struct_allocateCoexistentFrom(const Fields *fields, size_t amount) {
-    if (!fields) return NULL;
+    if (!fields) return nullptr;
     return Struct_allocateCoexistentRaw((*fields).genericId, amount);
 }
 
 void *Struct_allocateCoexistentRaw(uint32_t generic, size_t amount) {
     const Fields *s = Fields_get(generic);
     if (!s || (*s).stride == 0 || amount == 0)
-        return NULL;
+        return nullptr;
 
     if ((*s).stream2Stride == 0) {
         return Struct_allocateArrayRaw(generic, amount);
@@ -101,21 +101,21 @@ void *Struct_allocateCoexistentRaw(uint32_t generic, size_t amount) {
     size_t totalPayload = s1Size + s2Size;
 
     void *ptr = Memory_alloc(Type_make(FORM_STRUCT_COEXISTENT, generic), totalPayload);
-    if (!ptr) return NULL;
+    if (!ptr) return nullptr;
     memset(ptr, 0, totalPayload);
     return ptr;
 }
 
 void *Struct_allocateSOAFrom(const Fields *fields, size_t amount) {
-    if (!fields) return NULL;
+    if (!fields) return nullptr;
     return Struct_allocateSOARaw((*fields).genericId, amount);
 }
 
 void *Struct_allocateSOARaw(uint32_t generic, size_t amount) {
     size_t stride = Fields_stride(generic);
-    if (stride == 0 || amount == 0) return NULL;
+    if (stride == 0 || amount == 0) return nullptr;
     void *ptr = Memory_alloc(Type_make(FORM_ARRAY_SOA, generic), amount * stride);
-    if (!ptr) return NULL;
+    if (!ptr) return nullptr;
     memset(ptr, 0, amount * stride);
     return ptr;
 }
@@ -129,25 +129,25 @@ void Struct_free(void *userPtr) {
 // =========================================================================
 
 void *Struct_field(void *ptr, size_t fieldIndex) {
-    if (!ptr) return NULL;
+    if (!ptr) return nullptr;
     uint32_t generic = genericOfPtr(ptr);
     const Fields *layout = layoutOf(generic);
     if (!layout || fieldIndex >= (*layout).count)
-        return NULL;
+        return nullptr;
     return (uint8_t *)ptr + (*layout).items[fieldIndex].offset;
 }
 
 void *Struct_elementField(void *ptr, size_t elementIndex, size_t fieldIndex) {
-    if (!ptr) return NULL;
+    if (!ptr) return nullptr;
     uint32_t generic = genericOfPtr(ptr);
     const Fields *layout = layoutOf(generic);
     if (!layout || fieldIndex >= (*layout).count)
-        return NULL;
+        return nullptr;
 
     uint32_t type = Memory_type(ptr);
     size_t length = Memory_length(ptr);
     if (elementIndex >= length)
-        return NULL;
+        return nullptr;
 
     if (Type_isStructCoexistent(type)) {
         const Field *f = &(*layout).items[fieldIndex];
@@ -365,13 +365,13 @@ int16_t Struct_getShortElement(void *ptr, size_t elementIndex, size_t fieldIndex
 }
 
 void *Struct_getNested(void *ptr, size_t elementIndex, size_t fieldIndex) {
-    if (!ptr) return NULL;
+    if (!ptr) return nullptr;
     uint32_t generic = genericOfPtr(ptr);
     const Fields *layout = layoutOf(generic);
     if (!layout || fieldIndex >= (*layout).count)
-        return NULL;
+        return nullptr;
     if (!(*layout).items[fieldIndex].isStruct)
-        return NULL;
+        return nullptr;
 
     uint32_t type = Memory_type(ptr);
     if (Type_isSingleton(type) || Type_isStructSingleton(type)) {
@@ -380,7 +380,7 @@ void *Struct_getNested(void *ptr, size_t elementIndex, size_t fieldIndex) {
 
     size_t length = Memory_length(ptr);
     if (elementIndex >= length)
-        return NULL;
+        return nullptr;
 
     if (Type_isStructCoexistent(type)) {
         size_t s1Size = (length * (*layout).stream1Stride + 7) & ~7;
@@ -394,10 +394,10 @@ void *Struct_getNested(void *ptr, size_t elementIndex, size_t fieldIndex) {
 // --- GENERIC-EXPLICIT ACCESSORS ---
 
 static uint8_t *genericFieldAddr(uint32_t generic, void *ptr, size_t fieldIndex) {
-    if (!ptr) return NULL;
+    if (!ptr) return nullptr;
     const Fields *layout = layoutOf(generic);
     if (!layout || fieldIndex >= (*layout).count)
-        return NULL;
+        return nullptr;
     return (uint8_t *)ptr + (*layout).items[fieldIndex].offset;
 }
 
@@ -465,7 +465,7 @@ int16_t Struct_getShortG(uint32_t generic, void *ptr, size_t fieldIndex) {
 
 static uint8_t *nestedSubfieldAddr(void *ptr, size_t elementIndex, size_t fieldIndex, size_t subFieldIndex, size_t subFieldSize) {
     void *nestedPtr = Struct_getNested(ptr, elementIndex, fieldIndex);
-    if (!nestedPtr) return NULL;
+    if (!nestedPtr) return nullptr;
     uint32_t parentGeneric = genericOfPtr(ptr);
     uint32_t subGeneric = Struct_fieldClass(parentGeneric, fieldIndex);
     if (subGeneric >= ID_CUSTOM_STRUCT) {

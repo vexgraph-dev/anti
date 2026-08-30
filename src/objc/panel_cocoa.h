@@ -29,7 +29,7 @@
 typedef struct PanelCocoa PanelCocoa;
 
 // Attach IOSurface backing to an existing Panel. Size is the initial backing
-// size in pixels. Returns NULL on failure.
+// size in pixels. Returns nullptr on failure.
 PanelCocoa *PanelCocoa_new(void *panel, int width, int height);
 
 // Free the IOSurface backing. The Panel itself is owned by the caller.
@@ -63,7 +63,7 @@ bool PanelCocoa_isDirty(const PanelCocoa *pc);
 // Updates layer.contentsGravity and layer.autoresizingMask accordingly.
 void PanelCocoa_setAnchors(PanelCocoa *pc, int parentAnchor, int selfAnchor);
 
-// Lookup: retrieve the PanelCocoa backing for a Panel. Returns NULL if the
+// Lookup: retrieve the PanelCocoa backing for a Panel. Returns nullptr if the
 // panel has no IOSurface backing. Used by the window bridge.
 void *PanelCocoa_fromPanel(void *panel); // Panel * → PanelCocoa *
 

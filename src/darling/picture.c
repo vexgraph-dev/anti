@@ -7,14 +7,14 @@
 
 Picture *Picture_0(void) {
     Picture *p = (Picture *)Memory_alloc(TYPE_PICTURE_SINGLETON, sizeof(Picture));
-    if (!p) return NULL;
+    if (!p) return nullptr;
 
     // Allocate the base Panel structure correctly, mimicking Scene allocation.
     // Panel_0() gives us a fully initialized UI panel.
     Panel *basePanel = Panel_0();
     if (!basePanel) {
         Memory_free(p);
-        return NULL;
+        return nullptr;
     }
     
     // Copy initialized state into our base struct, then free the heap-allocated one
@@ -22,7 +22,7 @@ Picture *Picture_0(void) {
     Memory_free(basePanel);
 
     // Initialize Picture-specific fields (default matching legacy initDefaults)
-    (*p).image = NULL;
+    (*p).image = nullptr;
     (*p).imageSizeW = 0.0f;
     (*p).imageSizeH = 0.0f;
     (*p).cropX1 = 0.0f;
@@ -44,7 +44,7 @@ Picture *Picture_1(void *image) {
 }
 
 void *Picture_getImage(const Picture *p) {
-    return p ? (*p).image : NULL;
+    return p ? (*p).image : nullptr;
 }
 
 void Picture_setImage(Picture *p, void *image) {

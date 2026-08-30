@@ -57,14 +57,14 @@ void *VkMac_loadLib(void) {
         "libvulkan.dylib",
         "/opt/homebrew/lib/libvulkan.dylib",
         "/usr/local/lib/libvulkan.dylib",
-        NULL,
+        nullptr,
     };
     for (int i = 0; candidates[i]; i++) {
         void *lib = dlopen(candidates[i], RTLD_NOW | RTLD_LOCAL);
         if (lib)
             return lib;
     }
-    return NULL;
+    return nullptr;
 }
 
 // Create a VkSurfaceKHR from the window's CAMetalLayer.
@@ -81,7 +81,7 @@ bool VkMac_createSurface(Window *window, VkInstance instance,
     void *metalLayer = Window_metalLayer(window);
     VkMetalSurfaceCreateInfoEXT sci = { .sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT };
     sci.pLayer = metalLayer;
-    VkResult sr = CreateMetalSurfaceEXT_fn(instance, &sci, NULL, outSurface);
+    VkResult sr = CreateMetalSurfaceEXT_fn(instance, &sci, nullptr, outSurface);
     if (!sci.pLayer || sr != VK_SUCCESS)
         return false;
 
@@ -121,7 +121,7 @@ bool VkMac_ensureIOSurfacePass(void) {
     rpci.subpassCount = 1;
     rpci.pSubpasses = &sub;
 
-    if (CreateRenderPass_fn(dev, &rpci, NULL, &s_iosurfacePass) != VK_SUCCESS)
+    if (CreateRenderPass_fn(dev, &rpci, nullptr, &s_iosurfacePass) != VK_SUCCESS)
         return false;
 
     return true;
@@ -132,12 +132,12 @@ VkRenderPass VkMac_getIOSurfacePass(void) {
 }
 
 // Record a panel child into an IOSurface render pass.
-// Returns the child state pointer if successfully recorded, NULL otherwise.
+// Returns the child state pointer if successfully recorded, nullptr otherwise.
 struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *child, void *surface, int w, int h) {
-    if (!child || !surface || w <= 0 || h <= 0) return NULL;
+    if (!child || !surface || w <= 0 || h <= 0) return nullptr;
 
     // Ensure IOSurface render pass exists
-    if (!VkMac_ensureIOSurfacePass()) return NULL;
+    if (!VkMac_ensureIOSurfacePass()) return nullptr;
 
     // Load function pointers
     VkDevice dev = Vk_getDevice();
@@ -159,10 +159,10 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
     }
     int canvasW = (int)(maxW + 0.5f);
     int canvasH = (int)(maxH + 0.5f);
-    if (canvasW <= 0 || canvasH <= 0) return NULL;
+    if (canvasW <= 0 || canvasH <= 0) return nullptr;
 
     // Find or create IOSurface child state
-    struct IOSurfaceChild *ioChild = NULL;
+    struct IOSurfaceChild *ioChild = nullptr;
     for (int i = 0; i < s_iosurfaceChildCount; i++) {
         if (s_iosurfaceChildren[i].panel == child) {
             ioChild = &s_iosurfaceChildren[i];
@@ -170,10 +170,10 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
         }
     }
     if (!ioChild) {
-        if (s_iosurfaceChildCount >= IOSURFACE_CHILD_MAX) return NULL;
+        if (s_iosurfaceChildCount >= IOSURFACE_CHILD_MAX) return nullptr;
         ioChild = &s_iosurfaceChildren[s_iosurfaceChildCount++];
         (*ioChild).panel = child;
-        (*ioChild).surf = NULL;
+        (*ioChild).surf = nullptr;
         (*ioChild).fb = VK_NULL_HANDLE;
         (*ioChild).valid = false;
     }
@@ -181,9 +181,9 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
     // Check if max size changed (IOSurface needs realloc)
     if ((*ioChild).surf && (VkIOSurface_width((*ioChild).surf) != (uint32_t)canvasW ||
                           VkIOSurface_height((*ioChild).surf) != (uint32_t)canvasH)) {
-        if ((*ioChild).fb) DestroyFramebuffer_fn(dev, (*ioChild).fb, NULL);
+        if ((*ioChild).fb) DestroyFramebuffer_fn(dev, (*ioChild).fb, nullptr);
         VkIOSurface_free((*ioChild).surf);
-        (*ioChild).surf = NULL;
+        (*ioChild).surf = nullptr;
         (*ioChild).fb = VK_NULL_HANDLE;
         (*ioChild).valid = false;
     }
@@ -191,7 +191,7 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
     // Create IOSurface wrapper at MAX size (fixed allocation, never reallocates on resize)
     if (!(*ioChild).surf) {
         (*ioChild).surf = VkIOSurface_wrap(surface, (uint32_t)canvasW, (uint32_t)canvasH);
-        if (!(*ioChild).surf) return NULL;
+        if (!(*ioChild).surf) return nullptr;
     }
 
     // Create framebuffer if needed
@@ -199,8 +199,8 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
         (*ioChild).fb = VkIOSurface_createFramebuffer((*ioChild).surf, s_iosurfacePass);
         if ((*ioChild).fb == VK_NULL_HANDLE) {
             VkIOSurface_free((*ioChild).surf);
-            (*ioChild).surf = NULL;
-            return NULL;
+            (*ioChild).surf = nullptr;
+            return nullptr;
         }
     }
 
@@ -244,7 +244,7 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
         extern Panel_RenderFn Panel_getRenderHandler(const Panel *p);
         Panel_RenderFn handler = Panel_getRenderHandler(child);
         if (handler) {
-            handler(child, NULL, cb, 0.0f, 0.0f, (float)canvasW, (float)canvasH);
+            handler(child, nullptr, cb, 0.0f, 0.0f, (float)canvasW, (float)canvasH);
         } else {
             uint32_t color = Panel_getBackgroundColor(child);
             if (color != 0) {
@@ -341,7 +341,7 @@ void VkMac_renderNativeContent(Window *window, Panel *contentPanel,
         static VkFence s_batchFence = VK_NULL_HANDLE;
         if (s_batchFence == VK_NULL_HANDLE) {
             VkFenceCreateInfo fi = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-            CreateFence_fn(dev, &fi, NULL, &s_batchFence);
+            CreateFence_fn(dev, &fi, nullptr, &s_batchFence);
         }
 
         VkSubmitInfo si = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
@@ -382,17 +382,17 @@ void VkMac_cleanupIOSurfaceState(void) {
     for (int i = 0; i < s_iosurfaceChildCount; i++) {
         struct IOSurfaceChild *ioChild = &s_iosurfaceChildren[i];
         if ((*ioChild).fb != VK_NULL_HANDLE && DestroyFramebuffer_fn)
-            DestroyFramebuffer_fn(dev, (*ioChild).fb, NULL);
+            DestroyFramebuffer_fn(dev, (*ioChild).fb, nullptr);
         if ((*ioChild).surf)
             VkIOSurface_free((*ioChild).surf);
-        (*ioChild).panel = NULL;
-        (*ioChild).surf = NULL;
+        (*ioChild).panel = nullptr;
+        (*ioChild).surf = nullptr;
         (*ioChild).fb = VK_NULL_HANDLE;
         (*ioChild).valid = false;
     }
     s_iosurfaceChildCount = 0;
 
     if (s_iosurfacePass != VK_NULL_HANDLE && DestroyRenderPass_fn)
-        DestroyRenderPass_fn(dev, s_iosurfacePass, NULL);
+        DestroyRenderPass_fn(dev, s_iosurfacePass, nullptr);
     s_iosurfacePass = VK_NULL_HANDLE;
 }

@@ -82,7 +82,7 @@ static int defineInto(Fields *s, const size_t *sizesOrClasses, size_t count) {
         return 0;
     if ((*s).items) {
         Memory_free((*s).items);
-        (*s).items = NULL;
+        (*s).items = nullptr;
     }
 
     Field *items = Memory_alloc(
@@ -131,14 +131,14 @@ static int defineInto(Fields *s, const size_t *sizesOrClasses, size_t count) {
 
 Fields *Fields_create(const size_t *sizesOrClasses, size_t count) {
     if (nextFieldsId >= MAX_FIELDS)
-        return NULL;
+        return nullptr;
     uint32_t generic = ID_CUSTOM_STRUCT + nextFieldsId;
     int index = indexOf(generic);
     if (index < 0)
-        return NULL;
+        return nullptr;
     schemas[index].genericId = generic;
     if (!defineInto(&schemas[index], sizesOrClasses, count))
-        return NULL;
+        return nullptr;
     nextFieldsId++;
     return &schemas[index];
 }
@@ -146,7 +146,7 @@ Fields *Fields_create(const size_t *sizesOrClasses, size_t count) {
 const Fields *Fields_get(uint32_t generic) {
     int index = indexOf(generic);
     if (index < 0)
-        return NULL;
+        return nullptr;
     return &schemas[index];
 }
 

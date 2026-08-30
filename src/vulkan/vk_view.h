@@ -31,11 +31,11 @@ size_t   VkView_count(void);
 VkView  *VkView_at(size_t index);
 
 // The view whose desktop rect contains global point (x, y) in AppKit points,
-// or NULL when the point falls outside every monitor (then callers pick at(0)).
+// or nullptr when the point falls outside every monitor (then callers pick at(0)).
 VkView  *VkView_forPoint(float x, float y);
 
 // The view mirroring this display id — the same CGDirectDisplayID that
-// Window_getMonitorId and DisplayMonitor_getId speak. NULL when discovery
+// Window_getMonitorId and DisplayMonitor_getId speak. nullptr when discovery
 // has not produced a view for it yet (fresh hotplug).
 VkView  *VkView_forMonitor(uint32_t displayId);
 

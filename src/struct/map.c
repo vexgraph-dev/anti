@@ -112,7 +112,7 @@ Map *Map_allocate(uint32_t keyClass, uint32_t valClass, size_t capacity) {
     if (cap < 4) cap = 4;
 
     Map *map = (Map *)Memory_alloc(TYPE_MAP, sizeof(Map));
-    if (!map) return NULL;
+    if (!map) return nullptr;
 
     Collection *c = asCollection(map);
     (*c).typeId = TYPE_MAP;
@@ -127,7 +127,7 @@ Map *Map_allocate(uint32_t keyClass, uint32_t valClass, size_t capacity) {
     (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(map);
-        return NULL;
+        return nullptr;
     }
     memset((*c).data, 0, bytes);
     return map;
@@ -252,10 +252,10 @@ uint64_t Map_remove(Map *map, uint64_t key) {
 }
 
 Array *Map_keys(Map *map) {
-    if (!map) return NULL;
+    if (!map) return nullptr;
     Collection *c = asCollection(map);
     Array *keys = Array_allocate((*c).elementClass, (*c).activeCount);
-    if (!keys) return NULL;
+    if (!keys) return nullptr;
 
     size_t out = 0;
     for (size_t i = 0; i < (*c).capacity; i++) {

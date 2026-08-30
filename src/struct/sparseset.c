@@ -13,7 +13,7 @@ static int32_t *allocateInts(size_t count) {
 
 SparseSet *SparseSet_allocate(size_t capacity, size_t maxEntities, size_t stride) {
     SparseSet *set = (SparseSet *)Memory_alloc(Type_make(FORM_SINGLETON, ID_SPARSE_SET), sizeof(SparseSet));
-    if (!set) return NULL;
+    if (!set) return nullptr;
 
     (*set).capacity = (int32_t)capacity;
     (*set).maxEntities = (int32_t)maxEntities;
@@ -23,14 +23,14 @@ SparseSet *SparseSet_allocate(size_t capacity, size_t maxEntities, size_t stride
     (*set).dense = allocateInts(capacity);
     if (!(*set).dense) {
         Memory_free(set);
-        return NULL;
+        return nullptr;
     }
 
     (*set).sparse = allocateInts(maxEntities);
     if (!(*set).sparse) {
         Memory_free((*set).dense);
         Memory_free(set);
-        return NULL;
+        return nullptr;
     }
     for (size_t i = 0; i < maxEntities; i++)
         (*set).sparse[i] = -1;
@@ -43,10 +43,10 @@ SparseSet *SparseSet_allocate(size_t capacity, size_t maxEntities, size_t stride
             Memory_free((*set).dense);
             Memory_free((*set).sparse);
             Memory_free(set);
-            return NULL;
+            return nullptr;
         }
     } else {
-        (*set).data = NULL;
+        (*set).data = nullptr;
     }
     return set;
 }
@@ -82,9 +82,9 @@ bool SparseSet_contains(SparseSet *set, int32_t entityId) {
 }
 
 uint8_t *SparseSet_add(SparseSet *set, int32_t entityId) {
-    if (!set) return NULL;
+    if (!set) return nullptr;
     if (entityId < 0 || entityId >= (*set).maxEntities)
-        return NULL;
+        return nullptr;
 
     int32_t denseIndex = (*set).sparse[entityId];
     if (denseIndex != -1) {
@@ -94,7 +94,7 @@ uint8_t *SparseSet_add(SparseSet *set, int32_t entityId) {
     }
 
     if ((*set).count >= (*set).capacity)
-        return NULL;
+        return nullptr;
 
     int32_t count = (*set).count;
     (*set).dense[count] = entityId;
@@ -133,25 +133,25 @@ void SparseSet_remove(SparseSet *set, int32_t entityId) {
 }
 
 uint8_t *SparseSet_get(SparseSet *set, int32_t entityId) {
-    if (!set) return NULL;
+    if (!set) return nullptr;
     if (entityId < 0 || entityId >= (*set).maxEntities)
-        return NULL;
+        return nullptr;
 
     int32_t denseIndex = (*set).sparse[entityId];
     if (denseIndex == -1)
-        return NULL;
+        return nullptr;
     if ((*set).stride == 0)
-        return (uint8_t *)set; // non-NULL presence sentinel (legacy returns ptr)
+        return (uint8_t *)set; // non-nullptr presence sentinel (legacy returns ptr)
 
     return (*set).data + (size_t)denseIndex * (size_t)(*set).stride;
 }
 
 const int32_t *SparseSet_denseEntities(SparseSet *set) {
-    if (!set) return NULL;
+    if (!set) return nullptr;
     return (*set).dense;
 }
 
 const uint8_t *SparseSet_denseData(SparseSet *set) {
-    if (!set) return NULL;
+    if (!set) return nullptr;
     return (*set).data;
 }

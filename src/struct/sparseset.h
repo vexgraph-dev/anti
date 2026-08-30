@@ -32,15 +32,15 @@ size_t SparseSet_maxEntities(SparseSet *set);
 
 bool SparseSet_contains(SparseSet *set, int32_t entityId);
 
-// Add entity (if absent) and return a pointer to its component data (or NULL
+// Add entity (if absent) and return a pointer to its component data (or nullptr
 // when the set carries no data block).
 uint8_t *SparseSet_add(SparseSet *set, int32_t entityId);
 
 // Remove the entity if present; data is swap-removed to keep density.
 void SparseSet_remove(SparseSet *set, int32_t entityId);
 
-// Component data pointer for the entity, or NULL if absent (or stride == 0,
-// in which case a non-NULL sentinel signals presence).
+// Component data pointer for the entity, or nullptr if absent (or stride == 0,
+// in which case a non-nullptr sentinel signals presence).
 uint8_t *SparseSet_get(SparseSet *set, int32_t entityId);
 
 // Tightly packed entity ids, dense[0..count).

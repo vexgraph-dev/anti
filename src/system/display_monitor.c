@@ -23,7 +23,7 @@ struct DisplayMonitor {
 DisplayMonitor *DisplayMonitor_allocate(void) {
     DisplayMonitor *m = (DisplayMonitor *)Memory_alloc(TYPE_DISPLAY_MONITOR_SINGLETON, sizeof(DisplayMonitor));
     if (!m)
-        return NULL;
+        return nullptr;
     memset(m, 0, sizeof(DisplayMonitor));
     (*m).dpi = 1.0f;
     return m;

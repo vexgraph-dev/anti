@@ -26,7 +26,7 @@ void Audio_shutdown(void);
 bool Audio_isReady(void);
 
 // Clips: decoded media (wav/mp3/m4a/aiff) or synthesized tone. Blocks are
-// self-describing; NULL on failure.
+// self-describing; nullptr on failure.
 AudioClip *AudioClip_load(const char *path);
 AudioClip *AudioClip_tone(float frequencyHz, float seconds);
 void AudioClip_free(AudioClip *clip);

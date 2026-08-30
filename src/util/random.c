@@ -12,7 +12,7 @@
 
 static const uint64_t GOLDEN_RATIO_64 = 0x9e3779b97f4a7c15ull;
 
-static Random *system_rng = NULL;
+static Random *system_rng = nullptr;
 
 static uint64_t system_seed(void) {
     uint64_t ticks = (uint64_t)mach_absolute_time();
@@ -21,7 +21,7 @@ static uint64_t system_seed(void) {
 
 Random *Random_allocate(uint64_t seed) {
     Random *r = (Random *)Memory_alloc(TYPE_RANDOM, sizeof(Random));
-    if (!r) return NULL;
+    if (!r) return nullptr;
     (*r).seed = seed;
     (*r).counter = 0;
     (*r).pad = 0;

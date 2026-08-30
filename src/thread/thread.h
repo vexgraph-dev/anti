@@ -15,8 +15,8 @@
 // core protection — while each purpose class (networking/event/draw/scripting/
 // ui) supplies only its per-pass job:
 //
-//   Thread_Job: called once per popped task (task != NULL) or once per idle
-//   pass when tickWhenIdle is set (task == NULL).
+//   Thread_Job: called once per popped task (task != nullptr) or once per idle
+//   pass when tickWhenIdle is set (task == nullptr).
 //
 // Loop semantics mirror legacy: drain queue → run job; sleep 1ms when idle
 // unless tickWhenIdle; exit when state leaves RUNNING.
@@ -28,7 +28,7 @@ typedef void (*Thread_Job)(Thread *self, void *task);
 
 // Create a stopped handle. typeId stamps the block header (one of the
 // ID_THREAD_* classes); queueCapacity holds void* tasks. Core handles reject
-// stop/free like legacy ROLE_CORE. NULL on OOM/bad args.
+// stop/free like legacy ROLE_CORE. nullptr on OOM/bad args.
 Thread *Thread_new(uint32_t typeId, Thread_Job job, size_t queueCapacity,
                    bool tickWhenIdle, bool core);
 

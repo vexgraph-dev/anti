@@ -16,7 +16,7 @@ Future *Future_allocate(void) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_FUTURE) | WRAP2_FUTURE;
     Future *future = Memory_alloc(type, sizeof(Future));
     if (!future)
-        return NULL;
+        return nullptr;
     atomic_init(&(*future).isGiven, false);
     (*future).value = 0;
     return future;

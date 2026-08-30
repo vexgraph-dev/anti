@@ -49,7 +49,7 @@ void FileWriter_close(FileWriter *w) {
         return;
     fflush((*w).out);
     fclose((*w).out);
-    (*w).out = NULL;
+    (*w).out = nullptr;
     (*w).open = false;
 }
 

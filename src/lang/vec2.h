@@ -16,7 +16,7 @@ typedef struct Vec2 {
 // Fixed byte width of a Vec2 payload (legacy BYTES).
 #define VEC2_BYTES 8u
 
-// Allocate a zeroed Vec2 block, or one seeded with (x, y). NULL on OOM.
+// Allocate a zeroed Vec2 block, or one seeded with (x, y). nullptr on OOM.
 Vec2 *Vec2_allocate(void);
 Vec2 *Vec2_allocateXY(float x, float y);
 

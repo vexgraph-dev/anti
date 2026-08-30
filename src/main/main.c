@@ -98,7 +98,7 @@ static void *producer_main(void *arg) {
             // this eventually succeeds — it's a bounded wait, not a deadlock.
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 // LogParser record callback: prints each record formatted against the first.
@@ -649,12 +649,12 @@ int main(void) {
     Future_free(fut);
 
     Reactive *rx = Reactive_allocate(100);
-    Reactive_setOnChanged(rx, on_reactive_change, NULL);
+    Reactive_setOnChanged(rx, on_reactive_change, nullptr);
     Reactive_set(rx, 250);
     Reactive_free(rx);
 
     int factor = 21;
-    Passive *pv = Passive_allocate(passive_lazy_calc, NULL, &factor);
+    Passive *pv = Passive_allocate(passive_lazy_calc, nullptr, &factor);
     printf("passive lazy val=%llu\n", (unsigned long long)Passive_get(pv));
     Passive_free(pv);
 
@@ -673,19 +673,19 @@ int main(void) {
     for (uint32_t i = 0; i < N_THREADS; i++) {
         ctxs[i].ring = &ring;
         ctxs[i].id = i + 1;
-        pthread_create(&threads[i], NULL, producer_main, &ctxs[i]);
+        pthread_create(&threads[i], nullptr, producer_main, &ctxs[i]);
     }
 
     engine_ctx_t engine = {
         .ring = &ring,
-        .loop = { .tick = engine_tick, .userdata = NULL, .frame_ms = 4, .running = false },
+        .loop = { .tick = engine_tick, .userdata = nullptr, .frame_ms = 4, .running = false },
     };
     engine.loop.userdata = &engine;
 
     Loop_run(&engine.loop);
 
     for (uint32_t i = 0; i < N_THREADS; i++) {
-        pthread_join(threads[i], NULL);
+        pthread_join(threads[i], nullptr);
     }
 
     printf("received=%u/%u ticks=%d\n", engine.received,

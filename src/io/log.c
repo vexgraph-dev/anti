@@ -112,11 +112,11 @@ static void *writer_main(void *arg) {
             FileWriter_flush(&(*log).writer);
         }
         struct timespec ts = { .tv_sec = 0, .tv_nsec = LOG_IDLE_POLL_NANOS };
-        nanosleep(&ts, NULL);
+        nanosleep(&ts, nullptr);
     }
     drain_and_write(log);
     FileWriter_flush(&(*log).writer);
-    return NULL;
+    return nullptr;
 }
 
 bool Log_init(Log *log, const char *path, size_t slot_count) {
@@ -151,10 +151,10 @@ bool Log_init(Log *log, const char *path, size_t slot_count) {
     (*log).written = 0;
     (*log).flush_point = 0;
 
-    if (pthread_create(&(*log).thread, NULL, writer_main, log) != 0) {
+    if (pthread_create(&(*log).thread, nullptr, writer_main, log) != 0) {
         atomic_store(&(*log).running, false);
         free((*log).arena);
-        (*log).arena = NULL;
+        (*log).arena = nullptr;
         FileWriter_close(&(*log).writer);
         (*log).enabled = false;
         return false;
@@ -172,13 +172,13 @@ void Log_shutdown(Log *log) {
         return;
     atomic_store(&(*log).running, false);
     if ((*log).thread_started) {
-        pthread_join((*log).thread, NULL);
+        pthread_join((*log).thread, nullptr);
         (*log).thread_started = false;
     }
     if ((*log).arena) {
         drain_and_write(log);
         free((*log).arena);
-        (*log).arena = NULL;
+        (*log).arena = nullptr;
     }
     FileWriter_close(&(*log).writer);
     (*log).enabled = false;

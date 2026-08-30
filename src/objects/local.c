@@ -15,7 +15,7 @@ Local *Local_allocate(void) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_LOCAL) | MOD_LOCALE;
     Local *local = (Local *)Memory_alloc(type, sizeof(Local));
     if (!local)
-        return NULL;
+        return nullptr;
     memset((*local).slots, 0, sizeof((*local).slots));
     return local;
 }

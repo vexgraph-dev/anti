@@ -9,7 +9,7 @@
 Canvas *Canvas_0(void) {
     Canvas *c = (Canvas *)Memory_alloc(TYPE_CONTAINER_SINGLETON, sizeof(Canvas));
     if (!c)
-        return NULL;
+        return nullptr;
     (*c).virtualWidth = 0.0f;  // follow framebuffer
     (*c).virtualHeight = 0.0f;
     (*c).mode = CANVAS_MODE_PIXEL;

@@ -10,7 +10,7 @@
 
 Command *CommandParser_parse(const char *line) {
     if (!line)
-        return NULL;
+        return nullptr;
 
     size_t n = strlen(line);
     size_t start = 0;
@@ -20,7 +20,7 @@ Command *CommandParser_parse(const char *line) {
     while (end > start && isspace((unsigned char)line[end - 1]))
         end--;
     if (start == end)
-        return NULL;
+        return nullptr;
 
     // Split on whitespace runs: count tokens first so arguments land contiguously.
     size_t tokens = 0;
@@ -34,10 +34,10 @@ Command *CommandParser_parse(const char *line) {
     }
     size_t argc = tokens - 1;
 
-    uint8_t *name = NULL;
-    uint8_t **args = argc > 0 ? (uint8_t **)calloc(argc, sizeof(uint8_t *)) : NULL;
+    uint8_t *name = nullptr;
+    uint8_t **args = argc > 0 ? (uint8_t **)calloc(argc, sizeof(uint8_t *)) : nullptr;
     if (argc > 0 && !args)
-        return NULL;
+        return nullptr;
 
     size_t tok = 0;
     i = start;
@@ -58,7 +58,7 @@ Command *CommandParser_parse(const char *line) {
         for (size_t k = 0; k < argc; k++)
             string_free(args[k]);
         free(args);
-        return NULL;
+        return nullptr;
     }
 
     Command *cmd = Command_allocate(name, args, argc);
@@ -67,7 +67,7 @@ Command *CommandParser_parse(const char *line) {
         for (size_t k = 0; k < argc; k++)
             string_free(args[k]);
         free(args);
-        return NULL;
+        return nullptr;
     }
     free(args);
     return cmd;

@@ -28,12 +28,12 @@ typedef struct File {
     uint32_t mode;
 } File;
 
-// Open a path with the given mode flags and return a File block, or NULL on
+// Open a path with the given mode flags and return a File block, or nullptr on
 // failure. Creates missing parent directories when CREATE is set.
 File *File_open(const char *path, uint32_t mode);
 
 // Close the underlying stream and free the File block. Returns false when the
-// pointer is NULL. The pointer is invalid after the call.
+// pointer is nullptr. The pointer is invalid after the call.
 bool File_close(File *f);
 
 // Read up to max_len bytes into caller-owned memory at dest. Returns bytes

@@ -16,7 +16,7 @@ Array *Array_allocate(uint32_t elementClass, size_t length) {
     size_t stride = Stride_get(elementClass);
     Array *array = (Array *)Memory_alloc(TYPE_ARRAY, sizeof(Array));
     if (!array)
-        return NULL;
+        return nullptr;
 
     Collection *c = asCollection(array);
     (*c).typeId = TYPE_ARRAY;
@@ -31,7 +31,7 @@ Array *Array_allocate(uint32_t elementClass, size_t length) {
     (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(array);
-        return NULL;
+        return nullptr;
     }
     memset((*c).data, 0, bytes);
     return array;
@@ -62,10 +62,10 @@ void Array_set(Array *array, size_t index, uint64_t value) {
 }
 
 uint8_t *Array_slot(Array *array, size_t index) {
-    if (!array) return NULL;
+    if (!array) return nullptr;
     Collection *c = asCollection(array);
     if (index >= (*c).activeCount)
-        return NULL;
+        return nullptr;
     return (*c).data + index * (*c).stride;
 }
 

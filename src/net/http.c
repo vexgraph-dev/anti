@@ -79,7 +79,7 @@ static bool recvSome(int fd, char *dst, size_t cap, size_t *gotOut) {
 
 bool Http_perform(const HttpRequest *req, HttpResponse *resp) {
     // Preserve the caller's receive buffer across the init wipe.
-    char *bodyOut = resp ? (*resp).body : NULL;
+    char *bodyOut = resp ? (*resp).body : nullptr;
     size_t bodyCap = resp ? (*resp).bodyCap : 0;
 
     memset(resp, 0, sizeof(*resp));
@@ -98,7 +98,7 @@ bool Http_perform(const HttpRequest *req, HttpResponse *resp) {
     char portStr[8];
     snprintf(portStr, sizeof(portStr), "%d", port);
     struct addrinfo hints = { .ai_family = AF_UNSPEC, .ai_socktype = SOCK_STREAM };
-    struct addrinfo *res = NULL;
+    struct addrinfo *res = nullptr;
     if (getaddrinfo((*req).host, portStr, &hints, &res) != 0 || !res) return false;
 
     int fd = socket((*res).ai_family, (*res).ai_socktype, (*res).ai_protocol);
@@ -177,7 +177,7 @@ bool Http_perform(const HttpRequest *req, HttpResponse *resp) {
         // Each chunk: hex-size line, payload, CRLF; zero chunk terminates.
         while (true) {
             if (!readLine(fd, line, sizeof(line), &lineLen)) { ok = false; break; }
-            size_t chunkLen = (size_t)strtoul(line, NULL, 16);
+            size_t chunkLen = (size_t)strtoul(line, nullptr, 16);
             if (chunkLen == 0) break;
             if (total + chunkLen > (*resp).bodyCap) { ok = false; break; }
             size_t got = 0;
@@ -239,7 +239,7 @@ static void *acceptLoop(void *arg) {
         if (poll(&pfd, 1, 100) <= 0)
             continue;
 
-        int clientFd = accept((*server).listenFd, NULL, NULL);
+        int clientFd = accept((*server).listenFd, nullptr, nullptr);
         if (clientFd < 0) continue;
 
         applyTimeout(clientFd, RECV_TIMEOUT_DEFAULT_MS);
@@ -263,7 +263,7 @@ static void *acceptLoop(void *arg) {
                 continue;
             }
             if (strncasecmp(line, "Content-Length:", 15) == 0)
-                contentLen = (size_t)strtoul(line + 15, NULL, 10);
+                contentLen = (size_t)strtoul(line + 15, nullptr, 10);
         }
         while (total < contentLen && total < SERVER_BODY_CAP) {
             ssize_t r = recv(clientFd, s_serverBody + total, contentLen - total, 0);
@@ -271,13 +271,13 @@ static void *acceptLoop(void *arg) {
             total += (size_t)r;
         }
 
-        ex.body = total ? s_serverBody : NULL;
+        ex.body = total ? s_serverBody : nullptr;
         ex.bodyLen = total;
 
         (*server).handler(&ex, clientFd, (*server).userdata);
         close(clientFd);
     }
-    return NULL;
+    return nullptr;
 }
 
 bool HttpServer_start(HttpServer *server, int port, HttpHandler handler,
@@ -306,13 +306,13 @@ bool HttpServer_start(HttpServer *server, int port, HttpHandler handler,
 
     (*server).listenFd = fd;
     (*server).running = true;
-    return pthread_create(&(*server).thread, NULL, acceptLoop, server) == 0;
+    return pthread_create(&(*server).thread, nullptr, acceptLoop, server) == 0;
 }
 
 void HttpServer_stop(HttpServer *server) {
     if (!(*server).listenFd) return;
     (*server).running = false;      // loop notices within one poll period
-    pthread_join((*server).thread, NULL);
+    pthread_join((*server).thread, nullptr);
     close((*server).listenFd);
     (*server).listenFd = 0;
 }

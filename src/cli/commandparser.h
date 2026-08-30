@@ -8,7 +8,7 @@
 // trimming, splitting on whitespace, and boxing every token as a string.
 
 // Parse a whitespace-separated command line. Returns a new Command (name +
-// arguments as owned string blocks) or NULL for blank/empty input.
+// arguments as owned string blocks) or nullptr for blank/empty input.
 Command *CommandParser_parse(const char *line);
 
 #endif

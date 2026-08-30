@@ -18,7 +18,7 @@
 static const size_t HEADER_SIZE = 32;
 static const size_t ALIGN = 8;
 
-static Block *s_head = NULL;
+static Block *s_head = nullptr;
 static SpinLock s_lock = SPIN_LOCK_INIT;
 
 // Allocate a block, stamp the type, align the payload, return the payload.
@@ -28,7 +28,7 @@ void* Memory_alloc(const uint32_t typeId, const size_t numBytes) {
     unsigned char *raw = malloc(total);
 
     if (!raw)
-        return NULL;
+        return nullptr;
 
     // Align the payload to 8 bytes so doubles/pointers sit naturally.
     // Assuming malloc returns >= 8-byte alignment, hdr will exactly equal raw.
@@ -41,7 +41,7 @@ void* Memory_alloc(const uint32_t typeId, const size_t numBytes) {
     (*hdr).pad = 0;
 
     SpinLock_lock(&s_lock);
-    (*hdr).prev = NULL;
+    (*hdr).prev = nullptr;
     (*hdr).next = s_head;
     if (s_head)
         (*s_head).prev = hdr;
@@ -54,14 +54,14 @@ void* Memory_alloc(const uint32_t typeId, const size_t numBytes) {
 
 // Grow/shrink: allocate new, copy min(old,new) bytes, free old.
 void* Memory_realloc(void *userPtr, size_t newBytes) {
-    if (!userPtr) return NULL;
+    if (!userPtr) return nullptr;
     uint32_t typeId = Memory_type(userPtr);
     size_t oldLen = Memory_length(userPtr);
 
     void *next = Memory_alloc(typeId, newBytes);
 
     if (!next)
-        return NULL;
+        return nullptr;
 
     memcpy(next, userPtr, oldLen < newBytes ? oldLen : newBytes);
     Memory_free(userPtr);
@@ -89,7 +89,7 @@ void Memory_free(void *userPtr) {
 void Memory_freeAll(void) {
     SpinLock_lock(&s_lock);
     Block *curr = s_head;
-    s_head = NULL;
+    s_head = nullptr;
     SpinLock_unlock(&s_lock);
     
     while (curr) {

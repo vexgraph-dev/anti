@@ -27,7 +27,7 @@ uint8_t *Scanner_nextLine(void) {
             break;
     }
     if (len == 0)
-        return NULL;
+        return nullptr;
     return string_allocateBytes(read_buffer, len);
 }
 
@@ -37,7 +37,7 @@ uint8_t *Scanner_nextWord(void) {
     while (true) {
         b = getchar();
         if (b == EOF)
-            return NULL;
+            return nullptr;
         if (!isspace(b)) {
             read_buffer[len++] = (uint8_t)b;
             break;
@@ -53,6 +53,6 @@ uint8_t *Scanner_nextWord(void) {
             break;
     }
     if (len == 0)
-        return NULL;
+        return nullptr;
     return string_allocateBytes(read_buffer, len);
 }

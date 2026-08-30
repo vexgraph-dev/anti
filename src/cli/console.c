@@ -8,7 +8,7 @@
 
 // console.c — the Console class, ported from cli/Console.java.
 
-static RingBuffer *log_queue = NULL;
+static RingBuffer *log_queue = nullptr;
 static const size_t CONSOLE_QUEUE_CAPACITY = 1024;
 
 void Console_init(void) {
@@ -59,5 +59,5 @@ void Console_shutdown(void) {
     Console_drain();
     RingBuffer_shutdown(log_queue);
     free(log_queue);
-    log_queue = NULL;
+    log_queue = nullptr;
 }

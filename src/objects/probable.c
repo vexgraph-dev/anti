@@ -8,7 +8,7 @@
 
 Probable *Probable_allocate(uintptr_t object, uint32_t weight, uint32_t total) {
     Probable *p = (Probable *)Memory_alloc(TYPE_PROBABLE, sizeof(Probable));
-    if (!p) return NULL;
+    if (!p) return nullptr;
     (*p).object = object;
     (*p).weight = weight;
     (*p).total = total;

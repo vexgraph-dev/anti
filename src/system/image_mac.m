@@ -5,21 +5,21 @@
 #include <stdlib.h>
 
 void *ImageMac_decode(const void *fileData, size_t fileSize, size_t *outW, size_t *outH) {
-    if (!fileData || fileSize == 0) return NULL;
+    if (!fileData || fileSize == 0) return nullptr;
 
-    CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, fileData, fileSize, NULL);
-    if (!provider) return NULL;
+    CGDataProviderRef provider = CGDataProviderCreateWithData(nullptr, fileData, fileSize, nullptr);
+    if (!provider) return nullptr;
 
     // Create image source to auto-detect format (PNG, JPEG, etc)
-    CGImageSourceRef source = CGImageSourceCreateWithDataProvider(provider, NULL);
+    CGImageSourceRef source = CGImageSourceCreateWithDataProvider(provider, nullptr);
     CGDataProviderRelease(provider);
     
-    if (!source) return NULL;
+    if (!source) return nullptr;
 
-    CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, NULL);
+    CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, nullptr);
     CFRelease(source);
 
-    if (!image) return NULL;
+    if (!image) return nullptr;
 
     size_t width = CGImageGetWidth(image);
     size_t height = CGImageGetHeight(image);
@@ -38,7 +38,7 @@ void *ImageMac_decode(const void *fileData, size_t fileSize, size_t *outW, size_
             CGContextRelease(context);
         } else {
             free(rgbaData);
-            rgbaData = NULL;
+            rgbaData = nullptr;
         }
         CGColorSpaceRelease(colorSpace);
     }

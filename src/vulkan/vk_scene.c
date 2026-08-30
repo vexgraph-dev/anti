@@ -84,14 +84,14 @@ static SceneRetired s_retired[VK_SCENE_RETIRED_MAX];
 static uint32_t s_retiredCount = 0;
 
 // loader plumbing — fetched once through the caller's gpa (vk_view pattern)
-static PFN_vkGetInstanceProcAddr s_gpa = NULL;
-static PFN_vkGetDeviceProcAddr s_gdpa = NULL;
+static PFN_vkGetInstanceProcAddr s_gpa = nullptr;
+static PFN_vkGetDeviceProcAddr s_gdpa = nullptr;
 static VkInstance s_instance;
 static VkPhysicalDevice s_phys;
 static VkDevice s_device;
 
 #define VKS_LOAD_INSTANCE(name)                                                \
-    static PFN_vk##name name##_fn = NULL;                                      \
+    static PFN_vk##name name##_fn = nullptr;                                      \
     if (!name##_fn)                                                            \
         name##_fn = (PFN_vk##name)s_gpa(s_instance, "vk" #name);               \
     if (!name##_fn) {                                                          \
@@ -100,7 +100,7 @@ static VkDevice s_device;
     }
 
 #define VKS_LOAD_DEVICE(name)                                                  \
-    static PFN_vk##name name##_fn = NULL;                                      \
+    static PFN_vk##name name##_fn = nullptr;                                      \
     if (!name##_fn)                                                            \
         name##_fn = s_gdpa                                                     \
             ? (PFN_vk##name)s_gdpa(s_device, "vk" #name)                       \
@@ -111,7 +111,7 @@ static VkDevice s_device;
     }
 
 #define VKS_LOAD_DEVICE_VOID(name)                                             \
-    static PFN_vk##name name##_fn = NULL;                                      \
+    static PFN_vk##name name##_fn = nullptr;                                      \
     if (!name##_fn)                                                            \
         name##_fn = s_gdpa                                                     \
             ? (PFN_vk##name)s_gdpa(s_device, "vk" #name)                       \
@@ -147,16 +147,16 @@ static void destroyCanvasObjects(VkSceneCanvas *c) {
     uint32_t staleHeight = (*c).staleHeight;
     for (uint32_t i = 0; i < 2; i++) {
         if ((*c).fb[i] != VK_NULL_HANDLE && DestroyFramebuffer_fn)
-            DestroyFramebuffer_fn(s_device, (*c).fb[i], NULL);
+            DestroyFramebuffer_fn(s_device, (*c).fb[i], nullptr);
         if ((*c).view[i] != VK_NULL_HANDLE && DestroyImageView_fn)
-            DestroyImageView_fn(s_device, (*c).view[i], NULL);
+            DestroyImageView_fn(s_device, (*c).view[i], nullptr);
         if ((*c).image[i] != VK_NULL_HANDLE && DestroyImage_fn)
-            DestroyImage_fn(s_device, (*c).image[i], NULL);
+            DestroyImage_fn(s_device, (*c).image[i], nullptr);
         if ((*c).memory[i] != VK_NULL_HANDLE && FreeMemory_fn)
-            FreeMemory_fn(s_device, (*c).memory[i], NULL);
+            FreeMemory_fn(s_device, (*c).memory[i], nullptr);
     }
     if ((*c).pass != VK_NULL_HANDLE && DestroyRenderPass_fn)
-        DestroyRenderPass_fn(s_device, (*c).pass, NULL);
+        DestroyRenderPass_fn(s_device, (*c).pass, nullptr);
     memset(c, 0, sizeof(VkSceneCanvas));
     (*c).staleImage = staleImage;
     (*c).staleMemory = staleMemory;
@@ -199,7 +199,7 @@ static bool buildCanvas(VkSceneCanvas *c) {
     rpci.pAttachments = &att;
     rpci.subpassCount = 1;
     rpci.pSubpasses = &sub;
-    VKS_CHECK(CreateRenderPass_fn(s_device, &rpci, NULL, &(*c).pass), "canvas CreateRenderPass");
+    VKS_CHECK(CreateRenderPass_fn(s_device, &rpci, nullptr, &(*c).pass), "canvas CreateRenderPass");
 
     for (uint32_t i = 0; i < 2; i++) {
         VkImageCreateInfo ici = { .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
@@ -215,7 +215,7 @@ static bool buildCanvas(VkSceneCanvas *c) {
         ici.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        VKS_CHECK(CreateImage_fn(s_device, &ici, NULL, &(*c).image[i]), "canvas CreateImage");
+        VKS_CHECK(CreateImage_fn(s_device, &ici, nullptr, &(*c).image[i]), "canvas CreateImage");
 
         VkMemoryRequirements req;
         GetImageMemoryRequirements_fn(s_device, (*c).image[i], &req);
@@ -241,7 +241,7 @@ static bool buildCanvas(VkSceneCanvas *c) {
         VkMemoryAllocateInfo mai = { .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
         mai.allocationSize = req.size;
         mai.memoryTypeIndex = typeIdx;
-        VKS_CHECK(AllocateMemory_fn(s_device, &mai, NULL, &(*c).memory[i]), "canvas AllocateMemory");
+        VKS_CHECK(AllocateMemory_fn(s_device, &mai, nullptr, &(*c).memory[i]), "canvas AllocateMemory");
         VKS_CHECK(BindImageMemory_fn(s_device, (*c).image[i], (*c).memory[i], 0), "canvas BindImageMemory");
 
         VkImageViewCreateInfo vci = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -251,7 +251,7 @@ static bool buildCanvas(VkSceneCanvas *c) {
         vci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         vci.subresourceRange.levelCount = 1;
         vci.subresourceRange.layerCount = 1;
-        VKS_CHECK(CreateImageView_fn(s_device, &vci, NULL, &(*c).view[i]), "canvas CreateImageView");
+        VKS_CHECK(CreateImageView_fn(s_device, &vci, nullptr, &(*c).view[i]), "canvas CreateImageView");
 
         VkFramebufferCreateInfo fci = { .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
         fci.renderPass = (*c).pass;
@@ -260,7 +260,7 @@ static bool buildCanvas(VkSceneCanvas *c) {
         fci.width = (*c).width;
         fci.height = (*c).height;
         fci.layers = 1;
-        VKS_CHECK(CreateFramebuffer_fn(s_device, &fci, NULL, &(*c).fb[i]), "canvas CreateFramebuffer");
+        VKS_CHECK(CreateFramebuffer_fn(s_device, &fci, nullptr, &(*c).fb[i]), "canvas CreateFramebuffer");
     }
 
     return true;
@@ -278,16 +278,16 @@ static void destroyRetiredEntry(SceneRetired *r) {
         return;
     for (uint32_t i = 0; i < 2; i++) {
         if ((*r).fb[i] != VK_NULL_HANDLE && DestroyFramebuffer_fn)
-            DestroyFramebuffer_fn(s_device, (*r).fb[i], NULL);
+            DestroyFramebuffer_fn(s_device, (*r).fb[i], nullptr);
         if ((*r).view[i] != VK_NULL_HANDLE && DestroyImageView_fn)
-            DestroyImageView_fn(s_device, (*r).view[i], NULL);
+            DestroyImageView_fn(s_device, (*r).view[i], nullptr);
         if ((*r).image[i] != VK_NULL_HANDLE && DestroyImage_fn)
-            DestroyImage_fn(s_device, (*r).image[i], NULL);
+            DestroyImage_fn(s_device, (*r).image[i], nullptr);
         if ((*r).memory[i] != VK_NULL_HANDLE && FreeMemory_fn)
-            FreeMemory_fn(s_device, (*r).memory[i], NULL);
+            FreeMemory_fn(s_device, (*r).memory[i], nullptr);
     }
     if ((*r).pass != VK_NULL_HANDLE && DestroyRenderPass_fn)
-        DestroyRenderPass_fn(s_device, (*r).pass, NULL);
+        DestroyRenderPass_fn(s_device, (*r).pass, nullptr);
 }
 
 // Fence-law note: stale retirement only ever runs inside flip() — i.e. at a
@@ -345,9 +345,9 @@ void VkSceneCanvas_flushRetired(void) {
 
 VkSceneCanvas *VkSceneCanvas_acquire(uintptr_t key, uint32_t width, uint32_t height) {
     if (!s_gpa || width == 0 || height == 0)
-        return NULL;
+        return nullptr;
 
-    VkSceneCanvas *existing = NULL;
+    VkSceneCanvas *existing = nullptr;
     size_t freeSlot = SIZE_MAX;
     for (size_t i = 0; i < VK_SCENE_CANVASES_MAX; i++) {
         if (i < s_slotCount && s_slots[i].key == key) {
@@ -397,7 +397,7 @@ VkSceneCanvas *VkSceneCanvas_acquire(uintptr_t key, uint32_t width, uint32_t hei
             if (!buildCanvas(existing)) {
                 destroyCanvasObjects(existing);
                 fprintf(stderr, "vk_scene: resize rebuild failed for key %zu\n", (size_t)key);
-                return NULL;
+                return nullptr;
             }
             fprintf(stderr, "vk_scene: canvas %zu resized %ux%u (old pair retired)\n",
                     (size_t)key, width, height);
@@ -415,7 +415,7 @@ VkSceneCanvas *VkSceneCanvas_acquire(uintptr_t key, uint32_t width, uint32_t hei
         if (!buildCanvas(existing)) {
             destroyCanvasObjects(existing);
             fprintf(stderr, "vk_scene: resize rebuild failed for key %zu\n", (size_t)key);
-            return NULL;
+            return nullptr;
         }
         fprintf(stderr, "vk_scene: canvas %zu rebuilt %ux%u\n", (size_t)key, width, height);
         return existing;
@@ -423,7 +423,7 @@ VkSceneCanvas *VkSceneCanvas_acquire(uintptr_t key, uint32_t width, uint32_t hei
 
     if (freeSlot == SIZE_MAX || freeSlot >= VK_SCENE_CANVASES_MAX) {
         fprintf(stderr, "vk_scene: slot table full\n");
-        return NULL;
+        return nullptr;
     }
 
     VkSceneCanvas *c = &s_slots[freeSlot].canvas;
@@ -435,7 +435,7 @@ VkSceneCanvas *VkSceneCanvas_acquire(uintptr_t key, uint32_t width, uint32_t hei
     if (!buildCanvas(c)) {
         destroyCanvasObjects(c);
         s_slots[freeSlot].key = 0;
-        return NULL;
+        return nullptr;
     }
     if (freeSlot == s_slotCount)
         s_slotCount++;
@@ -548,7 +548,7 @@ bool VkSceneCanvas_endBackPass(VkSceneCanvas *canvas, VkCommandBuffer cb) {
     bar.subresourceRange.levelCount = 1;
     bar.subresourceRange.layerCount = 1;
     CmdPipelineBarrier_fn(cb, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &bar);
+                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
     return true;
 }
 

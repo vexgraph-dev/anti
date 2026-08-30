@@ -25,7 +25,7 @@ bool VkIOSurface_initModule(VkInstance instance, PFN_vkGetInstanceProcAddr gpa,
 // size with BGRA8 format (safe for both Vulkan and AppKit). The outImage
 // can be used as a color attachment, transfer source, etc.
 //
-// Returns NULL on failure. The returned VkIOSurface owns both the IOSurface
+// Returns nullptr on failure. The returned VkIOSurface owns both the IOSurface
 // and the VkImage; call VkIOSurface_free to release.
 VkIOSurface *VkIOSurface_create(uint32_t width, uint32_t height);
 

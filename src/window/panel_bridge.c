@@ -124,7 +124,7 @@ int anti_GetChildCount(Panel *contentPanel) {
 }
 
 Panel *anti_GetChildAt(Panel *contentPanel, int index) {
-    if (!contentPanel) return NULL;
+    if (!contentPanel) return nullptr;
     return Panel_getChild(contentPanel, index);
 }
 

@@ -14,7 +14,7 @@
 typedef void (*TickFn)(void *userdata);
 
 typedef struct Loop {
-    TickFn tick;      // called once per fixed step (never NULL)
+    TickFn tick;      // called once per fixed step (never nullptr)
     void *userdata;         // opaque context handed to tick
     int64_t frame_ms;       // fixed timestep in milliseconds
     bool running;           // Loop_stop flips this to end the loop

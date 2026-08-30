@@ -8,7 +8,7 @@
 
 static int32_t         s_monitorCount = 0;
 static DisplayMonitor *s_monitors[MAX_SYSTEM_MONITORS] = {0};
-static DisplayMonitor *s_primaryMonitor = NULL;
+static DisplayMonitor *s_primaryMonitor = nullptr;
 
 static int32_t s_monitorResolutionWidth = 0;
 static int32_t s_monitorResolutionHeight = 0;
@@ -46,7 +46,7 @@ DisplayMonitor *DisplayInfo_getMonitor(size_t index) {
     ensureDiscovered();
     if (index < (size_t)s_monitorCount && index < MAX_SYSTEM_MONITORS)
         return s_monitors[index];
-    return NULL;
+    return nullptr;
 }
 
 DisplayMonitor **DisplayInfo_getMonitors(size_t *outCount) {

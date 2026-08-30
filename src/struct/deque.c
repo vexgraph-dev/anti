@@ -20,7 +20,7 @@ static Deque *instant(uint32_t elementClass, size_t capacity, size_t count) {
     size_t cap = capacity < DEFAULT_CAPACITY ? DEFAULT_CAPACITY : capacity;
     Deque *deque = (Deque *)Memory_alloc(TYPE_DEQUE, sizeof(Deque));
     if (!deque)
-        return NULL;
+        return nullptr;
 
     Collection *c = asCollection(deque);
     (*c).typeId = TYPE_DEQUE;
@@ -35,7 +35,7 @@ static Deque *instant(uint32_t elementClass, size_t capacity, size_t count) {
     (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(deque);
-        return NULL;
+        return nullptr;
     }
     memset((*c).data, 0, bytes);
     return deque;
@@ -161,10 +161,10 @@ uint64_t Deque_get(Deque *deque, size_t index) {
 }
 
 uint8_t *Deque_slot(Deque *deque, size_t index) {
-    if (!deque) return NULL;
+    if (!deque) return nullptr;
     Collection *c = asCollection(deque);
     if (index >= (*c).activeCount)
-        return NULL;
+        return nullptr;
     size_t phys = ((*c).head + index) % (*c).capacity;
     return (*c).data + phys * (*c).stride;
 }

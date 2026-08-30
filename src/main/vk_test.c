@@ -153,7 +153,7 @@ int main(void) {
     }
 
     Window_setBlur(w, 1);
-    Window_setScenePanel(w, NULL);
+    Window_setScenePanel(w, nullptr);
 
     // 2. Content panel: logical placeholder for UI & floating layers
     // Note: its background color (e.g. black) is ignored and transparent.
@@ -233,7 +233,7 @@ int main(void) {
 
         // 1ms event sleep keeps event pump at 1000Hz with zero idle CPU load
         struct timespec tick = { 0, 1000 * 1000 };
-        nanosleep(&tick, NULL);
+        nanosleep(&tick, nullptr);
 
         uint64_t now = NanoTime_now();
         uint64_t elapsed = now - lastReport;

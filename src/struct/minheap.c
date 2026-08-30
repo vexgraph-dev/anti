@@ -55,7 +55,7 @@ static void sift_down(MinHeap *heap, size_t index) {
 MinHeap *MinHeap_allocate(size_t capacity) {
     size_t slots = capacity + 1;
     MinHeap *heap = (MinHeap *)Memory_alloc(TYPE_MIN_HEAP, sizeof(MinHeap));
-    if (!heap) return NULL;
+    if (!heap) return nullptr;
 
     (*heap).size = 0;
     (*heap).capacity = (int32_t)capacity;
@@ -65,7 +65,7 @@ MinHeap *MinHeap_allocate(size_t capacity) {
         Memory_free((*heap).items);
         Memory_free((*heap).priorities);
         Memory_free(heap);
-        return NULL;
+        return nullptr;
     }
     return heap;
 }

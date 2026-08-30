@@ -18,7 +18,7 @@
 //
 // METHOD SLOTS ("@Override" in C): Java override swaps a vtable entry at
 // class load; here it is an explicit function-pointer slot per INSTANCE.
-// The setter is the @Override annotation, NULL restores the built-in
+// The setter is the @Override annotation, nullptr restores the built-in
 // default, and callers never read slots directly — they call the dispatcher
 // (Panel_render), which routes handler-or-default. Subclasses inherit the
 // slots by embedding (Scene3D -> Scene -> Panel), no vtable needed.
@@ -34,9 +34,9 @@ typedef struct Panel {
     uint32_t color;         // 0xAARRGGBB
     void *filters;          // render-graph slot (@Draft placeholder)
     void *image;            // payload slot (shared through views)
-    Panel_RenderFn renderHandler; // draw override; NULL = renderer default
-    struct Panel *source;   // canonical panel this view proxies; NULL = owns
-    struct Panel *parent;   // NULL = root
+    Panel_RenderFn renderHandler; // draw override; nullptr = renderer default
+    struct Panel *source;   // canonical panel this view proxies; nullptr = owns
+    struct Panel *parent;   // nullptr = root
     List *children;
 } Panel;
 
@@ -59,7 +59,7 @@ void Panel_setBackgroundColorRGBA(Panel *p, uint8_t r, uint8_t g, uint8_t b, uin
 
 // Draw override (see METHOD SLOTS above). The renderer hands the panel a
 // drawable-clipped pixel rect inside an open render pass; the handler
-// records whatever it wants into cmdBuffer. NULL = built-in solid quad.
+// records whatever it wants into cmdBuffer. nullptr = built-in solid quad.
 Panel_RenderFn Panel_getRenderHandler(const Panel *p);
 void Panel_setRenderHandler(Panel *p, Panel_RenderFn fn);
 

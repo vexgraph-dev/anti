@@ -36,7 +36,7 @@ bool BitPool_init(BitPool *pool, size_t element_size, size_t capacity);
 void BitPool_shutdown(BitPool *pool);
 
 // Pop a slot from the free list and stamp type_id into its header.
-// Returns NULL when the pool is exhausted.
+// Returns nullptr when the pool is exhausted.
 void *BitPool_alloc(BitPool *pool, uint32_t type_id);
 
 // Push a slot back onto the free list. user_ptr must come from this pool.

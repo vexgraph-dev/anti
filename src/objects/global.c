@@ -15,7 +15,7 @@ Global *Global_allocate(uint64_t initialValue) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_GLOBAL) | MOD_GLOBAL;
     Global *global = (Global *)Memory_alloc(type, sizeof(Global));
     if (!global)
-        return NULL;
+        return nullptr;
     atomic_init(&(*global).value, initialValue);
     return global;
 }

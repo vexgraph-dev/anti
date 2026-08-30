@@ -18,16 +18,16 @@ typedef struct Choice {
 } Choice;
 
 Choice *Choice_allocate(const uint64_t *objectPtrs, const ChoiceCallback *callbacks, size_t count) {
-    if (count == 0) return NULL;
+    if (count == 0) return nullptr;
     uint32_t type = Type_make(FORM_SINGLETON, ID_CHOICE) | WRAP2_CHOICE;
     size_t bytes = sizeof(Choice) + count * sizeof(ChoiceSlot);
     Choice *choice = (Choice *)Memory_alloc(type, bytes);
     if (!choice)
-        return NULL;
+        return nullptr;
     (*choice).count = count;
     for (size_t i = 0; i < count; i++) {
         (*choice).slots[i].objectPtr = objectPtrs ? objectPtrs[i] : 0;
-        (*choice).slots[i].callback = callbacks ? callbacks[i] : NULL;
+        (*choice).slots[i].callback = callbacks ? callbacks[i] : nullptr;
     }
     return choice;
 }

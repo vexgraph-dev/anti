@@ -11,7 +11,7 @@
 // scalar 64-bit key into a well-mixed 64-bit value in a couple of multiply-xor
 // rounds. Everything the map/set classes need, nothing else.
 
-// FNV-1a 64-bit over a byte block. Returns 0 on a NULL/empty block.
+// FNV-1a 64-bit over a byte block. Returns 0 on a nullptr/empty block.
 uint64_t Hash_fnv1a64(const uint8_t *data, size_t length);
 
 // MurmurHash3 64-bit finalizer mix for a single 64-bit value.

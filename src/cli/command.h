@@ -20,10 +20,10 @@
 typedef struct Command Command;
 
 // Allocate a command block owning name_ptr and arg_ptrs (all string blocks).
-// Returns NULL on failure.
+// Returns nullptr on failure.
 Command *Command_allocate(uint8_t *name_ptr, uint8_t **arg_ptrs, size_t argc);
 
-// Block-header type id of a command (0 if NULL).
+// Block-header type id of a command (0 if nullptr).
 uint32_t Command_type(const Command *command);
 
 // Owned command name string block (Java getName).

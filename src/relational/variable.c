@@ -81,7 +81,7 @@ static void mapRebuild(Variable *v) {
 static bool mapResize(Variable *v) {
     size_t newCapacity = (*v).mapCapacity * 2;
     uint8_t *newMap = malloc(newCapacity * VARIABLE_MAP_SLOT_SIZE);
-    if (newMap == NULL)
+    if (newMap == nullptr)
         return false;
     memset(newMap, 0xFF, newCapacity * VARIABLE_MAP_SLOT_SIZE);
 
@@ -111,13 +111,13 @@ bool Variable_init(Variable *v) {
     (*v).mapCapacity = VARIABLE_DEFAULT_CAPACITY * 2;
 
     (*v).arena = malloc((*v).capacity * VARIABLE_SLOT_SIZE);
-    if ((*v).arena == NULL)
+    if ((*v).arena == nullptr)
         return false;
 
     (*v).map = malloc((*v).mapCapacity * VARIABLE_MAP_SLOT_SIZE);
-    if ((*v).map == NULL) {
+    if ((*v).map == nullptr) {
         free((*v).arena);
-        (*v).arena = NULL;
+        (*v).arena = nullptr;
         return false;
     }
 
@@ -131,8 +131,8 @@ void Variable_shutdown(Variable *v) {
         return;
     free((*v).map);
     free((*v).arena);
-    (*v).map = NULL;
-    (*v).arena = NULL;
+    (*v).map = nullptr;
+    (*v).arena = nullptr;
     (*v).mapCapacity = 0;
     (*v).capacity = 0;
     (*v).activeCount = 0;
@@ -140,7 +140,7 @@ void Variable_shutdown(Variable *v) {
 }
 
 int32_t Variable_instant(Variable *v, const char *name, uint32_t classId, uintptr_t targetPointer) {
-    if (!(*v).active || name == NULL)
+    if (!(*v).active || name == nullptr)
         return -1;
 
     size_t len = strlen(name);
@@ -161,7 +161,7 @@ int32_t Variable_instant(Variable *v, const char *name, uint32_t classId, uintpt
     if ((*v).activeCount >= (*v).capacity) {
         size_t newCapacity = (*v).capacity + VARIABLE_DEFAULT_CAPACITY;
         uint8_t *newArena = malloc(newCapacity * VARIABLE_SLOT_SIZE);
-        if (newArena == NULL)
+        if (newArena == nullptr)
             return -1;
         memcpy(newArena, (*v).arena, (*v).activeCount * VARIABLE_SLOT_SIZE);
         free((*v).arena);
@@ -190,7 +190,7 @@ int32_t Variable_instant(Variable *v, const char *name, uint32_t classId, uintpt
 }
 
 int32_t Variable_getId(Variable *v, const char *name) {
-    if (!(*v).active || name == NULL)
+    if (!(*v).active || name == nullptr)
         return -1;
 
     size_t len = strlen(name);
@@ -203,7 +203,7 @@ int32_t Variable_getId(Variable *v, const char *name) {
 }
 
 bool Variable_rename(Variable *v, const char *oldName, const char *newName) {
-    if (!(*v).active || oldName == NULL || newName == NULL)
+    if (!(*v).active || oldName == nullptr || newName == nullptr)
         return false;
 
     size_t oldLen = strlen(oldName);

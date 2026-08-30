@@ -19,12 +19,12 @@ Reactive *Reactive_allocate(uint64_t initialValue) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_REACTIVE) | WRAP_REACTIVE;
     Reactive *reactive = (Reactive *)Memory_alloc(type, sizeof(Reactive));
     if (!reactive)
-        return NULL;
+        return nullptr;
     (*reactive).value = initialValue;
-    (*reactive).onSet = NULL;
-    (*reactive).onGet = NULL;
-    (*reactive).onChanged = NULL;
-    (*reactive).userdata = NULL;
+    (*reactive).onSet = nullptr;
+    (*reactive).onGet = nullptr;
+    (*reactive).onChanged = nullptr;
+    (*reactive).userdata = nullptr;
     return reactive;
 }
 

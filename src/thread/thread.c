@@ -26,7 +26,7 @@ typedef struct Thread {
 #define THREAD_QUEUE_CAPACITY 2048
 
 // Central registry: handle address -> 1. Legacy used Map.put(workerPtr, 1L).
-static Map *s_workers = NULL;
+static Map *s_workers = nullptr;
 
 static void *platform_main(void *arg);
 
@@ -39,10 +39,10 @@ static Map *workers(void) {
 Thread *Thread_new(uint32_t typeId, Thread_Job job, size_t queueCapacity,
                    bool tickWhenIdle, bool core) {
     if (!job || queueCapacity == 0)
-        return NULL;
+        return nullptr;
     Thread *t = (Thread *)Memory_alloc(typeId, sizeof(Thread));
     if (!t)
-        return NULL;
+        return nullptr;
     atomic_init(&(*t).state, 0);
     (*t).typeId = typeId;
     (*t).platformStarted = false;
@@ -51,7 +51,7 @@ Thread *Thread_new(uint32_t typeId, Thread_Job job, size_t queueCapacity,
     (*t).core = core;
     if (!RingBuffer_init(&(*t).queue, THREAD_TASK_SIZE, queueCapacity)) {
         Memory_free(t);
-        return NULL;
+        return nullptr;
     }
     Map_put(workers(), (uint64_t)(uintptr_t)t, 1);
     return t;
@@ -67,7 +67,7 @@ bool Thread_run(Thread *self) {
         // Re-running a joined handle: the old pthread_t is spent; start fresh.
         (*self).platformStarted = false;
     }
-    if (pthread_create(&(*self).platform, NULL, platform_main, self) != 0) {
+    if (pthread_create(&(*self).platform, nullptr, platform_main, self) != 0) {
         atomic_store(&(*self).state, 0);
         return false;
     }
@@ -85,7 +85,7 @@ bool Thread_submit(Thread *self, void *task) {
 
 static void joinPlatform(Thread *self) {
     if ((*self).platformStarted) {
-        pthread_join((*self).platform, NULL);
+        pthread_join((*self).platform, nullptr);
         (*self).platformStarted = false;
     }
 }
@@ -119,7 +119,7 @@ bool Thread_isRunning(Thread *self) {
 }
 
 RingBuffer *Thread_queue(Thread *self) {
-    return self ? &(*self).queue : NULL;
+    return self ? &(*self).queue : nullptr;
 }
 
 uint32_t Thread_purpose(Thread *self) {
@@ -129,17 +129,17 @@ uint32_t Thread_purpose(Thread *self) {
 static void *platform_main(void *arg) {
     Thread *self = (Thread *)arg;
     while (atomic_load(&(*self).state) == 1) {
-        void *task = NULL;
+        void *task = nullptr;
         if (RingBuffer_pop(&(*self).queue, &task)) {
             (*(*self).job)(self, task);
         } else if ((*self).tickWhenIdle) {
-            (*(*self).job)(self, NULL);
+            (*(*self).job)(self, nullptr);
         } else {
             struct timespec idle = { 0, 1000 * 1000 }; // legacy Thread.sleep(1)
-            nanosleep(&idle, NULL);
+            nanosleep(&idle, nullptr);
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 static void walkPool(void (*visit)(Thread *self, bool system), bool system) {

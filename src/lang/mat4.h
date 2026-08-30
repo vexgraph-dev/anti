@@ -22,7 +22,7 @@ typedef struct Mat4 {
 #define MAT4_BYTES 64u
 
 // Allocate a Mat4 block, initialized to identity (or zeroed via Mat4_zero).
-// NULL on OOM.
+// nullptr on OOM.
 Mat4 *Mat4_allocate(void);
 Mat4 *Mat4_allocateIdentity(void);
 

@@ -13,7 +13,7 @@ static const size_t SLOT_SIZE = 16;
 ProbableObjects *ProbableObjects_allocate(size_t capacity) {
     size_t bytes = sizeof(ProbableObjects) + capacity * SLOT_SIZE;
     ProbableObjects *po = (ProbableObjects *)Memory_alloc(TYPE_PROBABLE_OBJECTS, bytes);
-    if (!po) return NULL;
+    if (!po) return nullptr;
     memset(po, 0, bytes);
     (*po).capacity = (uint32_t)capacity;
     return po;

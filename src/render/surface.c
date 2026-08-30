@@ -20,7 +20,7 @@ typedef struct Surface {
 Surface *Surface_new(size_t width, size_t height, int x, int y) {
     Surface *p = (Surface *)Memory_alloc(FORM_STRUCT_SINGLETON | ID_CUSTOM_STRUCT, sizeof(Surface));
     if (!p)
-        return NULL;
+        return nullptr;
     (*p).canvas[0] = ColorBuffer_allocate(width, height);
     (*p).canvas[1] = ColorBuffer_allocate(width, height);
     if (!(*p).canvas[0] || !(*p).canvas[1]) {
@@ -29,7 +29,7 @@ Surface *Surface_new(size_t width, size_t height, int x, int y) {
         if ((*p).canvas[1])
             Buffer_free((*p).canvas[1]);
         Memory_free(p);
-        return NULL;
+        return nullptr;
     }
     atomic_init(&(*p).front, 0);
     (*p).x = x;
@@ -39,7 +39,7 @@ Surface *Surface_new(size_t width, size_t height, int x, int y) {
 
 Buffer *Surface_back(Surface *panel) {
     if (!panel)
-        return NULL;
+        return nullptr;
     int front = atomic_load_explicit(&(*panel).front, memory_order_relaxed);
     return (*panel).canvas[front ^ 1];
 }
@@ -52,7 +52,7 @@ void Surface_flip(Surface *panel) {
 
 const Buffer *Surface_front(Surface *panel) {
     if (!panel)
-        return NULL;
+        return nullptr;
     int front = atomic_load_explicit(&(*panel).front, memory_order_acquire);
     return (*panel).canvas[front];
 }

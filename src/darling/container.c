@@ -8,7 +8,7 @@
 Container *Container_0(void) {
     Container *c = (Container *)Memory_alloc(TYPE_CONTAINER_SINGLETON, sizeof(Container));
     if (!c)
-        return NULL;
+        return nullptr;
     (*c).x = 0.0f;
     (*c).y = 0.0f;
     (*c).w = 0.0f;

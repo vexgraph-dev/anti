@@ -11,23 +11,23 @@
 Panel *Panel_0(void) {
     Panel *p = (Panel *)Memory_alloc(TYPE_PANEL_SINGLETON, sizeof(Panel));
     if (!p)
-        return NULL;
+        return nullptr;
     Container *b = Container_0();
     if (!b) {
         Memory_free(p);
-        return NULL;
+        return nullptr;
     }
     // adopt the container block's contents into our prefix, then free the shell
     *(&(*p).base) = (*b);
     Memory_free(b);
 
     (*p).color = PANEL_COLOR_CLEAR;
-    (*p).filters = NULL;
-    (*p).image = NULL;
-    (*p).renderHandler = NULL;
-    (*p).source = NULL;
-    (*p).parent = NULL;
-    (*p).children = NULL;
+    (*p).filters = nullptr;
+    (*p).image = nullptr;
+    (*p).renderHandler = nullptr;
+    (*p).source = nullptr;
+    (*p).parent = nullptr;
+    (*p).children = nullptr;
     return p;
 }
 
@@ -54,10 +54,10 @@ void Panel_setBackgroundColorRGBA(Panel *p, uint8_t r, uint8_t g, uint8_t b, uin
         | ((uint32_t)g << 8) | (uint32_t)b);
 }
 
-// Method-slot accessors: setting a handler is the @Override; NULL restores
+// Method-slot accessors: setting a handler is the @Override; nullptr restores
 // the renderer default. Marked dirty so every holder re-renders this tick.
 Panel_RenderFn Panel_getRenderHandler(const Panel *p) {
-    return p ? (*p).renderHandler : NULL;
+    return p ? (*p).renderHandler : nullptr;
 }
 
 void Panel_setRenderHandler(Panel *p, Panel_RenderFn fn) {
@@ -73,7 +73,7 @@ void Panel_setBackgroundColorAndMark(Panel *p, uint32_t color) {
 
 void *Panel_getImage(const Panel *p) {
     if (!p)
-        return NULL;
+        return nullptr;
     const Panel *src = (*p).source;
     return src ? Panel_getImage(src) : (*p).image;
 }
@@ -101,7 +101,7 @@ void Panel_setImage(Panel *p, void *image) {
 
 void *Panel_getFilters(const Panel *p) {
     if (!p)
-        return NULL;
+        return nullptr;
     const Panel *src = (*p).source;
     return src ? Panel_getFilters(src) : (*p).filters;
 }
@@ -118,7 +118,7 @@ void Panel_setFilters(Panel *p, void *filters) {
 }
 
 const Panel *Panel_getSource(const Panel *p) {
-    return p ? (*p).source : NULL;
+    return p ? (*p).source : nullptr;
 }
 
 int Panel_refCount(const Panel *p) {
@@ -131,11 +131,11 @@ int Panel_refCount(const Panel *p) {
 }
 
 Panel *Panel_getParent(const Panel *p) {
-    return p ? (*p).parent : NULL;
+    return p ? (*p).parent : nullptr;
 }
 
 bool Panel_hasParent(const Panel *p) {
-    return p && (*p).parent != NULL;
+    return p && (*p).parent != nullptr;
 }
 
 size_t Panel_childCount(const Panel *p) {
@@ -148,7 +148,7 @@ bool Panel_hasChildren(const Panel *p) {
 
 Panel *Panel_getChild(const Panel *p, size_t index) {
     if (!p || !(*p).children || index >= List_size((*p).children))
-        return NULL;
+        return nullptr;
     return (Panel *)List_get((*p).children, index);
 }
 
@@ -179,7 +179,7 @@ void Panel_addContainer(Panel *p, Panel *child) {
     if (!(*p).children)
         (*p).children = List_allocate(ID_LONG, PANEL_CHILDREN_INITIAL);
     if (!(*p).children) {
-        (*child).parent = NULL;
+        (*child).parent = nullptr;
         return;
     }
     List_add((*p).children, (uint64_t)(uintptr_t)child);
@@ -195,7 +195,7 @@ bool Panel_removeChild(Panel *p, Panel *child) {
         if ((Panel *)List_get((*p).children, i) == (const Panel *)child) {
             List_remove((*p).children, i);
             if ((*child).parent == p)
-                (*child).parent = NULL;
+                (*child).parent = nullptr;
             Container_markDirty(&(*p).base);
             Container_markDirty(&(*child).base);
             return true;
@@ -206,11 +206,11 @@ bool Panel_removeChild(Panel *p, Panel *child) {
 
 Panel *Panel_add(Panel *parent, const Panel *node) {
     if (!parent || !node || parent == node)
-        return NULL;
+        return nullptr;
 
     Panel *copy = Panel_0();
     if (!copy)
-        return NULL;
+        return nullptr;
 
     // structural deep copy: layout is its own
     Container *cb = &(*copy).base;

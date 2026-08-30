@@ -10,7 +10,7 @@
 
 // commandregistry.c — the CommandRegistry class, ported from cli/CommandRegistry.java.
 
-static Map *registry_map = NULL;
+static Map *registry_map = nullptr;
 
 static Map *ensure_map(void) {
     if (!registry_map)
@@ -60,5 +60,5 @@ void CommandRegistry_free(void) {
         Array_free(keys);
     }
     Map_free(registry_map);
-    registry_map = NULL;
+    registry_map = nullptr;
 }

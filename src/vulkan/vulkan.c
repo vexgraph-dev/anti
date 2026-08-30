@@ -36,9 +36,9 @@
 // anchored) into the acquired swapchain image. Windows are a scissor into
 // the desktop; nothing more.
 
-static void *s_lib = NULL;
-static PFN_vkGetInstanceProcAddr s_gpa = NULL;
-static PFN_vkGetDeviceProcAddr s_gdpa = NULL;
+static void *s_lib = nullptr;
+static PFN_vkGetInstanceProcAddr s_gpa = nullptr;
+static PFN_vkGetDeviceProcAddr s_gdpa = nullptr;
 static char s_status[64] = "not started";
 
 // Shared state exported to vulkan_mac.c (macOS-specific backend).
@@ -131,7 +131,7 @@ static VkFence s_fence;
 
 static VkFormat s_format;
 static VkExtent2D s_extent;
-static Window *s_window = NULL;
+static Window *s_window = nullptr;
 
 // Swapchain images plus their drawable-side plumbing: a view + framebuffer
 // per image lets the render pass draw straight onto the acquired image —
@@ -184,6 +184,13 @@ static void *s_libLoad(void) {
         if (!name##_fn) { snprintf(s_status, sizeof(s_status), "missing vk" #name); fprintf(stderr, "vk: missing vk%s\n", #name); return false; } \
     }
 
+#define VK_LOAD_DEVICE_PTR(name) \
+    static PFN_vk##name name##_fn; \
+    if (!name##_fn) { \
+        name##_fn = s_gdpa ? (PFN_vk##name)s_gdpa(s_device, "vk" #name) : (PFN_vk##name)s_gpa(s_instance, "vk" #name); \
+        if (!name##_fn) { snprintf(s_status, sizeof(s_status), "missing vk" #name); fprintf(stderr, "vk: missing vk%s\n", #name); return nullptr; } \
+    }
+
 #define VK_LOAD_INSTANCE_VOID(name) \
     static PFN_vk##name name##_fn; \
     name##_fn = (PFN_vk##name)s_gpa((VkInstance)s_instance, "vk" #name);
@@ -218,13 +225,13 @@ bool Vk_init(Window *window) {
     // ;;PLATFORM_EXCLUSIVE("Mac") — VK_EXT_metal_surface is macOS-only.
     VK_LOAD_GLOBAL(EnumerateInstanceExtensionProperties)
     uint32_t extCount = 0;
-    EnumerateInstanceExtensionProperties_fn(NULL, &extCount, NULL);
+    EnumerateInstanceExtensionProperties_fn(nullptr, &extCount, nullptr);
 
     static char names[64][VK_MAX_EXTENSION_NAME_SIZE];
     VkExtensionProperties props[64];
     if (extCount > 64)
         extCount = 64;
-    EnumerateInstanceExtensionProperties_fn(NULL, &extCount, props);
+    EnumerateInstanceExtensionProperties_fn(nullptr, &extCount, props);
     for (uint32_t i = 0; i < extCount; i++) {
         snprintf(names[i], VK_MAX_EXTENSION_NAME_SIZE, "%s", props[i].extensionName);
     }
@@ -254,8 +261,8 @@ bool Vk_init(Window *window) {
     ici.enabledExtensionCount = n;
     ici.ppEnabledExtensionNames = exts;
 
-    if (CreateInstance_fn(&ici, NULL, &s_instance) != VK_SUCCESS) {
-        VkResult r = CreateInstance_fn(&ici, NULL, &s_instance);
+    if (CreateInstance_fn(&ici, nullptr, &s_instance) != VK_SUCCESS) {
+        VkResult r = CreateInstance_fn(&ici, nullptr, &s_instance);
         snprintf(s_status, sizeof(s_status), "instance failed r=%d", r); fprintf(stderr, "vk: %s\n", s_status);
         return false;
     }
@@ -278,7 +285,7 @@ bool Vk_init(Window *window) {
     VK_LOAD_INSTANCE(CreateDevice)
 
     uint32_t physCount = 0;
-    if (EnumeratePhysicalDevices_fn(s_instance, &physCount, NULL) != VK_SUCCESS || physCount == 0) {
+    if (EnumeratePhysicalDevices_fn(s_instance, &physCount, nullptr) != VK_SUCCESS || physCount == 0) {
         snprintf(s_status, sizeof(s_status), "no physical devices");
         return false;
     }
@@ -289,7 +296,7 @@ bool Vk_init(Window *window) {
     s_phys = phys[0]; // MoltenVK exposes exactly one
 
     uint32_t familyCount = 0;
-    GetPhysicalDeviceQueueFamilyProperties_fn(s_phys, &familyCount, NULL);
+    GetPhysicalDeviceQueueFamilyProperties_fn(s_phys, &familyCount, nullptr);
     VkQueueFamilyProperties families[16];
     if (familyCount > 16)
         familyCount = 16;
@@ -332,7 +339,7 @@ bool Vk_init(Window *window) {
     dci.enabledExtensionCount = 2;
     dci.ppEnabledExtensionNames = devExts;
 
-    if (CreateDevice_fn(s_phys, &dci, NULL, &s_device) != VK_SUCCESS) {
+    if (CreateDevice_fn(s_phys, &dci, nullptr, &s_device) != VK_SUCCESS) {
         snprintf(s_status, sizeof(s_status), "device failed");
         return false;
     }
@@ -372,17 +379,17 @@ bool Vk_init(Window *window) {
     VK_LOAD_DEVICE(ResetFences)
 
     VkSemaphoreCreateInfo sci2 = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-    if (CreateSemaphore_fn && CreateSemaphore_fn(s_device, &sci2, NULL, &s_semAcquire) != VK_SUCCESS) return false;
-    if (CreateSemaphore_fn && CreateSemaphore_fn(s_device, &sci2, NULL, &s_semRender) != VK_SUCCESS) return false;
+    if (CreateSemaphore_fn && CreateSemaphore_fn(s_device, &sci2, nullptr, &s_semAcquire) != VK_SUCCESS) return false;
+    if (CreateSemaphore_fn && CreateSemaphore_fn(s_device, &sci2, nullptr, &s_semRender) != VK_SUCCESS) return false;
 
     VkFenceCreateInfo fci2 = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
     fci2.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    if (CreateFence_fn && CreateFence_fn(s_device, &fci2, NULL, &s_fence) != VK_SUCCESS) return false;
+    if (CreateFence_fn && CreateFence_fn(s_device, &fci2, nullptr, &s_fence) != VK_SUCCESS) return false;
 
     // Scene-batch fence: polled non-blocking, never pre-signaled (TIMEOUT
     // simply means "nothing in flight yet").
     fci2.flags = 0;
-    if (CreateFence_fn && CreateFence_fn(s_device, &fci2, NULL, &s_sceneFence) != VK_SUCCESS) return false;
+    if (CreateFence_fn && CreateFence_fn(s_device, &fci2, nullptr, &s_sceneFence) != VK_SUCCESS) return false;
 
     s_animStartNanos = NanoTime_now();
 
@@ -397,7 +404,7 @@ bool Vk_init(Window *window) {
 
     // The c -> objc -> c bridge: AppKit's resize servicing drives frames at
     // the OS's own rhythm through this hook.
-    Window_setResizeRenderHook(s_window, VkMac_resizeRenderTrampoline, NULL);
+    Window_setResizeRenderHook(s_window, VkMac_resizeRenderTrampoline, nullptr);
     return true;
 }
 
@@ -430,7 +437,7 @@ static bool rebuildTargets(void) {
     }
 
     uint32_t formatCount = 0;
-    GetPhysicalDeviceSurfaceFormatsKHR_fn(s_phys, s_surface, &formatCount, NULL);
+    GetPhysicalDeviceSurfaceFormatsKHR_fn(s_phys, s_surface, &formatCount, nullptr);
     VkSurfaceFormatKHR formats[8];
     if (formatCount > 8)
         formatCount = 8;
@@ -486,7 +493,7 @@ static bool rebuildTargets(void) {
     swci.oldSwapchain = oldSwapchain;
 
     VkSwapchainKHR newSwapchain = VK_NULL_HANDLE;
-    if (CreateSwapchainKHR_fn(s_device, &swci, NULL, &newSwapchain) != VK_SUCCESS) {
+    if (CreateSwapchainKHR_fn(s_device, &swci, nullptr, &newSwapchain) != VK_SUCCESS) {
         snprintf(s_status, sizeof(s_status), "swapchain failed");
         return false;
     }
@@ -502,12 +509,12 @@ static bool rebuildTargets(void) {
         for (uint32_t i = 0; i < s_retiredCount; i++) {
             if (s_swapchainGeneration - s_retired[i].generation >= 3) {
                 if (DestroySwapchainKHR_fn)
-                    DestroySwapchainKHR_fn(s_device, s_retired[i].chain, NULL);
+                    DestroySwapchainKHR_fn(s_device, s_retired[i].chain, nullptr);
                 for (uint32_t v = 0; v < s_retired[i].imageCount; v++) {
                     if (s_retired[i].fbs[v] != VK_NULL_HANDLE && DestroyFramebuffer_fn)
-                        DestroyFramebuffer_fn(s_device, s_retired[i].fbs[v], NULL);
+                        DestroyFramebuffer_fn(s_device, s_retired[i].fbs[v], nullptr);
                     if (s_retired[i].views[v] != VK_NULL_HANDLE && DestroyImageView_fn)
-                        DestroyImageView_fn(s_device, s_retired[i].views[v], NULL);
+                        DestroyImageView_fn(s_device, s_retired[i].views[v], nullptr);
                 }
             } else {
                 s_retired[keep] = s_retired[i];
@@ -545,9 +552,9 @@ static bool rebuildTargets(void) {
                     oldest = i;
             for (uint32_t v = 0; v < s_retired[oldest].imageCount; v++) {
                 if (s_retired[oldest].fbs[v] != VK_NULL_HANDLE)
-                    DestroyFramebuffer_fn(s_device, s_retired[oldest].fbs[v], NULL);
+                    DestroyFramebuffer_fn(s_device, s_retired[oldest].fbs[v], nullptr);
                 if (s_retired[oldest].views[v] != VK_NULL_HANDLE)
-                    DestroyImageView_fn(s_device, s_retired[oldest].views[v], NULL);
+                    DestroyImageView_fn(s_device, s_retired[oldest].views[v], nullptr);
             }
             s_retired[oldest].chain = oldSwapchain;
             s_retired[oldest].generation = s_swapchainGeneration;
@@ -564,7 +571,7 @@ static bool rebuildTargets(void) {
     // Fetch the raw image handles, then give each one a view + framebuffer
     // against the drawable pass — the render target of every present frame.
     s_swapchainImageCount = 0;
-    GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_swapchainImageCount, NULL);
+    GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_swapchainImageCount, nullptr);
     if (s_swapchainImageCount > VK_SWAP_IMAGES_MAX)
         s_swapchainImageCount = VK_SWAP_IMAGES_MAX;
     GetSwapchainImagesKHR_fn(s_device, s_swapchain, &s_swapchainImageCount, s_swapchainImages);
@@ -584,7 +591,7 @@ static bool rebuildTargets(void) {
             vci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             vci.subresourceRange.levelCount = 1;
             vci.subresourceRange.layerCount = 1;
-            if (CreateImageView_fn(s_device, &vci, NULL, &s_swapchainViews[i]) != VK_SUCCESS) {
+            if (CreateImageView_fn(s_device, &vci, nullptr, &s_swapchainViews[i]) != VK_SUCCESS) {
                 snprintf(s_status, sizeof(s_status), "drawable view failed");
                 return false;
             }
@@ -595,7 +602,7 @@ static bool rebuildTargets(void) {
             fci.width = s_extent.width;
             fci.height = s_extent.height;
             fci.layers = 1;
-            if (CreateFramebuffer_fn(s_device, &fci, NULL, &s_swapchainFbs[i]) != VK_SUCCESS) {
+            if (CreateFramebuffer_fn(s_device, &fci, nullptr, &s_swapchainFbs[i]) != VK_SUCCESS) {
                 snprintf(s_status, sizeof(s_status), "drawable framebuffer failed");
                 return false;
             }
@@ -641,7 +648,7 @@ static bool ensureDrawablePass(void) {
     rpci.pAttachments = &att;
     rpci.subpassCount = 1;
     rpci.pSubpasses = &sub;
-    if (CreateRenderPass_fn(s_device, &rpci, NULL, &s_drawablePass) != VK_SUCCESS) {
+    if (CreateRenderPass_fn(s_device, &rpci, nullptr, &s_drawablePass) != VK_SUCCESS) {
         snprintf(s_status, sizeof(s_status), "drawable pass failed");
         return false;
     }
@@ -665,12 +672,12 @@ static void destroyTargets(void) {
     // fired and the graveyard can be flushed unconditionally.
     for (uint32_t i = 0; i < s_retiredCount; i++) {
         if (DestroySwapchainKHR_fn)
-            DestroySwapchainKHR_fn(s_device, s_retired[i].chain, NULL);
+            DestroySwapchainKHR_fn(s_device, s_retired[i].chain, nullptr);
         for (uint32_t v = 0; v < s_retired[i].imageCount; v++) {
             if (s_retired[i].fbs[v] != VK_NULL_HANDLE && DestroyFramebuffer_fn)
-                DestroyFramebuffer_fn(s_device, s_retired[i].fbs[v], NULL);
+                DestroyFramebuffer_fn(s_device, s_retired[i].fbs[v], nullptr);
             if (s_retired[i].views[v] != VK_NULL_HANDLE && DestroyImageView_fn)
-                DestroyImageView_fn(s_device, s_retired[i].views[v], NULL);
+                DestroyImageView_fn(s_device, s_retired[i].views[v], nullptr);
         }
     }
     s_retiredCount = 0;
@@ -678,21 +685,21 @@ static void destroyTargets(void) {
 
     for (uint32_t i = 0; i < s_swapchainImageCount; i++) {
         if (s_swapchainFbs[i] != VK_NULL_HANDLE && DestroyFramebuffer_fn)
-            DestroyFramebuffer_fn(s_device, s_swapchainFbs[i], NULL);
+            DestroyFramebuffer_fn(s_device, s_swapchainFbs[i], nullptr);
         if (s_swapchainViews[i] != VK_NULL_HANDLE && DestroyImageView_fn)
-            DestroyImageView_fn(s_device, s_swapchainViews[i], NULL);
+            DestroyImageView_fn(s_device, s_swapchainViews[i], nullptr);
     }
     s_swapchainImageCount = 0;
 
     if (s_drawablePass != VK_NULL_HANDLE && DestroyRenderPass_fn)
-        DestroyRenderPass_fn(s_device, s_drawablePass, NULL);
+        DestroyRenderPass_fn(s_device, s_drawablePass, nullptr);
     s_drawablePass = VK_NULL_HANDLE;
 
     // Cleanup IOSurface children (owned by vulkan_mac.c).
     VkMac_cleanupIOSurfaceState();
 
     if (s_swapchain != VK_NULL_HANDLE && DestroySwapchainKHR_fn)
-        DestroySwapchainKHR_fn(s_device, s_swapchain, NULL);
+        DestroySwapchainKHR_fn(s_device, s_swapchain, nullptr);
     s_swapchain = VK_NULL_HANDLE;
 }
 
@@ -715,7 +722,7 @@ void Vk_shutdown(void) {
         {
             VK_LOAD_DEVICE_VOID(DestroyFence)
             if (s_sceneFence != VK_NULL_HANDLE && DestroyFence_fn)
-                DestroyFence_fn(s_device, s_sceneFence, NULL);
+                DestroyFence_fn(s_device, s_sceneFence, nullptr);
             s_sceneFence = VK_NULL_HANDLE;
         }
         s_pipelinesBuilt = false;
@@ -723,21 +730,21 @@ void Vk_shutdown(void) {
     if (s_instance != VK_NULL_HANDLE) {
         VK_LOAD_INSTANCE_VOID(DestroySurfaceKHR)
         if (DestroySurfaceKHR_fn)
-            DestroySurfaceKHR_fn(s_instance, s_surface, NULL);
+            DestroySurfaceKHR_fn(s_instance, s_surface, nullptr);
         VK_LOAD_INSTANCE_VOID(DestroyInstance)
         if (DestroyInstance_fn)
-            DestroyInstance_fn(s_instance, NULL);
+            DestroyInstance_fn(s_instance, nullptr);
     }
     if (s_lib) {
         dlclose(s_lib);
-        s_lib = NULL;
+        s_lib = nullptr;
     }
     s_device = VK_NULL_HANDLE;
     s_swapchain = VK_NULL_HANDLE;
     s_instance = VK_NULL_HANDLE;
     s_surface = VK_NULL_HANDLE;
-    s_gpa = NULL;
-    s_gdpa = NULL;
+    s_gpa = nullptr;
+    s_gdpa = nullptr;
     snprintf(s_status, sizeof(s_status), "shutdown");
 }
 
@@ -811,30 +818,30 @@ static unsigned char *loadSpvAny(const char *name, size_t *outSize) {
     if (code)
         return code;
 #endif
-    return NULL;
+    return nullptr;
 }
 
 
 static unsigned char *loadSpv(const char *path, size_t *outSize) {
     FILE *f = fopen(path, "rb");
     if (!f)
-        return NULL;
+        return nullptr;
     fseek(f, 0, SEEK_END);
     long size = ftell(f);
     fseek(f, 0, SEEK_SET);
     if (size <= 0 || size % 4 != 0) {
         fclose(f);
-        return NULL;
+        return nullptr;
     }
     unsigned char *bytes = (unsigned char *)malloc((size_t)size);
     if (!bytes) {
         fclose(f);
-        return NULL;
+        return nullptr;
     }
     if (fread(bytes, 1, (size_t)size, f) != (size_t)size) {
         free(bytes);
         fclose(f);
-        return NULL;
+        return nullptr;
     }
     fclose(f);
     *outSize = (size_t)size;
@@ -843,7 +850,7 @@ static unsigned char *loadSpv(const char *path, size_t *outSize) {
 
 static VkShaderModule createShaderModule(const char *name, const char *unused) {
     (void)unused;
-    VK_LOAD_DEVICE(CreateShaderModule)
+    VK_LOAD_DEVICE_PTR(CreateShaderModule)
     size_t size = 0;
     unsigned char *code = loadSpvAny(name, &size);
     if (!code)
@@ -854,7 +861,7 @@ static VkShaderModule createShaderModule(const char *name, const char *unused) {
     ci.pCode = (const uint32_t *)code;
 
     VkShaderModule module = VK_NULL_HANDLE;
-    if (CreateShaderModule_fn(s_device, &ci, NULL, &module) != VK_SUCCESS) {
+    if (CreateShaderModule_fn(s_device, &ci, nullptr, &module) != VK_SUCCESS) {
         free(code);
         return VK_NULL_HANDLE;
     }
@@ -954,7 +961,7 @@ static bool dumpAllocStage(uint32_t width, uint32_t height) {
     bci.size = s_dumpSize;
     bci.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    if (CreateBuffer_fn(s_device, &bci, NULL, &s_dumpBuffer) != VK_SUCCESS)
+    if (CreateBuffer_fn(s_device, &bci, nullptr, &s_dumpBuffer) != VK_SUCCESS)
         return false;
 
     VkMemoryRequirements req;
@@ -977,7 +984,7 @@ static bool dumpAllocStage(uint32_t width, uint32_t height) {
     VkMemoryAllocateInfo mai = { .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
     mai.allocationSize = req.size;
     mai.memoryTypeIndex = typeIdx;
-    if (AllocateMemory_fn(s_device, &mai, NULL, &s_dumpMem) != VK_SUCCESS)
+    if (AllocateMemory_fn(s_device, &mai, nullptr, &s_dumpMem) != VK_SUCCESS)
         return false;
     BindBufferMemory_fn(s_device, s_dumpBuffer, s_dumpMem, 0);
     return true;
@@ -1007,7 +1014,7 @@ static bool dumpWriteFile(void) {
     VK_LOAD_DEVICE(FreeMemory)
     VK_LOAD_DEVICE(DestroyBuffer)
 
-    void *mapped = NULL;
+    void *mapped = nullptr;
     if (MapMemory_fn(s_device, s_dumpMem, 0, s_dumpSize, 0, &mapped) == VK_SUCCESS) {
         FILE *f = fopen("/tmp/vk_cache_dump.tga", "wb");
         if (f) {
@@ -1026,8 +1033,8 @@ static bool dumpWriteFile(void) {
     } else {
         fprintf(stderr, "vk:dump map failed\n");
     }
-    DestroyBuffer_fn(s_device, s_dumpBuffer, NULL);
-    FreeMemory_fn(s_device, s_dumpMem, NULL);
+    DestroyBuffer_fn(s_device, s_dumpBuffer, nullptr);
+    FreeMemory_fn(s_device, s_dumpMem, nullptr);
     s_dumpBuffer = VK_NULL_HANDLE;
     s_dumpMem = VK_NULL_HANDLE;
     return true;
@@ -1077,8 +1084,8 @@ static bool buildPipelines(void) {
     ds.pDynamicStates = dynStates;
 
     // --- triangle child (legacy hello-triangle scene content) ------------
-    VkShaderModule triVert = createShaderModule("hello_triangle_vert.spv", NULL);
-    VkShaderModule triFrag = createShaderModule("hello_triangle_frag.spv", NULL);
+    VkShaderModule triVert = createShaderModule("hello_triangle_vert.spv", nullptr);
+    VkShaderModule triFrag = createShaderModule("hello_triangle_frag.spv", nullptr);
     if (triVert == VK_NULL_HANDLE || triFrag == VK_NULL_HANDLE) {
         snprintf(s_status, sizeof(s_status), "triangle spv not found");
         fprintf(stderr, "vk: triangle spv not found\n");
@@ -1093,7 +1100,7 @@ static bool buildPipelines(void) {
     VkPipelineLayoutCreateInfo tlci = { .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
     tlci.pushConstantRangeCount = 1;
     tlci.pPushConstantRanges = &triPush;
-    if (CreatePipelineLayout_fn(s_device, &tlci, NULL, &s_triLayout) != VK_SUCCESS) {
+    if (CreatePipelineLayout_fn(s_device, &tlci, nullptr, &s_triLayout) != VK_SUCCESS) {
         snprintf(s_status, sizeof(s_status), "tri layout failed");
         return false;
     }
@@ -1123,14 +1130,14 @@ static bool buildPipelines(void) {
     tpci.layout = s_triLayout;
     tpci.renderPass = pass;
     tpci.subpass = 0;
-    if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &tpci, NULL, &s_triPipeline) != VK_SUCCESS) {
+    if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &tpci, nullptr, &s_triPipeline) != VK_SUCCESS) {
         snprintf(s_status, sizeof(s_status), "tri pipeline failed");
         return false;
     }
 
     // --- quad child (solid panel fill) ------------------------------------
-    VkShaderModule quadVert = createShaderModule("solid_quad_vert.spv", NULL);
-    VkShaderModule quadFrag = createShaderModule("solid_quad_frag.spv", NULL);
+    VkShaderModule quadVert = createShaderModule("solid_quad_vert.spv", nullptr);
+    VkShaderModule quadFrag = createShaderModule("solid_quad_frag.spv", nullptr);
     if (quadVert == VK_NULL_HANDLE || quadFrag == VK_NULL_HANDLE) {
         snprintf(s_status, sizeof(s_status), "quad spv not found");
         fprintf(stderr, "vk: quad spv not found\n");
@@ -1148,7 +1155,7 @@ static bool buildPipelines(void) {
     VkPipelineLayoutCreateInfo qlci = { .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
     qlci.pushConstantRangeCount = 2;
     qlci.pPushConstantRanges = quadPush;
-    if (CreatePipelineLayout_fn(s_device, &qlci, NULL, &s_quadLayout) != VK_SUCCESS) {
+    if (CreatePipelineLayout_fn(s_device, &qlci, nullptr, &s_quadLayout) != VK_SUCCESS) {
         snprintf(s_status, sizeof(s_status), "quad layout failed");
         return false;
     }
@@ -1178,7 +1185,7 @@ static bool buildPipelines(void) {
     qpci.layout = s_quadLayout;
     qpci.renderPass = pass;
     qpci.subpass = 0;
-    if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &qpci, NULL, &s_quadPipeline) != VK_SUCCESS) {
+    if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &qpci, nullptr, &s_quadPipeline) != VK_SUCCESS) {
         snprintf(s_status, sizeof(s_status), "quad pipeline failed");
         return false;
     }
@@ -1187,7 +1194,7 @@ static bool buildPipelines(void) {
     VkCommandPoolCreateInfo cpci = { .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
     cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     cpci.queueFamilyIndex = s_queueFamily;
-    if (CreateCommandPool_fn(s_device, &cpci, NULL, &s_cmdPool) != VK_SUCCESS) {
+    if (CreateCommandPool_fn(s_device, &cpci, nullptr, &s_cmdPool) != VK_SUCCESS) {
         snprintf(s_status, sizeof(s_status), "cmdpool failed");
         return false;
     }
@@ -1274,7 +1281,7 @@ static bool presentFrameLocked(void) {
 
     if (!s_dumpEnvRead) {
         s_dumpEnvRead = true;
-        s_dumpEnabled = getenv("ANTI_VK_DUMP") != NULL;
+        s_dumpEnabled = getenv("ANTI_VK_DUMP") != nullptr;
     }
     if (s_dumpEnabled && s_dumpStage == 1) {
         dumpWriteFile();
@@ -1382,11 +1389,11 @@ static bool presentFrameLocked(void) {
         }
     }
     Panel *scenePanel = Window_getScenePanel(s_window);
-    if (scenePanel != NULL) {
+    if (scenePanel != nullptr) {
         Container_setSize(&(*scenePanel).base, (float)winW, (float)winH);
     }
     uint64_t sizeGen = Window_sizeGeneration(s_window);
-    if (root != NULL && sizeGen != s_mirroredSizeGen) {
+    if (root != nullptr && sizeGen != s_mirroredSizeGen) {
         s_mirroredSizeGen = sizeGen;
         Container_setSize(&(*root).base, (float)winW, (float)winH);
     }
@@ -1394,11 +1401,11 @@ static bool presentFrameLocked(void) {
     // Clear law: background color inherits from scenePanel (or root).
     // contentPanel background color is ignored (contentPanel is purely a placeholder).
     s_frame.bg[0] = s_frame.bg[1] = s_frame.bg[2] = s_frame.bg[3] = 0.0f;
-    if (scenePanel != NULL) {
+    if (scenePanel != nullptr) {
         uint32_t bgColor = Panel_getBackgroundColor(scenePanel);
         if (bgColor != 0)
             decodeColor(bgColor, s_frame.bg);
-    } else if (root != NULL && root != contentPanel) {
+    } else if (root != nullptr && root != contentPanel) {
         uint32_t bgColor = Panel_getBackgroundColor(root);
         if (bgColor != 0)
             decodeColor(bgColor, s_frame.bg);
@@ -1473,7 +1480,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
     static int s_traceInit = 0;
     if (!s_traceInit) {
         s_traceInit = 1;
-        s_trace = getenv("ANTI_VK_TRACE") != NULL;
+        s_trace = getenv("ANTI_VK_TRACE") != nullptr;
     }
 
     // --- 0. scene canvases: flip-buffers + own clock (phases 2+3) ---------
@@ -1525,14 +1532,14 @@ static bool presentFrameTail(uint32_t imageIndex) {
     uint32_t candidateCount = 0;
 
     Panel *winScene = Window_getScenePanel(s_window);
-    if (winScene != NULL) {
+    if (winScene != nullptr) {
         uint32_t st = Memory_type(winScene);
         if (st == TYPE_SCENE3D_SINGLETON || st == TYPE_SCENE2D_SINGLETON || st == TYPE_SCENE_SINGLETON) {
             sceneCandidates[candidateCount++] = winScene;
         }
     }
 
-    if (s_frame.root != NULL) {
+    if (s_frame.root != nullptr) {
         uint32_t rt = Memory_type(s_frame.root);
         if ((rt == TYPE_SCENE3D_SINGLETON || rt == TYPE_SCENE2D_SINGLETON || rt == TYPE_SCENE_SINGLETON)
             && s_frame.root != winScene && candidateCount < 8) {
@@ -1651,7 +1658,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
     toPrep.subresourceRange.levelCount = 1;
     toPrep.subresourceRange.layerCount = 1;
     CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &toPrep);
+                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toPrep);
 
     {
         VkClearValue cc = {0};
@@ -1755,7 +1762,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
         stampsReady.subresourceRange = toPrep.subresourceRange;
         CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
                               VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                              0, 0, NULL, 0, NULL, 1, &stampsReady);
+                              0, 0, nullptr, 0, nullptr, 1, &stampsReady);
     }
 
     // --- 2. procedural children straight onto the drawable -----------------
@@ -1775,7 +1782,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
         fprintf(stderr, "vk:trace: %dx%d pts | drawable %ux%u px | k=%.2f\n",
                 s_frame.winW, s_frame.winH, s_extent.width, s_extent.height, s_frame.kx);
 
-    if (s_frame.root != NULL) {
+    if (s_frame.root != nullptr) {
         size_t childCount = Panel_childCount(s_frame.root);
         for (size_t i = 0; i < childCount; i++) {
             Panel *child = Panel_getChild(s_frame.root, i);
@@ -1832,10 +1839,10 @@ static bool presentFrameTail(uint32_t imageIndex) {
             // METHOD-SLOT DISPATCH ("@Override"): a set renderHandler replaces
             // the default draw entirely — it receives an open render pass on
             // this drawable, the clipped pixel rect, and the command buffer.
-            // NULL falls through to the built-in solid quad.
+            // nullptr falls through to the built-in solid quad.
             Panel_RenderFn handler = Panel_getRenderHandler(child);
-            if (handler != NULL) {
-                handler(child, NULL, s_cmdBuffer, px, py, pw, ph);
+            if (handler != nullptr) {
+                handler(child, nullptr, s_cmdBuffer, px, py, pw, ph);
             } else {
                 uint32_t color = Panel_getBackgroundColor(child);
                 if (color == 0)
@@ -1862,7 +1869,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
     drawDone.image = s_swapchainImages[imageIndex];
     drawDone.subresourceRange = toPrep.subresourceRange;
     CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &drawDone);
+                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &drawDone);
 
     if (s_dumpEnabled && s_dumpStage == 0) {
         if (dumpAllocStage(s_extent.width, s_extent.height)) {
@@ -1884,7 +1891,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
     toPresent.image = s_swapchainImages[imageIndex];
     toPresent.subresourceRange = toPrep.subresourceRange;
     CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &toPresent);
+                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &toPresent);
 
     EndCommandBuffer_fn(s_cmdBuffer);
 
@@ -1959,10 +1966,10 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
         tlci.pPushConstantRanges = texPush;
         tlci.setLayoutCount = 1;
         tlci.pSetLayouts = &bindlessLayout;
-        if (CreatePipelineLayout_fn(s_device, &tlci, NULL, &s_texLayout) != VK_SUCCESS) return;
+        if (CreatePipelineLayout_fn(s_device, &tlci, nullptr, &s_texLayout) != VK_SUCCESS) return;
 
-        VkShaderModule texVert = createShaderModule("texture_quad_vert.spv", NULL);
-        VkShaderModule texFrag = createShaderModule("texture_quad_frag.spv", NULL);
+        VkShaderModule texVert = createShaderModule("texture_quad_vert.spv", nullptr);
+        VkShaderModule texFrag = createShaderModule("texture_quad_frag.spv", nullptr);
         if (texVert == VK_NULL_HANDLE || texFrag == VK_NULL_HANDLE) return;
 
         // Re-use the same fixed-function skeleton as the quad pipeline
@@ -2006,7 +2013,7 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
         gpci.renderPass = iosurfPass;  // BGRA8, matches IOSurface panels
         gpci.subpass = 0;
 
-        if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &gpci, NULL, &s_texPipeline) != VK_SUCCESS) {
+        if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &gpci, nullptr, &s_texPipeline) != VK_SUCCESS) {
             s_texPipeline = VK_NULL_HANDLE;
             return;
         }
@@ -2032,7 +2039,7 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
 
     extern void *Texture_getDescriptorSet(void);
     VkDescriptorSet bindlessSet = (VkDescriptorSet)Texture_getDescriptorSet();
-    CmdBindDescriptorSets_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_texLayout, 0, 1, &bindlessSet, 0, NULL);
+    CmdBindDescriptorSets_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_texLayout, 0, 1, &bindlessSet, 0, nullptr);
 
     // Push constant layout (must match texture_quad.frag):
     //   [0..15]  vec4  rectNdc        (vertex)

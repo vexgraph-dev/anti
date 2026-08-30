@@ -18,7 +18,7 @@ Passive *Passive_allocate(PassiveGetter getter, PassiveSetter setter, void *user
     uint32_t type = Type_make(FORM_SINGLETON, ID_PASSIVE) | WRAP_PROACTIVE;
     Passive *passive = (Passive *)Memory_alloc(type, sizeof(Passive));
     if (!passive)
-        return NULL;
+        return nullptr;
     (*passive).cachedValue = 0;
     (*passive).getter = getter;
     (*passive).setter = setter;

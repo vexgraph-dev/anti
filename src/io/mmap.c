@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 MemoryMap MemoryMap_open(const char *path) {
-    MemoryMap map = { .data = NULL, .size = 0, .valid = false };
+    MemoryMap map = { .data = nullptr, .size = 0, .valid = false };
     if (!path) return map;
 
     int fd = open(path, O_RDONLY);
@@ -13,7 +13,7 @@ MemoryMap MemoryMap_open(const char *path) {
 
     struct stat sb;
     if (fstat(fd, &sb) == 0 && sb.st_size > 0) {
-        void *ptr = mmap(NULL, (size_t)sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        void *ptr = mmap(nullptr, (size_t)sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
         if (ptr != MAP_FAILED) {
             map.data = ptr;
             map.size = (size_t)sb.st_size;
@@ -30,7 +30,7 @@ MemoryMap MemoryMap_open(const char *path) {
 void MemoryMap_close(MemoryMap *map) {
     if (map && (*map).valid && (*map).data && (*map).size > 0) {
         munmap((*map).data, (*map).size);
-        (*map).data = NULL;
+        (*map).data = nullptr;
         (*map).size = 0;
         (*map).valid = false;
     }

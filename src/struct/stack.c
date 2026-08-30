@@ -19,7 +19,7 @@ static Stack *instant(uint32_t elementClass, size_t capacity, size_t count) {
     size_t cap = capacity < DEFAULT_CAPACITY ? DEFAULT_CAPACITY : capacity;
     Stack *stack = (Stack *)Memory_alloc(TYPE_STACK, sizeof(Stack));
     if (!stack)
-        return NULL;
+        return nullptr;
 
     Collection *c = asCollection(stack);
     (*c).typeId = TYPE_STACK;
@@ -34,7 +34,7 @@ static Stack *instant(uint32_t elementClass, size_t capacity, size_t count) {
     (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(stack);
-        return NULL;
+        return nullptr;
     }
     memset((*c).data, 0, bytes);
     return stack;
@@ -93,10 +93,10 @@ uint64_t Stack_peek(Stack *stack) {
 }
 
 uint8_t *Stack_slot(Stack *stack, size_t index) {
-    if (!stack) return NULL;
+    if (!stack) return nullptr;
     Collection *c = asCollection(stack);
     if (index >= (*c).activeCount)
-        return NULL;
+        return nullptr;
     return (*c).data + index * (*c).stride;
 }
 

@@ -16,16 +16,16 @@ static uint8_t *allocate_raw(size_t len) {
 
 uint8_t *string_allocate(const char *value) {
     if (!value)
-        return NULL;
+        return nullptr;
     return string_allocateBytes((const uint8_t *)value, strlen(value));
 }
 
 uint8_t *string_allocateBytes(const uint8_t *bytes, size_t len) {
     if (!bytes && len > 0)
-        return NULL;
+        return nullptr;
     uint8_t *ptr = allocate_raw(len);
     if (!ptr)
-        return NULL;
+        return nullptr;
     if (len > 0)
         memcpy(ptr, bytes, len);
     ptr[len] = '\0';
@@ -43,7 +43,7 @@ void string_free(uint8_t *ptr) {
 
 const char *string_get(const uint8_t *ptr) {
     if (!ptr)
-        return NULL;
+        return nullptr;
     return (const char *)ptr;
 }
 
@@ -77,7 +77,7 @@ size_t string_capacity(const uint8_t *ptr) {
 
 uint8_t *string_copy(const uint8_t *ptr) {
     if (!ptr)
-        return NULL;
+        return nullptr;
     size_t len = string_length(ptr);
     uint8_t *dup = string_allocateBytes(ptr, len);
     return dup;

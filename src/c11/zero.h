@@ -8,7 +8,7 @@
 //   Vec3  v = zero(other);    // {0,0,0}
 //   Mat4  m = zero(model);    // every element zeroed
 //   Vec4  w = zero((*blk));   // heap block? deref it — zero of ITS class
-//   Window *p = zero(ptr);    // NULL — the true zero of any pointer
+//   Window *p = zero(ptr);    // nullptr — the true zero of any pointer
 //   const char *s = zero(s);  // "0"
 //
 // The type comes from the argument through __typeof__ (gnu11, like the rest

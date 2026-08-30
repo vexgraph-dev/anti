@@ -111,7 +111,7 @@ Set *Set_allocate(uint32_t elementClass, size_t capacity) {
     if (cap < 4) cap = 4;
 
     Set *set = (Set *)Memory_alloc(TYPE_SET, sizeof(Set));
-    if (!set) return NULL;
+    if (!set) return nullptr;
 
     Collection *c = asCollection(set);
     (*c).typeId = TYPE_SET;
@@ -126,7 +126,7 @@ Set *Set_allocate(uint32_t elementClass, size_t capacity) {
     (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(set);
-        return NULL;
+        return nullptr;
     }
     memset((*c).data, 0, bytes);
     return set;
@@ -225,10 +225,10 @@ int Set_remove(Set *set, uint64_t element) {
 }
 
 List *Set_toList(Set *set) {
-    if (!set) return NULL;
+    if (!set) return nullptr;
     Collection *c = asCollection(set);
     List *list = List_allocate((*c).elementClass, (*c).activeCount);
-    if (!list) return NULL;
+    if (!list) return nullptr;
 
     for (size_t i = 0; i < (*c).capacity; i++) {
         uint8_t *slot = slotAt(c, i);
@@ -240,7 +240,7 @@ List *Set_toList(Set *set) {
 
 List *Set_toSortedList(Set *set) {
     List *list = Set_toList(set);
-    if (!list) return NULL;
+    if (!list) return nullptr;
     if (List_size(list) > 1) {
         size_t stride = List_stride(list);
         uint8_t *buf = List_dataBuffer(list);

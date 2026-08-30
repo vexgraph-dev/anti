@@ -61,14 +61,14 @@ bool BitPool_init(BitPool *pool, size_t element_size, size_t capacity) {
 void BitPool_shutdown(BitPool *pool) {
     if (pool && (*pool).arena) {
         free((*pool).arena);
-        (*pool).arena = NULL;
+        (*pool).arena = nullptr;
     }
 }
 
 // Pop a slot: CAS the tagged free head forward, bumping the tag each time so
 // the ABA problem can't sneak in. On success the slot is exclusively ours.
 void *BitPool_alloc(BitPool *pool, uint32_t type_id) {
-    if (!pool) return NULL;
+    if (!pool) return nullptr;
 
     uint64_t head_packed = atomic_load_explicit(&(*pool).free_head, memory_order_acquire);
     BitSlot *slot;
@@ -77,7 +77,7 @@ void *BitPool_alloc(BitPool *pool, uint32_t type_id) {
 
     for (;;) {
         uintptr_t head_ptr = ptrOf(head_packed);
-        if (head_ptr == 0) return NULL; // pool exhausted
+        if (head_ptr == 0) return nullptr; // pool exhausted
 
         slot = (BitSlot *)head_ptr;
         uint64_t next_packed = atomic_load_explicit(&(*slot).next, memory_order_acquire);

@@ -39,7 +39,7 @@ static FILE *map_open(const char *path, uint32_t mode) {
 
 File *File_open(const char *path, uint32_t mode) {
     if (!path)
-        return NULL;
+        return nullptr;
     if ((mode & FILE_MODE_CREATE) != 0) {
         // Create missing parent directories (rough: parent of last '/').
         const char *slash = strrchr(path, '/');
@@ -56,12 +56,12 @@ File *File_open(const char *path, uint32_t mode) {
 
     FILE *handle = map_open(path, mode);
     if (!handle)
-        return NULL;
+        return nullptr;
 
     File *f = Memory_alloc(TYPE_FILE_SINGLETON, sizeof(File));
     if (!f) {
         fclose(handle);
-        return NULL;
+        return nullptr;
     }
     strncpy((*f).name, path, FILE_PATH_MAX - 1);
     (*f).name[FILE_PATH_MAX - 1] = '\0';
@@ -90,7 +90,7 @@ bool File_close(File *f) {
         return false;
     if ((*f).handle)
         fclose((*f).handle);
-    (*f).handle = NULL;
+    (*f).handle = nullptr;
     Memory_free(f);
     return true;
 }

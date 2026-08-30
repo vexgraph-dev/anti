@@ -37,12 +37,12 @@ struct PanelCocoa {
 static const int kBytesPerPixel = 4;
 
 static IOSurfaceRef makeSurface(int width, int height) {
-    if (width <= 0 || height <= 0) return NULL;
+    if (width <= 0 || height <= 0) return nullptr;
     CFMutableDictionaryRef props = CFDictionaryCreateMutable(
         kCFAllocatorDefault, 0,
         &kCFTypeDictionaryKeyCallBacks,
         &kCFTypeDictionaryValueCallBacks);
-    if (!props) return NULL;
+    if (!props) return nullptr;
 
     // IOSurface properties
     int bpr = width * kBytesPerPixel;
@@ -74,10 +74,10 @@ static IOSurfaceRef makeSurface(int width, int height) {
 }
 
 PanelCocoa *PanelCocoa_new(void *panel, int width, int height) {
-    if (!panel || width <= 0 || height <= 0) return NULL;
+    if (!panel || width <= 0 || height <= 0) return nullptr;
 
     PanelCocoa *pc = (PanelCocoa *)calloc(1, sizeof(PanelCocoa));
-    if (!pc) return NULL;
+    if (!pc) return nullptr;
 
     (*pc).panel = panel;
     (*pc).width = width;
@@ -90,7 +90,7 @@ PanelCocoa *PanelCocoa_new(void *panel, int width, int height) {
     (*pc).surface = makeSurface(width, height);
     if (!(*pc).surface) {
         free(pc);
-        return NULL;
+        return nullptr;
     }
 
     (*pc).layer = [[CALayer alloc] init];
@@ -104,7 +104,7 @@ PanelCocoa *PanelCocoa_new(void *panel, int width, int height) {
 
     // Register in the lookup table
     for (int i = 0; i < kMaxPanels; i++) {
-        if (s_registry[i].panel == NULL) {
+        if (s_registry[i].panel == nullptr) {
             s_registry[i].panel = panel;
             s_registry[i].pc = pc;
             break;
@@ -119,8 +119,8 @@ void PanelCocoa_free(PanelCocoa *pc) {
     // Unregister from lookup table
     for (int i = 0; i < kMaxPanels; i++) {
         if (s_registry[i].pc == pc) {
-            s_registry[i].panel = NULL;
-            s_registry[i].pc = NULL;
+            s_registry[i].panel = nullptr;
+            s_registry[i].pc = nullptr;
             break;
         }
     }
@@ -151,25 +151,25 @@ bool PanelCocoa_setSize(PanelCocoa *pc, int width, int height) {
 }
 
 void *PanelCocoa_layer(PanelCocoa *pc) {
-    return pc ? (__bridge void *)(*pc).layer : NULL;
+    return pc ? (__bridge void *)(*pc).layer : nullptr;
 }
 
 int PanelCocoa_width(const PanelCocoa *pc) { return pc ? (*pc).width : 0; }
 int PanelCocoa_height(const PanelCocoa *pc) { return pc ? (*pc).height : 0; }
-void *PanelCocoa_surface(PanelCocoa *pc) { return pc ? (void *)(*pc).surface : NULL; }
+void *PanelCocoa_surface(PanelCocoa *pc) { return pc ? (void *)(*pc).surface : nullptr; }
 
 void PanelCocoa_markDirty(PanelCocoa *pc) {
     if (pc) atomic_store(&(*pc).dirty, true);
 }
 
-// Lookup: retrieve the PanelCocoa backing for a Panel. Returns NULL if the
+// Lookup: retrieve the PanelCocoa backing for a Panel. Returns nullptr if the
 // panel has no IOSurface backing. Used by the window bridge.
 void *PanelCocoa_fromPanel(void *panel) {
-    if (!panel) return NULL;
+    if (!panel) return nullptr;
     for (int i = 0; i < kMaxPanels; i++) {
         if (s_registry[i].panel == panel) return s_registry[i].pc;
     }
-    return NULL;
+    return nullptr;
 }
 
 void PanelCocoa_setAnchors(PanelCocoa *pc, int parentAnchor, int selfAnchor) {
@@ -222,7 +222,7 @@ void PanelCocoa_render(PanelCocoa *pc) {
 
     // CPU paint path: solid color from the panel's background color.
     // Lock the IOSurface, paint with Raster, unlock.
-    IOReturn lock = IOSurfaceLock((*pc).surface, 0, NULL);
+    IOReturn lock = IOSurfaceLock((*pc).surface, 0, nullptr);
     if (lock != kIOReturnSuccess) return;
 
     void *base = IOSurfaceGetBaseAddress((*pc).surface);
@@ -255,6 +255,6 @@ void PanelCocoa_render(PanelCocoa *pc) {
         }
     }
 
-    IOSurfaceUnlock((*pc).surface, 0, NULL);
+    IOSurfaceUnlock((*pc).surface, 0, nullptr);
     atomic_store(&(*pc).dirty, false);
 }

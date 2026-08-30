@@ -45,14 +45,14 @@ static VkView s_views[16];
 static size_t s_viewCount = 0;
 
 // loader plumbing — fetched once per refreshAll through the caller's gpa
-static PFN_vkGetInstanceProcAddr s_gpa = NULL;
-static PFN_vkGetDeviceProcAddr s_gdpa = NULL;
+static PFN_vkGetInstanceProcAddr s_gpa = nullptr;
+static PFN_vkGetDeviceProcAddr s_gdpa = nullptr;
 static VkInstance s_instance;
 static VkPhysicalDevice s_phys;
 static VkDevice s_device;
 
 #define VKV_LOAD_INSTANCE(name)                                                \
-    static PFN_vk##name name##_fn = NULL;                                      \
+    static PFN_vk##name name##_fn = nullptr;                                      \
     if (!name##_fn)                                                            \
         name##_fn = (PFN_vk##name)s_gpa(s_instance, "vk" #name);               \
     if (!name##_fn) {                                                          \
@@ -61,7 +61,7 @@ static VkDevice s_device;
     }
 
 #define VKV_LOAD_DEVICE(name)                                                  \
-    static PFN_vk##name name##_fn = NULL;                                      \
+    static PFN_vk##name name##_fn = nullptr;                                      \
     if (!name##_fn)                                                            \
         name##_fn = s_gdpa                                                     \
             ? (PFN_vk##name)s_gdpa(s_device, "vk" #name)                       \
@@ -72,7 +72,7 @@ static VkDevice s_device;
     }
 
 #define VKV_LOAD_DEVICE_VOID(name)                                             \
-    static PFN_vk##name name##_fn = NULL;                                      \
+    static PFN_vk##name name##_fn = nullptr;                                      \
     if (!name##_fn)                                                            \
         name##_fn = s_gdpa                                                     \
             ? (PFN_vk##name)s_gdpa(s_device, "vk" #name)                       \
@@ -101,15 +101,15 @@ static void destroyViewObjects(VkView *v) {
     if (s_device == VK_NULL_HANDLE)
         return;
     if ((*v).fb != VK_NULL_HANDLE && DestroyFramebuffer_fn)
-        DestroyFramebuffer_fn(s_device, (*v).fb, NULL);
+        DestroyFramebuffer_fn(s_device, (*v).fb, nullptr);
     if ((*v).view != VK_NULL_HANDLE && DestroyImageView_fn)
-        DestroyImageView_fn(s_device, (*v).view, NULL);
+        DestroyImageView_fn(s_device, (*v).view, nullptr);
     if ((*v).image != VK_NULL_HANDLE && DestroyImage_fn)
-        DestroyImage_fn(s_device, (*v).image, NULL);
+        DestroyImage_fn(s_device, (*v).image, nullptr);
     if ((*v).memory != VK_NULL_HANDLE && FreeMemory_fn)
-        FreeMemory_fn(s_device, (*v).memory, NULL);
+        FreeMemory_fn(s_device, (*v).memory, nullptr);
     if ((*v).pass != VK_NULL_HANDLE && DestroyRenderPass_fn)
-        DestroyRenderPass_fn(s_device, (*v).pass, NULL);
+        DestroyRenderPass_fn(s_device, (*v).pass, nullptr);
     memset(v, 0, sizeof(VkView));
 }
 
@@ -135,7 +135,7 @@ static bool buildCache(VkView *v) {
     ici.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    VKV_CHECK(CreateImage_fn(s_device, &ici, NULL, &(*v).image), "cache CreateImage");
+    VKV_CHECK(CreateImage_fn(s_device, &ici, nullptr, &(*v).image), "cache CreateImage");
 
     VkMemoryRequirements req;
     GetImageMemoryRequirements_fn(s_device, (*v).image, &req);
@@ -148,7 +148,7 @@ static bool buildCache(VkView *v) {
     VkMemoryAllocateInfo mai = { .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
     mai.allocationSize = req.size;
     mai.memoryTypeIndex = typeIdx;
-    VKV_CHECK(AllocateMemory_fn(s_device, &mai, NULL, &(*v).memory), "cache AllocateMemory");
+    VKV_CHECK(AllocateMemory_fn(s_device, &mai, nullptr, &(*v).memory), "cache AllocateMemory");
     VKV_CHECK(BindImageMemory_fn(s_device, (*v).image, (*v).memory, 0), "cache BindImageMemory");
 
     VkImageViewCreateInfo vci = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -158,7 +158,7 @@ static bool buildCache(VkView *v) {
     vci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     vci.subresourceRange.levelCount = 1;
     vci.subresourceRange.layerCount = 1;
-    VKV_CHECK(CreateImageView_fn(s_device, &vci, NULL, &(*v).view), "cache CreateImageView");
+    VKV_CHECK(CreateImageView_fn(s_device, &vci, nullptr, &(*v).view), "cache CreateImageView");
 
     // Single subpass, clear-on-load, handed to the blit on store. Initial
     // layout UNDEFINED is honest: every pass clears the whole cache anyway.
@@ -186,7 +186,7 @@ static bool buildCache(VkView *v) {
     rpci.pAttachments = &att;
     rpci.subpassCount = 1;
     rpci.pSubpasses = &sub;
-    VKV_CHECK(CreateRenderPass_fn(s_device, &rpci, NULL, &(*v).pass), "cache CreateRenderPass");
+    VKV_CHECK(CreateRenderPass_fn(s_device, &rpci, nullptr, &(*v).pass), "cache CreateRenderPass");
 
     VkFramebufferCreateInfo fci = { .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
     fci.renderPass = (*v).pass;
@@ -195,7 +195,7 @@ static bool buildCache(VkView *v) {
     fci.width = (uint32_t)(*v).cacheW;
     fci.height = (uint32_t)(*v).cacheH;
     fci.layers = 1;
-    VKV_CHECK(CreateFramebuffer_fn(s_device, &fci, NULL, &(*v).fb), "cache CreateFramebuffer");
+    VKV_CHECK(CreateFramebuffer_fn(s_device, &fci, nullptr, &(*v).fb), "cache CreateFramebuffer");
 
     return true;
 }
@@ -236,7 +236,7 @@ bool VkView_refreshAll(VkInstance instance, PFN_vkGetInstanceProcAddr gpa,
         DisplayMonitor *mon = monitors[m];
         uint32_t id = DisplayMonitor_getId(mon);
 
-        VkView *existing = NULL;
+        VkView *existing = nullptr;
         for (size_t i = 0; i < s_viewCount; i++) {
             if ((*&s_views[i]).displayId == id) {
                 existing = &s_views[i];
@@ -294,7 +294,7 @@ size_t VkView_count(void) {
 }
 
 VkView *VkView_at(size_t index) {
-    return index < s_viewCount ? &s_views[index] : NULL;
+    return index < s_viewCount ? &s_views[index] : nullptr;
 }
 
 VkView *VkView_forPoint(float x, float y) {
@@ -305,17 +305,17 @@ VkView *VkView_forPoint(float x, float y) {
             y < (*v).originY + (float)(*v).pointH)
             return v;
     }
-    return NULL;
+    return nullptr;
 }
 
 VkView *VkView_forMonitor(uint32_t displayId) {
     if (displayId == 0)
-        return NULL;
+        return nullptr;
     for (size_t i = 0; i < s_viewCount; i++) {
         if ((*&s_views[i]).displayId == displayId)
             return &s_views[i];
     }
-    return NULL;
+    return nullptr;
 }
 
 float VkView_getOriginX(const VkView *view) {
@@ -394,7 +394,7 @@ bool VkView_endPass(VkView *view, VkCommandBuffer cb) {
     bar.subresourceRange.levelCount = 1;
     bar.subresourceRange.layerCount = 1;
     CmdPipelineBarrier_fn(cb, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &bar);
+                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
     return true;
 }
 

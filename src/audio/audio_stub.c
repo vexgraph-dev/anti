@@ -22,13 +22,13 @@ bool Audio_isReady(void) {
 
 AudioClip *AudioClip_load(const char *path) {
     (void)path;
-    return NULL;
+    return nullptr;
 }
 
 AudioClip *AudioClip_tone(float frequencyHz, float seconds) {
     (void)frequencyHz;
     (void)seconds;
-    return NULL;
+    return nullptr;
 }
 
 void AudioClip_free(AudioClip *clip) {
@@ -41,7 +41,7 @@ float AudioClip_seconds(AudioClip *clip) {
 }
 
 AudioVoice *AudioVoice_new(void) {
-    return NULL;
+    return nullptr;
 }
 
 void AudioVoice_free(AudioVoice *voice) {
@@ -88,23 +88,23 @@ bool AudioVoice_isPlaying(AudioVoice *voice) {
 // --- Audio: one-handle class (silent backend) ---
 
 Audio *Audio_0(void) {
-    return NULL;
+    return nullptr;
 }
 
 Audio *Audio_load(const char *path) {
     (void)path;
-    return NULL;
+    return nullptr;
 }
 
 Audio *Audio_withRate(double sampleRate) {
     (void)sampleRate;
-    return NULL;
+    return nullptr;
 }
 
 Audio *Audio_2(double sampleRate, int channels) {
     (void)sampleRate;
     (void)channels;
-    return NULL;
+    return nullptr;
 }
 
 void Audio_play(Audio *a) {

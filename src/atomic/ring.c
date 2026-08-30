@@ -43,13 +43,13 @@ bool RingBuffer_init(RingBuffer *ring, size_t elem_size, size_t capacity) {
     atomic_store_explicit(&(*ring).tail, 0, memory_order_relaxed);
 
     (*ring).slots = (uint8_t *)calloc(cap, elem_size);
-    return (*ring).slots != NULL;
+    return (*ring).slots != nullptr;
 }
 
 void RingBuffer_shutdown(RingBuffer *ring) {
     if (ring && (*ring).slots) {
         free((*ring).slots);
-        (*ring).slots = NULL;
+        (*ring).slots = nullptr;
     }
 }
 

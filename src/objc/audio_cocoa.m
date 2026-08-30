@@ -14,7 +14,7 @@
 // AVAudioPCMBuffers, either decoded from disk via AVAudioFile or synthesized
 // sine waves for tests and chiptunes. Compiled with -fobjc-arc (see CMake).
 
-static AVAudioEngine *s_engine = NULL;
+static AVAudioEngine *s_engine = nullptr;
 static bool s_ready = false;
 
 typedef struct AudioClip {
@@ -40,10 +40,10 @@ static AVAudioEngine *sharedEngine(void) {
 static bool ensureRunning(void) {
     AVAudioEngine *engine = sharedEngine();
     if (!engine || engine.isRunning)
-        return engine != NULL;
+        return engine != nullptr;
     __block bool ok = true;
     @try {
-        ok = [engine startAndReturnError:NULL];
+        ok = [engine startAndReturnError:nullptr];
     } @catch (NSException *e) {
         ok = false;
     }
@@ -52,7 +52,7 @@ static bool ensureRunning(void) {
 
 bool Audio_init(void) {
     @autoreleasepool {
-        s_ready = sharedEngine() != NULL;
+        s_ready = sharedEngine() != nullptr;
         return s_ready;
     }
 }
@@ -61,7 +61,7 @@ void Audio_shutdown(void) {
     if (!s_ready)
         return;
     [s_engine stop];
-    s_engine = NULL;
+    s_engine = nullptr;
     s_ready = false;
 }
 
@@ -72,7 +72,7 @@ bool Audio_isReady(void) {
 static AudioClip *clipAlloc(float seconds) {
     AudioClip *clip = (AudioClip *)Memory_alloc(TYPE_AUDIO_CLIP_SINGLETON, sizeof(AudioClip));
     if (clip) {
-        (*clip).buffer = NULL;
+        (*clip).buffer = nullptr;
         (*clip).seconds = seconds;
     }
     return clip;
@@ -80,30 +80,30 @@ static AudioClip *clipAlloc(float seconds) {
 
 AudioClip *AudioClip_load(const char *path) {
     if (!path || !s_ready)
-        return NULL;
+        return nullptr;
     @autoreleasepool {
         NSString *nsPath = [NSString stringWithUTF8String:path];
         NSURL *url = [NSURL fileURLWithPath:nsPath];
-        AVAudioFile *file = [[AVAudioFile alloc] initForReading:url error:NULL];
+        AVAudioFile *file = [[AVAudioFile alloc] initForReading:url error:nullptr];
         if (!file)
-            return NULL;
+            return nullptr;
 
         AVAudioFormat *format = [file processingFormat];
         AVAudioFrameCount frames = (AVAudioFrameCount)[file length];
         if (frames == 0)
-            return NULL;
+            return nullptr;
 
         AVAudioPCMBuffer *buf = [[AVAudioPCMBuffer alloc]
             initWithPCMFormat:format frameCapacity:frames];
         if (!buf)
-            return NULL;
-        if (![file readIntoBuffer:buf error:NULL] || buf.frameLength == 0)
-            return NULL;
+            return nullptr;
+        if (![file readIntoBuffer:buf error:nullptr] || buf.frameLength == 0)
+            return nullptr;
 
         double secs = (double)frames / (double)format.sampleRate;
         AudioClip *clip = clipAlloc((float)secs);
         if (!clip)
-            return NULL;
+            return nullptr;
         (*clip).buffer = buf;
         return clip;
     }
@@ -111,7 +111,7 @@ AudioClip *AudioClip_load(const char *path) {
 
 AudioClip *AudioClip_tone(float frequencyHz, float seconds) {
     if (!s_ready || seconds <= 0.0f || frequencyHz <= 0.0f)
-        return NULL;
+        return nullptr;
     @autoreleasepool {
         AVAudioFormat *format = [[s_engine outputNode] outputFormatForBus:0];
         double rate = (double)format.sampleRate;
@@ -120,7 +120,7 @@ AudioClip *AudioClip_tone(float frequencyHz, float seconds) {
         AVAudioPCMBuffer *buf = [[AVAudioPCMBuffer alloc]
             initWithPCMFormat:format frameCapacity:frames];
         if (!buf)
-            return NULL;
+            return nullptr;
         buf.frameLength = frames;
 
         float *left = buf.floatChannelData[0];
@@ -136,7 +136,7 @@ AudioClip *AudioClip_tone(float frequencyHz, float seconds) {
 
         AudioClip *clip = clipAlloc(seconds);
         if (!clip)
-            return NULL;
+            return nullptr;
         (*clip).buffer = buf;
         return clip;
     }
@@ -145,7 +145,7 @@ AudioClip *AudioClip_tone(float frequencyHz, float seconds) {
 void AudioClip_free(AudioClip *clip) {
     if (!clip)
         return;
-    (*clip).buffer = NULL;
+    (*clip).buffer = nullptr;
     Memory_free(clip);
 }
 
@@ -155,25 +155,25 @@ float AudioClip_seconds(AudioClip *clip) {
 
 AudioVoice *AudioVoice_new(void) {
     if (!s_ready)
-        return NULL;
+        return nullptr;
     @autoreleasepool {
         AudioVoice *v = (AudioVoice *)Memory_alloc(TYPE_AUDIO_VOICE_SINGLETON, sizeof(AudioVoice));
         if (!v)
-            return NULL;
+            return nullptr;
         (*v).node = [[AVAudioPlayerNode alloc] init];
         if (!(*v).node) {
             Memory_free(v);
-            return NULL;
+            return nullptr;
         }
         [s_engine attachNode:(*v).node];
         AVAudioFormat *out = [[s_engine outputNode] outputFormatForBus:0];
-        [s_engine connect:(*v).node to:[s_engine mainMixerNode] format:out error:NULL];
+        [s_engine connect:(*v).node to:[s_engine mainMixerNode] format:out error:nullptr];
         if (!ensureRunning()) {
             [s_engine detachNode:(*v).node];
             Memory_free(v);
-            return NULL;
+            return nullptr;
         }
-        (*v).clip = NULL;
+        (*v).clip = nullptr;
         (*v).active = false;
         (*v).looping = false;
         return v;
@@ -187,7 +187,7 @@ void AudioVoice_free(AudioVoice *voice) {
         [(*voice).node stop];
         [s_engine detachNode:(*voice).node];
     }
-    (*voice).node = NULL;
+    (*voice).node = nullptr;
     Memory_free(voice);
 }
 
@@ -224,7 +224,7 @@ void AudioVoice_play(AudioVoice *voice) {
             ? AVAudioPlayerNodeBufferLoops
             : AVAudioPlayerNodeBufferInterrupts;
         [(*voice).node scheduleBuffer:buf atTime:nil options:opts completionHandler:nil];
-        if (![(*voice).node playAndReturnError:NULL])
+        if (![(*voice).node playAndReturnError:nullptr])
             return;
         (*voice).active = true;
     }
@@ -246,7 +246,7 @@ void AudioVoice_stop(AudioVoice *voice) {
 bool AudioVoice_isPlaying(AudioVoice *voice) {
     if (!voice || !(*voice).active)
         return false;
-    return (*voice).node != NULL && [(AVAudioPlayerNode *)(*voice).node isPlaying];
+    return (*voice).node != nullptr && [(AVAudioPlayerNode *)(*voice).node isPlaying];
 }
 
 // --- Audio: one-handle class -------------------------------------------------
@@ -263,8 +263,8 @@ typedef struct Audio {
 } Audio;
 
 static void audioInitFields(Audio *a, double rate, int channels) {
-    (*a).buffer = NULL;
-    (*a).node = NULL;
+    (*a).buffer = nullptr;
+    (*a).node = nullptr;
     (*a).active = false;
     (*a).looping = false;
     (*a).gain = 1.0f;
@@ -279,7 +279,7 @@ static bool audioWireUp(Audio *a) {
         return false;
     [s_engine attachNode:node];
     AVAudioFormat *fmt = [[s_engine outputNode] outputFormatForBus:0];
-    [s_engine connect:node to:[s_engine mainMixerNode] format:fmt error:NULL];
+    [s_engine connect:node to:[s_engine mainMixerNode] format:fmt error:nullptr];
     if (!ensureRunning()) {
         [s_engine detachNode:node];
         return false;
@@ -290,11 +290,11 @@ static bool audioWireUp(Audio *a) {
 
 Audio *Audio_0(void) {
     if (!s_ready)
-        return NULL;
+        return nullptr;
     @autoreleasepool {
         Audio *a = (Audio *)Memory_alloc(TYPE_AUDIO_SINGLETON, sizeof(Audio));
         if (!a)
-            return NULL;
+            return nullptr;
         audioInitFields(a, 44100.0, AUDIO_STEREO);
         return a;
     }
@@ -316,34 +316,34 @@ Audio *Audio_2(double sampleRate, int channels) {
 
 Audio *Audio_load(const char *path) {
     if (!path || !s_ready)
-        return NULL;
+        return nullptr;
     @autoreleasepool {
         NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:path]];
-        AVAudioFile *file = [[AVAudioFile alloc] initForReading:url error:NULL];
+        AVAudioFile *file = [[AVAudioFile alloc] initForReading:url error:nullptr];
         if (!file)
-            return NULL;
+            return nullptr;
 
         AVAudioFormat *format = [file processingFormat];
         AVAudioFrameCount frames = (AVAudioFrameCount)[file length];
         if (frames == 0)
-            return NULL;
+            return nullptr;
 
         AVAudioPCMBuffer *buf = [[AVAudioPCMBuffer alloc]
             initWithPCMFormat:format frameCapacity:frames];
         if (!buf)
-            return NULL;
-        if (![file readIntoBuffer:buf error:NULL] || buf.frameLength == 0)
-            return NULL;
+            return nullptr;
+        if (![file readIntoBuffer:buf error:nullptr] || buf.frameLength == 0)
+            return nullptr;
 
         Audio *a = Audio_0();
         if (!a)
-            return NULL;
+            return nullptr;
         (*a).buffer = buf;
         (*a).rate = format.sampleRate;
         (*a).channels = (int)format.channelCount;
         if (!audioWireUp(a)) {
             Memory_free(a);
-            return NULL;
+            return nullptr;
         }
         return a;
     }
@@ -356,7 +356,7 @@ void Audio_play(Audio *a) {
         ? AVAudioPlayerNodeBufferLoops
         : AVAudioPlayerNodeBufferInterrupts;
     [(*a).node scheduleBuffer:(*a).buffer atTime:nil options:opts completionHandler:nil];
-    if (![(*a).node playAndReturnError:NULL])
+    if (![(*a).node playAndReturnError:nullptr])
         return;
     (*a).active = true;
 }
@@ -441,7 +441,7 @@ void Audio_free(Audio *a) {
             [s_engine detachNode:(*a).node];
         }
     }
-    (*a).node = NULL;
-    (*a).buffer = NULL;
+    (*a).node = nullptr;
+    (*a).buffer = nullptr;
     Memory_free(a);
 }

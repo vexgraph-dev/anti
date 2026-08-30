@@ -253,7 +253,7 @@ static bool parseValue(Parser *ps, JsonRef *out, int depth) {
     }
 
     // Number: strtod handles sign/exponent/fraction in one bite.
-    char *end = NULL;
+    char *end = nullptr;
     double num = strtod((*ps).p, &end);
     if (end == (*ps).p) return fail(d);
     JsonRef v = allocNode(ps);
@@ -377,7 +377,7 @@ int64_t Json_writeString(char *out, size_t cap, const char *s) {
     out[used++] = '"';
     for (const char *p = s; *p; p++) {
         char c = *p;
-        const char *esc = NULL;
+        const char *esc = nullptr;
         switch (c) {
             case '"': esc = "\\\""; break;
             case '\\': esc = "\\\\"; break;

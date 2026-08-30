@@ -8,12 +8,12 @@
 static Scene *allocScene(uint32_t typeId) {
     Scene *s = (Scene *)Memory_alloc(typeId, sizeof(Scene));
     if (!s)
-        return NULL;
+        return nullptr;
 
     Panel *p = Panel_0();
     if (!p) {
         Memory_free(s);
-        return NULL;
+        return nullptr;
     }
     (*s).base = (*p);
     Memory_free(p);
@@ -24,8 +24,8 @@ static Scene *allocScene(uint32_t typeId) {
 
 // The scene's Container sits two prefixes deep; rule 10 wants it hoisted.
 static Container *sceneLayout(const Scene *s) {
-    Panel *p = s ? (Panel *)&(*s).base : NULL;
-    return p ? &(*p).base : NULL;
+    Panel *p = s ? (Panel *)&(*s).base : nullptr;
+    return p ? &(*p).base : nullptr;
 }
 
 Scene *Scene_0(void) {

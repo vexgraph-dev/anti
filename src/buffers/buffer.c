@@ -10,7 +10,7 @@
 
 Buffer *Buffer_allocate(uint32_t classId, size_t width, size_t height, size_t channels) {
     if (width == 0 || height == 0 || channels == 0)
-        return NULL;
+        return nullptr;
 
     size_t length = width * height * channels;
     uint32_t type = Type_make(FORM_ARRAY, classId);
@@ -18,7 +18,7 @@ Buffer *Buffer_allocate(uint32_t classId, size_t width, size_t height, size_t ch
 
     Buffer *buf = Memory_alloc(type, payloadBytes);
     if (!buf)
-        return NULL;
+        return nullptr;
 
     (*buf).width = (uint32_t)width;
     (*buf).height = (uint32_t)height;
@@ -32,11 +32,11 @@ Buffer *Buffer_allocate(uint32_t classId, size_t width, size_t height, size_t ch
 }
 
 Buffer *Buffer_expand(Buffer *buf, size_t newWidth, size_t newHeight) {
-    if (!buf) return NULL;
+    if (!buf) return nullptr;
     uint32_t cid = Buffer_classId(buf);
     size_t channels = (*buf).channels;
     Buffer *newBuf = Buffer_allocate(cid, newWidth, newHeight, channels);
-    if (!newBuf) return NULL;
+    if (!newBuf) return nullptr;
 
     size_t copyW = (*buf).width < newWidth ? (*buf).width : newWidth;
     size_t copyH = (*buf).height < newHeight ? (*buf).height : newHeight;
@@ -84,11 +84,11 @@ uint32_t Buffer_classId(const Buffer *buf) {
 }
 
 uint64_t *Buffer_data(Buffer *buf) {
-    return buf ? (*buf).data : NULL;
+    return buf ? (*buf).data : nullptr;
 }
 
 const uint64_t *Buffer_constData(const Buffer *buf) {
-    return buf ? (*buf).data : NULL;
+    return buf ? (*buf).data : nullptr;
 }
 
 uint64_t Buffer_get(const Buffer *buf, size_t index) {

@@ -24,7 +24,7 @@ static Thread *roleWorker(int role) {
         if (s_roles[i].worker && s_roles[i].role == role)
             return s_roles[i].worker;
     }
-    return NULL;
+    return nullptr;
 }
 
 static void draw_job(Thread *self, void *task) {
@@ -41,13 +41,13 @@ Thread *DrawThread_invokeRole(int role) {
             Thread *w = Thread_new(TYPE_THREAD_DRAW_SINGLETON, draw_job,
                                    1024, false, core);
             if (!w)
-                return NULL;
+                return nullptr;
             s_roles[i].role = role;
             s_roles[i].worker = w;
             return w;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 bool DrawThread_submitTo(int role, void *task) {
@@ -63,7 +63,7 @@ void DrawThread_stopAll(void) {
 void DrawThread_freeAll(void) {
     for (int i = 0; i < DRAW_ROLE_SLOTS; i++) {
         Thread_free(s_roles[i].worker);
-        s_roles[i].worker = NULL;
+        s_roles[i].worker = nullptr;
         s_roles[i].role = 0;
     }
 }

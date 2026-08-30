@@ -26,7 +26,7 @@
 //               thread 0 any time; the GPU consumer polls them through
 //               atomic words and watches renderGeneration for swapchain
 //               rebuilds. Zero allocation, zero locks.
-//   CONTENT   — exactly ONE container slot. NULL root => the renderer has
+//   CONTENT   — exactly ONE container slot. nullptr root => the renderer has
 //               nothing to draw and degrades to a clear-only pass. All
 //               nesting happens INSIDE that root via Panel_addContainer;
 //               the window influences whatever hangs under it.
@@ -88,7 +88,7 @@ Window *Window_3(const char *title, int width, int height);
 
 // Parameterized constructor: Desc fields applied on top of defaults.
 // Pass &(WindowDesc){ .title = "...", .centered = true } — unset fields keep
-// their defaults. Returns NULL on failure.
+// their defaults. Returns nullptr on failure.
 Window *Window_new(const WindowDesc *desc);
 
 // Legacy-style convenience constructor: titled, sized, created hidden.
@@ -129,7 +129,7 @@ void Window_setVisible(Window *window, bool visible);
 // reflection), so percentage layouts and edge anchors inside it track the
 // real window without anyone forwarding sizes by hand.
 //
-// Setting NULL detaches content and the renderer falls back to a clear-only
+// Setting nullptr detaches content and the renderer falls back to a clear-only
 // pass — nothing is displayed. The renderer re-reads this pointer every frame
 // (relaxed atomic), so swaps land on the next presented frame.
 //
@@ -258,7 +258,7 @@ void Window_setCursorLocked(Window *window, bool locked);
 void *Window_contentView(Window *window);
 
 // Creates (or reuses) a CAMetalLayer on the content view — the VK_EXT_metal_surface
-// path. Returns NULL off-Apple. THREAD CONTRACT: thread 0 only.
+// path. Returns nullptr off-Apple. THREAD CONTRACT: thread 0 only.
 void *Window_metalLayer(Window *window);
 void Window_setGravityTopLeft(Window *window);
 
@@ -313,7 +313,7 @@ void Window_dispatchEvents(Window *window);
 //
 // The OS owns focus; we mirror it. After every pump pass the key window's id
 // lands in one atomic word any thread can read.
-uint32_t Window_id(Window *window);      // 0 when window is NULL
+uint32_t Window_id(Window *window);      // 0 when window is nullptr
 void Window_focus(Window *window);       // ask the OS to make this key
 bool Window_isFocused(Window *window);   // is THIS the spotlight right now?
 

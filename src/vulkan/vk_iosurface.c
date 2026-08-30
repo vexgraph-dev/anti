@@ -48,7 +48,7 @@ bool VkIOSurface_initModule(VkInstance instance, PFN_vkGetInstanceProcAddr gpa,
     s_device = device;
     s_gpa = gpa;
     s_gdpa = (PFN_vkGetDeviceProcAddr)gpa(instance, "vkGetDeviceProcAddr");
-    return s_gdpa != NULL;
+    return s_gdpa != nullptr;
 }
 
 // Create IOSurface with BGRA8 format at the given size.
@@ -57,7 +57,7 @@ static IOSurfaceRef makeIOSurface(uint32_t width, uint32_t height) {
         kCFAllocatorDefault, 0,
         &kCFTypeDictionaryKeyCallBacks,
         &kCFTypeDictionaryValueCallBacks);
-    if (!props) return NULL;
+    if (!props) return nullptr;
 
     int bpr = (int)(width * 4); // BGRA8 = 4 bytes per pixel
     CFNumberRef w = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &width);
@@ -79,10 +79,10 @@ static IOSurfaceRef makeIOSurface(uint32_t width, uint32_t height) {
 }
 
 VkIOSurface *VkIOSurface_create(uint32_t width, uint32_t height) {
-    if (width == 0 || height == 0) return NULL;
+    if (width == 0 || height == 0) return nullptr;
 
     VkIOSurface *surf = (VkIOSurface *)calloc(1, sizeof(VkIOSurface));
-    if (!surf) return NULL;
+    if (!surf) return nullptr;
 
     (*surf).width = width;
     (*surf).height = height;
@@ -92,7 +92,7 @@ VkIOSurface *VkIOSurface_create(uint32_t width, uint32_t height) {
     (*surf).surface = makeIOSurface(width, height);
     if (!(*surf).surface) {
         free(surf);
-        return NULL;
+        return nullptr;
     }
 
     // 2. Import IOSurface as VkImage — zero copy, same GPU memory
@@ -121,11 +121,11 @@ VkIOSurface *VkIOSurface_create(uint32_t width, uint32_t height) {
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
 
-    if (CreateImage_fn(s_device, &ici, NULL, &(*surf).image) != VK_SUCCESS) {
+    if (CreateImage_fn(s_device, &ici, nullptr, &(*surf).image) != VK_SUCCESS) {
         fprintf(stderr, "vk_iosurface: import CreateImage failed\n");
         CFRelease((*surf).surface);
         free(surf);
-        return NULL;
+        return nullptr;
     }
 
     return surf;
@@ -134,10 +134,10 @@ VkIOSurface *VkIOSurface_create(uint32_t width, uint32_t height) {
 // Wrap an existing IOSurfaceRef as a VkImage. The IOSurface must have been
 // created with BGRA8 format. Does NOT take ownership of the IOSurfaceRef.
 VkIOSurface *VkIOSurface_wrap(void *ioSurface, uint32_t width, uint32_t height) {
-    if (!ioSurface || width == 0 || height == 0) return NULL;
+    if (!ioSurface || width == 0 || height == 0) return nullptr;
 
     VkIOSurface *surf = (VkIOSurface *)calloc(1, sizeof(VkIOSurface));
-    if (!surf) return NULL;
+    if (!surf) return nullptr;
 
     (*surf).width = width;
     (*surf).height = height;
@@ -171,13 +171,13 @@ VkIOSurface *VkIOSurface_wrap(void *ioSurface, uint32_t width, uint32_t height) 
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
 
-    VkResult res = CreateImage_fn(s_device, &ici, NULL, &(*surf).image);
+    VkResult res = CreateImage_fn(s_device, &ici, nullptr, &(*surf).image);
     if (res != VK_SUCCESS) {
         fprintf(stderr, "vk_iosurface: wrap CreateImage failed with error %d (req=%dx%d, surface=%dx%d)\n", 
             res, width, height, (int)IOSurfaceGetWidth((*surf).surface), (int)IOSurfaceGetHeight((*surf).surface));
         CFRelease((*surf).surface);
         free(surf);
-        return NULL;
+        return nullptr;
     }
 
     return surf;
@@ -205,14 +205,14 @@ bool VkIOSurface_export(VkIOSurface *surf) {
 
     // The IOSurfaceRef should now be the same surface we imported, but
     // "finalized" and ready for AppKit compositing.
-    return exportInfo.ioSurface != NULL;
+    return exportInfo.ioSurface != nullptr;
 }
 
 void VkIOSurface_free(VkIOSurface *surf) {
     if (!surf) return;
     if ((*surf).image) {
         IOS_LOAD_DEVICE(DestroyImage);
-        DestroyImage_fn(s_device, (*surf).image, NULL);
+        DestroyImage_fn(s_device, (*surf).image, nullptr);
     }
     if ((*surf).surface) {
         if ((*surf).ownsSurface) {
@@ -225,11 +225,11 @@ void VkIOSurface_free(VkIOSurface *surf) {
 }
 
 void *VkIOSurface_getSurface(const VkIOSurface *surf) {
-    return surf ? (void *)(*surf).surface : NULL;
+    return surf ? (void *)(*surf).surface : nullptr;
 }
 
 void *VkIOSurface_getImage(const VkIOSurface *surf) {
-    return surf ? (void *)(*surf).image : NULL;
+    return surf ? (void *)(*surf).image : nullptr;
 }
 
 uint32_t VkIOSurface_width(const VkIOSurface *surf) {
@@ -261,7 +261,7 @@ VkFramebuffer VkIOSurface_createFramebuffer(const VkIOSurface *surf, VkRenderPas
     };
 
     VkImageView view;
-    if (CreateImageView_fn(s_device, &ivci, NULL, &view) != VK_SUCCESS) {
+    if (CreateImageView_fn(s_device, &ivci, nullptr, &view) != VK_SUCCESS) {
         return VK_NULL_HANDLE;
     }
 
@@ -276,9 +276,9 @@ VkFramebuffer VkIOSurface_createFramebuffer(const VkIOSurface *surf, VkRenderPas
     };
 
     VkFramebuffer fb;
-    if (CreateFramebuffer_fn(s_device, &fci, NULL, &fb) != VK_SUCCESS) {
+    if (CreateFramebuffer_fn(s_device, &fci, nullptr, &fb) != VK_SUCCESS) {
         IOS_LOAD_DEVICE(DestroyImageView);
-        DestroyImageView_fn(s_device, view, NULL);
+        DestroyImageView_fn(s_device, view, nullptr);
         return VK_NULL_HANDLE;
     }
 

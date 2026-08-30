@@ -10,7 +10,7 @@
 // a leading `self` pointer. Any struct "implements" it by exposing one of
 // these with .self pointing at itself; every callback receives that pointer
 // back as its first argument (the `this` Java implied). Callbacks mirror the
-// Java methods; Java's `default void` no-ops become NULL pointers — every
+// Java methods; Java's `default void` no-ops become nullptr pointers — every
 // dispatcher checks before invoking, so a listener only needs the callbacks
 // it cares about.
 //

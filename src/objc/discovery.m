@@ -40,32 +40,32 @@ void SystemDiscovery_bootstrap(void) {
         // --- 1. Hardware Discovery (sysctl) ---
         uint64_t memsize = 0;
         size_t len = sizeof(memsize);
-        if (sysctlbyname("hw.memsize", &memsize, &len, NULL, 0) == 0) {
+        if (sysctlbyname("hw.memsize", &memsize, &len, nullptr, 0) == 0) {
             HardwareInfo_setRamTotal(memsize);
             HardwareInfo_setRamAvailable(memsize);
         }
 
         int cpuThreads = 0;
         len = sizeof(cpuThreads);
-        if (sysctlbyname("hw.logicalcpu", &cpuThreads, &len, NULL, 0) == 0) {
+        if (sysctlbyname("hw.logicalcpu", &cpuThreads, &len, nullptr, 0) == 0) {
             HardwareInfo_setCpuThreadCount(cpuThreads);
         }
 
         int cpuCores = 0;
         len = sizeof(cpuCores);
-        if (sysctlbyname("hw.physicalcpu", &cpuCores, &len, NULL, 0) == 0) {
+        if (sysctlbyname("hw.physicalcpu", &cpuCores, &len, nullptr, 0) == 0) {
             HardwareInfo_setCpuCoreCount(cpuCores);
         }
 
         char model[128] = {0};
         len = sizeof(model) - 1;
-        if (sysctlbyname("hw.model", model, &len, NULL, 0) == 0) {
+        if (sysctlbyname("hw.model", model, &len, nullptr, 0) == 0) {
             HardwareInfo_setDeviceModel(model);
         }
 
         char brand[128] = {0};
         len = sizeof(brand) - 1;
-        if (sysctlbyname("machdep.cpu.brand_string", brand, &len, NULL, 0) == 0) {
+        if (sysctlbyname("machdep.cpu.brand_string", brand, &len, nullptr, 0) == 0) {
             HardwareInfo_setCpuBrand(brand);
         } else if (model[0] != '\0') {
             HardwareInfo_setCpuBrand(model);
@@ -125,7 +125,7 @@ void SystemDiscovery_bootstrap(void) {
         if (CGGetActiveDisplayList(16, displayList, &displayCount) == kCGErrorSuccess && displayCount > 0) {
             CGDirectDisplayID mainDisplayId = CGMainDisplayID();
             DisplayMonitor *monitors[16] = {0};
-            DisplayMonitor *primary = NULL;
+            DisplayMonitor *primary = nullptr;
 
             for (uint32_t i = 0; i < displayCount; i++) {
                 CGDirectDisplayID dId = displayList[i];
@@ -162,7 +162,7 @@ void SystemDiscovery_bootstrap(void) {
                 DisplayMonitor_setDpi(m, density);
 
                 // Native Hardware Panel Resolution (look for kDisplayModeNativeFlag = 0x02000000)
-                CFArrayRef allModes = CGDisplayCopyAllDisplayModes(dId, NULL);
+                CFArrayRef allModes = CGDisplayCopyAllDisplayModes(dId, nullptr);
                 int32_t nativeW = curPixelW;
                 int32_t nativeH = curPixelH;
                 bool foundNative = false;

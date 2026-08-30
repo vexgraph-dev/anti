@@ -28,7 +28,7 @@ typedef struct HttpRequest {
     const char *path;     // default "/"
     const HttpHeader *headers;
     uint32_t headerCount;
-    const char *body;     // NULL = no body
+    const char *body;     // nullptr = no body
     size_t bodyLen;
     uint32_t timeoutMs;   // connect+read budget, default 5000
 } HttpRequest;

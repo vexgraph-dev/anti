@@ -15,11 +15,11 @@
 // True when stdin has pending input (Java hasNextLine).
 bool Scanner_hasNextLine(void);
 
-// Next line as a string block (without the newline), or NULL at EOF or on an
+// Next line as a string block (without the newline), or nullptr at EOF or on an
 // empty line (Java nextLine).
 uint8_t *Scanner_nextLine(void);
 
-// Next whitespace-delimited word as a string block, or NULL at EOF (Java
+// Next whitespace-delimited word as a string block, or nullptr at EOF (Java
 // nextWord). Leading whitespace is skipped.
 uint8_t *Scanner_nextWord(void);
 

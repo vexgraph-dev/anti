@@ -114,7 +114,7 @@ struct Window {
     _Atomic bool transparent;
     _Atomic uint64_t renderGeneration;
 
-    // --- content root: NULL => clear-only pass --
+    // --- content root: nullptr => clear-only pass --
     _Atomic(Panel *) container;
     _Atomic(Panel *) contentPanel;  // UI tree (IOSurface-backed when native)
     _Atomic(Panel *) scenePanel;    // Scene tree (Vulkan-backed)
@@ -140,7 +140,7 @@ struct Window {
 // (FOCUS_BROADCAST).
 #define WINDOW_ID_SLOTS 8
 static NSWindow *s_idToWindow[WINDOW_ID_SLOTS] = { nil };
-static Window *s_idToHandle[WINDOW_ID_SLOTS] = { NULL };
+static Window *s_idToHandle[WINDOW_ID_SLOTS] = { nullptr };
 
 // Resolve an id for a newly created window, or 0 when the table is full.
 static uint32_t windowIdAcquire(NSWindow *window, Window *handle) {
@@ -157,7 +157,7 @@ static uint32_t windowIdAcquire(NSWindow *window, Window *handle) {
 static void windowIdRelease(uint32_t id) {
     if (id != FOCUS_BROADCAST && id < WINDOW_ID_SLOTS) {
         s_idToWindow[id] = nil;
-        s_idToHandle[id] = NULL;
+        s_idToHandle[id] = nullptr;
     }
 }
 
@@ -170,10 +170,10 @@ static uint32_t windowIdOf(NSWindow *window) {
 }
 
 static Window *windowHandleOf(NSWindow *window) {
-    if (!window) return NULL;
+    if (!window) return nullptr;
     for (uint32_t i = 1; i < WINDOW_ID_SLOTS; i++)
         if (s_idToWindow[i] == window) return s_idToHandle[i];
-    return NULL;
+    return nullptr;
 }
 
 // Flipped content view so all sublayers and Cocoa geometry natively speak
@@ -437,7 +437,7 @@ static void routeEvent(NSEvent *event) {
     // Disabled windows receive nothing: events never enter the device rings,
     // so adapters stay silent and polling state freezes. AppKit still gets
     // the event via sendEvent — only OUR input pipeline is muted.
-    Window *target = (wid != FOCUS_BROADCAST) ? windowHandleOf([event window]) : NULL;
+    Window *target = (wid != FOCUS_BROADCAST) ? windowHandleOf([event window]) : nullptr;
     if (target && !atomic_load_explicit(&(*target).enabled, memory_order_relaxed))
         return;
 
@@ -626,7 +626,7 @@ void Window_pollEvents(void) {
             static uint64_t s_probeTick = 0;
             if (!s_probeInit) {
                 s_probeInit = 1;
-                s_probe = getenv("ANTI_VK_TRACE") != NULL;
+                s_probe = getenv("ANTI_VK_TRACE") != nullptr;
             }
             if (s_probe && (++s_probeTick % 30 == 0)) {
                 @autoreleasepool {
@@ -712,7 +712,7 @@ static Window *windowAlloc(const WindowDesc *desc) {
         atomic_store_explicit(&(*w).presentMode, WINDOW_PRESENT_FIFO, memory_order_relaxed);
         atomic_store_explicit(&(*w).transparent, false, memory_order_relaxed);
         atomic_store_explicit(&(*w).renderGeneration, 0, memory_order_relaxed);
-        atomic_store_explicit(&(*w).container, NULL, memory_order_relaxed);
+        atomic_store_explicit(&(*w).container, nullptr, memory_order_relaxed);
         atomic_store_explicit(&(*w).enabled, true, memory_order_relaxed);
         (*w).lastFocused = false;
         atomic_store_explicit(&(*w).monitorId, 0, memory_order_relaxed);
@@ -758,7 +758,7 @@ Window *Window_new(const WindowDesc *desc) {
     WindowDesc d = descResolve(desc);
     Window *w = windowAlloc(&d);
     if (!w)
-        return NULL;
+        return nullptr;
     if (d.centered)
         Window_center(w);
     else if (d.x != 0 || d.y != 0)
@@ -840,7 +840,7 @@ void Window_setContainer(Window *window, Panel *root) {
 }
 
 Panel *Window_getContainer(const Window *window) {
-    return window ? atomic_load_explicit(&(*window).container, memory_order_acquire) : NULL;
+    return window ? atomic_load_explicit(&(*window).container, memory_order_acquire) : nullptr;
 }
 
 void Window_setContentPanel(Window *window, Panel *panel) {
@@ -852,7 +852,7 @@ void Window_setContentPanel(Window *window, Panel *panel) {
 }
 
 Panel *Window_getContentPanel(const Window *window) {
-    return window ? atomic_load_explicit(&(*window).contentPanel, memory_order_acquire) : NULL;
+    return window ? atomic_load_explicit(&(*window).contentPanel, memory_order_acquire) : nullptr;
 }
 
 void Window_setScenePanel(Window *window, Panel *panel) {
@@ -862,7 +862,7 @@ void Window_setScenePanel(Window *window, Panel *panel) {
 }
 
 Panel *Window_getScenePanel(const Window *window) {
-    return window ? atomic_load_explicit(&(*window).scenePanel, memory_order_acquire) : NULL;
+    return window ? atomic_load_explicit(&(*window).scenePanel, memory_order_acquire) : nullptr;
 }
 
 void Window_forceNativeContainerOnRoot(Window *window, bool flag) {
@@ -920,11 +920,11 @@ void Window_renderPanelIOSurface(Window *window, Panel *panel) {
 }
 
 void *Window_getPanelLayer(Window *window, Panel *panel) {
-    if (!window || !panel) return NULL;
+    if (!window || !panel) return nullptr;
     extern void *PanelCocoa_fromPanel(void *panel);
     extern void *PanelCocoa_layer(void *pc);
     void *pc = PanelCocoa_fromPanel(panel);
-    return pc ? PanelCocoa_layer(pc) : NULL;
+    return pc ? PanelCocoa_layer(pc) : nullptr;
 }
 
 void Window_compositeIOSurfaceChildren(Window *window, Panel *contentPanel) {
@@ -1533,7 +1533,7 @@ bool Window_present(Window *window, const Buffer *frame) {
     if (w == 0 || h == 0)
         return false;
 
-    static uint8_t *s_pixels = NULL;
+    static uint8_t *s_pixels = nullptr;
     static size_t s_cap = 0;
     size_t bytes = w * h * 4;
     if (bytes > s_cap) {
@@ -1587,7 +1587,7 @@ bool Window_present(Window *window, const Buffer *frame) {
 
 void *Window_contentView(Window *window) {
     if (!window || !(*window).nsWindow)
-        return NULL;
+        return nullptr;
     return (__bridge void *)[(*window).nsWindow contentView];
 }
 
@@ -1600,7 +1600,7 @@ void *Window_contentView(Window *window) {
 
 void *Window_metalLayer(Window *window) {
     if (!window || !(*window).nsWindow)
-        return NULL;
+        return nullptr;
     @autoreleasepool {
         NSView *contentView = [(*window).nsWindow contentView];
         
@@ -1621,7 +1621,7 @@ void *Window_metalLayer(Window *window) {
         
         [vulkanView setWantsLayer:YES];
         
-        static CAMetalLayer *s_pinnedLayer = NULL;
+        static CAMetalLayer *s_pinnedLayer = nullptr;
         if (!s_pinnedLayer) {
             s_pinnedLayer = [[CAMetalLayer alloc] init];
             s_pinnedLayer.contentsGravity = kCAGravityTopLeft;

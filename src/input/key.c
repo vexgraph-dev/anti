@@ -54,7 +54,7 @@ static int s_listenerCount = 0;
 static const KeyEvent *s_winListeners[WINDOW_SLOTS][KEY_MAX_WINDOW_LISTENERS];
 static int s_winCounts[WINDOW_SLOTS];
 
-// O(1) name table; designated initializers leave every other slot NULL.
+// O(1) name table; designated initializers leave every other slot nullptr.
 static const char *const s_names[KEY_COUNT] = {
     [KEY_SPACE] = "Space",            [KEY_APOSTROPHE] = "Apostrophe",
     [KEY_COMMA] = "Comma",            [KEY_MINUS] = "Minus",

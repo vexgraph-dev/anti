@@ -71,7 +71,7 @@ uint32_t Collection_head(Collection *c) {
 }
 
 uint8_t *Collection_dataBuffer(Collection *c) {
-    if (!c) return NULL;
+    if (!c) return nullptr;
     return (*c).data;
 }
 

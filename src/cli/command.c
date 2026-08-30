@@ -15,7 +15,7 @@ Command *Command_allocate(uint8_t *name_ptr, uint8_t **arg_ptrs, size_t argc) {
     size_t total = COMMAND_HEADER_BYTES + ARG_POINTER_BYTES * argc;
     Command *cmd = (Command *)Memory_alloc(TYPE_COMMAND_SINGLETON, total);
     if (!cmd)
-        return NULL;
+        return nullptr;
 
     uint8_t *p = (uint8_t *)cmd;
     *(uint8_t **)(p + 0) = name_ptr;
@@ -34,7 +34,7 @@ uint32_t Command_type(const Command *command) {
 
 uint8_t *Command_name(const Command *command) {
     if (!command)
-        return NULL;
+        return nullptr;
     return *(uint8_t **)((uint8_t *)command + 0);
 }
 
@@ -46,9 +46,9 @@ size_t Command_argumentCount(const Command *command) {
 
 uint8_t *Command_argument(const Command *command, size_t index) {
     if (!command)
-        return NULL;
+        return nullptr;
     if (index >= Command_argumentCount(command))
-        return NULL;
+        return nullptr;
     return *(uint8_t **)((uint8_t *)command + COMMAND_HEADER_BYTES + ARG_POINTER_BYTES * index);
 }
 

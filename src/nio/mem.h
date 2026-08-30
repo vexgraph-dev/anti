@@ -22,14 +22,14 @@ typedef struct Block {
 } Block;
 
 // Allocate nbytes with the given type id stamped in the header.
-// Returns the aligned payload pointer, or NULL on failure.
+// Returns the aligned payload pointer, or nullptr on failure.
 void *Memory_alloc(uint32_t typeId, size_t numBytes);
 
 // Grow/shrink a block, preserving contents and type. Returns the new payload
-// pointer (the old one is freed). NULL on failure leaves the original intact.
+// pointer (the old one is freed). nullptr on failure leaves the original intact.
 void *Memory_realloc(void *userPtr, size_t newBytes);
 
-// Free a block (userPtr may be NULL). The header is found by walking back.
+// Free a block (userPtr may be nullptr). The header is found by walking back.
 void Memory_free(void *userPtr);
 
 // Free all currently allocated blocks. Catch-all for teardown.

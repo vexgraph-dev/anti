@@ -75,7 +75,7 @@ void NanoTimer_tickWithClock(NanoTimer *timer, const Clock *clock) {
 }
 
 void NanoTimer_tick(NanoTimer *timer) {
-    NanoTimer_tickWithClock(timer, NULL);
+    NanoTimer_tickWithClock(timer, nullptr);
 }
 
 double NanoTimer_deltaTime(const NanoTimer *timer) {

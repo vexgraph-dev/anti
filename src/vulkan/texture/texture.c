@@ -79,7 +79,7 @@ bool Texture_initModule(void *instance, void *gpa, void *phys, void *device, voi
     layoutInfo.bindingCount = 1;
     layoutInfo.pBindings = &binding;
     
-    if (CreateDescriptorSetLayout_fn(s_device, &layoutInfo, NULL, &s_descLayout) != VK_SUCCESS) {
+    if (CreateDescriptorSetLayout_fn(s_device, &layoutInfo, nullptr, &s_descLayout) != VK_SUCCESS) {
         printf("Failed to create bindless descriptor set layout\n");
         return false;
     }
@@ -94,7 +94,7 @@ bool Texture_initModule(void *instance, void *gpa, void *phys, void *device, voi
     poolInfo.pPoolSizes = &poolSize;
     poolInfo.maxSets = 1;
 
-    if (CreateDescriptorPool_fn(s_device, &poolInfo, NULL, &s_descPool) != VK_SUCCESS) {
+    if (CreateDescriptorPool_fn(s_device, &poolInfo, nullptr, &s_descPool) != VK_SUCCESS) {
         printf("Failed to create bindless descriptor pool\n");
         return false;
     }
@@ -121,7 +121,7 @@ bool Texture_initModule(void *instance, void *gpa, void *phys, void *device, voi
     cpInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
     cpInfo.queueFamilyIndex = s_queueFamily;
     
-    if (CreateCommandPool_fn(s_device, &cpInfo, NULL, &s_cmdPool) != VK_SUCCESS) {
+    if (CreateCommandPool_fn(s_device, &cpInfo, nullptr, &s_cmdPool) != VK_SUCCESS) {
         printf("Failed to create texture transfer command pool\n");
         return false;
     }
@@ -139,15 +139,15 @@ void Texture_shutdown(void) {
     VK_LOAD(DestroyCommandPool)
 
     for (int i = 0; i < s_textureCount; i++) {
-        DestroySampler_fn(s_device, s_samplers[i], NULL);
-        DestroyImageView_fn(s_device, s_views[i], NULL);
-        DestroyImage_fn(s_device, s_images[i], NULL);
-        FreeMemory_fn(s_device, s_memories[i], NULL);
+        DestroySampler_fn(s_device, s_samplers[i], nullptr);
+        DestroyImageView_fn(s_device, s_views[i], nullptr);
+        DestroyImage_fn(s_device, s_images[i], nullptr);
+        FreeMemory_fn(s_device, s_memories[i], nullptr);
     }
     
-    DestroyCommandPool_fn(s_device, s_cmdPool, NULL);
-    DestroyDescriptorPool_fn(s_device, s_descPool, NULL);
-    DestroyDescriptorSetLayout_fn(s_device, s_descLayout, NULL);
+    DestroyCommandPool_fn(s_device, s_cmdPool, nullptr);
+    DestroyDescriptorPool_fn(s_device, s_descPool, nullptr);
+    DestroyDescriptorSetLayout_fn(s_device, s_descLayout, nullptr);
     
     s_textureCount = 0;
 }
@@ -201,7 +201,7 @@ int32_t Texture_load(const char *vfsPath) {
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
-    if (CreateBuffer_fn(s_device, &bufferInfo, NULL, &stagingBuffer) != VK_SUCCESS) {
+    if (CreateBuffer_fn(s_device, &bufferInfo, nullptr, &stagingBuffer) != VK_SUCCESS) {
         free(rgbaData); return -1;
     }
 
@@ -212,7 +212,7 @@ int32_t Texture_load(const char *vfsPath) {
     allocInfo.allocationSize = memReqs.size;
     allocInfo.memoryTypeIndex = findMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    if (AllocateMemory_fn(s_device, &allocInfo, NULL, &stagingBufferMemory) != VK_SUCCESS) {
+    if (AllocateMemory_fn(s_device, &allocInfo, nullptr, &stagingBufferMemory) != VK_SUCCESS) {
         free(rgbaData); return -1;
     }
     BindBufferMemory_fn(s_device, stagingBuffer, stagingBufferMemory, 0);
@@ -244,7 +244,7 @@ int32_t Texture_load(const char *vfsPath) {
 
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
-    if (CreateImage_fn(s_device, &imageInfo, NULL, &textureImage) != VK_SUCCESS) {
+    if (CreateImage_fn(s_device, &imageInfo, nullptr, &textureImage) != VK_SUCCESS) {
         return -1;
     }
 
@@ -252,7 +252,7 @@ int32_t Texture_load(const char *vfsPath) {
     allocInfo.allocationSize = memReqs.size;
     allocInfo.memoryTypeIndex = findMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    if (AllocateMemory_fn(s_device, &allocInfo, NULL, &textureImageMemory) != VK_SUCCESS) {
+    if (AllocateMemory_fn(s_device, &allocInfo, nullptr, &textureImageMemory) != VK_SUCCESS) {
         return -1;
     }
     BindImageMemory_fn(s_device, textureImage, textureImageMemory, 0);
@@ -294,7 +294,7 @@ int32_t Texture_load(const char *vfsPath) {
     barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
     CmdPipelineBarrier_fn(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-                          0, NULL, 0, NULL, 1, &barrier);
+                          0, nullptr, 0, nullptr, 1, &barrier);
 
     VkBufferImageCopy region = {0};
     region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -313,7 +313,7 @@ int32_t Texture_load(const char *vfsPath) {
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
     CmdPipelineBarrier_fn(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-                          0, NULL, 0, NULL, 1, &barrier);
+                          0, nullptr, 0, nullptr, 1, &barrier);
 
     EndCommandBuffer_fn(commandBuffer);
 
@@ -325,8 +325,8 @@ int32_t Texture_load(const char *vfsPath) {
     QueueWaitIdle_fn(s_queue);
     FreeCommandBuffers_fn(s_device, s_cmdPool, 1, &commandBuffer);
 
-    DestroyBuffer_fn(s_device, stagingBuffer, NULL);
-    FreeMemory_fn(s_device, stagingBufferMemory, NULL);
+    DestroyBuffer_fn(s_device, stagingBuffer, nullptr);
+    FreeMemory_fn(s_device, stagingBufferMemory, nullptr);
 
     // 4. Create ImageView & Sampler
     VK_LOAD(CreateImageView)
@@ -343,7 +343,7 @@ int32_t Texture_load(const char *vfsPath) {
     viewInfo.subresourceRange.layerCount = 1;
 
     VkImageView textureImageView;
-    if (CreateImageView_fn(s_device, &viewInfo, NULL, &textureImageView) != VK_SUCCESS) {
+    if (CreateImageView_fn(s_device, &viewInfo, nullptr, &textureImageView) != VK_SUCCESS) {
         return -1;
     }
 
@@ -360,7 +360,7 @@ int32_t Texture_load(const char *vfsPath) {
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
     VkSampler textureSampler;
-    if (CreateSampler_fn(s_device, &samplerInfo, NULL, &textureSampler) != VK_SUCCESS) {
+    if (CreateSampler_fn(s_device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
         return -1;
     }
 
@@ -379,7 +379,7 @@ int32_t Texture_load(const char *vfsPath) {
     descriptorWrite.descriptorCount = 1;
     descriptorWrite.pImageInfo = &descImageInfo;
 
-    UpdateDescriptorSets_fn(s_device, 1, &descriptorWrite, 0, NULL);
+    UpdateDescriptorSets_fn(s_device, 1, &descriptorWrite, 0, nullptr);
 
     // 6. Record to Registry
     int32_t id = s_textureCount;

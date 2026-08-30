@@ -22,12 +22,12 @@
 ;;INTENTION("Fills the Window API seam (window.h) on Windows so the engine can be built there; mirrors the legacy windowsWindow.java.")
 ;;DRAFT
 
-;;;;INCOMPLETE // CreateWindowEx; returns NULL until implemented.
+;;;;INCOMPLETE // CreateWindowEx; returns nullptr until implemented.
 Window *Window_create(const char *title, int width, int height) {
     (void) title;
     (void) width;
     (void) height;
-    return NULL;
+    return nullptr;
 }
 
 ;;INCOMPLETE // DestroyWindow; no-op until implemented.
@@ -80,7 +80,7 @@ void Window_setContainer(Window *window, Panel *root) {
 
 Panel *Window_getContainer(const Window *window) {
     (void) window;
-    return NULL;
+    return nullptr;
 }
 
 ;;INCOMPLETE // Input kill switch; no-op until implemented.
