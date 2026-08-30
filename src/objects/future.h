@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
+#include "c23/constructor.h"
 
 // objects/future.h — Asynchronous single-assignment Future object wrapper.
 // Ported from legacy objects/Future.java.
@@ -10,9 +12,14 @@
 typedef struct Future Future;
 
 // Allocate a new unresolved Future instance
-Future *Future_allocate(void);
+Future *Future_0(void);
 
 // Free future memory
+
+Future *Future_2(const Future *init, size_t count);
+
+#define Future(...) CONSTRUCTOR_DISPATCH(Future, ##__VA_ARGS__)
+
 void Future_free(Future *future);
 
 // Query whether the future value has been fulfilled

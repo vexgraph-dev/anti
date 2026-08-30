@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stddef.h>
+#include "c23/constructor.h"
 
 #include "objects/probable.h"
 
@@ -23,7 +25,12 @@ typedef struct ProbableObjects {
 } ProbableObjects;
 
 // Allocate an empty pool with room for capacity choices.
-ProbableObjects *ProbableObjects_allocate(size_t capacity);
+ProbableObjects *ProbableObjects_1(size_t capacity);
+
+
+ProbableObjects *ProbableObjects_2(const ProbableObjects *init, size_t count);
+
+#define ProbableObjects(...) CONSTRUCTOR_DISPATCH(ProbableObjects, ##__VA_ARGS__)
 
 void ProbableObjects_free(ProbableObjects *po);
 

@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "c11/constructor.h"
+#include "c23/constructor.h"
 #include "oop/fields.h"
 
 // oop/struct.h — Dynamic Struct Instance & Allocation Engine.
@@ -31,7 +31,7 @@ void *Struct_allocateCoexistentRaw(uint32_t generic, size_t amount);
 void *Struct_allocateSOAFrom(const Fields *fields, size_t amount);
 void *Struct_allocateSOARaw(uint32_t generic, size_t amount);
 
-// Polymorphic Allocator (arity-dispatched via c11/constructor.h):
+// Polymorphic Allocator (arity-dispatched via c23/constructor.h):
 //   Struct(x)         -> allocates singleton
 //   Struct(x, amount) -> allocates array of amount elements
 #define Struct_1(...) Struct_allocateSingleton(__VA_ARGS__)

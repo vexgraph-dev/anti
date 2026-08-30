@@ -11,7 +11,7 @@ typedef struct Local {
     uint64_t slots[LOCAL_THREAD_MAX];
 } Local;
 
-Local *Local_allocate(void) {
+Local *Local_0(void) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_LOCAL) | MOD_LOCALE;
     Local *local = (Local *)Memory_alloc(type, sizeof(Local));
     if (!local)
@@ -20,6 +20,18 @@ Local *Local_allocate(void) {
     return local;
 }
 
+
+Local *Local_2(const Local *init, size_t count) {
+    if (count == 0) return nullptr;
+    Local *p = (Local *)Memory_alloc(TYPE_LOCAL_ARRAY, sizeof(Local) * count);
+    if (!p) return nullptr;
+    if (init) {
+        for (size_t i = 0; i < count; i++) p[i] = *init;
+    } else {
+        memset(p, 0, sizeof(Local) * count);
+    }
+    return p;
+}
 void Local_free(Local *local) {
     if (!local) return;
     Memory_free(local);

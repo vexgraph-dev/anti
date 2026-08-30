@@ -10,7 +10,7 @@
 
 static const size_t SLOT_SIZE = 16;
 
-ProbableObjects *ProbableObjects_allocate(size_t capacity) {
+ProbableObjects *ProbableObjects_1(size_t capacity) {
     size_t bytes = sizeof(ProbableObjects) + capacity * SLOT_SIZE;
     ProbableObjects *po = (ProbableObjects *)Memory_alloc(TYPE_PROBABLE_OBJECTS, bytes);
     if (!po) return nullptr;
@@ -19,6 +19,18 @@ ProbableObjects *ProbableObjects_allocate(size_t capacity) {
     return po;
 }
 
+
+ProbableObjects *ProbableObjects_2(const ProbableObjects *init, size_t count) {
+    if (count == 0) return nullptr;
+    ProbableObjects *p = (ProbableObjects *)Memory_alloc(TYPE_PROBABLE_OBJECTS_ARRAY, sizeof(ProbableObjects) * count);
+    if (!p) return nullptr;
+    if (init) {
+        for (size_t i = 0; i < count; i++) p[i] = *init;
+    } else {
+        memset(p, 0, sizeof(ProbableObjects) * count);
+    }
+    return p;
+}
 void ProbableObjects_free(ProbableObjects *po) {
     Memory_free(po);
 }

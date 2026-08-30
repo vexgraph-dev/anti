@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
+#include "c23/constructor.h"
 
 // objects/global.h — Atomic global pointer/variable object wrapper.
 // Ported from legacy objects/Global.java.
@@ -10,9 +12,14 @@
 typedef struct Global Global;
 
 // Allocate a new atomic Global pointer/value
-Global *Global_allocate(uint64_t initialValue);
+Global *Global_1(uint64_t initialValue);
 
 // Free global memory
+
+Global *Global_2(const Global *init, size_t count);
+
+#define Global(...) CONSTRUCTOR_DISPATCH(Global, ##__VA_ARGS__)
+
 void Global_free(Global *global);
 
 // Atomic read/write

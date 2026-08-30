@@ -1,17 +1,31 @@
 #include "objects/probable.h"
 
+#include <string.h>
 #include "nio/mem.h"
 #include "oop/type.h"
 #include "util/random.h"
 
-// probable.c — Probable port (Legacy: objects/Probable.java).
-
-Probable *Probable_allocate(uintptr_t object, uint32_t weight, uint32_t total) {
+Probable *Probable_3(uintptr_t object, uint32_t weight, uint32_t total) {
     Probable *p = (Probable *)Memory_alloc(TYPE_PROBABLE, sizeof(Probable));
     if (!p) return nullptr;
     (*p).object = object;
     (*p).weight = weight;
     (*p).total = total;
+    return p;
+}
+
+Probable *Probable_2(const Probable *init, size_t count) {
+    if (count == 0) return nullptr;
+    Probable *p = (Probable *)Memory_alloc(TYPE_PROBABLE_ARRAY, sizeof(Probable) * count);
+    if (!p) return nullptr;
+    
+    if (init) {
+        for (size_t i = 0; i < count; i++) {
+            p[i] = *init;
+        }
+    } else {
+        memset(p, 0, sizeof(Probable) * count);
+    }
     return p;
 }
 

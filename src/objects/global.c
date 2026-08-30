@@ -1,3 +1,4 @@
+#include <string.h>
 #include "objects/global.h"
 
 #include <stdatomic.h>
@@ -11,7 +12,7 @@ typedef struct Global {
     atomic_uint_least64_t value;
 } Global;
 
-Global *Global_allocate(uint64_t initialValue) {
+Global *Global_1(uint64_t initialValue) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_GLOBAL) | MOD_GLOBAL;
     Global *global = (Global *)Memory_alloc(type, sizeof(Global));
     if (!global)
@@ -20,6 +21,18 @@ Global *Global_allocate(uint64_t initialValue) {
     return global;
 }
 
+
+Global *Global_2(const Global *init, size_t count) {
+    if (count == 0) return nullptr;
+    Global *p = (Global *)Memory_alloc(TYPE_GLOBAL_ARRAY, sizeof(Global) * count);
+    if (!p) return nullptr;
+    if (init) {
+        for (size_t i = 0; i < count; i++) p[i] = *init;
+    } else {
+        memset(p, 0, sizeof(Global) * count);
+    }
+    return p;
+}
 void Global_free(Global *global) {
     if (!global) return;
     Memory_free(global);

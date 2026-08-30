@@ -2,6 +2,8 @@
 #define OBJECTS_PASSIVE_H
 
 #include <stdint.h>
+#include <stddef.h>
+#include "c23/constructor.h"
 
 // objects/passive.h — Lazy-evaluated / computed Passive object wrapper.
 // Ported from legacy objects/Passive.java.
@@ -12,9 +14,14 @@ typedef void (*PassiveSetter)(uint64_t value, void *userdata);
 typedef struct Passive Passive;
 
 // Allocate a new Passive instance with lazy getter/setter hooks
-Passive *Passive_allocate(PassiveGetter getter, PassiveSetter setter, void *userdata);
+Passive *Passive_3(PassiveGetter getter, PassiveSetter setter, void *userdata);
 
 // Free passive memory
+
+Passive *Passive_2(const Passive *init, size_t count);
+
+#define Passive(...) CONSTRUCTOR_DISPATCH(Passive, ##__VA_ARGS__)
+
 void Passive_free(Passive *passive);
 
 // Accessors invoking lazy hooks

@@ -17,7 +17,7 @@ typedef struct Choice {
     ChoiceSlot slots[];
 } Choice;
 
-Choice *Choice_allocate(const uint64_t *objectPtrs, const ChoiceCallback *callbacks, size_t count) {
+Choice *Choice_3(const uint64_t *objectPtrs, const ChoiceCallback *callbacks, size_t count) {
     if (count == 0) return nullptr;
     uint32_t type = Type_make(FORM_SINGLETON, ID_CHOICE) | WRAP2_CHOICE;
     size_t bytes = sizeof(Choice) + count * sizeof(ChoiceSlot);
@@ -32,6 +32,18 @@ Choice *Choice_allocate(const uint64_t *objectPtrs, const ChoiceCallback *callba
     return choice;
 }
 
+
+Choice *Choice_2(const Choice *init, size_t count) {
+    if (count == 0) return nullptr;
+    Choice *p = (Choice *)Memory_alloc(TYPE_CHOICE_ARRAY, sizeof(Choice) * count);
+    if (!p) return nullptr;
+    if (init) {
+        for (size_t i = 0; i < count; i++) p[i] = *init;
+    } else {
+        memset(p, 0, sizeof(Choice) * count);
+    }
+    return p;
+}
 void Choice_free(Choice *choice) {
     if (!choice) return;
     Memory_free(choice);

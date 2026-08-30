@@ -14,7 +14,7 @@ struct Passive {
     void         *userdata;
 };
 
-Passive *Passive_allocate(PassiveGetter getter, PassiveSetter setter, void *userdata) {
+Passive *Passive_3(PassiveGetter getter, PassiveSetter setter, void *userdata) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_PASSIVE) | WRAP_PROACTIVE;
     Passive *passive = (Passive *)Memory_alloc(type, sizeof(Passive));
     if (!passive)
@@ -26,6 +26,18 @@ Passive *Passive_allocate(PassiveGetter getter, PassiveSetter setter, void *user
     return passive;
 }
 
+
+Passive *Passive_2(const Passive *init, size_t count) {
+    if (count == 0) return nullptr;
+    Passive *p = (Passive *)Memory_alloc(TYPE_PASSIVE_ARRAY, sizeof(Passive) * count);
+    if (!p) return nullptr;
+    if (init) {
+        for (size_t i = 0; i < count; i++) p[i] = *init;
+    } else {
+        memset(p, 0, sizeof(Passive) * count);
+    }
+    return p;
+}
 void Passive_free(Passive *passive) {
     if (!passive) return;
     Memory_free(passive);

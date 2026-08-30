@@ -12,7 +12,7 @@ typedef struct Future {
     uint64_t    value;
 } Future;
 
-Future *Future_allocate(void) {
+Future *Future_0(void) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_FUTURE) | WRAP2_FUTURE;
     Future *future = Memory_alloc(type, sizeof(Future));
     if (!future)
@@ -22,6 +22,18 @@ Future *Future_allocate(void) {
     return future;
 }
 
+
+Future *Future_2(const Future *init, size_t count) {
+    if (count == 0) return nullptr;
+    Future *p = (Future *)Memory_alloc(TYPE_FUTURE_ARRAY, sizeof(Future) * count);
+    if (!p) return nullptr;
+    if (init) {
+        for (size_t i = 0; i < count; i++) p[i] = *init;
+    } else {
+        memset(p, 0, sizeof(Future) * count);
+    }
+    return p;
+}
 void Future_free(Future *future) {
     if (!future) return;
     Memory_free(future);
