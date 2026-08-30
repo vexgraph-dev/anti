@@ -42,24 +42,21 @@ extern bool    Texture_getSize(int32_t id, uint32_t *outW, uint32_t *outH);
 
 static int32_t s_sunflowerId = -1;
 
-// All 11 mode + fillParam combos for the cycling test
-typedef struct { PictureScaleMode mode; PictureFillParam param; const char *label; } ModeEntry;
+// The modes we want to test: FIT, ZOOM_FILL (center), ZOOM_FIT (center), and the true FILL with its anchors.
+typedef struct { PictureMode mode; const char *label; } ModeEntry;
 static const ModeEntry s_modes[] = {
-    { PICTURE_SCALE_FIT,       PICTURE_FILL_CENTER,       "FIT" },
-    { PICTURE_SCALE_ZOOM_FILL, PICTURE_FILL_CENTER,       "ZOOM_FILL  CENTER"       },
-    { PICTURE_SCALE_ZOOM_FILL, PICTURE_FILL_TOP_LEFT,     "ZOOM_FILL  TOP_LEFT"     },
-    { PICTURE_SCALE_ZOOM_FILL, PICTURE_FILL_TOP_RIGHT,    "ZOOM_FILL  TOP_RIGHT"    },
-    { PICTURE_SCALE_ZOOM_FILL, PICTURE_FILL_BOTTOM_LEFT,  "ZOOM_FILL  BOTTOM_LEFT"  },
-    { PICTURE_SCALE_ZOOM_FILL, PICTURE_FILL_BOTTOM_RIGHT, "ZOOM_FILL  BOTTOM_RIGHT" },
-    { PICTURE_SCALE_ZOOM_FIT,  PICTURE_FILL_CENTER,       "ZOOM_FIT   CENTER"       },
-    { PICTURE_SCALE_ZOOM_FIT,  PICTURE_FILL_TOP_LEFT,     "ZOOM_FIT   TOP_LEFT"     },
-    { PICTURE_SCALE_ZOOM_FIT,  PICTURE_FILL_TOP_RIGHT,    "ZOOM_FIT   TOP_RIGHT"    },
-    { PICTURE_SCALE_ZOOM_FIT,  PICTURE_FILL_BOTTOM_LEFT,  "ZOOM_FIT   BOTTOM_LEFT"  },
-    { PICTURE_SCALE_ZOOM_FIT,  PICTURE_FILL_BOTTOM_RIGHT, "ZOOM_FIT   BOTTOM_RIGHT" },
+    { PICTURE_MODE_FIT,               "FIT" },
+    { PICTURE_MODE_ZOOM_FILL,         "ZOOM_FILL" },
+    { PICTURE_MODE_ZOOM_FIT,          "ZOOM_FIT" },
+    { PICTURE_MODE_FILL_CENTER,       "FILL_CENTER" },
+    { PICTURE_MODE_FILL_TOP_LEFT,     "FILL_TOP_LEFT" },
+    { PICTURE_MODE_FILL_TOP_RIGHT,    "FILL_TOP_RIGHT" },
+    { PICTURE_MODE_FILL_BOTTOM_LEFT,  "FILL_BOTTOM_LEFT" },
+    { PICTURE_MODE_FILL_BOTTOM_RIGHT, "FILL_BOTTOM_RIGHT" },
 };
 #define NUM_MODES ((int)(sizeof(s_modes)/sizeof(s_modes[0])))
 
-static int s_modeIndex = 2; // Default to ZOOM_FILL TOP_LEFT as requested
+static _Atomic int s_modeIndex = 0;
 
 static void pic_render(Panel *p, void *data, void *cmdBuffer, float x, float y, float w, float h) {
     (void)p; (void)data; (void)x; (void)y;
@@ -71,15 +68,13 @@ static void pic_render(Panel *p, void *data, void *cmdBuffer, float x, float y, 
 
     uint32_t imgW = 1, imgH = 1;
     Texture_getSize(s_sunflowerId, &imgW, &imgH);
-    float imgAspect  = (float)imgW / (float)imgH;
-    float quadAspect = w / h;
 
     const ModeEntry *m = &s_modes[s_modeIndex];
     Vk_drawTexture(cmdBuffer, w, h, 0, 0, w, h,
                    1.0f, 1.0f, 1.0f, 1.0f,
                    s_sunflowerId,
-                   m->mode, m->param,
-                   imgAspect, quadAspect);
+                   m->mode,
+                   (float)imgW, (float)imgH);
 }
 
 
@@ -130,6 +125,30 @@ static void vk_present_job(Thread *self, void *task) {
             frameCount = 0;
             lastReportNanos = frameEnd;
         }
+    }
+}
+
+// Mode-cycling worker: switches picture mode every 3 seconds on its own thread
+// so the main event loop stays responsive (e.g. during window resize).
+static void mode_cycle_job(Thread *self, void *task) {
+    (void)self;
+    (void)task;
+
+    printf("[texture-test] mode[%d] = %s\n",
+           atomic_load(&s_modeIndex), s_modes[atomic_load(&s_modeIndex)].label);
+    fflush(stdout);
+
+    while (atomic_load_explicit(&g_state.running, memory_order_relaxed)) {
+        struct timespec ts = { 3, 0 }; // 3 seconds
+        nanosleep(&ts, nullptr);
+
+        if (!atomic_load_explicit(&g_state.running, memory_order_relaxed))
+            break;
+
+        int next = (atomic_load(&s_modeIndex) + 1) % NUM_MODES;
+        atomic_store(&s_modeIndex, next);
+        printf("[texture-test] mode[%d] = %s\n", next, s_modes[next].label);
+        fflush(stdout);
     }
 }
 
@@ -184,7 +203,7 @@ int main(void) {
     // 5. Picture testing node (Middle Center anchoring)
     Picture *pic = Picture_0();
     Picture_setSize(pic, 1024.0f, 1024.0f); // first call allocates max bounds
-    Picture_setSize(pic, 300.0f, 300.0f);   // Make it bigger to see the flower!
+    Picture_setSize(pic, 400.0f, 400.0f);   // Make it bigger to see the flower!
     
     s_sunflowerId = Texture_load("/Users/vexgraph/Downloads/sunflower.png");
     Panel_setRenderHandler(&(*pic).base, pic_render);
@@ -219,12 +238,14 @@ int main(void) {
         return 1;
     }
 
+    // Mode-cycling worker: switches picture mode every 3 seconds in its own thread
+    // so the main event loop stays responsive during window resize.
+    Thread *modeCycler = Thread_new(TYPE_THREAD_UI_SINGLETON, mode_cycle_job,
+                                    1024, true, false);
+    if (modeCycler) Thread_run(modeCycler);
+
     uint64_t lastReport = NanoTime_now();
     char titleBuf[256];
-
-    uint64_t lastModeSwitch = NanoTime_now();
-    printf("[texture-test] mode[%d] = %s\n", s_modeIndex, s_modes[s_modeIndex].label);
-    fflush(stdout);
 
     while (!Window_shouldClose(w) && !Key_isDown(KEY_ESCAPE)) {
         Window_pollEvents();
@@ -237,14 +258,6 @@ int main(void) {
 
         uint64_t now = NanoTime_now();
         uint64_t elapsed = now - lastReport;
-
-        // Cycle mode every 3 seconds
-        if (now - lastModeSwitch >= 3000000000ULL) {
-            lastModeSwitch = now;
-            s_modeIndex = (s_modeIndex + 1) % NUM_MODES;
-            printf("[texture-test] mode[%d] = %s\n", s_modeIndex, s_modes[s_modeIndex].label);
-            fflush(stdout);
-        }
 
         if (elapsed >= 250000000ULL) { // update title every 250ms
             lastReport = now;
@@ -267,6 +280,10 @@ int main(void) {
     if (presentWorker) {
         Thread_stop(presentWorker);
         Thread_free(presentWorker);
+    }
+    if (modeCycler) {
+        Thread_stop(modeCycler);
+        Thread_free(modeCycler);
     }
 
     Vk_shutdown();
