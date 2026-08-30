@@ -227,24 +227,38 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
     };
     CmdBeginRenderPass_fn(cb, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    // Set viewport and scissor to MAX size (render once at full resolution)
-    VkViewport vp = { .width = (float)canvasW, .height = (float)canvasH, .maxDepth = 1.0f };
-    VkRect2D sc = { .extent.width = (uint32_t)canvasW, .extent.height = (uint32_t)canvasH };
+    // Use the panel's CURRENT size for rendering (not the max allocation size).
+    // The IOSurface buffer is allocated at canvasW×canvasH (max), but the actual
+    // content only occupies the panel's current w×h within that buffer.
+    float curW = (*child).base.w;
+    float curH = (*child).base.h;
+    if (curW <= 0.0f) curW = (float)canvasW;
+    if (curH <= 0.0f) curH = (float)canvasH;
+    if (curW > (float)canvasW) curW = (float)canvasW;
+    if (curH > (float)canvasH) curH = (float)canvasH;
+    int renderW = (int)(curW + 0.5f);
+    int renderH = (int)(curH + 0.5f);
+    if (renderW <= 0) renderW = 1;
+    if (renderH <= 0) renderH = 1;
+
+    // Set viewport and scissor to the panel's CURRENT size
+    VkViewport vp = { .width = (float)renderW, .height = (float)renderH, .maxDepth = 1.0f };
+    VkRect2D sc = { .extent.width = (uint32_t)renderW, .extent.height = (uint32_t)renderH };
     CmdSetViewport_fn(cb, 0, 1, &vp);
     CmdSetScissor_fn(cb, 0, 1, &sc);
 
     if (isScene) {
-        // Render triangle scene at MAX size (fixed resolution, never scales)
+        // Render triangle scene at current size
         float uTime = (float)((double)(NanoTime_now() - Vk_getAnimStartNanos()) / 1e9);
         CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, Vk_getTriPipeline());
         CmdPushConstants_fn(cb, Vk_getTriLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &uTime);
         CmdDraw_fn(cb, 3, 1, 0, 0);
     } else {
-        // Call panel's render handler (e.g. hud_pulse) at MAX size
+        // Call panel's render handler at the panel's CURRENT size
         extern Panel_RenderFn Panel_getRenderHandler(const Panel *p);
         Panel_RenderFn handler = Panel_getRenderHandler(child);
         if (handler) {
-            handler(child, nullptr, cb, 0.0f, 0.0f, (float)canvasW, (float)canvasH);
+            handler(child, nullptr, cb, 0.0f, 0.0f, (float)renderW, (float)renderH);
         } else {
             uint32_t color = Panel_getBackgroundColor(child);
             if (color != 0) {
@@ -255,7 +269,7 @@ struct IOSurfaceChild* VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
                 
                 extern void Vk_fillRect(void *cmdBuffer, float surfaceW, float surfaceH, float x, float y, float w, float h,
                                         float r, float g, float b, float a);
-                Vk_fillRect(cb, (float)canvasW, (float)canvasH, 0.0f, 0.0f, (float)canvasW, (float)canvasH, r, g, b, a);
+                Vk_fillRect(cb, (float)renderW, (float)renderH, 0.0f, 0.0f, (float)renderW, (float)renderH, r, g, b, a);
             }
         }
     }
