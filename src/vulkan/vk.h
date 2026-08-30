@@ -53,29 +53,24 @@ const char *Vk_status(void);
 void Vk_fillRect(void *cmdBuffer, float surfaceW, float surfaceH, float x, float y, float w, float h,
                  float r, float g, float b, float a);
 
-// How the image is scaled to fill the quad.
+// Unified picture mode combining scaling strategy and 1:1 fill anchors.
 typedef enum {
-    PICTURE_SCALE_FIT       = 0, // Stretch/warp to fill — ignores aspect ratio
-    PICTURE_SCALE_ZOOM_FILL = 1, // Cover: scale to fill, crop overflow (fill_param = visible region)
-    PICTURE_SCALE_ZOOM_FIT  = 2, // Contain: scale to fit inside, letterbox/pillarbox (fill_param = image position)
-} PictureScaleMode;
-
-// Where the image sits when cropping (ZOOM_FILL) or where it floats (ZOOM_FIT).
-typedef enum {
-    PICTURE_FILL_CENTER       = 0,
-    PICTURE_FILL_TOP_LEFT     = 1,
-    PICTURE_FILL_TOP_RIGHT    = 2,
-    PICTURE_FILL_BOTTOM_LEFT  = 3,
-    PICTURE_FILL_BOTTOM_RIGHT = 4,
-} PictureFillParam;
+    PICTURE_MODE_FIT               = 0, // Stretch to fill
+    PICTURE_MODE_ZOOM_FILL         = 1, // Scale to cover (centered)
+    PICTURE_MODE_ZOOM_FIT          = 2, // Scale to contain (centered)
+    PICTURE_MODE_FILL_CENTER       = 3, // 1:1 pixel mapping, centered
+    PICTURE_MODE_FILL_TOP_LEFT     = 4, // 1:1 pixel mapping, top-left anchor
+    PICTURE_MODE_FILL_TOP_RIGHT    = 5, // 1:1 pixel mapping, top-right anchor
+    PICTURE_MODE_FILL_BOTTOM_LEFT  = 6, // 1:1 pixel mapping, bottom-left anchor
+    PICTURE_MODE_FILL_BOTTOM_RIGHT = 7, // 1:1 pixel mapping, bottom-right anchor
+} PictureMode;
 
 // Renders a textured quad using the bindless texture array.
-// imgAspect = image pixel width / height. quadAspect = quad display width / height.
 void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
                     float x, float y, float w, float h,
                     float r, float g, float b, float a,
                     int32_t textureId,
-                    PictureScaleMode mode, PictureFillParam fillParam,
-                    float imgAspect, float quadAspect);
+                    PictureMode mode,
+                    float imgW, float imgH);
 
 #endif
