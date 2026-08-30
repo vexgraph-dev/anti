@@ -58,11 +58,11 @@ static List *instant(uint32_t elementClass, size_t capacity, size_t count) {
     return list;
 }
 
-List *List_allocate(uint32_t elementClass, size_t capacity) {
+List *List_2(uint32_t elementClass, size_t capacity) {
     return instant(elementClass, capacity, 0);
 }
 
-List *List_allocateCount(uint32_t elementClass, size_t count) {
+List *List_2Count(uint32_t elementClass, size_t count) {
     return instant(elementClass, count, count);
 }
 
@@ -175,4 +175,7 @@ size_t List_stride(List *list) {
 
 uint8_t *List_dataBuffer(List *list) {
     return Collection_dataBuffer(asCollection(list));
+}
+List *List_1(uint32_t element_class) {
+    return List_2(element_class, 16);
 }

@@ -52,7 +52,7 @@ static void sift_down(MinHeap *heap, size_t index) {
     (*heap).priorities[index] = prio;
 }
 
-MinHeap *MinHeap_allocate(size_t capacity) {
+MinHeap *MinHeap_1(size_t capacity) {
     size_t slots = capacity + 1;
     MinHeap *heap = (MinHeap *)Memory_alloc(TYPE_MIN_HEAP, sizeof(MinHeap));
     if (!heap) return nullptr;
@@ -122,4 +122,7 @@ int32_t MinHeap_peekItem(MinHeap *heap) {
     if ((*heap).size == 0)
         return 0;
     return (*heap).items[1];
+}
+MinHeap *MinHeap_0(void) {
+    return MinHeap_1(16);
 }

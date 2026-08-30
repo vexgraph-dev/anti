@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 #include "struct/collection.h"
 
@@ -15,10 +16,10 @@ typedef struct Deque {
     Collection collection;
 } Deque;
 
-Deque *Deque_allocate(uint32_t element_class, size_t capacity);
+Deque *Deque_2(uint32_t element_class, size_t capacity);
 
 // Deque pre-filled to count slots (legacy allocate): active_count = count.
-Deque *Deque_allocateCount(uint32_t element_class, size_t count);
+Deque *Deque_2Count(uint32_t element_class, size_t count);
 
 void Deque_free(Deque *deque);
 
@@ -39,5 +40,10 @@ uint32_t Deque_elementClassId(Deque *deque);
 size_t Deque_stride(Deque *deque);
 size_t Deque_head(Deque *deque);
 uint8_t *Deque_dataBuffer(Deque *deque);
+
+
+Deque *Deque_1(uint32_t element_class);
+
+#define Deque(...) CONSTRUCTOR_DISPATCH(Deque, ##__VA_ARGS__)
 
 #endif

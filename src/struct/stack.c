@@ -40,11 +40,11 @@ static Stack *instant(uint32_t elementClass, size_t capacity, size_t count) {
     return stack;
 }
 
-Stack *Stack_allocate(uint32_t elementClass, size_t capacity) {
+Stack *Stack_2(uint32_t elementClass, size_t capacity) {
     return instant(elementClass, capacity, 0);
 }
 
-Stack *Stack_allocateCount(uint32_t elementClass, size_t count) {
+Stack *Stack_2Count(uint32_t elementClass, size_t count) {
     return instant(elementClass, count, count);
 }
 
@@ -126,4 +126,7 @@ size_t Stack_stride(Stack *stack) {
 
 uint8_t *Stack_dataBuffer(Stack *stack) {
     return Collection_dataBuffer(asCollection(stack));
+}
+Stack *Stack_1(uint32_t element_class) {
+    return Stack_2(element_class, 16);
 }

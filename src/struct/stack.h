@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 #include "struct/collection.h"
 
@@ -14,10 +15,10 @@ typedef struct Stack {
     Collection collection;
 } Stack;
 
-Stack *Stack_allocate(uint32_t element_class, size_t capacity);
+Stack *Stack_2(uint32_t element_class, size_t capacity);
 
 // Stack pre-filled to count slots (legacy allocate): active_count = count.
-Stack *Stack_allocateCount(uint32_t element_class, size_t count);
+Stack *Stack_2Count(uint32_t element_class, size_t count);
 
 void Stack_free(Stack *stack);
 
@@ -33,5 +34,10 @@ size_t Stack_capacity(Stack *stack);
 uint32_t Stack_elementClassId(Stack *stack);
 size_t Stack_stride(Stack *stack);
 uint8_t *Stack_dataBuffer(Stack *stack);
+
+
+Stack *Stack_1(uint32_t element_class);
+
+#define Stack(...) CONSTRUCTOR_DISPATCH(Stack, ##__VA_ARGS__)
 
 #endif

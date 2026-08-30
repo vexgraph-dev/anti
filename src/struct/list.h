@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 #include "struct/collection.h"
 
@@ -19,10 +20,10 @@ typedef struct List {
 } List;
 
 // Empty list for element_class with initial capacity (min 1024, legacy default).
-List *List_allocate(uint32_t element_class, size_t capacity);
+List *List_2(uint32_t element_class, size_t capacity);
 
 // List pre-filled to count slots (legacy allocate): active_count = count.
-List *List_allocateCount(uint32_t element_class, size_t count);
+List *List_2Count(uint32_t element_class, size_t count);
 
 // Free the list and its data buffer.
 void List_free(List *list);
@@ -53,5 +54,10 @@ size_t List_capacity(List *list);
 uint32_t List_elementClassId(List *list);
 size_t List_stride(List *list);
 uint8_t *List_dataBuffer(List *list);
+
+
+List *List_1(uint32_t element_class);
+
+#define List(...) CONSTRUCTOR_DISPATCH(List, ##__VA_ARGS__)
 
 #endif

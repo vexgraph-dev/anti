@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 // struct/sparseset.h — the SparseSet class, ported from struct/SparseSet.java.
 //
@@ -22,7 +23,7 @@ typedef struct SparseSet {
 } SparseSet;
 
 // Set over entity ids [0, maxEntities) with optional component stride.
-SparseSet *SparseSet_allocate(size_t capacity, size_t maxEntities, size_t stride);
+SparseSet *SparseSet_3(size_t capacity, size_t maxEntities, size_t stride);
 
 void SparseSet_free(SparseSet *set);
 
@@ -48,5 +49,8 @@ const int32_t *SparseSet_denseEntities(SparseSet *set);
 
 // Tightly packed component data, first count * stride bytes are live.
 const uint8_t *SparseSet_denseData(SparseSet *set);
+
+
+#define SparseSet(...) CONSTRUCTOR_DISPATCH(SparseSet, ##__VA_ARGS__)
 
 #endif

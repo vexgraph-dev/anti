@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 #include "struct/collection.h"
 
@@ -14,10 +15,10 @@ typedef struct Queue {
     Collection collection;
 } Queue;
 
-Queue *Queue_allocate(uint32_t element_class, size_t capacity);
+Queue *Queue_2(uint32_t element_class, size_t capacity);
 
 // Queue pre-filled to count slots (legacy allocate): active_count = count.
-Queue *Queue_allocateCount(uint32_t element_class, size_t count);
+Queue *Queue_2Count(uint32_t element_class, size_t count);
 
 void Queue_free(Queue *queue);
 
@@ -34,5 +35,10 @@ uint32_t Queue_elementClassId(Queue *queue);
 size_t Queue_stride(Queue *queue);
 size_t Queue_head(Queue *queue);
 uint8_t *Queue_dataBuffer(Queue *queue);
+
+
+Queue *Queue_1(uint32_t element_class);
+
+#define Queue(...) CONSTRUCTOR_DISPATCH(Queue, ##__VA_ARGS__)
 
 #endif

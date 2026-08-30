@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 #include "struct/array.h"
 #include "struct/collection.h"
@@ -20,7 +21,7 @@ typedef struct Map {
 } Map;
 
 // Empty map for key_class/val_class with initial slot capacity (min 4, power of two).
-Map *Map_allocate(uint32_t key_class, uint32_t val_class, size_t capacity);
+Map *Map_3(uint32_t key_class, uint32_t val_class, size_t capacity);
 
 void Map_free(Map *map);
 
@@ -44,5 +45,10 @@ size_t Map_capacity(Map *map);
 uint32_t Map_keyClassId(Map *map);
 uint32_t Map_valClassId(Map *map);
 uint8_t *Map_dataBuffer(Map *map);
+
+
+Map *Map_2(uint32_t key_class, uint32_t val_class);
+
+#define Map(...) CONSTRUCTOR_DISPATCH(Map, ##__VA_ARGS__)
 
 #endif

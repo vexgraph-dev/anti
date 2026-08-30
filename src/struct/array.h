@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 #include "struct/collection.h"
 
@@ -17,7 +18,7 @@ typedef struct Array {
 } Array;
 
 // Fixed array of length elements of element_class, all zero-initialized.
-Array *Array_allocate(uint32_t element_class, size_t length);
+Array *Array_2(uint32_t element_class, size_t length);
 
 // Free the array and its data buffer.
 void Array_free(Array *array);
@@ -36,5 +37,8 @@ size_t Array_capacity(Array *array);
 uint32_t Array_elementClassId(Array *array);
 size_t Array_stride(Array *array);
 uint8_t *Array_dataBuffer(Array *array);
+
+
+#define Array(...) CONSTRUCTOR_DISPATCH(Array, ##__VA_ARGS__)
 
 #endif

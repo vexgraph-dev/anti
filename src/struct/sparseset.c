@@ -11,7 +11,7 @@ static int32_t *allocateInts(size_t count) {
     return (int32_t *)Memory_alloc(TYPE_INT_ARRAY, count * sizeof(int32_t));
 }
 
-SparseSet *SparseSet_allocate(size_t capacity, size_t maxEntities, size_t stride) {
+SparseSet *SparseSet_3(size_t capacity, size_t maxEntities, size_t stride) {
     SparseSet *set = (SparseSet *)Memory_alloc(Type_make(FORM_SINGLETON, ID_SPARSE_SET), sizeof(SparseSet));
     if (!set) return nullptr;
 

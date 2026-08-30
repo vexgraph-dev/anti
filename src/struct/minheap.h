@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 // struct/minheap.h — the MinHeap class, ported from struct/MinHeap.java.
 //
@@ -18,7 +19,7 @@ typedef struct MinHeap {
 } MinHeap;
 
 // Heap with room for capacity entries.
-MinHeap *MinHeap_allocate(size_t capacity);
+MinHeap *MinHeap_1(size_t capacity);
 
 void MinHeap_free(MinHeap *heap);
 
@@ -34,5 +35,10 @@ int32_t MinHeap_popItem(MinHeap *heap);
 
 // Peek the lowest-priority item without removing it. Returns 0 if empty.
 int32_t MinHeap_peekItem(MinHeap *heap);
+
+
+MinHeap *MinHeap_0(void);
+
+#define MinHeap(...) CONSTRUCTOR_DISPATCH(MinHeap, ##__VA_ARGS__)
 
 #endif

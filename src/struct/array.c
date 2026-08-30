@@ -12,7 +12,7 @@ static Collection *asCollection(Array *array) {
     return (Collection *)array;
 }
 
-Array *Array_allocate(uint32_t elementClass, size_t length) {
+Array *Array_2(uint32_t elementClass, size_t length) {
     size_t stride = Stride_get(elementClass);
     Array *array = (Array *)Memory_alloc(TYPE_ARRAY, sizeof(Array));
     if (!array)

@@ -107,7 +107,7 @@ static void rehash(Collection *c, size_t newCap) {
     (*c).capacity = (uint32_t)newCap;
 }
 
-Map *Map_allocate(uint32_t keyClass, uint32_t valClass, size_t capacity) {
+Map *Map_3(uint32_t keyClass, uint32_t valClass, size_t capacity) {
     size_t cap = capacity == 0 ? DEFAULT_CAPACITY : highestOneBit(capacity);
     if (cap < 4) cap = 4;
 
@@ -254,7 +254,7 @@ uint64_t Map_remove(Map *map, uint64_t key) {
 Array *Map_keys(Map *map) {
     if (!map) return nullptr;
     Collection *c = asCollection(map);
-    Array *keys = Array_allocate((*c).elementClass, (*c).activeCount);
+    Array *keys = Array((*c).elementClass, (*c).activeCount);
     if (!keys) return nullptr;
 
     size_t out = 0;
@@ -288,4 +288,7 @@ uint32_t Map_valClassId(Map *map) {
 
 uint8_t *Map_dataBuffer(Map *map) {
     return Collection_dataBuffer(asCollection(map));
+}
+Map *Map_2(uint32_t key_class, uint32_t val_class) {
+    return Map_3(key_class, val_class, 16);
 }

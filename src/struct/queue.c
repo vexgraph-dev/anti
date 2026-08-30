@@ -68,11 +68,11 @@ static int ensureCapacity(Collection *c) {
     return 1;
 }
 
-Queue *Queue_allocate(uint32_t elementClass, size_t capacity) {
+Queue *Queue_2(uint32_t elementClass, size_t capacity) {
     return instant(elementClass, capacity, 0);
 }
 
-Queue *Queue_allocateCount(uint32_t elementClass, size_t count) {
+Queue *Queue_2Count(uint32_t elementClass, size_t count) {
     return instant(elementClass, count, count);
 }
 
@@ -152,4 +152,7 @@ size_t Queue_head(Queue *queue) {
 
 uint8_t *Queue_dataBuffer(Queue *queue) {
     return Collection_dataBuffer(asCollection(queue));
+}
+Queue *Queue_1(uint32_t element_class) {
+    return Queue_2(element_class, 16);
 }

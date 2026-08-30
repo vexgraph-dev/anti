@@ -69,11 +69,11 @@ static int ensureCapacity(Collection *c) {
     return 1;
 }
 
-Deque *Deque_allocate(uint32_t elementClass, size_t capacity) {
+Deque *Deque_2(uint32_t elementClass, size_t capacity) {
     return instant(elementClass, capacity, 0);
 }
 
-Deque *Deque_allocateCount(uint32_t elementClass, size_t count) {
+Deque *Deque_2Count(uint32_t elementClass, size_t count) {
     return instant(elementClass, count, count);
 }
 
@@ -199,4 +199,7 @@ size_t Deque_head(Deque *deque) {
 
 uint8_t *Deque_dataBuffer(Deque *deque) {
     return Collection_dataBuffer(asCollection(deque));
+}
+Deque *Deque_1(uint32_t element_class) {
+    return Deque_2(element_class, 16);
 }

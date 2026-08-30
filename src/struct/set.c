@@ -106,7 +106,7 @@ static void rehash(Collection *c, size_t newCap) {
     (*c).capacity = (uint32_t)newCap;
 }
 
-Set *Set_allocate(uint32_t elementClass, size_t capacity) {
+Set *Set_2(uint32_t elementClass, size_t capacity) {
     size_t cap = capacity == 0 ? DEFAULT_CAPACITY : highestOneBit(capacity);
     if (cap < 4) cap = 4;
 
@@ -227,7 +227,7 @@ int Set_remove(Set *set, uint64_t element) {
 List *Set_toList(Set *set) {
     if (!set) return nullptr;
     Collection *c = asCollection(set);
-    List *list = List_allocate((*c).elementClass, (*c).activeCount);
+    List *list = List((*c).elementClass, (*c).activeCount);
     if (!list) return nullptr;
 
     for (size_t i = 0; i < (*c).capacity; i++) {
@@ -271,4 +271,7 @@ uint32_t Set_elementClassId(Set *set) {
 
 uint8_t *Set_dataBuffer(Set *set) {
     return Collection_dataBuffer(asCollection(set));
+}
+Set *Set_1(uint32_t element_class) {
+    return Set_2(element_class, 16);
 }

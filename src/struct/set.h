@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "c23/constructor.h"
 
 #include "struct/collection.h"
 #include "struct/list.h"
@@ -19,7 +20,7 @@ typedef struct Set {
 } Set;
 
 // Empty set for element_class with initial slot capacity (min 4, power of two).
-Set *Set_allocate(uint32_t element_class, size_t capacity);
+Set *Set_2(uint32_t element_class, size_t capacity);
 
 void Set_free(Set *set);
 
@@ -42,5 +43,10 @@ size_t Set_size(Set *set);
 size_t Set_capacity(Set *set);
 uint32_t Set_elementClassId(Set *set);
 uint8_t *Set_dataBuffer(Set *set);
+
+
+Set *Set_1(uint32_t element_class);
+
+#define Set(...) CONSTRUCTOR_DISPATCH(Set, ##__VA_ARGS__)
 
 #endif
