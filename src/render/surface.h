@@ -4,8 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "buffers/buffer.h"
-#include "buffers/color_buffer.h"
+#include "buffer/buffer.h"
+#include "buffer/color_buffer.h"
 
 // render/surface.h — a scissored, double-buffered stamp of the master canvas.
 //

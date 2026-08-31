@@ -18,7 +18,7 @@ typedef struct Surface {
 } Surface;
 
 Surface *Surface_new(size_t width, size_t height, int x, int y) {
-    Surface *p = (Surface *)Memory_alloc(FORM_STRUCT_SINGLETON | ID_CUSTOM_STRUCT, sizeof(Surface));
+    Surface *p = (Surface*) Memory_alloc(FORM_STRUCT_SINGLETON | ID_CUSTOM_STRUCT, sizeof(Surface));
     if (!p)
         return nullptr;
     (*p).canvas[0] = ColorBuffer(width, height);
