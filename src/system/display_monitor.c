@@ -21,7 +21,7 @@ struct DisplayMonitor {
 };
 
 DisplayMonitor *DisplayMonitor_0(void) {
-    DisplayMonitor *m = (DisplayMonitor *)Memory_alloc(TYPE_DISPLAY_MONITOR_SINGLETON, sizeof(DisplayMonitor));
+    DisplayMonitor *m = (DisplayMonitor*) Memory_alloc(TYPE_DISPLAY_MONITOR_SINGLETON, sizeof(DisplayMonitor));
     if (!m)
         return nullptr;
     memset(m, 0, sizeof(DisplayMonitor));
