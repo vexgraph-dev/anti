@@ -80,6 +80,7 @@ add_executable(anti
     src/oop/type.c
     src/primitive/string.c
         src/relational/variable.c
+        src/relational/relational.c
         src/render/raster.c
         src/render/surface.c
     src/struct/array.c
