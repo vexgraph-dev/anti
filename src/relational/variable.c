@@ -33,7 +33,7 @@ static uint32_t hashName(uint64_t l0, uint64_t l1, uint64_t l2, uint64_t l3) {
 }
 
 static int32_t mapGet(Variable *v, const uint64_t words[4]) {
-    uint64_t *map = (uint64_t *)(*v).map;
+    uint64_t *map = (uint64_t*) (*v).map;
     size_t cap = (*v).mapCapacity;
     uint32_t index = hashName(words[0], words[1], words[2], words[3]) % (uint32_t)cap;
 
@@ -50,7 +50,7 @@ static int32_t mapGet(Variable *v, const uint64_t words[4]) {
 }
 
 static void mapInsert(Variable *v, const uint64_t words[4], int32_t varId) {
-    uint64_t *map = (uint64_t *)(*v).map;
+    uint64_t *map = (uint64_t*) (*v).map;
     size_t cap = (*v).mapCapacity;
     uint32_t index = hashName(words[0], words[1], words[2], words[3]) % (uint32_t)cap;
 
@@ -72,7 +72,7 @@ static void mapInsert(Variable *v, const uint64_t words[4], int32_t varId) {
 static void mapRebuild(Variable *v) {
     memset((*v).map, 0xFF, (*v).mapCapacity * VARIABLE_MAP_SLOT_SIZE);
     for (size_t i = 0; i < (*v).activeCount; i++) {
-        uint64_t *slot = (uint64_t *)((*v).arena + i * VARIABLE_SLOT_SIZE);
+        uint64_t *slot = (uint64_t*) ((*v).arena + i * VARIABLE_SLOT_SIZE);
         uint64_t words[4] = {slot[0], slot[1], slot[2], slot[3]};
         mapInsert(v, words, (int32_t)i);
     }
@@ -85,7 +85,7 @@ static bool mapResize(Variable *v) {
         return false;
     memset(newMap, 0xFF, newCapacity * VARIABLE_MAP_SLOT_SIZE);
 
-    uint64_t *oldMap = (uint64_t *)(*v).map;
+    uint64_t *oldMap = (uint64_t*) (*v).map;
     size_t oldCapacity = (*v).mapCapacity;
     (*v).map = newMap;
     (*v).mapCapacity = newCapacity;
@@ -152,7 +152,7 @@ int32_t Variable_instant(Variable *v, const char *name, uint32_t classId, uintpt
 
     int32_t existing = mapGet(v, words);
     if (existing != -1) {
-        uint64_t *slot = (uint64_t *)slotPtr(v, existing);
+        uint64_t *slot = (uint64_t*) slotPtr(v, existing);
         slot[4] = ((uint64_t)classId << 32) | (slot[4] & 0xFFFFFFFFu);
         slot[5] = (uint64_t)targetPointer;
         return existing;
@@ -170,7 +170,7 @@ int32_t Variable_instant(Variable *v, const char *name, uint32_t classId, uintpt
     }
 
     int32_t assigned = (int32_t)(*v).activeCount;
-    uint64_t *slot = (uint64_t *)slotPtr(v, assigned);
+    uint64_t *slot = (uint64_t*) slotPtr(v, assigned);
     slot[0] = words[0];
     slot[1] = words[1];
     slot[2] = words[2];
@@ -223,7 +223,7 @@ bool Variable_rename(Variable *v, const char *oldName, const char *newName) {
     if (target == -1)
         return false;
 
-    uint64_t *slot = (uint64_t *)slotPtr(v, target);
+    uint64_t *slot = (uint64_t*) slotPtr(v, target);
     slot[0] = newWords[0];
     slot[1] = newWords[1];
     slot[2] = newWords[2];
@@ -234,17 +234,17 @@ bool Variable_rename(Variable *v, const char *oldName, const char *newName) {
 }
 
 uintptr_t Variable_getPointer(Variable *v, int32_t varId) {
-    uint64_t *slot = (uint64_t *)slotPtr(v, varId);
+    uint64_t *slot = (uint64_t*) slotPtr(v, varId);
     return (uintptr_t) slot[5];
 }
 
 void Variable_setPointer(Variable *v, int32_t varId, uintptr_t targetPointer) {
-    uint64_t *slot = (uint64_t *)slotPtr(v, varId);
+    uint64_t *slot = (uint64_t*) slotPtr(v, varId);
     slot[5] = (uint64_t)targetPointer;
 }
 
 bool Variable_compareAndSetPointer(Variable *v, int32_t varId, uintptr_t expected, uintptr_t newPointer) {
-    uint64_t *slot = (uint64_t *)slotPtr(v, varId);
+    uint64_t *slot = (uint64_t*) slotPtr(v, varId);
     if (slot[5] != (uint64_t)expected)
         return false;
     slot[5] = (uint64_t)newPointer;
@@ -252,12 +252,12 @@ bool Variable_compareAndSetPointer(Variable *v, int32_t varId, uintptr_t expecte
 }
 
 uint32_t Variable_getClassId(Variable *v, int32_t varId) {
-    uint64_t *slot = (uint64_t *)slotPtr(v, varId);
+    uint64_t *slot = (uint64_t*) slotPtr(v, varId);
     return (uint32_t)(slot[4] >> 32);
 }
 
 int Variable_getName(Variable *v, int32_t varId, char *out, size_t outCap) {
-    uint64_t *slot = (uint64_t *)slotPtr(v, varId);
+    uint64_t *slot = (uint64_t*) slotPtr(v, varId);
     char buf[VARIABLE_NAME_SIZE + 1];
     size_t len = 0;
     for (int i = 0; i < 4 && len < VARIABLE_NAME_SIZE; i++) {
