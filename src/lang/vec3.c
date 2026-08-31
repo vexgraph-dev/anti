@@ -9,7 +9,7 @@
 // vec3.c — Vec3 port (Legacy: lang/Vec3.java). 12-byte vector block.
 
 Vec3 *Vec3_0(void) {
-    Vec3 *v = (Vec3 *)Memory_alloc(TYPE_VEC3_SINGLETON, sizeof(Vec3));
+    Vec3 *v = (Vec3*) Memory_alloc(TYPE_VEC3_SINGLETON, sizeof(Vec3));
     if (v) {
         (*v).x = 0.0f;
         (*v).y = 0.0f;
@@ -19,7 +19,7 @@ Vec3 *Vec3_0(void) {
 }
 
 Vec3 *Vec3_3(float x, float y, float z) {
-    Vec3 *v = (Vec3 *)Memory_alloc(TYPE_VEC3_SINGLETON, sizeof(Vec3));
+    Vec3 *v = (Vec3*) Memory_alloc(TYPE_VEC3_SINGLETON, sizeof(Vec3));
     if (v) {
         (*v).x = x;
         (*v).y = y;
