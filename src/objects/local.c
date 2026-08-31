@@ -13,7 +13,7 @@ typedef struct Local {
 
 Local *Local_0(void) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_LOCAL) | MOD_LOCALE;
-    Local *local = (Local *)Memory_alloc(type, sizeof(Local));
+    Local *local = (Local*) Memory_alloc(type, sizeof(Local));
     if (!local)
         return nullptr;
     memset((*local).slots, 0, sizeof((*local).slots));
@@ -23,7 +23,7 @@ Local *Local_0(void) {
 
 Local *Local_2(const Local *init, size_t count) {
     if (count == 0) return nullptr;
-    Local *p = (Local *)Memory_alloc(TYPE_LOCAL_ARRAY, sizeof(Local) * count);
+    Local *p = (Local*) Memory_alloc(TYPE_LOCAL_ARRAY, sizeof(Local) * count);
     if (!p) return nullptr;
     if (init) {
         for (size_t i = 0; i < count; i++) p[i] = *init;

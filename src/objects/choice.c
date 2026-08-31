@@ -21,7 +21,7 @@ Choice *Choice_3(const uint64_t *objectPtrs, const ChoiceCallback *callbacks, si
     if (count == 0) return nullptr;
     uint32_t type = Type_make(FORM_SINGLETON, ID_CHOICE) | WRAP2_CHOICE;
     size_t bytes = sizeof(Choice) + count * sizeof(ChoiceSlot);
-    Choice *choice = (Choice *)Memory_alloc(type, bytes);
+    Choice *choice = (Choice*) Memory_alloc(type, bytes);
     if (!choice)
         return nullptr;
     (*choice).count = count;
@@ -35,7 +35,7 @@ Choice *Choice_3(const uint64_t *objectPtrs, const ChoiceCallback *callbacks, si
 
 Choice *Choice_2(const Choice *init, size_t count) {
     if (count == 0) return nullptr;
-    Choice *p = (Choice *)Memory_alloc(TYPE_CHOICE_ARRAY, sizeof(Choice) * count);
+    Choice *p = (Choice*) Memory_alloc(TYPE_CHOICE_ARRAY, sizeof(Choice) * count);
     if (!p) return nullptr;
     if (init) {
         for (size_t i = 0; i < count; i++) p[i] = *init;

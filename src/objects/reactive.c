@@ -17,7 +17,7 @@ struct Reactive {
 
 Reactive *Reactive_1(uint64_t initialValue) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_REACTIVE) | WRAP_REACTIVE;
-    Reactive *reactive = (Reactive *)Memory_alloc(type, sizeof(Reactive));
+    Reactive *reactive = (Reactive*) Memory_alloc(type, sizeof(Reactive));
     if (!reactive)
         return nullptr;
     (*reactive).value = initialValue;
@@ -31,7 +31,7 @@ Reactive *Reactive_1(uint64_t initialValue) {
 
 Reactive *Reactive_2(const Reactive *init, size_t count) {
     if (count == 0) return nullptr;
-    Reactive *p = (Reactive *)Memory_alloc(TYPE_REACTIVE_ARRAY, sizeof(Reactive) * count);
+    Reactive *p = (Reactive*) Memory_alloc(TYPE_REACTIVE_ARRAY, sizeof(Reactive) * count);
     if (!p) return nullptr;
     if (init) {
         for (size_t i = 0; i < count; i++) p[i] = *init;

@@ -14,7 +14,7 @@ typedef struct Global {
 
 Global *Global_1(uint64_t initialValue) {
     uint32_t type = Type_make(FORM_SINGLETON, ID_GLOBAL) | MOD_GLOBAL;
-    Global *global = (Global *)Memory_alloc(type, sizeof(Global));
+    Global *global = (Global*) Memory_alloc(type, sizeof(Global));
     if (!global)
         return nullptr;
     atomic_init(&(*global).value, initialValue);
@@ -24,7 +24,7 @@ Global *Global_1(uint64_t initialValue) {
 
 Global *Global_2(const Global *init, size_t count) {
     if (count == 0) return nullptr;
-    Global *p = (Global *)Memory_alloc(TYPE_GLOBAL_ARRAY, sizeof(Global) * count);
+    Global *p = (Global*) Memory_alloc(TYPE_GLOBAL_ARRAY, sizeof(Global) * count);
     if (!p) return nullptr;
     if (init) {
         for (size_t i = 0; i < count; i++) p[i] = *init;

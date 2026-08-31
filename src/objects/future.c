@@ -25,7 +25,7 @@ Future *Future_0(void) {
 
 Future *Future_2(const Future *init, size_t count) {
     if (count == 0) return nullptr;
-    Future *p = (Future *)Memory_alloc(TYPE_FUTURE_ARRAY, sizeof(Future) * count);
+    Future *p = (Future*) Memory_alloc(TYPE_FUTURE_ARRAY, sizeof(Future) * count);
     if (!p) return nullptr;
     if (init) {
         for (size_t i = 0; i < count; i++) p[i] = *init;
