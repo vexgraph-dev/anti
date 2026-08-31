@@ -244,7 +244,7 @@ int32_t Struct_getInt(void *ptr, size_t fieldIndex) {
 
 void Struct_setLong(void *ptr, size_t fieldIndex, int64_t value) {
     void *addr = Struct_field(ptr, fieldIndex);
-    if (addr) *(int64_t *) addr = value;
+    if (addr) *(int64_t*) addr = value;
 }
 
 int64_t Struct_getLong(void *ptr, size_t fieldIndex) {
