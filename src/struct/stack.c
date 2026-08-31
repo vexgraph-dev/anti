@@ -11,13 +11,13 @@
 static const size_t DEFAULT_CAPACITY = 1024;
 
 static Collection *asCollection(Stack *stack) {
-    return (Collection *)stack;
+    return (Collection*) stack;
 }
 
 static Stack *instant(uint32_t elementClass, size_t capacity, size_t count) {
     size_t stride = Stride_get(elementClass);
     size_t cap = capacity < DEFAULT_CAPACITY ? DEFAULT_CAPACITY : capacity;
-    Stack *stack = (Stack *)Memory_alloc(TYPE_STACK, sizeof(Stack));
+    Stack *stack = (Stack*) Memory_alloc(TYPE_STACK, sizeof(Stack));
     if (!stack)
         return nullptr;
 
@@ -31,7 +31,7 @@ static Stack *instant(uint32_t elementClass, size_t capacity, size_t count) {
 
     size_t bytes = cap * stride;
     uint32_t bufType = Type_make(FORM_ARRAY, elementClass);
-    (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
+    (*c).data = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(stack);
         return nullptr;
@@ -63,7 +63,7 @@ void Stack_push(Stack *stack, uint64_t valueOrPointer) {
         size_t newCap = (*c).capacity + DEFAULT_CAPACITY;
         size_t bytes = newCap * (*c).stride;
         uint32_t bufType = Type_make(FORM_ARRAY, (*c).elementClass);
-        uint8_t *next = (uint8_t *)Memory_alloc(bufType, bytes);
+        uint8_t *next = (uint8_t*) Memory_alloc(bufType, bytes);
         if (!next)
             return;
         memcpy(next, (*c).data, (*c).activeCount * (*c).stride);

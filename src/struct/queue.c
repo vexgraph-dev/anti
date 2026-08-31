@@ -11,13 +11,13 @@
 static const size_t DEFAULT_CAPACITY = 1024;
 
 static Collection *asCollection(Queue *queue) {
-    return (Collection *)queue;
+    return (Collection*) queue;
 }
 
 static Queue *instant(uint32_t elementClass, size_t capacity, size_t count) {
     size_t stride = Stride_get(elementClass);
     size_t cap = capacity < DEFAULT_CAPACITY ? DEFAULT_CAPACITY : capacity;
-    Queue *queue = (Queue *)Memory_alloc(TYPE_QUEUE, sizeof(Queue));
+    Queue *queue = (Queue*) Memory_alloc(TYPE_QUEUE, sizeof(Queue));
     if (!queue)
         return nullptr;
 
@@ -31,7 +31,7 @@ static Queue *instant(uint32_t elementClass, size_t capacity, size_t count) {
 
     size_t bytes = cap * stride;
     uint32_t bufType = Type_make(FORM_ARRAY, elementClass);
-    (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
+    (*c).data = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(queue);
         return nullptr;
@@ -46,7 +46,7 @@ static int ensureCapacity(Collection *c) {
     size_t newCap = (*c).capacity + DEFAULT_CAPACITY;
     size_t bytes = newCap * (*c).stride;
     uint32_t bufType = Type_make(FORM_ARRAY, (*c).elementClass);
-    uint8_t *next = (uint8_t *)Memory_alloc(bufType, bytes);
+    uint8_t *next = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!next)
         return 0;
 

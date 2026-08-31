@@ -12,7 +12,7 @@
 static const size_t DEFAULT_CAPACITY = 1024;
 
 static Collection *asCollection(List *list) {
-    return (Collection *)list;
+    return (Collection*) list;
 }
 
 static uint8_t *bufferGrow(Collection *c, size_t needed) {
@@ -21,7 +21,7 @@ static uint8_t *bufferGrow(Collection *c, size_t needed) {
         newCap += DEFAULT_CAPACITY;
     size_t bytes = newCap * (*c).stride;
     uint32_t bufType = Type_make(FORM_ARRAY, (*c).elementClass);
-    uint8_t *next = (uint8_t *)Memory_alloc(bufType, bytes);
+    uint8_t *next = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!next)
         return nullptr;
     size_t oldBytes = (*c).activeCount * (*c).stride;
@@ -35,7 +35,7 @@ static uint8_t *bufferGrow(Collection *c, size_t needed) {
 static List *instant(uint32_t elementClass, size_t capacity, size_t count) {
     size_t stride = Stride_get(elementClass);
     size_t cap = capacity < DEFAULT_CAPACITY ? DEFAULT_CAPACITY : capacity;
-    List *list = (List *)Memory_alloc(TYPE_LIST, sizeof(List));
+    List *list = (List*) Memory_alloc(TYPE_LIST, sizeof(List));
     if (!list)
         return nullptr;
 
@@ -49,7 +49,7 @@ static List *instant(uint32_t elementClass, size_t capacity, size_t count) {
 
     size_t bytes = cap * stride;
     uint32_t bufType = Type_make(FORM_ARRAY, elementClass);
-    (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
+    (*c).data = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(list);
         return nullptr;

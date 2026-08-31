@@ -12,13 +12,13 @@
 static const size_t DEFAULT_CAPACITY = 1024;
 
 static Collection *asCollection(Deque *deque) {
-    return (Collection *)deque;
+    return (Collection*) deque;
 }
 
 static Deque *instant(uint32_t elementClass, size_t capacity, size_t count) {
     size_t stride = Stride_get(elementClass);
     size_t cap = capacity < DEFAULT_CAPACITY ? DEFAULT_CAPACITY : capacity;
-    Deque *deque = (Deque *)Memory_alloc(TYPE_DEQUE, sizeof(Deque));
+    Deque *deque = (Deque*) Memory_alloc(TYPE_DEQUE, sizeof(Deque));
     if (!deque)
         return nullptr;
 
@@ -32,7 +32,7 @@ static Deque *instant(uint32_t elementClass, size_t capacity, size_t count) {
 
     size_t bytes = cap * stride;
     uint32_t bufType = Type_make(FORM_ARRAY, elementClass);
-    (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
+    (*c).data = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(deque);
         return nullptr;
@@ -47,7 +47,7 @@ static int ensureCapacity(Collection *c) {
     size_t newCap = (*c).capacity + DEFAULT_CAPACITY;
     size_t bytes = newCap * (*c).stride;
     uint32_t bufType = Type_make(FORM_ARRAY, (*c).elementClass);
-    uint8_t *next = (uint8_t *)Memory_alloc(bufType, bytes);
+    uint8_t *next = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!next)
         return 0;
 
@@ -93,10 +93,10 @@ void Deque_addFirst(Deque *deque, uint64_t valueOrPointer) {
     size_t newHead = ((*c).head - 1 + (*c).capacity) % (*c).capacity;
     uint8_t *slot = (*c).data + newHead * (*c).stride;
     switch ((*c).stride) {
-        case 1:  *(uint8_t *)slot = (uint8_t)valueOrPointer;  break;
-        case 2:  *(uint16_t *)slot = (uint16_t)valueOrPointer; break;
-        case 4:  *(uint32_t *)slot = (uint32_t)valueOrPointer; break;
-        default: *(uint64_t *)slot = valueOrPointer;          break;
+        case 1:  *(uint8_t*) slot = (uint8_t)valueOrPointer;  break;
+        case 2:  *(uint16_t*) slot = (uint16_t)valueOrPointer; break;
+        case 4:  *(uint32_t*) slot = (uint32_t)valueOrPointer; break;
+        default: *(uint64_t*) slot = valueOrPointer;          break;
     }
     (*c).head = (uint32_t)newHead;
     (*c).activeCount++;

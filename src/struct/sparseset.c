@@ -8,11 +8,11 @@
 // sparseset.c — SparseSet port (Legacy: struct/SparseSet.java).
 
 static int32_t *allocateInts(size_t count) {
-    return (int32_t *)Memory_alloc(TYPE_INT_ARRAY, count * sizeof(int32_t));
+    return (int32_t*) Memory_alloc(TYPE_INT_ARRAY, count * sizeof(int32_t));
 }
 
 SparseSet *SparseSet_3(size_t capacity, size_t maxEntities, size_t stride) {
-    SparseSet *set = (SparseSet *)Memory_alloc(Type_make(FORM_SINGLETON, ID_SPARSE_SET), sizeof(SparseSet));
+    SparseSet *set = (SparseSet*) Memory_alloc(Type_make(FORM_SINGLETON, ID_SPARSE_SET), sizeof(SparseSet));
     if (!set) return nullptr;
 
     (*set).capacity = (int32_t)capacity;
@@ -38,7 +38,7 @@ SparseSet *SparseSet_3(size_t capacity, size_t maxEntities, size_t stride) {
     if (stride > 0) {
         size_t bytes = capacity * stride;
         uint32_t bufType = Type_make(FORM_ARRAY, ID_SPARSE_SET);
-        (*set).data = (uint8_t *)Memory_alloc(bufType, bytes);
+        (*set).data = (uint8_t*) Memory_alloc(bufType, bytes);
         if (!(*set).data) {
             Memory_free((*set).dense);
             Memory_free((*set).sparse);
@@ -141,7 +141,7 @@ uint8_t *SparseSet_get(SparseSet *set, int32_t entityId) {
     if (denseIndex == -1)
         return nullptr;
     if ((*set).stride == 0)
-        return (uint8_t *)set; // non-nullptr presence sentinel (legacy returns ptr)
+        return (uint8_t*) set; // non-nullptr presence sentinel (legacy returns ptr)
 
     return (*set).data + (size_t)denseIndex * (size_t)(*set).stride;
 }

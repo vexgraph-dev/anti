@@ -54,13 +54,13 @@ static void sift_down(MinHeap *heap, size_t index) {
 
 MinHeap *MinHeap_1(size_t capacity) {
     size_t slots = capacity + 1;
-    MinHeap *heap = (MinHeap *)Memory_alloc(TYPE_MIN_HEAP, sizeof(MinHeap));
+    MinHeap *heap = (MinHeap*) Memory_alloc(TYPE_MIN_HEAP, sizeof(MinHeap));
     if (!heap) return nullptr;
 
     (*heap).size = 0;
     (*heap).capacity = (int32_t)capacity;
-    (*heap).items = (int32_t *)Memory_alloc(TYPE_INT_ARRAY, slots * sizeof(int32_t));
-    (*heap).priorities = (float *)Memory_alloc(TYPE_FLOAT_ARRAY, slots * sizeof(float));
+    (*heap).items = (int32_t*) Memory_alloc(TYPE_INT_ARRAY, slots * sizeof(int32_t));
+    (*heap).priorities = (float*) Memory_alloc(TYPE_FLOAT_ARRAY, slots * sizeof(float));
     if (!(*heap).items || !(*heap).priorities) {
         Memory_free((*heap).items);
         Memory_free((*heap).priorities);

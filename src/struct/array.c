@@ -9,12 +9,12 @@
 // array.c — Array port (Legacy: struct/Array.java).
 
 static Collection *asCollection(Array *array) {
-    return (Collection *)array;
+    return (Collection*) array;
 }
 
 Array *Array_2(uint32_t elementClass, size_t length) {
     size_t stride = Stride_get(elementClass);
-    Array *array = (Array *)Memory_alloc(TYPE_ARRAY, sizeof(Array));
+    Array *array = (Array*) Memory_alloc(TYPE_ARRAY, sizeof(Array));
     if (!array)
         return nullptr;
 
@@ -28,7 +28,7 @@ Array *Array_2(uint32_t elementClass, size_t length) {
 
     size_t bytes = length * stride;
     uint32_t bufType = Type_make(FORM_ARRAY, elementClass);
-    (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
+    (*c).data = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(array);
         return nullptr;

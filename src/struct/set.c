@@ -17,7 +17,7 @@ static const uint64_t STATE_OCCUPIED = 1;
 static const uint64_t STATE_DELETED = 2;
 
 static Collection *asCollection(Set *set) {
-    return (Collection *)set;
+    return (Collection*) set;
 }
 
 static int isReferenceClass(uint32_t classId) {
@@ -27,11 +27,11 @@ static int isReferenceClass(uint32_t classId) {
 static uint64_t computeHash(uint32_t elementClass, uint64_t element) {
     if (element == 0) return 0;
     if (isReferenceClass(elementClass) && element >= 4096u) {
-        uint32_t inspected = Memory_type((void *)(uintptr_t)element);
+        uint32_t inspected = Memory_type((void*) (uintptr_t)element);
         if (inspected != 0) {
-            size_t len = Memory_length((void *)(uintptr_t)element);
+            size_t len = Memory_length((void*) (uintptr_t)element);
             if (len > 0)
-                return Hash_fnv1a64((const uint8_t *)(uintptr_t)element, len);
+                return Hash_fnv1a64((const uint8_t*) (uintptr_t)element, len);
         }
     }
     return Hash_murmur3Mix64(element);
@@ -41,8 +41,8 @@ static int elementsEqual(uint32_t elementClass, uint64_t e1, uint64_t e2) {
     if (e1 == e2) return 1;
     if (e1 == 0 || e2 == 0) return 0;
     if (isReferenceClass(elementClass) && e1 >= 4096u && e2 >= 4096u) {
-        void *p1 = (void *)(uintptr_t)e1;
-        void *p2 = (void *)(uintptr_t)e2;
+        void *p1 = (void*) (uintptr_t)e1;
+        void *p2 = (void*) (uintptr_t)e2;
         uint32_t t1 = Memory_type(p1);
         uint32_t t2 = Memory_type(p2);
         if (t1 != 0 && t1 == t2) {
@@ -72,7 +72,7 @@ static uint8_t *slotAt(Collection *c, size_t index) {
 }
 
 static uint64_t slotState(uint8_t *slot) {
-    return *(uint64_t *)(slot + 16);
+    return *(uint64_t*) (slot + 16);
 }
 
 static void rehash(Collection *c, size_t newCap) {
@@ -80,7 +80,7 @@ static void rehash(Collection *c, size_t newCap) {
     uint8_t *oldData = (*c).data;
     size_t bytes = newCap * SLOT_SIZE;
     uint32_t bufType = Type_make(FORM_ARRAY, ID_SET);
-    uint8_t *newData = (uint8_t *)Memory_alloc(bufType, bytes);
+    uint8_t *newData = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!newData) return;
     memset(newData, 0, bytes);
 
@@ -88,16 +88,16 @@ static void rehash(Collection *c, size_t newCap) {
     for (size_t i = 0; i < oldCap; i++) {
         uint8_t *slot = slotAt(c, i);
         if (slotState(slot) == STATE_OCCUPIED) {
-            uint64_t elem = *(uint64_t *)slot;
-            uint64_t hash = *(uint64_t *)(slot + 8);
+            uint64_t elem = *(uint64_t*) slot;
+            uint64_t hash = *(uint64_t*) (slot + 8);
 
             size_t idx = (size_t)(hash & mask);
             while (slotState(newData + idx * SLOT_SIZE) == STATE_OCCUPIED)
                 idx = (idx + 1) & mask;
             uint8_t *target = newData + idx * SLOT_SIZE;
-            *(uint64_t *)target = elem;
-            *(uint64_t *)(target + 8) = hash;
-            *(uint64_t *)(target + 16) = STATE_OCCUPIED;
+            *(uint64_t*) target = elem;
+            *(uint64_t*) (target + 8) = hash;
+            *(uint64_t*) (target + 16) = STATE_OCCUPIED;
         }
     }
 
@@ -110,7 +110,7 @@ Set *Set_2(uint32_t elementClass, size_t capacity) {
     size_t cap = capacity == 0 ? DEFAULT_CAPACITY : highestOneBit(capacity);
     if (cap < 4) cap = 4;
 
-    Set *set = (Set *)Memory_alloc(TYPE_SET, sizeof(Set));
+    Set *set = (Set*) Memory_alloc(TYPE_SET, sizeof(Set));
     if (!set) return nullptr;
 
     Collection *c = asCollection(set);
@@ -123,7 +123,7 @@ Set *Set_2(uint32_t elementClass, size_t capacity) {
 
     size_t bytes = cap * SLOT_SIZE;
     uint32_t bufType = Type_make(FORM_ARRAY, ID_SET);
-    (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
+    (*c).data = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(set);
         return nullptr;
@@ -160,17 +160,17 @@ int Set_add(Set *set, uint64_t element) {
         if (st == STATE_EMPTY) {
             size_t target = firstDeleted != SIZE_MAX ? firstDeleted : idx;
             uint8_t *tslot = slotAt(c, target);
-            *(uint64_t *)tslot = element;
-            *(uint64_t *)(tslot + 8) = hash;
-            *(uint64_t *)(tslot + 16) = STATE_OCCUPIED;
+            *(uint64_t*) tslot = element;
+            *(uint64_t*) (tslot + 8) = hash;
+            *(uint64_t*) (tslot + 16) = STATE_OCCUPIED;
             (*c).activeCount++;
             return 1;
         } else if (st == STATE_DELETED) {
             if (firstDeleted == SIZE_MAX)
                 firstDeleted = idx;
         } else if (st == STATE_OCCUPIED) {
-            if (*(uint64_t *)(slot + 8) == hash
-                && elementsEqual((*c).elementClass, *(uint64_t *)slot, element))
+            if (*(uint64_t*) (slot + 8) == hash
+                && elementsEqual((*c).elementClass, *(uint64_t*) slot, element))
                 return 0;
         }
         idx = (idx + 1) & mask;
@@ -191,8 +191,8 @@ bool Set_contains(Set *set, uint64_t element) {
         uint64_t st = slotState(slot);
         if (st == STATE_EMPTY) return false;
         if (st == STATE_OCCUPIED
-            && *(uint64_t *)(slot + 8) == hash
-            && elementsEqual((*c).elementClass, *(uint64_t *)slot, element))
+            && *(uint64_t*) (slot + 8) == hash
+            && elementsEqual((*c).elementClass, *(uint64_t*) slot, element))
             return true;
         idx = (idx + 1) & mask;
     }
@@ -213,9 +213,9 @@ int Set_remove(Set *set, uint64_t element) {
         uint64_t st = slotState(slot);
         if (st == STATE_EMPTY) return 0;
         if (st == STATE_OCCUPIED
-            && *(uint64_t *)(slot + 8) == hash
-            && elementsEqual((*c).elementClass, *(uint64_t *)slot, element)) {
-            *(uint64_t *)(slot + 16) = STATE_DELETED;
+            && *(uint64_t*) (slot + 8) == hash
+            && elementsEqual((*c).elementClass, *(uint64_t*) slot, element)) {
+            *(uint64_t*) (slot + 16) = STATE_DELETED;
             (*c).activeCount--;
             return 1;
         }
@@ -233,7 +233,7 @@ List *Set_toList(Set *set) {
     for (size_t i = 0; i < (*c).capacity; i++) {
         uint8_t *slot = slotAt(c, i);
         if (slotState(slot) == STATE_OCCUPIED)
-            List_add(list, *(uint64_t *)slot);
+            List_add(list, *(uint64_t*) slot);
     }
     return list;
 }
@@ -246,9 +246,9 @@ List *Set_toSortedList(Set *set) {
         uint8_t *buf = List_dataBuffer(list);
         size_t n = List_size(list);
         if (stride == 4)
-            Arrays_sortInt((int32_t *)buf, n);
+            Arrays_sortInt((int32_t*) buf, n);
         else if (stride == 8)
-            Arrays_sortLong((int64_t *)buf, n);
+            Arrays_sortLong((int64_t*) buf, n);
     }
     return list;
 }

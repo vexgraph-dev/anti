@@ -8,19 +8,19 @@
 
 static uint64_t readSlotAt(const uint8_t *data, size_t stride) {
     switch (stride) {
-        case 1:  return (uint64_t)(*(const uint8_t *)data);
-        case 2:  return (uint64_t)(*(const uint16_t *)data);
-        case 4:  return (uint64_t)(*(const uint32_t *)data);
-        default: return *(const uint64_t *)data;
+        case 1:  return (uint64_t)(*(const uint8_t*) data);
+        case 2:  return (uint64_t)(*(const uint16_t*) data);
+        case 4:  return (uint64_t)(*(const uint32_t*) data);
+        default: return *(const uint64_t*) data;
     }
 }
 
 static void writeSlotAt(uint8_t *data, size_t stride, uint64_t value) {
     switch (stride) {
-        case 1:  *(uint8_t *)data = (uint8_t)value;   break;
-        case 2:  *(uint16_t *)data = (uint16_t)value; break;
-        case 4:  *(uint32_t *)data = (uint32_t)value; break;
-        default: *(uint64_t *)data = value;           break;
+        case 1:  *(uint8_t*) data = (uint8_t)value;   break;
+        case 2:  *(uint16_t*) data = (uint16_t)value; break;
+        case 4:  *(uint32_t*) data = (uint32_t)value; break;
+        default: *(uint64_t*) data = value;           break;
     }
 }
 

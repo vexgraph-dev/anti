@@ -16,7 +16,7 @@ static const uint64_t STATE_OCCUPIED = 1;
 static const uint64_t STATE_DELETED = 2;
 
 static Collection *asCollection(Map *map) {
-    return (Collection *)map;
+    return (Collection*) map;
 }
 
 static int isReferenceClass(uint32_t classId) {
@@ -26,11 +26,11 @@ static int isReferenceClass(uint32_t classId) {
 static uint64_t computeHash(uint32_t keyClass, uint64_t key) {
     if (key == 0) return 0;
     if (isReferenceClass(keyClass) && key >= 4096u) {
-        uint32_t inspected = Memory_type((void *)(uintptr_t)key);
+        uint32_t inspected = Memory_type((void*) (uintptr_t)key);
         if (inspected != 0) {
-            size_t len = Memory_length((void *)(uintptr_t)key);
+            size_t len = Memory_length((void*) (uintptr_t)key);
             if (len > 0)
-                return Hash_fnv1a64((const uint8_t *)(uintptr_t)key, len);
+                return Hash_fnv1a64((const uint8_t*) (uintptr_t)key, len);
         }
     }
     return Hash_murmur3Mix64(key);
@@ -40,8 +40,8 @@ static int keysEqual(uint32_t keyClass, uint64_t k1, uint64_t k2) {
     if (k1 == k2) return 1;
     if (k1 == 0 || k2 == 0) return 0;
     if (isReferenceClass(keyClass) && k1 >= 4096u && k2 >= 4096u) {
-        void *p1 = (void *)(uintptr_t)k1;
-        void *p2 = (void *)(uintptr_t)k2;
+        void *p1 = (void*) (uintptr_t)k1;
+        void *p2 = (void*) (uintptr_t)k2;
         uint32_t t1 = Memory_type(p1);
         uint32_t t2 = Memory_type(p2);
         if (t1 != 0 && t1 == t2) {
@@ -71,7 +71,7 @@ static uint8_t *slotAt(Collection *c, size_t index) {
 }
 
 static uint64_t slotState(const uint8_t *slot) {
-    return *(uint64_t *)(slot + 24);
+    return *(uint64_t*) (slot + 24);
 }
 
 static void rehash(Collection *c, size_t newCap) {
@@ -79,7 +79,7 @@ static void rehash(Collection *c, size_t newCap) {
     uint8_t *oldData = (*c).data;
     size_t bytes = newCap * SLOT_SIZE;
     uint32_t bufType = Type_make(FORM_ARRAY, ID_MAP);
-    uint8_t *newData = (uint8_t *)Memory_alloc(bufType, bytes);
+    uint8_t *newData = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!newData) return;
     memset(newData, 0, bytes);
 
@@ -87,18 +87,18 @@ static void rehash(Collection *c, size_t newCap) {
     for (size_t i = 0; i < oldCap; i++) {
         uint8_t *slot = slotAt(c, i);
         if (slotState(slot) == STATE_OCCUPIED) {
-            uint64_t key = *(uint64_t *)slot;
-            uint64_t val = *(uint64_t *)(slot + 8);
-            uint64_t hash = *(uint64_t *)(slot + 16);
+            uint64_t key = *(uint64_t*) slot;
+            uint64_t val = *(uint64_t*) (slot + 8);
+            uint64_t hash = *(uint64_t*) (slot + 16);
 
             size_t idx = (size_t)(hash & mask);
             while (slotState(newData + idx * SLOT_SIZE) == STATE_OCCUPIED)
                 idx = (idx + 1) & mask;
             uint8_t *target = newData + idx * SLOT_SIZE;
-            *(uint64_t *)target = key;
-            *(uint64_t *)(target + 8) = val;
-            *(uint64_t *)(target + 16) = hash;
-            *(uint64_t *)(target + 24) = STATE_OCCUPIED;
+            *(uint64_t*) target = key;
+            *(uint64_t*) (target + 8) = val;
+            *(uint64_t*) (target + 16) = hash;
+            *(uint64_t*) (target + 24) = STATE_OCCUPIED;
         }
     }
 
@@ -111,7 +111,7 @@ Map *Map_3(uint32_t keyClass, uint32_t valClass, size_t capacity) {
     size_t cap = capacity == 0 ? DEFAULT_CAPACITY : highestOneBit(capacity);
     if (cap < 4) cap = 4;
 
-    Map *map = (Map *)Memory_alloc(TYPE_MAP, sizeof(Map));
+    Map *map = (Map*) Memory_alloc(TYPE_MAP, sizeof(Map));
     if (!map) return nullptr;
 
     Collection *c = asCollection(map);
@@ -124,7 +124,7 @@ Map *Map_3(uint32_t keyClass, uint32_t valClass, size_t capacity) {
 
     size_t bytes = cap * SLOT_SIZE;
     uint32_t bufType = Type_make(FORM_ARRAY, ID_MAP);
-    (*c).data = (uint8_t *)Memory_alloc(bufType, bytes);
+    (*c).data = (uint8_t*) Memory_alloc(bufType, bytes);
     if (!(*c).data) {
         Memory_free(map);
         return nullptr;
@@ -161,19 +161,19 @@ void Map_put(Map *map, uint64_t key, uint64_t value) {
         if (st == STATE_EMPTY) {
             size_t target = firstDeleted != SIZE_MAX ? firstDeleted : idx;
             uint8_t *tslot = slotAt(c, target);
-            *(uint64_t *)tslot = key;
-            *(uint64_t *)(tslot + 8) = value;
-            *(uint64_t *)(tslot + 16) = hash;
-            *(uint64_t *)(tslot + 24) = STATE_OCCUPIED;
+            *(uint64_t*) tslot = key;
+            *(uint64_t*) (tslot + 8) = value;
+            *(uint64_t*) (tslot + 16) = hash;
+            *(uint64_t*) (tslot + 24) = STATE_OCCUPIED;
             (*c).activeCount++;
             return;
         } else if (st == STATE_DELETED) {
             if (firstDeleted == SIZE_MAX)
                 firstDeleted = idx;
         } else if (st == STATE_OCCUPIED) {
-            if (*(uint64_t *)(slot + 16) == hash
-                && keysEqual((*c).elementClass, *(uint64_t *)slot, key)) {
-                *(uint64_t *)(slot + 8) = value;
+            if (*(uint64_t*) (slot + 16) == hash
+                && keysEqual((*c).elementClass, *(uint64_t*) slot, key)) {
+                *(uint64_t*) (slot + 8) = value;
                 return;
             }
         }
@@ -195,9 +195,9 @@ uint64_t Map_get(Map *map, uint64_t key) {
         uint64_t st = slotState(slot);
         if (st == STATE_EMPTY) return 0;
         if (st == STATE_OCCUPIED
-            && *(uint64_t *)(slot + 16) == hash
-            && keysEqual((*c).elementClass, *(uint64_t *)slot, key))
-            return *(uint64_t *)(slot + 8);
+            && *(uint64_t*) (slot + 16) == hash
+            && keysEqual((*c).elementClass, *(uint64_t*) slot, key))
+            return *(uint64_t*) (slot + 8);
         idx = (idx + 1) & mask;
     }
     return 0;
@@ -217,8 +217,8 @@ bool Map_containsKey(Map *map, uint64_t key) {
         uint64_t st = slotState(slot);
         if (st == STATE_EMPTY) return false;
         if (st == STATE_OCCUPIED
-            && *(uint64_t *)(slot + 16) == hash
-            && keysEqual((*c).elementClass, *(uint64_t *)slot, key))
+            && *(uint64_t*) (slot + 16) == hash
+            && keysEqual((*c).elementClass, *(uint64_t*) slot, key))
             return true;
         idx = (idx + 1) & mask;
     }
@@ -239,10 +239,10 @@ uint64_t Map_remove(Map *map, uint64_t key) {
         uint64_t st = slotState(slot);
         if (st == STATE_EMPTY) return 0;
         if (st == STATE_OCCUPIED
-            && *(uint64_t *)(slot + 16) == hash
-            && keysEqual((*c).elementClass, *(uint64_t *)slot, key)) {
-            uint64_t oldVal = *(uint64_t *)(slot + 8);
-            *(uint64_t *)(slot + 24) = STATE_DELETED;
+            && *(uint64_t*) (slot + 16) == hash
+            && keysEqual((*c).elementClass, *(uint64_t*) slot, key)) {
+            uint64_t oldVal = *(uint64_t*) (slot + 8);
+            *(uint64_t*) (slot + 24) = STATE_DELETED;
             (*c).activeCount--;
             return oldVal;
         }
@@ -261,7 +261,7 @@ Array *Map_keys(Map *map) {
     for (size_t i = 0; i < (*c).capacity; i++) {
         uint8_t *slot = slotAt(c, i);
         if (slotState(slot) == STATE_OCCUPIED)
-            Array_set(keys, out++, *(uint64_t *)slot);
+            Array_set(keys, out++, *(uint64_t*) slot);
     }
     return keys;
 }
