@@ -7,7 +7,7 @@
 // darling/canvas.c — canonical 2D space + projection (Legacy: Canvas.java).
 
 Canvas *Canvas_0(void) {
-    Canvas *c = (Canvas *)Memory_alloc(TYPE_CONTAINER_SINGLETON, sizeof(Canvas));
+    Canvas *c = (Canvas*) Memory_alloc(TYPE_CONTAINER_SINGLETON, sizeof(Canvas));
     if (!c)
         return nullptr;
     (*c).virtualWidth = 0.0f;  // follow framebuffer
@@ -128,9 +128,9 @@ void Canvas_resolveRoot(const Canvas *c, void *node, float fbW, float fbH, Vec4 
 
     uint32_t classId = Type_class(Memory_type(node));
     if (classId == ID_PICTURE)
-        Container_resolve(&(*((Picture *)node)).base.base, 0.0f, 0.0f, cw, ch, outRect);
+        Container_resolve(&(*((Picture*) node)).base.base, 0.0f, 0.0f, cw, ch, outRect);
     else
-        Container_resolve((Container *)node, 0.0f, 0.0f, cw, ch, outRect);
+        Container_resolve((Container*) node, 0.0f, 0.0f, cw, ch, outRect);
 }
 
 bool Canvas_windowToCanvas(const Canvas *c, float winX, float winY,

@@ -6,7 +6,7 @@
 // darling/picture.c — UI panel displaying an image (Legacy: darling/Picture.java)
 
 Picture *Picture_0(void) {
-    Picture *p = (Picture *)Memory_alloc(TYPE_PICTURE_SINGLETON, sizeof(Picture));
+    Picture *p = (Picture*) Memory_alloc(TYPE_PICTURE_SINGLETON, sizeof(Picture));
     if (!p) return nullptr;
 
     // Allocate the base Panel structure correctly, mimicking Scene allocation.

@@ -6,7 +6,7 @@
 // darling/scene.c — scene root (Legacy: darling/Scene.java).
 
 static Scene *allocScene(uint32_t typeId) {
-    Scene *s = (Scene *)Memory_alloc(typeId, sizeof(Scene));
+    Scene *s = (Scene*) Memory_alloc(typeId, sizeof(Scene));
     if (!s)
         return nullptr;
 
@@ -24,7 +24,7 @@ static Scene *allocScene(uint32_t typeId) {
 
 // The scene's Container sits two prefixes deep; rule 10 wants it hoisted.
 static Container *sceneLayout(const Scene *s) {
-    Panel *p = s ? (Panel *)&(*s).base : nullptr;
+    Panel *p = s ? (Panel*) &(*s).base : nullptr;
     return p ? &(*p).base : nullptr;
 }
 
@@ -47,11 +47,11 @@ Scene *Scene_3(float width, float height, int mode) {
 }
 
 Scene2D *Scene2D_0(void) {
-    return (Scene2D *)allocScene(TYPE_SCENE2D_SINGLETON);
+    return (Scene2D*) allocScene(TYPE_SCENE2D_SINGLETON);
 }
 
 Scene3D *Scene3D_0(void) {
-    return (Scene3D *)allocScene(TYPE_SCENE3D_SINGLETON);
+    return (Scene3D*) allocScene(TYPE_SCENE3D_SINGLETON);
 }
 
 int Scene_getMode(const Scene *s) {

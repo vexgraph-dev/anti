@@ -6,7 +6,7 @@
 // darling/container.c — layout core (Legacy: darling/Container.java).
 
 Container *Container_0(void) {
-    Container *c = (Container *)Memory_alloc(TYPE_CONTAINER_SINGLETON, sizeof(Container));
+    Container *c = (Container*) Memory_alloc(TYPE_CONTAINER_SINGLETON, sizeof(Container));
     if (!c)
         return nullptr;
     (*c).x = 0.0f;

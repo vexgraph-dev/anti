@@ -9,7 +9,7 @@
 #define PANEL_CHILDREN_INITIAL 4
 
 Panel *Panel_0(void) {
-    Panel *p = (Panel *)Memory_alloc(TYPE_PANEL_SINGLETON, sizeof(Panel));
+    Panel *p = (Panel*) Memory_alloc(TYPE_PANEL_SINGLETON, sizeof(Panel));
     if (!p)
         return nullptr;
     Container *b = Container_0();
@@ -89,7 +89,7 @@ void Panel_setImage(Panel *p, void *image) {
         if ((*src).children) {
             size_t n = List_size((*src).children);
             for (size_t i = 0; i < n; i++) {
-                Panel *holder = (Panel *)List_get((*src).children, i);
+                Panel *holder = (Panel*) List_get((*src).children, i);
                 Container_markDirty(&(*holder).base);
             }
         }
@@ -149,7 +149,7 @@ bool Panel_hasChildren(const Panel *p) {
 Panel *Panel_getChild(const Panel *p, size_t index) {
     if (!p || !(*p).children || index >= List_size((*p).children))
         return nullptr;
-    return (Panel *)List_get((*p).children, index);
+    return (Panel*) List_get((*p).children, index);
 }
 
 bool Panel_containsChild(const Panel *p, const Panel *child) {
@@ -157,7 +157,7 @@ bool Panel_containsChild(const Panel *p, const Panel *child) {
         return false;
     size_t n = List_size((*p).children);
     for (size_t i = 0; i < n; i++) {
-        if ((Panel *)List_get((*p).children, i) == child)
+        if ((Panel*) List_get((*p).children, i) == child)
             return true;
     }
     return false;
@@ -192,7 +192,7 @@ bool Panel_removeChild(Panel *p, Panel *child) {
         return false;
     size_t n = List_size((*p).children);
     for (size_t i = 0; i < n; i++) {
-        if ((Panel *)List_get((*p).children, i) == (const Panel *)child) {
+        if ((Panel*) List_get((*p).children, i) == (const Panel*) child) {
             List_remove((*p).children, i);
             if ((*child).parent == p)
                 (*child).parent = nullptr;
@@ -214,7 +214,7 @@ Panel *Panel_add(Panel *parent, const Panel *node) {
 
     // structural deep copy: layout is its own
     Container *cb = &(*copy).base;
-    const Container *nb = &(*((Panel *)node)).base;
+    const Container *nb = &(*((Panel*) node)).base;
     (*cb).x = (*nb).x;
     (*cb).y = (*nb).y;
     (*cb).w = (*nb).w;
@@ -234,7 +234,7 @@ Panel *Panel_add(Panel *parent, const Panel *node) {
     (*copy).renderHandler = (*node).renderHandler;
 
     // payloads alias through the source slot (read/write-through above)
-    (*copy).source = (Panel *)node;
+    (*copy).source = (Panel*) node;
 
     // deep-copy children
     size_t n = Panel_childCount(node);
