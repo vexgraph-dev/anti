@@ -30,7 +30,7 @@ Feel free to fork the code however or use it as inspiration for your own zero-al
 |:---|:---|:---|
 | Arrow member access (`p->field`) | Hidden indirection, against the doctrine. | `(*p).field` — always explicit. |
 | Casts with no space (`(int)p`) | Style rule. | `(int) p` — exactly one space after `)`. |
-| Pointer declarator `Type* name` / `Type * name` / `void*` / `(Type*)` in cast | Breaks `T *name` spacing; `*` must bind to name. | `Type *name`, `void *data`, `(Type *) ptr` — one space before `*`, none after; casts then one space after `)`. |
+| Pointer declarator `Type* name` / `Type * name` / `void*` in decl, or `(Type *)` with space inside cast | Breaks `T *name` in decls and `(T*)` in casts. | `Type *name`, `void *data` in decls (space before `*`, `*` binds to name); `(Type*) ptr` in casts (no space before `*` inside `( )`, one space after `)`). |
 | `typedef struct _x { } x;` | Non-class naming. | `typedef struct Class { } Class;` — same tag and typedef. |
 | Mixed-caps or snake-capital functions | Style rule. | Definition `functionName`, call site `Class_functionName(...)`. |
 | Braced single-statement `if` | Style rule. | `if(foo)` newline `(*coo).doo(params);` — no braces. |
