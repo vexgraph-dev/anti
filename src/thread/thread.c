@@ -22,7 +22,7 @@ typedef struct Thread {
     bool core;
 } Thread;
 
-#define THREAD_TASK_SIZE sizeof(void *)
+#define THREAD_TASK_SIZE sizeof(void*)
 #define THREAD_QUEUE_CAPACITY 2048
 
 // Central registry: handle address -> 1. Legacy used Map.put(workerPtr, 1L).
@@ -40,7 +40,7 @@ Thread *Thread_new(uint32_t typeId, Thread_Job job, size_t queueCapacity,
                    bool tickWhenIdle, bool core) {
     if (!job || queueCapacity == 0)
         return nullptr;
-    Thread *t = (Thread *)Memory_alloc(typeId, sizeof(Thread));
+    Thread *t = (Thread*) Memory_alloc(typeId, sizeof(Thread));
     if (!t)
         return nullptr;
     atomic_init(&(*t).state, 0);
@@ -127,7 +127,7 @@ uint32_t Thread_purpose(Thread *self) {
 }
 
 static void *platform_main(void *arg) {
-    Thread *self = (Thread *)arg;
+    Thread *self = (Thread*) arg;
     while (atomic_load(&(*self).state) == 1) {
         void *task = nullptr;
         if (RingBuffer_pop(&(*self).queue, &task)) {
@@ -151,7 +151,7 @@ static void walkPool(void (*visit)(Thread *self, bool system), bool system) {
         return;
     size_t count = Array_length(keys);
     for (size_t i = 0; i < count; i++) {
-        Thread *t = (Thread *)(uintptr_t)Array_get(keys, i);
+        Thread *t = (Thread*) (uintptr_t)Array_get(keys, i);
         visit(t, system);
     }
     Array_free(keys);
