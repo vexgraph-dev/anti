@@ -42,7 +42,7 @@ bool RingBuffer_init(RingBuffer *ring, size_t elem_size, size_t capacity) {
     atomic_store_explicit(&(*ring).head, 0, memory_order_relaxed);
     atomic_store_explicit(&(*ring).tail, 0, memory_order_relaxed);
 
-    (*ring).slots = (uint8_t *)calloc(cap, elem_size);
+    (*ring).slots = (uint8_t*) calloc(cap, elem_size);
     return (*ring).slots != nullptr;
 }
 

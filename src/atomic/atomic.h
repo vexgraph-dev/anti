@@ -18,7 +18,7 @@
 typedef struct AtomicBool { _Atomic uint8_t value; } AtomicBool;
 typedef struct AtomicInt  { _Atomic int32_t value; } AtomicInt;
 typedef struct AtomicLong { _Atomic int64_t value; } AtomicLong;
-typedef struct AtomicPtr  { _Atomic(void *) value; } AtomicPtr;
+typedef struct AtomicPtr  { _Atomic(void*) value; } AtomicPtr;
 
 // Initializers: AtomicBool b = ATOMIC_BOOL_INIT(true);
 #define ATOMIC_BOOL_INIT(v) { (v) ? 1u : 0u }
