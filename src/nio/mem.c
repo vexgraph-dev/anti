@@ -35,7 +35,7 @@ void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
     uintptr_t aligned = (uintptr_t)(raw + HEADER_SIZE);
     aligned = (aligned + ALIGN - 1) & ~(ALIGN - 1);
 
-    Block *hdr = (Block *)(aligned - HEADER_SIZE);
+    Block *hdr = (Block*) (aligned - HEADER_SIZE);
     (*hdr).typeId = typeId;
     (*hdr).length = (uint32_t)numBytes;
     (*hdr).pad = 0;
@@ -71,7 +71,7 @@ void *Memory_realloc(void *userPtr, size_t newBytes) {
 void Memory_free(void *userPtr) {
     if (!userPtr)
         return;
-    Block *hdr = (Block *)((unsigned char *)userPtr - HEADER_SIZE);
+    Block *hdr = (Block*) ((unsigned char*) userPtr - HEADER_SIZE);
     
     SpinLock_lock(&s_lock);
     if ((*hdr).prev)
@@ -101,12 +101,12 @@ void Memory_freeAll(void) {
 
 size_t Memory_length(void *userPtr) {
     if (!userPtr) return 0;
-    Block *hdr = (Block *)((unsigned char *)userPtr - HEADER_SIZE);
+    Block *hdr = (Block*) ((unsigned char*) userPtr - HEADER_SIZE);
     return (*hdr).length;
 }
 
 uint32_t Memory_type(void *userPtr) {
     if (!userPtr) return 0;
-    Block *hdr = (Block *)((unsigned char *)userPtr - HEADER_SIZE);
+    Block *hdr = (Block*) ((unsigned char*) userPtr - HEADER_SIZE);
     return (*hdr).typeId;
 }
