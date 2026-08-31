@@ -74,7 +74,8 @@ add_executable(anti
     src/objects/probable.c
     src/objects/probable_objects.c
     src/objects/reactive.c
-    src/oop/fields.c
+        src/oop/Class.c
+        src/oop/field.c
     src/oop/stride.c
     src/oop/struct.c
     src/oop/type.c
@@ -169,7 +170,8 @@ add_executable(darlingtest
     src/thread/draw.c
     src/oop/stride.c
     src/oop/struct.c
-    src/oop/fields.c
+        src/oop/Class.c
+        src/oop/field.c
     src/engine/loop.c
     src/input/focus.c
     src/input/key.c
@@ -266,7 +268,8 @@ add_executable(vk_test
     src/c23/free.c
     src/oop/stride.c
     src/oop/struct.c
-    src/oop/fields.c
+        src/oop/Class.c
+        src/oop/field.c
     src/oop/type.c
 )
 set_source_files_properties(src/objc/window_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
@@ -302,7 +305,8 @@ add_executable(system_test
     src/c23/free.c
     src/oop/stride.c
     src/oop/struct.c
-    src/oop/fields.c
+        src/oop/Class.c
+        src/oop/field.c
     src/oop/type.c
 )
 set_source_files_properties(src/objc/discovery.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")

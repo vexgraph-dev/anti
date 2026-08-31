@@ -20,7 +20,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import <stdatomic.h>
 
-#include "buffers/color_buffer.h"
+#include "buffer/color_buffer.h"
 #include "window/window.h"
 // NOTE: no darling/panel.h here on purpose — it transitively typedefs
 // `Collection`, which collides with CarbonCore under AppKit imports. This
