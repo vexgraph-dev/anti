@@ -35,7 +35,7 @@ Command *CommandParser_parse(const char *line) {
     size_t argc = tokens - 1;
 
     uint8_t *name = nullptr;
-    uint8_t **args = argc > 0 ? (uint8_t **)calloc(argc, sizeof(uint8_t *)) : nullptr;
+    uint8_t **args = argc > 0 ? (uint8_t **) calloc(argc, sizeof(uint8_t*)) : nullptr;
     if (argc > 0 && !args)
         return nullptr;
 
@@ -46,9 +46,9 @@ Command *CommandParser_parse(const char *line) {
         while (i < end && !isspace((unsigned char)line[i]))
             i++;
         if (tok == 0)
-            name = string_allocateBytes((const uint8_t *)line + t0, i - t0);
+            name = string_allocateBytes((const uint8_t*) line + t0, i - t0);
         else
-            args[tok - 1] = string_allocateBytes((const uint8_t *)line + t0, i - t0);
+            args[tok - 1] = string_allocateBytes((const uint8_t*) line + t0, i - t0);
         tok++;
         while (i < end && isspace((unsigned char)line[i]))
             i++;

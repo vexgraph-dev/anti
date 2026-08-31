@@ -29,7 +29,7 @@ void CommandRegistry_register(const char *name, CommandFn target) {
         string_free(name_block);
         return;
     }
-    Map_put(map, (uint64_t)(uintptr_t)name_block, (uint64_t)(uintptr_t)(void *)target);
+    Map_put(map, (uint64_t)(uintptr_t)name_block, (uint64_t)(uintptr_t)(void*) target);
 }
 
 void CommandRegistry_execute(Command *command) {
@@ -55,7 +55,7 @@ void CommandRegistry_free(void) {
     if (keys) {
         for (size_t i = 0; i < Array_length(keys); i++) {
             uint64_t key = Array_get(keys, i);
-            string_free((uint8_t *)(uintptr_t)key);
+            string_free((uint8_t*) (uintptr_t)key);
         }
         Array_free(keys);
     }

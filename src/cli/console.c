@@ -17,7 +17,7 @@ void Console_init(void) {
     RingBuffer *ring = malloc(sizeof(RingBuffer));
     if (!ring)
         return;
-    if (!RingBuffer_init(ring, sizeof(uint8_t *), CONSOLE_QUEUE_CAPACITY)) {
+    if (!RingBuffer_init(ring, sizeof(uint8_t*), CONSOLE_QUEUE_CAPACITY)) {
         free(ring);
         return;
     }
