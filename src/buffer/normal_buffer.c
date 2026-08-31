@@ -1,4 +1,4 @@
-#include "buffers/normal_buffer.h"
+#include "buffer/normal_buffer.h"
 
 #include <string.h>
 

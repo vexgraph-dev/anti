@@ -1,4 +1,4 @@
-#include "buffers/buffer.h"
+#include "buffer/buffer.h"
 
 #include <stdlib.h>
 #include <string.h>

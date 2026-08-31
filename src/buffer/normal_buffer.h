@@ -2,7 +2,7 @@
 #ifndef BUFFERS_NORMAL_BUFFER_H
 #define BUFFERS_NORMAL_BUFFER_H
 
-#include "buffers/buffer.h"
+#include "buffer/buffer.h"
 
 // buffers/normal_buffer.h — 3-channel (XYZ) surface/view normals buffer.
 // Ported from legacy buffers/NormalBuffer.java.

@@ -38,6 +38,7 @@ regurgitation/
 tests/
 
 ### Private / agent-adjacent config ###
+legacy-java
 preferences/
 preferences*.local.txt
 preferences.txt

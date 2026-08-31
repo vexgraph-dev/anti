@@ -2,7 +2,7 @@
 #ifndef BUFFERS_COLOR_BUFFER_H
 #define BUFFERS_COLOR_BUFFER_H
 
-#include "buffers/buffer.h"
+#include "buffer/buffer.h"
 
 // buffers/color_buffer.h — 4-channel RGBA color buffer.
 // Ported from legacy buffers/ColorBuffer.java.

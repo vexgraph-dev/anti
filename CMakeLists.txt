@@ -14,14 +14,14 @@ add_executable(anti
     src/nio/mem.c
     src/c23/free.c
     src/oop/type.c
-    src/buffers/buffer.c
-    src/buffers/color_buffer.c
-    src/buffers/depth_buffer.c
-    src/buffers/frame_buffer.c
-    src/buffers/height_buffer.c
-    src/buffers/normal_buffer.c
-    src/buffers/shadow_buffer.c
-    src/buffers/stencil_buffer.c
+        src/buffer/buffer.c
+        src/buffer/color_buffer.c
+        src/buffer/depth_buffer.c
+        src/buffer/frame_buffer.c
+        src/buffer/height_buffer.c
+        src/buffer/normal_buffer.c
+        src/buffer/shadow_buffer.c
+        src/buffer/stencil_buffer.c
     src/cli/command.c
     src/cli/commandparser.c
     src/cli/commandregistry.c
@@ -143,8 +143,8 @@ add_executable(darlingtest
     src/vulkan/vk_scene.c
     src/vulkan/vk_iosurface.c
     src/vulkan/texture/texture.c
-    src/buffers/buffer.c
-    src/buffers/color_buffer.c
+        src/buffer/buffer.c
+        src/buffer/color_buffer.c
     src/system/image_mac.m
     src/main/darlingtest.c
         src/objc/window_cocoa.m
@@ -237,8 +237,8 @@ add_executable(vk_test
     src/vulkan/vk_scene.c
     src/vulkan/vk_iosurface.c
     src/vulkan/texture/texture.c
-    src/buffers/buffer.c
-    src/buffers/color_buffer.c
+        src/buffer/buffer.c
+        src/buffer/color_buffer.c
     src/system/image_mac.m
         src/objc/window_cocoa.m
         src/objc/panel_cocoa.m
@@ -344,8 +344,8 @@ add_executable(enginetest
     src/nio/mem.c
     src/c23/free.c
     src/oop/type.c
-    src/buffers/buffer.c
-    src/buffers/color_buffer.c
+        src/buffer/buffer.c
+        src/buffer/color_buffer.c
     src/engine/loop.c
     src/input/focus.c
     src/input/key.c
@@ -423,8 +423,8 @@ add_executable(anti_window
     src/nio/mem.c
     src/c23/free.c
     src/oop/type.c
-    src/buffers/buffer.c
-    src/buffers/color_buffer.c
+        src/buffer/buffer.c
+        src/buffer/color_buffer.c
     tests/window_test.c
     src/engine/loop.c
     src/input/focus.c

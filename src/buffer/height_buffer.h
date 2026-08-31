@@ -2,7 +2,7 @@
 #ifndef BUFFERS_HEIGHT_BUFFER_H
 #define BUFFERS_HEIGHT_BUFFER_H
 
-#include "buffers/buffer.h"
+#include "buffer/buffer.h"
 
 // buffers/height_buffer.h — 1-channel terrain/displacement elevation buffer.
 // Ported from legacy buffers/HeightBuffer.java.

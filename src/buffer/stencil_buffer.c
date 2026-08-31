@@ -1,4 +1,4 @@
-#include "buffers/stencil_buffer.h"
+#include "buffer/stencil_buffer.h"
 
 #include "oop/type.h"
 

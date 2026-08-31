@@ -2,7 +2,7 @@
 #ifndef BUFFERS_FRAME_BUFFER_H
 #define BUFFERS_FRAME_BUFFER_H
 
-#include "buffers/buffer.h"
+#include "buffer/buffer.h"
 
 // buffers/frame_buffer.h — 4-channel composite frame buffer / render target.
 // Ported from legacy buffers/FrameBuffer.java.

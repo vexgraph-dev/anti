@@ -1,4 +1,4 @@
-#include "buffers/shadow_buffer.h"
+#include "buffer/shadow_buffer.h"
 
 #include "oop/type.h"
 

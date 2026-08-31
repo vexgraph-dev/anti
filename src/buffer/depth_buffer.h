@@ -2,7 +2,7 @@
 #ifndef BUFFERS_DEPTH_BUFFER_H
 #define BUFFERS_DEPTH_BUFFER_H
 
-#include "buffers/buffer.h"
+#include "buffer/buffer.h"
 
 // buffers/depth_buffer.h — 1-channel floating-point depth buffer.
 // Ported from legacy buffers/DepthBuffer.java.

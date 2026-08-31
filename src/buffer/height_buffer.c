@@ -1,4 +1,4 @@
-#include "buffers/height_buffer.h"
+#include "buffer/height_buffer.h"
 
 #include <string.h>
 

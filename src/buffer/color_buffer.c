@@ -1,4 +1,4 @@
-#include "buffers/color_buffer.h"
+#include "buffer/color_buffer.h"
 
 #include "oop/type.h"
 

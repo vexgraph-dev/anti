@@ -2,7 +2,7 @@
 #ifndef BUFFERS_STENCIL_BUFFER_H
 #define BUFFERS_STENCIL_BUFFER_H
 
-#include "buffers/buffer.h"
+#include "buffer/buffer.h"
 
 // buffers/stencil_buffer.h — 1-channel 8-bit stencil masking buffer.
 // Ported from legacy buffers/StencilBuffer.java.

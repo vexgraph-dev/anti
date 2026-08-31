@@ -1,4 +1,4 @@
-#include "buffers/frame_buffer.h"
+#include "buffer/frame_buffer.h"
 
 #include "oop/type.h"
 

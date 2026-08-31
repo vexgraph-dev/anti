@@ -1,4 +1,4 @@
-#include "buffers/depth_buffer.h"
+#include "buffer/depth_buffer.h"
 
 #include <string.h>
 
