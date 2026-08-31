@@ -38,8 +38,8 @@ static bool write_header(Log *log) {
 }
 
 static int64_t claim_slot(Log *log) {
-    _Atomic int64_t *head = (_Atomic int64_t *)((*log).arena + LOG_HEAD_OFF);
-    _Atomic int64_t *tail = (_Atomic int64_t *)((*log).arena + LOG_TAIL_OFF);
+    _Atomic int64_t *head = (_Atomic int64_t*) ((*log).arena + LOG_HEAD_OFF);
+    _Atomic int64_t *tail = (_Atomic int64_t*) ((*log).arena + LOG_TAIL_OFF);
     int64_t h;
     int64_t t;
     do {
@@ -70,15 +70,15 @@ static void write_slot(Log *log, const uint8_t *slot) {
 }
 
 static uint64_t drain_and_write(Log *log) {
-    _Atomic int64_t *head = (_Atomic int64_t *)((*log).arena + LOG_HEAD_OFF);
-    _Atomic int64_t *tail = (_Atomic int64_t *)((*log).arena + LOG_TAIL_OFF);
+    _Atomic int64_t *head = (_Atomic int64_t*) ((*log).arena + LOG_HEAD_OFF);
+    _Atomic int64_t *tail = (_Atomic int64_t*) ((*log).arena + LOG_TAIL_OFF);
     int64_t h = atomic_load_explicit(head, memory_order_acquire);
     int64_t t = atomic_load_explicit(tail, memory_order_acquire);
     uint64_t wrote = 0;
     while (t < h) {
         size_t slot_idx = (size_t)t & (*log).slot_mask;
         uint8_t *slot = (*log).arena + LOG_SLOT_BASE + slot_idx * (*log).slot_size;
-        _Atomic int32_t *valid = (_Atomic int32_t *)(slot + 4);
+        _Atomic int32_t *valid = (_Atomic int32_t*) (slot + 4);
         if (atomic_load_explicit(valid, memory_order_acquire) != 1)
             break;
         write_slot(log, slot);
@@ -93,7 +93,7 @@ static uint64_t drain_and_write(Log *log) {
 }
 
 static void *writer_main(void *arg) {
-    Log *log = (Log *)arg;
+    Log *log = (Log*) arg;
     uint64_t idle = 0;
     while (atomic_load_explicit(&(*log).running, memory_order_acquire)) {
         uint64_t wrote = drain_and_write(log);
@@ -137,7 +137,7 @@ bool Log_init(Log *log, const char *path, size_t slot_count) {
         return false;
     write_header(log);
 
-    (*log).arena = (uint8_t *)calloc(LOG_SLOT_BASE + (*log).slot_count * (*log).slot_size, 1);
+    (*log).arena = (uint8_t*) calloc(LOG_SLOT_BASE + (*log).slot_count * (*log).slot_size, 1);
     if (!(*log).arena) {
         FileWriter_close(&(*log).writer);
         return false;
@@ -235,7 +235,7 @@ void Log_append(Log *log, int kind, int64_t v0, int64_t v1, int64_t v2,
     memcpy(slot + 40, &v3, 8);
     memcpy(slot + 48, &v4, 8);
 
-    _Atomic int32_t *valid = (_Atomic int32_t *)(slot + 4);
+    _Atomic int32_t *valid = (_Atomic int32_t*) (slot + 4);
     atomic_store_explicit(valid, 1, memory_order_release);
     atomic_fetch_add_explicit(&(*log).appended, 1, memory_order_relaxed);
 }
