@@ -8,7 +8,7 @@
 // string.c — the string class, ported from primitive/string.java.
 
 static uint8_t *allocate_raw(size_t len) {
-    uint8_t *ptr = (uint8_t *)Memory_alloc(TYPE_STRING_ARRAY, len + 1);
+    uint8_t *ptr = (uint8_t*) Memory_alloc(TYPE_STRING_ARRAY, len + 1);
     if (ptr)
         memset(ptr, 0, len + 1);
     return ptr;
@@ -17,7 +17,7 @@ static uint8_t *allocate_raw(size_t len) {
 uint8_t *string_allocate(const char *value) {
     if (!value)
         return nullptr;
-    return string_allocateBytes((const uint8_t *)value, strlen(value));
+    return string_allocateBytes((const uint8_t*) value, strlen(value));
 }
 
 uint8_t *string_allocateBytes(const uint8_t *bytes, size_t len) {
@@ -44,20 +44,20 @@ void string_free(uint8_t *ptr) {
 const char *string_get(const uint8_t *ptr) {
     if (!ptr)
         return nullptr;
-    return (const char *)ptr;
+    return (const char*) ptr;
 }
 
 size_t string_length(const uint8_t *ptr) {
     if (!ptr)
         return 0;
-    size_t n = Memory_length((void *)(uintptr_t)ptr);
+    size_t n = Memory_length((void*) (uintptr_t)ptr);
     return n > 0 ? n - 1 : 0;
 }
 
 uint32_t string_type(const uint8_t *ptr) {
     if (!ptr)
         return 0;
-    return Memory_type((void *)(uintptr_t)ptr);
+    return Memory_type((void*) (uintptr_t)ptr);
 }
 
 bool string_isArray(const uint8_t *ptr) {
@@ -72,7 +72,7 @@ uint32_t string_classId(void) {
 size_t string_capacity(const uint8_t *ptr) {
     if (!ptr)
         return 0;
-    return Memory_length((void *)(uintptr_t)ptr);
+    return Memory_length((void*) (uintptr_t)ptr);
 }
 
 uint8_t *string_copy(const uint8_t *ptr) {
