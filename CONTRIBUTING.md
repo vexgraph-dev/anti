@@ -30,11 +30,17 @@ Feel free to fork the code however or use it as inspiration for your own zero-al
 |:---|:---|:---|
 | Arrow member access (`p->field`) | Hidden indirection, against the doctrine. | `(*p).field` — always explicit. |
 | Casts with no space (`(int)p`) | Style rule. | `(int) p` — exactly one space after `)`. |
+| Pointer declarator `Type* name` / `Type * name` / `void*` / `(Type*)` in cast | Breaks `T *name` spacing; `*` must bind to name. | `Type *name`, `void *data`, `(Type *) ptr` — one space before `*`, none after; casts then one space after `)`. |
 | `typedef struct _x { } x;` | Non-class naming. | `typedef struct Class { } Class;` — same tag and typedef. |
 | Mixed-caps or snake-capital functions | Style rule. | Definition `functionName`, call site `Class_functionName(...)`. |
 | Braced single-statement `if` | Style rule. | `if(foo)` newline `(*coo).doo(params);` — no braces. |
+| Dest-first `Func(dest, a, b)` | Violates dest-last `(a, b, dest)`. | `Vec4_add(a, b, dest)` / `Mat4_multiply(left, right, dest)` — result last. |
+| Deep member chain `(*(*ptr).f).g` / `a.b.c` (>2 layers) | Violates 2-layer cap, unreadable. | Hoist: `Field *f = &(*layout).items[i];` then `(*f).offset`. |
 | External GUI/windowing libs (GLFW, SDL) | Pulls in C++/extra dependencies, contradicts the native backend. | `window.Window` — AppKit directly via Objective-C shim. |
 | Annotation marker written bare (e.g. `DRAFT`) | Style rule. | `;;DRAFT` — two semicolons prefix, nothing after. |
+| Rendering `contentPanel` into swapchain / double-rendering IOSurface panels | Violates layer order & No Double-Render law; `contentPanel` is placeholder only. | Only `TYPE_SCENE*` to swapchain; IOSurface children via `CALayer` (`Window_resizePanelIOSurface`). |
+| `IOSurface` / Vulkan size in logical points | Blurry on Retina. | `px = (int)(points * scale + 0.5f)`, `CALayer` frame in points, `contentsScale = 1.0`. |
+| `IOSurface` panel without `contentsGravity`/`anchorPoint` from `selfAnchor` | Content drifts on live resize. | Set `contentsGravity`/`anchorPoint` per `selfAnchor` map + `geometryFlipped = YES`. |
 
 ---
 
