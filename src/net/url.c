@@ -74,7 +74,7 @@ int64_t Url_basicAuth(const char *user, const char *pass, char *out, size_t cap)
     if (c < 0 || (size_t)c >= sizeof(creds)) return -1;
 
     char encoded[768];
-    int64_t e = Url_base64((const uint8_t *)creds, (size_t)c, encoded, sizeof(encoded));
+    int64_t e = Url_base64((const uint8_t*) creds, (size_t)c, encoded, sizeof(encoded));
     if (e < 0) return -1;
 
     return snprintf(out, cap, "Basic %s", encoded);

@@ -295,13 +295,13 @@ bool HttpServer_start(HttpServer *server, int port, HttpHandler handler,
     struct sockaddr_in addr = { .sin_family = AF_INET,
                                 .sin_addr.s_addr = htonl(INADDR_LOOPBACK),
                                 .sin_port = htons((uint16_t)(port > 0 ? port : 0)) };
-    if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0 || listen(fd, 4) != 0) {
+    if (bind(fd, (struct sockaddr*) &addr, sizeof(addr)) != 0 || listen(fd, 4) != 0) {
         close(fd);
         return false;
     }
 
     socklen_t len = sizeof(addr);
-    getsockname(fd, (struct sockaddr *)&addr, &len);
+    getsockname(fd, (struct sockaddr*) &addr, &len);
     if (portOut) *portOut = ntohs(addr.sin_port);
 
     (*server).listenFd = fd;
