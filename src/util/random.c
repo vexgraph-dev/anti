@@ -20,7 +20,7 @@ static uint64_t system_seed(void) {
 }
 
 Random *Random_1(uint64_t seed) {
-    Random *r = (Random *)Memory_alloc(TYPE_RANDOM, sizeof(Random));
+    Random *r = (Random*) Memory_alloc(TYPE_RANDOM, sizeof(Random));
     if (!r) return nullptr;
     (*r).seed = seed;
     (*r).counter = 0;
@@ -88,15 +88,15 @@ uintptr_t Random_sample(Random *r, const Probable *probable) {
 
 uintptr_t Random_probablePool(Random *r, const ProbableObjects *pool) {
     if (!pool) return 0;
-    size_t count = ProbableObjects_size((ProbableObjects *)pool);
+    size_t count = ProbableObjects_size((ProbableObjects*) pool);
     if (count == 0) return 0;
 
-    uint32_t total_weight = ProbableObjects_totalWeight((ProbableObjects *)pool);
+    uint32_t total_weight = ProbableObjects_totalWeight((ProbableObjects*) pool);
     uint64_t val = Random_nextLong(r) & 0x7FFFFFFFFFFFFFFFull;
 
     if (total_weight == 0) {
         size_t idx = (size_t)(val % count);
-        return ProbableObjects_objectAt((ProbableObjects *)pool, idx);
+        return ProbableObjects_objectAt((ProbableObjects*) pool, idx);
     }
 
     uint32_t target = (uint32_t)(val % total_weight);
@@ -104,11 +104,11 @@ uintptr_t Random_probablePool(Random *r, const ProbableObjects *pool) {
     size_t high = count - 1;
     while (low < high) {
         size_t mid = (low + high) / 2;
-        uint32_t cumulative = ProbableObjects_cumulativeAt((ProbableObjects *)pool, mid);
+        uint32_t cumulative = ProbableObjects_cumulativeAt((ProbableObjects*) pool, mid);
         if (cumulative < target)
             low = mid + 1;
         else
             high = mid;
     }
-    return ProbableObjects_objectAt((ProbableObjects *)pool, low);
+    return ProbableObjects_objectAt((ProbableObjects*) pool, low);
 }
