@@ -81,7 +81,7 @@ static IOSurfaceRef makeIOSurface(uint32_t width, uint32_t height) {
 VkIOSurface *VkIOSurface_create(uint32_t width, uint32_t height) {
     if (width == 0 || height == 0) return nullptr;
 
-    VkIOSurface *surf = (VkIOSurface *)calloc(1, sizeof(VkIOSurface));
+    VkIOSurface *surf = (VkIOSurface*) calloc(1, sizeof(VkIOSurface));
     if (!surf) return nullptr;
 
     (*surf).width = width;
@@ -136,7 +136,7 @@ VkIOSurface *VkIOSurface_create(uint32_t width, uint32_t height) {
 VkIOSurface *VkIOSurface_wrap(void *ioSurface, uint32_t width, uint32_t height) {
     if (!ioSurface || width == 0 || height == 0) return nullptr;
 
-    VkIOSurface *surf = (VkIOSurface *)calloc(1, sizeof(VkIOSurface));
+    VkIOSurface *surf = (VkIOSurface*) calloc(1, sizeof(VkIOSurface));
     if (!surf) return nullptr;
 
     (*surf).width = width;
@@ -225,11 +225,11 @@ void VkIOSurface_free(VkIOSurface *surf) {
 }
 
 void *VkIOSurface_getSurface(const VkIOSurface *surf) {
-    return surf ? (void *)(*surf).surface : nullptr;
+    return surf ? (void*) (*surf).surface : nullptr;
 }
 
 void *VkIOSurface_getImage(const VkIOSurface *surf) {
-    return surf ? (void *)(*surf).image : nullptr;
+    return surf ? (void*) (*surf).image : nullptr;
 }
 
 uint32_t VkIOSurface_width(const VkIOSurface *surf) {

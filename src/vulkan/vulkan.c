@@ -833,7 +833,7 @@ static unsigned char *loadSpv(const char *path, size_t *outSize) {
         fclose(f);
         return nullptr;
     }
-    unsigned char *bytes = (unsigned char *)malloc((size_t)size);
+    unsigned char *bytes = (unsigned char*) malloc((size_t)size);
     if (!bytes) {
         fclose(f);
         return nullptr;
@@ -858,7 +858,7 @@ static VkShaderModule createShaderModule(const char *name, const char *unused) {
 
     VkShaderModuleCreateInfo ci = { .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     ci.codeSize = size;
-    ci.pCode = (const uint32_t *)code;
+    ci.pCode = (const uint32_t*) code;
 
     VkShaderModule module = VK_NULL_HANDLE;
     if (CreateShaderModule_fn(s_device, &ci, nullptr, &module) != VK_SUCCESS) {
