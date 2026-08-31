@@ -115,9 +115,9 @@ struct Window {
     _Atomic uint64_t renderGeneration;
 
     // --- content root: nullptr => clear-only pass --
-    _Atomic(Panel *) container;
-    _Atomic(Panel *) contentPanel;  // UI tree (IOSurface-backed when native)
-    _Atomic(Panel *) scenePanel;    // Scene tree (Vulkan-backed)
+    _Atomic(Panel*) container;
+    _Atomic(Panel*) contentPanel;  // UI tree (IOSurface-backed when native)
+    _Atomic(Panel*) scenePanel;    // Scene tree (Vulkan-backed)
     _Atomic(bool) nativeContainer;  // IOSurface backing for content panel
 
     // --- runtime state --
@@ -195,11 +195,11 @@ static Window *windowHandleOf(NSWindow *window) {
 @end
 
 @implementation AntiAppDelegate
-- (void)applicationWillTerminate:(NSNotification *)notification {
+- (void)applicationWillTerminate:(NSNotification*) notification {
     (void) notification;
     if (self.shouldClosePtr) *self.shouldClosePtr = true;
 }
-- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
+- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*) sender {
     (void) sender;
     return YES;
 }
@@ -219,7 +219,7 @@ static void windowFireClose(Window *window);
 static void applyLayerGravity(Window *window);
 
 @implementation AntiWindowDelegate
-- (void) windowWillClose:(NSNotification *)notification {
+- (void) windowWillClose:(NSNotification*) notification {
     (void) notification;
     if (self.shouldClosePtr) *self.shouldClosePtr = true;
     if (self.handlePtr) windowFireClose(self.handlePtr);
@@ -231,7 +231,7 @@ static void applyLayerGravity(Window *window);
 // smear/stretch no matter what the renderer does. Returning zero makes
 // setFrame:display:animate:YES land instantly: ONE real resize that the
 // TopLeft gravity law + resize-cadence bridge present honestly.
-- (NSTimeInterval)window:(NSWindow *)window animationResizeTime:(NSRect)newFrame {
+- (NSTimeInterval)window:(NSWindow*) window animationResizeTime:(NSRect)newFrame {
     (void) window;
     (void) newFrame;
     return 0.0;
@@ -248,7 +248,7 @@ static void applyLayerGravity(Window *window);
 //   turn the border moved.
 // Accept-always policy: return frameSize unchanged. Pacing lives in the
 // renderer's rebuild gate, not here.
-- (NSSize)windowWillResize:(NSWindow *)sender toSize:(NSSize)frameSize {
+- (NSSize)windowWillResize:(NSWindow*) sender toSize:(NSSize)frameSize {
     (void) sender;
     Window *w = self.handlePtr;
     if (w) {
@@ -267,7 +267,7 @@ static void applyLayerGravity(Window *window);
     return frameSize;
 }
 
-- (void)windowDidResize:(NSNotification *)notification {
+- (void)windowDidResize:(NSNotification*) notification {
     (void) notification;
     Window *w = self.handlePtr;
     if (w) {
@@ -634,7 +634,7 @@ void Window_pollEvents(void) {
                     NSString *g = [(id)view.layer contentsGravity];
                     CGSize ds = CGSizeZero;
                     if ([view.layer isKindOfClass:[CAMetalLayer class]])
-                        ds = ((CAMetalLayer *)view.layer).drawableSize;
+                        ds = ((CAMetalLayer*) view.layer).drawableSize;
                     NSLog(@"vk:probe frame=%.0fx%.0f content=%dx%d gravity=%@ drawable=%.0fx%.0f",
                           [(*handle).nsWindow frame].size.width,
                           [(*handle).nsWindow frame].size.height,
@@ -693,7 +693,7 @@ static Window *windowAlloc(const WindowDesc *desc) {
         AntiWindowDelegate *delegate = [[AntiWindowDelegate alloc] init];
         [window setDelegate:delegate];
 
-        Window *w = (Window *)calloc(1, sizeof(Window));
+        Window *w = (Window*) calloc(1, sizeof(Window));
         (*w).nsWindow = window;
         (*w).delegate = delegate;
         (*w).shouldClose = false;
@@ -970,7 +970,7 @@ void Window_compositeIOSurfaceChildren(Window *window, Panel *contentPanel) {
             void *pc = PanelCocoa_fromPanel(child);
             if (!pc) continue;
 
-            CALayer *childLayer = (__bridge CALayer *)PanelCocoa_layer(pc);
+            CALayer *childLayer = (__bridge CALayer*) PanelCocoa_layer(pc);
             if (!childLayer) continue;
 
             // Surface is pre-rendered at native pixel resolution — tell CA not to scale it.
@@ -1251,7 +1251,7 @@ void Window_setBlur(Window *window, float blur) {
         NSVisualEffectView *blurView = nil;
         for (NSView *v in [contentView subviews]) {
             if ([v isKindOfClass:[NSVisualEffectView class]]) {
-                blurView = (NSVisualEffectView *)v;
+                blurView = (NSVisualEffectView*) v;
                 break;
             }
         }
@@ -1537,7 +1537,7 @@ bool Window_present(Window *window, const Buffer *frame) {
     static size_t s_cap = 0;
     size_t bytes = w * h * 4;
     if (bytes > s_cap) {
-        uint8_t *grown = (uint8_t *)realloc(s_pixels, bytes);
+        uint8_t *grown = (uint8_t*) realloc(s_pixels, bytes);
         if (!grown)
             return false;
         s_pixels = grown;
@@ -1588,14 +1588,14 @@ bool Window_present(Window *window, const Buffer *frame) {
 void *Window_contentView(Window *window) {
     if (!window || !(*window).nsWindow)
         return nullptr;
-    return (__bridge void *)[(*window).nsWindow contentView];
+    return (__bridge void*)[(*window).nsWindow contentView];
 }
 
 @interface AntiVulkanView : NSView
 @end
 @implementation AntiVulkanView
 - (BOOL)isFlipped { return YES; }
-- (NSView *)hitTest:(NSPoint)point { return nil; } // Let events pass through to AntiContentView
+- (NSView*) hitTest:(NSPoint)point { return nil; } // Let events pass through to AntiContentView
 @end
 
 void *Window_metalLayer(Window *window) {
@@ -1608,7 +1608,7 @@ void *Window_metalLayer(Window *window) {
         AntiVulkanView *vulkanView = nil;
         for (NSView *v in [contentView subviews]) {
             if ([v isKindOfClass:[AntiVulkanView class]]) {
-                vulkanView = (AntiVulkanView *)v;
+                vulkanView = (AntiVulkanView*) v;
                 break;
             }
         }
@@ -1633,7 +1633,7 @@ void *Window_metalLayer(Window *window) {
         // Set it as layer-HOSTED, so we own the layer and AppKit won't delete our IOSurface sublayers!
         vulkanView.layer = s_pinnedLayer;
         
-        return (__bridge void *)s_pinnedLayer;
+        return (__bridge void*) s_pinnedLayer;
     }
 }
 
@@ -1648,7 +1648,7 @@ static void applyLayerGravity(Window *window) {
         AntiVulkanView *vulkanView = nil;
         for (NSView *v in [contentView subviews]) {
             if ([v isKindOfClass:[AntiVulkanView class]]) {
-                vulkanView = (AntiVulkanView *)v;
+                vulkanView = (AntiVulkanView*) v;
                 break;
             }
         }

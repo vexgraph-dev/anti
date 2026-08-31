@@ -70,7 +70,7 @@ bool Audio_isReady(void) {
 }
 
 static AudioClip *clipAlloc(float seconds) {
-    AudioClip *clip = (AudioClip *)Memory_alloc(TYPE_AUDIO_CLIP_SINGLETON, sizeof(AudioClip));
+    AudioClip *clip = (AudioClip*) Memory_alloc(TYPE_AUDIO_CLIP_SINGLETON, sizeof(AudioClip));
     if (clip) {
         (*clip).buffer = nullptr;
         (*clip).seconds = seconds;
@@ -157,7 +157,7 @@ AudioVoice *AudioVoice_new(void) {
     if (!s_ready)
         return nullptr;
     @autoreleasepool {
-        AudioVoice *v = (AudioVoice *)Memory_alloc(TYPE_AUDIO_VOICE_SINGLETON, sizeof(AudioVoice));
+        AudioVoice *v = (AudioVoice*) Memory_alloc(TYPE_AUDIO_VOICE_SINGLETON, sizeof(AudioVoice));
         if (!v)
             return nullptr;
         (*v).node = [[AVAudioPlayerNode alloc] init];
@@ -246,7 +246,7 @@ void AudioVoice_stop(AudioVoice *voice) {
 bool AudioVoice_isPlaying(AudioVoice *voice) {
     if (!voice || !(*voice).active)
         return false;
-    return (*voice).node != nullptr && [(AVAudioPlayerNode *)(*voice).node isPlaying];
+    return (*voice).node != nullptr && [(AVAudioPlayerNode*) (*voice).node isPlaying];
 }
 
 // --- Audio: one-handle class -------------------------------------------------
@@ -292,7 +292,7 @@ Audio *Audio_0(void) {
     if (!s_ready)
         return nullptr;
     @autoreleasepool {
-        Audio *a = (Audio *)Memory_alloc(TYPE_AUDIO_SINGLETON, sizeof(Audio));
+        Audio *a = (Audio*) Memory_alloc(TYPE_AUDIO_SINGLETON, sizeof(Audio));
         if (!a)
             return nullptr;
         audioInitFields(a, 44100.0, AUDIO_STEREO);
@@ -376,7 +376,7 @@ void Audio_stop(Audio *a) {
 bool Audio_isPlaying(Audio *a) {
     if (!a || !(*a).active || !(*a).node)
         return false;
-    return [(AVAudioPlayerNode *)(*a).node isPlaying];
+    return [(AVAudioPlayerNode*) (*a).node isPlaying];
 }
 
 void Audio_setGain(Audio *a, float gain) {

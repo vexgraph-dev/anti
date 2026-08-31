@@ -79,10 +79,10 @@ void SystemDiscovery_bootstrap(void) {
                 HardwareInfo_setHasBattery(true);
                 CFDictionaryRef desc = IOPSGetPowerSourceDescription(psInfo, CFArrayGetValueAtIndex(psList, 0));
                 if (desc) {
-                    NSNumber *curCap = (__bridge NSNumber *)CFDictionaryGetValue(desc, CFSTR(kIOPSCurrentCapacityKey));
-                    NSNumber *maxCap = (__bridge NSNumber *)CFDictionaryGetValue(desc, CFSTR(kIOPSMaxCapacityKey));
-                    NSString *state = (__bridge NSString *)CFDictionaryGetValue(desc, CFSTR(kIOPSPowerSourceStateKey));
-                    NSNumber *charging = (__bridge NSNumber *)CFDictionaryGetValue(desc, CFSTR(kIOPSIsChargingKey));
+                    NSNumber *curCap = (__bridge NSNumber*) CFDictionaryGetValue(desc, CFSTR(kIOPSCurrentCapacityKey));
+                    NSNumber *maxCap = (__bridge NSNumber*) CFDictionaryGetValue(desc, CFSTR(kIOPSMaxCapacityKey));
+                    NSString *state = (__bridge NSString*) CFDictionaryGetValue(desc, CFSTR(kIOPSPowerSourceStateKey));
+                    NSNumber *charging = (__bridge NSNumber*) CFDictionaryGetValue(desc, CFSTR(kIOPSIsChargingKey));
 
                     if (curCap && maxCap && [maxCap floatValue] > 0.0f) {
                         HardwareInfo_setBatteryLevel([curCap floatValue] / [maxCap floatValue]);

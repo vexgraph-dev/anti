@@ -76,7 +76,7 @@ static IOSurfaceRef makeSurface(int width, int height) {
 PanelCocoa *PanelCocoa_new(void *panel, int width, int height) {
     if (!panel || width <= 0 || height <= 0) return nullptr;
 
-    PanelCocoa *pc = (PanelCocoa *)calloc(1, sizeof(PanelCocoa));
+    PanelCocoa *pc = (PanelCocoa*) calloc(1, sizeof(PanelCocoa));
     if (!pc) return nullptr;
 
     (*pc).panel = panel;
@@ -151,12 +151,12 @@ bool PanelCocoa_setSize(PanelCocoa *pc, int width, int height) {
 }
 
 void *PanelCocoa_layer(PanelCocoa *pc) {
-    return pc ? (__bridge void *)(*pc).layer : nullptr;
+    return pc ? (__bridge void*) (*pc).layer : nullptr;
 }
 
 int PanelCocoa_width(const PanelCocoa *pc) { return pc ? (*pc).width : 0; }
 int PanelCocoa_height(const PanelCocoa *pc) { return pc ? (*pc).height : 0; }
-void *PanelCocoa_surface(PanelCocoa *pc) { return pc ? (void *)(*pc).surface : nullptr; }
+void *PanelCocoa_surface(PanelCocoa *pc) { return pc ? (void*) (*pc).surface : nullptr; }
 
 void PanelCocoa_markDirty(PanelCocoa *pc) {
     if (pc) atomic_store(&(*pc).dirty, true);
@@ -235,7 +235,7 @@ void PanelCocoa_render(PanelCocoa *pc) {
         memset(base, 0, row * h);
 
         // Decode panel color (0xAARRGGBB)
-        struct Panel *p = (struct Panel *)(*pc).panel;
+        struct Panel *p = (struct Panel*) (*pc).panel;
         uint32_t color = Panel_getBackgroundColor(p);
         if (color != 0) {
             uint8_t a = (uint8_t)(color >> 24);
@@ -244,7 +244,7 @@ void PanelCocoa_render(PanelCocoa *pc) {
             uint8_t b = (uint8_t)(color);
             // Paint row by row (BGRA order for IOSurface)
             for (int y = 0; y < h; y++) {
-                uint8_t *rowPtr = (uint8_t *)base + y * row;
+                uint8_t *rowPtr = (uint8_t*) base + y * row;
                 for (int x = 0; x < w; x++) {
                     rowPtr[x * 4 + 0] = b;
                     rowPtr[x * 4 + 1] = g;
