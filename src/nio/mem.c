@@ -49,7 +49,7 @@ void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
     SpinLock_unlock(&s_lock);
 
     // return the payload, its like a pointer of that allocated memory
-    return (void *) aligned;
+    return (void*) aligned;
 }
 
 // Grow/shrink: allocate new, copy min(old,new) bytes, free old.
