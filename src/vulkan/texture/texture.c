@@ -217,7 +217,7 @@ int32_t Texture_load(const char *vfsPath) {
     }
     BindBufferMemory_fn(s_device, stagingBuffer, stagingBufferMemory, 0);
 
-    void* data;
+    void *data;
     MapMemory_fn(s_device, stagingBufferMemory, 0, imageSize, 0, &data);
     memcpy(data, rgbaData, imageSize);
     UnmapMemory_fn(s_device, stagingBufferMemory);
