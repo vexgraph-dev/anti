@@ -7,7 +7,7 @@
 //
 //   int base = 10;
 //   Function f = { .call = addTen_impl, .ctx = &base };
-//   int out = *(int *)Function_run(&f, &x);      // like Java's runnable.run()
+//   int out = *(int*) Function_run(&f, &x);      // like Java's runnable.run()
 //
 // A Function is pure data: one code pointer + one environment pointer — the
 // same shape as Loop.tick/userdata, promoted to a reusable class. Capture is

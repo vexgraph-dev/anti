@@ -19,8 +19,8 @@
 #define zero(t)                          \
     _Generic((t),                        \
         char: '0',                       \
-        char *: (char *)"0",             \
-        const char *: (const char *)"0", \
+        char *: (char*) "0",             \
+        const char *: (const char*) "0", \
         default: (__typeof__(t)){0})
 
 #endif
