@@ -22,7 +22,7 @@ static Block *s_head = nullptr;
 static SpinLock s_lock = SPIN_LOCK_INIT;
 
 // Allocate a block, stamp the type, align the payload, return the payload.
-void* Memory_alloc(const uint32_t typeId, const size_t numBytes) {
+void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
     // stamp the payload
     const size_t total = HEADER_SIZE + numBytes + (ALIGN - 1);
     unsigned char *raw = malloc(total);
@@ -49,11 +49,11 @@ void* Memory_alloc(const uint32_t typeId, const size_t numBytes) {
     SpinLock_unlock(&s_lock);
 
     // return the payload, its like a pointer of that allocated memory
-    return (void*) aligned;
+    return (void *) aligned;
 }
 
 // Grow/shrink: allocate new, copy min(old,new) bytes, free old.
-void* Memory_realloc(void *userPtr, size_t newBytes) {
+void *Memory_realloc(void *userPtr, size_t newBytes) {
     if (!userPtr) return nullptr;
     uint32_t typeId = Memory_type(userPtr);
     size_t oldLen = Memory_length(userPtr);
