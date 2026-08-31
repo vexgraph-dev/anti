@@ -17,10 +17,10 @@
 #include <string.h>
 
 #include "bit/bit.h"
-#include "buffers/color_buffer.h"
-#include "buffers/depth_buffer.h"
-#include "buffers/frame_buffer.h"
-#include "buffers/normal_buffer.h"
+#include "buffer/color_buffer.h"
+#include "buffer/depth_buffer.h"
+#include "buffer/frame_buffer.h"
+#include "buffer/normal_buffer.h"
 #include "cli/command.h"
 #include "cli/commandparser.h"
 #include "cli/commandregistry.h"
@@ -90,7 +90,7 @@ typedef struct engine_ctx {
 } engine_ctx_t;
 
 static void *producer_main(void *arg) {
-    producer_ctx_t *ctx = (producer_ctx_t *)arg;
+    producer_ctx_t *ctx = (producer_ctx_t*) arg;
     for (uint32_t i = 0; i < N_PUSH; i++) {
         job_t job = { .from = (*ctx).id, .seq = i };
         while (!RingBuffer_push((*ctx).ring, &job)) {
@@ -105,7 +105,7 @@ static void *producer_main(void *arg) {
 static void log_print_handler(void *userdata, int kind, int64_t ts,
                               int64_t v0, int64_t v1, int64_t v2,
                               int64_t v3, int64_t v4) {
-    int64_t *base = (int64_t *)userdata;
+    int64_t *base = (int64_t*) userdata;
     if (*base == 0)
         *base = ts;
     char line[128];
@@ -129,14 +129,14 @@ static void on_reactive_change(uint64_t oldVal, uint64_t newVal, void *userdata)
 }
 
 static uint64_t passive_lazy_calc(void *userdata) {
-    int *base = (int *)userdata;
+    int *base = (int*) userdata;
     return (uint64_t)((*base) * 2);
 }
 
 // Called by the engine loop at a fixed timestep. Drains everything the
 // producers pushed and stops the loop once the expected total has arrived.
 static void engine_tick(void *userdata) {
-    engine_ctx_t *ctx = (engine_ctx_t *)userdata;
+    engine_ctx_t *ctx = (engine_ctx_t*) userdata;
 
     (*ctx).ticks++;
 
@@ -421,7 +421,7 @@ int main(void) {
     Variable_init(&vars);
 
     void *score = Memory_alloc(TYPE_INT_SINGLETON, sizeof(int32_t));
-    *(int32_t *)score = 42;
+    *(int32_t*) score = 42;
 
     int32_t score_id = Variable_instant(&vars, "player_score", TYPE_INT_SINGLETON, (uintptr_t) score);
     int32_t name_id = Variable_instant(&vars, "player_name", 0, (uintptr_t)0x1234);
@@ -433,10 +433,10 @@ int main(void) {
     Variable_getName(&vars, resolved, name_buf, sizeof(name_buf));
     printf("resolved=%d class=0x%08X ptr=%p name=\"%s\"\n", resolved,
            Variable_getClassId(&vars, resolved),
-           (void *)Variable_getPointer(&vars, resolved), name_buf);
+           (void*) Variable_getPointer(&vars, resolved), name_buf);
 
     uintptr_t stored = Variable_getPointer(&vars, score_id);
-    printf("stored int=%d\n", *(int32_t *)stored);
+    printf("stored int=%d\n", *(int32_t*) stored);
 
     bool renamed = Variable_rename(&vars, "player_score", "score");
     int32_t re_id = Variable_getId(&vars, "score");
@@ -556,9 +556,9 @@ int main(void) {
     printf("== anti struct: SparseSet ==\n");
     SparseSet *ss = SparseSet(8, 100, (size_t)sizeof(int32_t));
     uint8_t *comp = SparseSet_add(ss, 42);
-    *(int32_t *)comp = 4242;
+    *(int32_t*) comp = 4242;
     printf("count=%zu contains42=%d value=%d\n", SparseSet_count(ss),
-           SparseSet_contains(ss, 42), *(int32_t *)SparseSet_get(ss, 42));
+           SparseSet_contains(ss, 42), *(int32_t*) SparseSet_get(ss, 42));
     SparseSet_remove(ss, 42);
     printf("after remove contains42=%d count=%zu\n", SparseSet_contains(ss, 42),
            SparseSet_count(ss));
@@ -567,7 +567,7 @@ int main(void) {
     // Hash: FNV + Murmur3.
     printf("== anti util: Hash ==\n");
     printf("fnv(\"anti\")=%016llX mix32(7)=%08X\n",
-           (unsigned long long)Hash_fnv1a64((const uint8_t *)"anti", 4),
+           (unsigned long long)Hash_fnv1a64((const uint8_t*) "anti", 4),
            Hash_murmur3Mix32(7));
 
     // Random: chaotic PRNG + weighted draws.

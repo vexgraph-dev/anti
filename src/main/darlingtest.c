@@ -11,7 +11,7 @@
 #include <stdatomic.h>
 #include <math.h>
 
-#include "buffers/color_buffer.h"
+#include "buffer/color_buffer.h"
 #include "darling/panel.h"
 #include "darling/scene.h"
 #include "input/key.h"
