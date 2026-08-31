@@ -40,14 +40,14 @@ bool BitPool_init(BitPool *pool, size_t element_size, size_t capacity) {
     size_t stride = SLOT_SIZE(element_size);
     (*pool).element_size = element_size;
     (*pool).capacity = capacity;
-    (*pool).arena = (uint8_t *)calloc(capacity, stride);
+    (*pool).arena = (uint8_t*) calloc(capacity, stride);
     if (!(*pool).arena) return false;
 
     // build the free list, chaining every slot through its header
     uint16_t tag = 1;
     uintptr_t head = 0;
     for (size_t i = capacity; i > 0; i--) {
-        BitSlot *slot = (BitSlot *)((*pool).arena + (i - 1) * stride);
+        BitSlot *slot = (BitSlot*) ((*pool).arena + (i - 1) * stride);
         (*slot).type_id = 0;
         (*slot).length = 0;
         atomic_store_explicit(&(*slot).next, pack(tag, head), memory_order_relaxed);
@@ -79,7 +79,7 @@ void *BitPool_alloc(BitPool *pool, uint32_t type_id) {
         uintptr_t head_ptr = ptrOf(head_packed);
         if (head_ptr == 0) return nullptr; // pool exhausted
 
-        slot = (BitSlot *)head_ptr;
+        slot = (BitSlot*) head_ptr;
         uint64_t next_packed = atomic_load_explicit(&(*slot).next, memory_order_acquire);
         new_tag = (uint16_t)(tagOf(head_packed) + 1);
         new_ptr = ptrOf(next_packed);
@@ -92,7 +92,7 @@ void *BitPool_alloc(BitPool *pool, uint32_t type_id) {
     }
 
     (*slot).type_id = type_id;
-    return (void *)((uint8_t *)slot + sizeof(BitSlot));
+    return (void*) ((uint8_t*) slot + sizeof(BitSlot));
 }
 
 // Push a slot back: store its next, then CAS it onto the head (tag bump
@@ -100,7 +100,7 @@ void *BitPool_alloc(BitPool *pool, uint32_t type_id) {
 void BitPool_free(BitPool *pool, void *user_ptr) {
     if (!pool || !user_ptr) return;
 
-    BitSlot *slot = (BitSlot *)((uint8_t *)user_ptr - sizeof(BitSlot));
+    BitSlot *slot = (BitSlot*) ((uint8_t*) user_ptr - sizeof(BitSlot));
     (*slot).type_id = 0;
 
     uint64_t head_packed = atomic_load_explicit(&(*pool).free_head, memory_order_acquire);
