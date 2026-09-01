@@ -67,3 +67,9 @@ size_t Fixed64_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *Fixed64_allocWithValue(int64_t value) {
+    void *ptr = Fixed64_alloc();
+    if (ptr) Fixed64_set(ptr, value);
+    return ptr;
+}
