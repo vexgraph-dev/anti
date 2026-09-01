@@ -22,13 +22,13 @@ void *Float_alloc(void) {
 void *Float_allocArray(size_t count) {
     if (count == 0)
         return nullptr;
-    // Array form uses same pool but stamps array type
-    void *ptr = BitPool_alloc(&g_floatPool, ID_FLOAT);
-    if (!ptr)
-        return nullptr;
-    // For now, single slot alloc; array path deferred to BitPool array buckets
-    (void) count;
-    return ptr;
+    // Use Memory arena for arrays — BitPool is fixed 1024 slots, not for large contiguous
+    size_t bytes = count * sizeof(float);
+    // For compound types, elem_size 4 already accounts for stride, but sizeof(float) is placeholder
+    // Use elem_size for true stride where c_type is int64 placeholder
+    if (count > 1 && 4 != sizeof(float))
+        bytes = count * 4;
+    return Memory_alloc(Type_make(FORM_ARRAY, ID_FLOAT), bytes);
 }
 
 void Float_free(void *ptr) {

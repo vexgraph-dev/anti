@@ -22,13 +22,13 @@ void *Brain_alloc(void) {
 void *Brain_allocArray(size_t count) {
     if (count == 0)
         return nullptr;
-    // Array form uses same pool but stamps array type
-    void *ptr = BitPool_alloc(&g_brainPool, ID_BRAIN);
-    if (!ptr)
-        return nullptr;
-    // For now, single slot alloc; array path deferred to BitPool array buckets
-    (void) count;
-    return ptr;
+    // Use Memory arena for arrays — BitPool is fixed 1024 slots, not for large contiguous
+    size_t bytes = count * sizeof(uint16_t);
+    // For compound types, elem_size 2 already accounts for stride, but sizeof(uint16_t) is placeholder
+    // Use elem_size for true stride where c_type is int64 placeholder
+    if (count > 1 && 2 != sizeof(uint16_t))
+        bytes = count * 2;
+    return Memory_alloc(Type_make(FORM_ARRAY, ID_BRAIN), bytes);
 }
 
 void Brain_free(void *ptr) {

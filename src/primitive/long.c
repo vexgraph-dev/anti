@@ -22,13 +22,13 @@ void *Long_alloc(void) {
 void *Long_allocArray(size_t count) {
     if (count == 0)
         return nullptr;
-    // Array form uses same pool but stamps array type
-    void *ptr = BitPool_alloc(&g_longPool, ID_LONG);
-    if (!ptr)
-        return nullptr;
-    // For now, single slot alloc; array path deferred to BitPool array buckets
-    (void) count;
-    return ptr;
+    // Use Memory arena for arrays — BitPool is fixed 1024 slots, not for large contiguous
+    size_t bytes = count * sizeof(int64_t);
+    // For compound types, elem_size 8 already accounts for stride, but sizeof(int64_t) is placeholder
+    // Use elem_size for true stride where c_type is int64 placeholder
+    if (count > 1 && 8 != sizeof(int64_t))
+        bytes = count * 8;
+    return Memory_alloc(Type_make(FORM_ARRAY, ID_LONG), bytes);
 }
 
 void Long_free(void *ptr) {

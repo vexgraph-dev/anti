@@ -22,13 +22,13 @@ void *Fixed32_alloc(void) {
 void *Fixed32_allocArray(size_t count) {
     if (count == 0)
         return nullptr;
-    // Array form uses same pool but stamps array type
-    void *ptr = BitPool_alloc(&g_fixed32Pool, ID_FIXED32);
-    if (!ptr)
-        return nullptr;
-    // For now, single slot alloc; array path deferred to BitPool array buckets
-    (void) count;
-    return ptr;
+    // Use Memory arena for arrays — BitPool is fixed 1024 slots, not for large contiguous
+    size_t bytes = count * sizeof(int32_t);
+    // For compound types, elem_size 4 already accounts for stride, but sizeof(int32_t) is placeholder
+    // Use elem_size for true stride where c_type is int64 placeholder
+    if (count > 1 && 4 != sizeof(int32_t))
+        bytes = count * 4;
+    return Memory_alloc(Type_make(FORM_ARRAY, ID_FIXED32), bytes);
 }
 
 void Fixed32_free(void *ptr) {
