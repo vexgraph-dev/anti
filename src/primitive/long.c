@@ -34,7 +34,8 @@ void *Long_allocArray(size_t count) {
 void Long_free(void *ptr) {
     if (!ptr)
         return;
-    BitPool_free(&g_longPool, ptr);
+    if (BitPool_contains(&g_longPool, ptr)) BitPool_free(&g_longPool, ptr);
+    else Memory_free(ptr);
 }
 
 int64_t Long_get(void *ptr) {
@@ -59,12 +60,14 @@ bool Long_compareAndSet(void *ptr, int64_t expected, int64_t value) {
 uint32_t Long_type(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_longPool, ptr)) return BitPool_type(&g_longPool, ptr);
     return Memory_type(ptr);
 }
 
 size_t Long_length(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_longPool, ptr)) return BitPool_length(&g_longPool, ptr);
     return Memory_length(ptr);
 }
 
