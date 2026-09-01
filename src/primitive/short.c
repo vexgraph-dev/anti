@@ -34,7 +34,8 @@ void *Short_allocArray(size_t count) {
 void Short_free(void *ptr) {
     if (!ptr)
         return;
-    BitPool_free(&g_shortPool, ptr);
+    if (BitPool_contains(&g_shortPool, ptr)) BitPool_free(&g_shortPool, ptr);
+    else Memory_free(ptr);
 }
 
 int16_t Short_get(void *ptr) {
@@ -59,12 +60,14 @@ bool Short_compareAndSet(void *ptr, int16_t expected, int16_t value) {
 uint32_t Short_type(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_shortPool, ptr)) return BitPool_type(&g_shortPool, ptr);
     return Memory_type(ptr);
 }
 
 size_t Short_length(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_shortPool, ptr)) return BitPool_length(&g_shortPool, ptr);
     return Memory_length(ptr);
 }
 
