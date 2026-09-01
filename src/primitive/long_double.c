@@ -67,3 +67,11 @@ size_t LongDouble_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *LongDouble_allocWithValues(int64_t v1, double v2) {
+    void *ptr = LongDouble_alloc();
+    if (!ptr) return nullptr;
+    *(int64_t*) ptr = v1;
+    *(double*) ((uint8_t*) ptr + sizeof(int64_t)) = v2;
+    return ptr;
+}
