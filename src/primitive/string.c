@@ -103,3 +103,57 @@ int String_compare(const uint8_t *a, const uint8_t *b) {
     const char *sb = (const char*) b;
     return strcmp(sa, sb);
 }
+
+bool String_contains(const uint8_t *haystack, const uint8_t *needle) {
+    if (!haystack || !needle)
+        return false;
+    const char *h = (const char*) haystack;
+    const char *n = (const char*) needle;
+    return strstr(h, n) != nullptr;
+}
+
+bool String_containsLiteral(const uint8_t *haystack, const char *needle) {
+    if (!haystack || !needle)
+        return false;
+    const char *h = (const char*) haystack;
+    return strstr(h, needle) != nullptr;
+}
+
+size_t String_indexOf(const uint8_t *haystack, const uint8_t *needle) {
+    if (!haystack || !needle)
+        return (size_t) -1;
+    const char *h = (const char*) haystack;
+    const char *n = (const char*) needle;
+    const char *p = strstr(h, n);
+    if (!p)
+        return (size_t) -1;
+    return (size_t)(p - h);
+}
+
+size_t String_indexOfLiteral(const uint8_t *haystack, const char *needle) {
+    if (!haystack || !needle)
+        return (size_t) -1;
+    const char *h = (const char*) haystack;
+    const char *p = strstr(h, needle);
+    if (!p)
+        return (size_t) -1;
+    return (size_t)(p - h);
+}
+
+bool String_instring(size_t index, const uint8_t *haystack, const uint8_t *needle) {
+    if (!haystack || !needle)
+        return false;
+    size_t pos = String_indexOf(haystack, needle);
+    if (pos == (size_t) -1)
+        return false;
+    return pos == index;
+}
+
+bool String_instringLiteral(size_t index, const uint8_t *haystack, const char *needle) {
+    if (!haystack || !needle)
+        return false;
+    size_t pos = String_indexOfLiteral(haystack, needle);
+    if (pos == (size_t) -1)
+        return false;
+    return pos == index;
+}

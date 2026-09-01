@@ -82,4 +82,12 @@ bool string_equals(const uint8_t *ptr, const char *value);
 int String_compare(const uint8_t *a, const uint8_t *b);
 #define String_compare String_compare
 
+// Search — contains / indexOf / instring(index, haystack, needle)
+bool String_contains(const uint8_t *haystack, const uint8_t *needle);
+bool String_containsLiteral(const uint8_t *haystack, const char *needle);
+size_t String_indexOf(const uint8_t *haystack, const uint8_t *needle);
+size_t String_indexOfLiteral(const uint8_t *haystack, const char *needle);
+bool String_instring(size_t index, const uint8_t *haystack, const uint8_t *needle);
+bool String_instringLiteral(size_t index, const uint8_t *haystack, const char *needle);
+
 #endif
