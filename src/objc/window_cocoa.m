@@ -913,12 +913,6 @@ bool Window_resizePanelIOSurface(Window *window, Panel *panel, int width, int he
     return anti_ResizePanelIOSurfaceChildren(window, panel, width, height) >= 0;
 }
 
-void Window_renderPanelIOSurface(Window *window, Panel *panel) {
-    if (!window || !panel) return;
-    extern void anti_RenderPanelIOSurfaceChildren(Window *w, Panel *p);
-    anti_RenderPanelIOSurfaceChildren(window, panel);
-}
-
 void *Window_getPanelLayer(Window *window, Panel *panel) {
     if (!window || !panel) return nullptr;
     extern void *PanelCocoa_fromPanel(void *panel);

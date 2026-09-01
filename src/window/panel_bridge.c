@@ -80,25 +80,6 @@ int anti_ResizePanelIOSurfaceChildren(Window *window, Panel *contentPanel, int w
     return resized;
 }
 
-// Render IOSurface backing for ALL children of a content panel.
-// The Vulkan renderer calls this to get the IOSurface for each child,
-// then renders into it via a framebuffer.
-void anti_RenderPanelIOSurfaceChildren(Window *window, Panel *contentPanel) {
-    if (!window || !contentPanel) return;
-    (void)window;
-    size_t childCount = Panel_childCount(contentPanel);
-    for (size_t i = 0; i < childCount; i++) {
-        Panel *child = Panel_getChild(contentPanel, i);
-        if (!child) continue;
-        extern void *PanelCocoa_fromPanel(void *panel);
-        void *pc = PanelCocoa_fromPanel(child);
-        if (pc) {
-            extern void PanelCocoa_render(void *pc);
-            PanelCocoa_render(pc);
-        }
-    }
-}
-
 // Composite IOSurface-backed children into the window's layer tree.
 void anti_CompositeIOSurfaceChildren(Window *window, Panel *contentPanel) {
     (void)window;

@@ -165,8 +165,6 @@ bool Window_isNativeContainerOnRoot(const Window *window);
 
 bool Window_attachPanelIOSurface(Window *window, Panel *panel, int width, int height);
 bool Window_resizePanelIOSurface(Window *window, Panel *panel, int width, int height);
-void Window_renderPanelIOSurface(Window *window, Panel *panel);
-void *Window_getPanelLayer(Window *window, Panel *panel);
 void Window_compositeIOSurfaceChildren(Window *window, Panel *contentPanel);
 
 // --- Present policy -----------------------------------------------------------
