@@ -34,7 +34,8 @@ void *Fixed64_allocArray(size_t count) {
 void Fixed64_free(void *ptr) {
     if (!ptr)
         return;
-    BitPool_free(&g_fixed64Pool, ptr);
+    if (BitPool_contains(&g_fixed64Pool, ptr)) BitPool_free(&g_fixed64Pool, ptr);
+    else Memory_free(ptr);
 }
 
 int64_t Fixed64_get(void *ptr) {
@@ -59,12 +60,14 @@ bool Fixed64_compareAndSet(void *ptr, int64_t expected, int64_t value) {
 uint32_t Fixed64_type(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_fixed64Pool, ptr)) return BitPool_type(&g_fixed64Pool, ptr);
     return Memory_type(ptr);
 }
 
 size_t Fixed64_length(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_fixed64Pool, ptr)) return BitPool_length(&g_fixed64Pool, ptr);
     return Memory_length(ptr);
 }
 
