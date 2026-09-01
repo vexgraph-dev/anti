@@ -67,3 +67,9 @@ size_t Brain_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *Brain_allocWithValue(uint16_t value) {
+    void *ptr = Brain_alloc();
+    if (ptr) Brain_set(ptr, value);
+    return ptr;
+}
