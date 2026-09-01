@@ -67,3 +67,11 @@ size_t IntDouble_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *IntDouble_allocWithValues(int32_t v1, double v2) {
+    void *ptr = IntDouble_alloc();
+    if (!ptr) return nullptr;
+    *(int32_t*) ptr = v1;
+    *(double*) ((uint8_t*) ptr + sizeof(int32_t)) = v2;
+    return ptr;
+}
