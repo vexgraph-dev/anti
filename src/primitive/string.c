@@ -157,3 +157,51 @@ bool String_instringLiteral(size_t index, const uint8_t *haystack, const char *n
         return false;
     return pos == index;
 }
+
+uint8_t *String_substring(const uint8_t *str, size_t start, size_t len) {
+    if (!str)
+        return nullptr;
+    size_t sLen = string_length(str);
+    if (start >= sLen)
+        return String("");
+    if (start + len > sLen)
+        len = sLen - start;
+    return string_allocateBytes(str + start, len);
+}
+
+uint8_t *String_substringLiteral(const char *str, size_t start, size_t len) {
+    if (!str)
+        return nullptr;
+    size_t sLen = strlen(str);
+    if (start >= sLen)
+        return String("");
+    if (start + len > sLen)
+        len = sLen - start;
+    return string_allocateBytes((const uint8_t*) str + start, len);
+}
+
+uint8_t *String_subFirstChar(const uint8_t *str) {
+    return String_substring(str, 0, 1);
+}
+
+uint8_t *String_subLastChar(const uint8_t *str) {
+    if (!str)
+        return nullptr;
+    size_t sLen = string_length(str);
+    if (sLen == 0)
+        return String("");
+    return String_substring(str, sLen - 1, 1);
+}
+
+uint8_t *String_subFirst(const uint8_t *str, size_t count) {
+    return String_substring(str, 0, count);
+}
+
+uint8_t *String_subLast(const uint8_t *str, size_t count) {
+    if (!str)
+        return nullptr;
+    size_t sLen = string_length(str);
+    if (count >= sLen)
+        return string_copy(str);
+    return String_substring(str, sLen - count, count);
+}

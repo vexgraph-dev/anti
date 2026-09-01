@@ -90,4 +90,12 @@ size_t String_indexOfLiteral(const uint8_t *haystack, const char *needle);
 bool String_instring(size_t index, const uint8_t *haystack, const uint8_t *needle);
 bool String_instringLiteral(size_t index, const uint8_t *haystack, const char *needle);
 
+// Substring — new block, caller frees
+uint8_t *String_substring(const uint8_t *str, size_t start, size_t len);
+uint8_t *String_substringLiteral(const char *str, size_t start, size_t len);
+uint8_t *String_subFirstChar(const uint8_t *str);
+uint8_t *String_subLastChar(const uint8_t *str);
+uint8_t *String_subFirst(const uint8_t *str, size_t count);
+uint8_t *String_subLast(const uint8_t *str, size_t count);
+
 #endif
