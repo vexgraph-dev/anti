@@ -3,11 +3,13 @@
 #include <stdio.h>
 #include <stdatomic.h>
 #include <time.h>
+#include <string.h>
 
 #include "darling/container.h"
 #include "darling/panel.h"
 #include "darling/scene.h"
 #include "darling/picture.h"
+#include "hot/hot.h"
 #include "input/key.h"
 #include "nio/mem.h"
 #include "oop/type.h"
@@ -156,6 +158,12 @@ int main(void) {
     extern void System_initializeAll(void);
     System_initializeAll();
 
+    // Initialize hotloader
+    HotModule *hot = Hot_init("hot");
+    if (hot) {
+        fprintf(stderr, "[hot] watching hot/ for module updates\n");
+    }
+
     Window *w = Window();
     Window_setTitle(w, "anti vk probe");
     Window_setSize(w, 640, 400);
@@ -205,7 +213,9 @@ int main(void) {
     Picture_setSize(pic, 1024.0f, 1024.0f); // first call allocates max bounds
     Picture_setSize(pic, 400.0f, 400.0f);   // Make it bigger to see the flower!
     
-    s_sunflowerId = Texture_load("/Users/vexgraph/Downloads/sunflower.png");
+    // Load texture via hotloader if available
+    const char *initial_path = "/Users/vexgraph/Downloads/sunflower.png";
+    s_sunflowerId = Texture_load(initial_path);
     Panel_setRenderHandler(&(*pic).base, pic_render);
 
     Picture_setParentAnchor(pic, CONTAINER_PARENT_ANCHOR_MIDDLE_CENTER);
@@ -249,6 +259,37 @@ int main(void) {
 
     while (!Window_shouldClose(w) && !Key_isDown(KEY_ESCAPE)) {
         Window_pollEvents();
+
+        // Poll for hot module updates
+        if (hot) {
+            uint32_t loaded = 0;
+            Hot_poll(hot, &loaded);
+            if (loaded > 0) {
+                printf("[hot] %u module(s) reloaded\n", loaded);
+            }
+            
+            // Check for texture path change
+            typedef const char *(*PathFn)(void);
+            PathFn get_path = (PathFn)Hot_get_symbol(hot, "hot_texture_path");
+            if (get_path) {
+                const char *new_path = get_path();
+                if (new_path) {
+                    // Dedup: only reload if path actually changed
+                    static char s_last_path[512] = "";
+                    if (strcmp(s_last_path, new_path) != 0) {
+                        strncpy(s_last_path, new_path, sizeof(s_last_path) - 1);
+                        s_last_path[sizeof(s_last_path) - 1] = '\0';
+                        // Reload texture
+                        int32_t new_id = Texture_load(new_path);
+                        if (new_id >= 0 && new_id != s_sunflowerId) {
+                            printf("[hot] texture swapped: %s (id=%d)\n", new_path, new_id);
+                            s_sunflowerId = new_id;
+                        }
+                    }
+                }
+            }
+        }
+
         int winW = Window_width(w);
         int winH = Window_height(w);
 
@@ -293,6 +334,11 @@ int main(void) {
     Memory_free(contentPanel);
     Window_destroy(w);
     Key_shutdown();
+
+    // Shutdown hotloader
+    if (hot) {
+        HotShutdown(hot);
+    }
 
     Memory_freeAll();
     return 0;
