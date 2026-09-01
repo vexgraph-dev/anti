@@ -422,6 +422,25 @@ add_executable(input_test
 target_include_directories(input_test PRIVATE src)
 target_compile_options(input_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
 
+add_executable(class_relational_test
+    tests/class_relational_test.c
+    src/oop/Class.c
+    src/oop/field.c
+    src/oop/type.c
+    src/oop/stride.c
+    src/oop/struct.c
+    src/relational/variable.c
+    src/relational/relational.c
+    src/primitive/string.c
+    src/nio/mem.c
+    src/c23/free.c
+    src/atomic/spin.c
+    src/util/hash.c
+)
+target_include_directories(class_relational_test PRIVATE src)
+target_compile_options(class_relational_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
+target_link_libraries(class_relational_test PRIVATE pthread)
+
 # Cocoa shim/s
 add_executable(anti_window
         src/objc/window_cocoa.m
