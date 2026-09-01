@@ -34,7 +34,8 @@ void *IntDouble_allocArray(size_t count) {
 void IntDouble_free(void *ptr) {
     if (!ptr)
         return;
-    BitPool_free(&g_int_doublePool, ptr);
+    if (BitPool_contains(&g_int_doublePool, ptr)) BitPool_free(&g_int_doublePool, ptr);
+    else Memory_free(ptr);
 }
 
 int64_t IntDouble_get(void *ptr) {
@@ -59,12 +60,14 @@ bool IntDouble_compareAndSet(void *ptr, int64_t expected, int64_t value) {
 uint32_t IntDouble_type(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_int_doublePool, ptr)) return BitPool_type(&g_int_doublePool, ptr);
     return Memory_type(ptr);
 }
 
 size_t IntDouble_length(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_int_doublePool, ptr)) return BitPool_length(&g_int_doublePool, ptr);
     return Memory_length(ptr);
 }
 
