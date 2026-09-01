@@ -42,4 +42,10 @@ void *BitPool_alloc(BitPool *pool, uint32_t type_id);
 // Push a slot back onto the free list. user_ptr must come from this pool.
 void BitPool_free(BitPool *pool, void *user_ptr);
 
+// Helpers for mixed-allocator primitives — Memory vs BitPool dispatch.
+// These let primitive *_free/_type/_length safely handle both arenas.
+bool BitPool_contains(const BitPool *pool, const void *user_ptr);
+uint32_t BitPool_type(const BitPool *pool, const void *user_ptr);
+size_t BitPool_length(const BitPool *pool, const void *user_ptr);
+
 #endif

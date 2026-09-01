@@ -92,6 +92,7 @@ void *BitPool_alloc(BitPool *pool, uint32_t type_id) {
     }
 
     (*slot).type_id = type_id;
+    (*slot).length = (uint32_t) (*pool).element_size;
     return (void*) ((uint8_t*) slot + sizeof(BitSlot));
 }
 
@@ -117,4 +118,36 @@ void BitPool_free(BitPool *pool, void *user_ptr) {
             return;
         }
     }
+}
+
+bool BitPool_contains(const BitPool *pool, const void *user_ptr) {
+    if (!pool || !user_ptr || !(*pool).arena)
+        return false;
+    const uint8_t *p = (const uint8_t*) user_ptr;
+    size_t stride = SLOT_SIZE((*pool).element_size);
+    const uint8_t *arena = (*pool).arena;
+    const uint8_t *end = arena + stride * (*pool).capacity;
+    // payload is after BitSlot header
+    if (p < arena + sizeof(BitSlot) || p >= end) return false;
+    // check alignment to slot payload: payload should be at slot base + header
+    if ((p - arena) % stride != sizeof(BitSlot)) {
+        // primitives always at base; any interior pointer still considered contained
+        // for dispatch we check range only — enough to route to BitPool
+        return p >= arena && p < end;
+    }
+    return true;
+}
+
+uint32_t BitPool_type(const BitPool *pool, const void *user_ptr) {
+    if (!BitPool_contains(pool, user_ptr))
+        return 0;
+    const BitSlot *slot = (const BitSlot*) ((const uint8_t*) user_ptr - sizeof(BitSlot));
+    return (*slot).type_id;
+}
+
+size_t BitPool_length(const BitPool *pool, const void *user_ptr) {
+    if (!BitPool_contains(pool, user_ptr))
+        return 0;
+    const BitSlot *slot = (const BitSlot*) ((const uint8_t*) user_ptr - sizeof(BitSlot));
+    return (*slot).length;
 }
