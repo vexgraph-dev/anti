@@ -57,4 +57,25 @@ uint8_t *string_copy(const uint8_t *ptr);
 // True when the string block's bytes equal a NUL-terminated C string.
 bool string_equals(const uint8_t *ptr, const char *value);
 
+// — Capital String class — anti reserved word String() — file stays string.h lowercase per prefs
+// String("hello"), String(uint8_t*), String() → ""
+#include "c23/constructor.h"
+#define String_0(...) string_allocate("")
+#define String_1(value) _Generic((value), const char*: string_allocate, char*: string_allocate, uint8_t*: string_copy, const uint8_t*: string_copy, default: string_allocate)(value)
+#define String(...) CONSTRUCTOR_DISPATCH(String, ##__VA_ARGS__)
+
+// Capital aliases for code-editor ergonomics (lowercase kept for compat)
+#define String_allocate string_allocate
+#define String_allocateBytes string_allocateBytes
+#define String_allocateUninitialized string_allocateUninitialized
+#define String_free string_free
+#define String_get string_get
+#define String_length string_length
+#define String_type string_type
+#define String_isArray string_isArray
+#define String_classId string_classId
+#define String_capacity string_capacity
+#define String_copy string_copy
+#define String_equals string_equals
+
 #endif
