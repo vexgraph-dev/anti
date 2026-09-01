@@ -34,7 +34,8 @@ void *LongDouble_allocArray(size_t count) {
 void LongDouble_free(void *ptr) {
     if (!ptr)
         return;
-    BitPool_free(&g_long_doublePool, ptr);
+    if (BitPool_contains(&g_long_doublePool, ptr)) BitPool_free(&g_long_doublePool, ptr);
+    else Memory_free(ptr);
 }
 
 int64_t LongDouble_get(void *ptr) {
@@ -59,12 +60,14 @@ bool LongDouble_compareAndSet(void *ptr, int64_t expected, int64_t value) {
 uint32_t LongDouble_type(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_long_doublePool, ptr)) return BitPool_type(&g_long_doublePool, ptr);
     return Memory_type(ptr);
 }
 
 size_t LongDouble_length(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_long_doublePool, ptr)) return BitPool_length(&g_long_doublePool, ptr);
     return Memory_length(ptr);
 }
 
