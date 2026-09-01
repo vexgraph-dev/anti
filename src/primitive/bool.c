@@ -67,3 +67,9 @@ size_t Bool_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *Bool_allocWithValue(bool value) {
+    void *ptr = Bool_alloc();
+    if (ptr) Bool_set(ptr, value);
+    return ptr;
+}
