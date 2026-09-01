@@ -67,3 +67,9 @@ size_t Short_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *Short_allocWithValue(int16_t value) {
+    void *ptr = Short_alloc();
+    if (ptr) Short_set(ptr, value);
+    return ptr;
+}

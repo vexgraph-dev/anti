@@ -7,6 +7,8 @@
 
 #include "bit/bit.h"
 
+#include "c23/constructor.h"
+
 // primitive/short.h — Short primitive (Legacy: primitive/Short.java).
 // Delegates to Bit16 width pool (2B stride).
 
@@ -22,5 +24,15 @@ void Short_set(void *ptr, int16_t value);
 bool Short_compareAndSet(void *ptr, int16_t expected, int16_t value);
 uint32_t Short_type(void *ptr);
 size_t Short_length(void *ptr);
+
+
+// Ergonomic constructors — Short() and Short(value)
+void *Short_allocWithValue(int16_t value);
+#define Short_0(...) Short_alloc()
+#define Short_1(value) Short_allocWithValue(value)
+#define Short(...) CONSTRUCTOR_DISPATCH(Short, ##__VA_ARGS__)
+
+
+#define Short_array(count) Short_allocArray(count)
 
 #endif
