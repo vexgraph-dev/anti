@@ -70,3 +70,9 @@ size_t Float_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *Float_allocWithValue(float value) {
+    void *ptr = Float_alloc();
+    if (ptr) Float_set(ptr, value);
+    return ptr;
+}

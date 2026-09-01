@@ -7,6 +7,8 @@
 
 #include "bit/bit.h"
 
+#include "c23/constructor.h"
+
 // primitive/float.h — Float primitive (Legacy: primitive/Float.java).
 // Delegates to Bit32 width pool (4B stride).
 
@@ -22,5 +24,15 @@ void Float_set(void *ptr, float value);
 bool Float_compareAndSet(void *ptr, float expected, float value);
 uint32_t Float_type(void *ptr);
 size_t Float_length(void *ptr);
+
+
+// Ergonomic constructors — Float() and Float(value)
+void *Float_allocWithValue(float value);
+#define Float_0(...) Float_alloc()
+#define Float_1(value) Float_allocWithValue(value)
+#define Float(...) CONSTRUCTOR_DISPATCH(Float, ##__VA_ARGS__)
+
+
+#define Float_array(count) Float_allocArray(count)
 
 #endif
