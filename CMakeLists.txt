@@ -166,6 +166,7 @@ add_executable(darlingtest
     src/main/darlingtest.c
         src/objc/window_cocoa.m
         src/objc/panel_cocoa.m
+        src/window/panel_bridge.c
     src/render/raster.c
     src/render/surface.c
     src/darling/container.c
@@ -398,6 +399,7 @@ add_executable(net_test
 )
 target_include_directories(net_test PRIVATE src)
 target_compile_options(net_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
+target_link_libraries(net_test PRIVATE pthread)
 
 # Headless threading package test
 add_executable(thread_test
@@ -435,6 +437,10 @@ add_executable(input_test
         src/atomic/spin.c
     src/time/clock.c
     src/time/nanotime.c
+    src/nio/mem.c
+    src/c23/free.c
+    src/oop/type.c
+    src/bit/bit.c
 )
 target_include_directories(input_test PRIVATE src)
 target_compile_options(input_test PRIVATE -Wall -Wextra -Werror -mcpu=native)
