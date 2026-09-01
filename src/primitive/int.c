@@ -67,3 +67,9 @@ size_t Int_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *Int_allocWithValue(int32_t value) {
+    void *ptr = Int_alloc();
+    if (ptr) Int_set(ptr, value);
+    return ptr;
+}
