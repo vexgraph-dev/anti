@@ -34,7 +34,8 @@ void *Fixed32_allocArray(size_t count) {
 void Fixed32_free(void *ptr) {
     if (!ptr)
         return;
-    BitPool_free(&g_fixed32Pool, ptr);
+    if (BitPool_contains(&g_fixed32Pool, ptr)) BitPool_free(&g_fixed32Pool, ptr);
+    else Memory_free(ptr);
 }
 
 int32_t Fixed32_get(void *ptr) {
@@ -59,12 +60,14 @@ bool Fixed32_compareAndSet(void *ptr, int32_t expected, int32_t value) {
 uint32_t Fixed32_type(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_fixed32Pool, ptr)) return BitPool_type(&g_fixed32Pool, ptr);
     return Memory_type(ptr);
 }
 
 size_t Fixed32_length(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_fixed32Pool, ptr)) return BitPool_length(&g_fixed32Pool, ptr);
     return Memory_length(ptr);
 }
 
