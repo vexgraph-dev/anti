@@ -67,3 +67,9 @@ size_t Long_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *Long_allocWithValue(int64_t value) {
+    void *ptr = Long_alloc();
+    if (ptr) Long_set(ptr, value);
+    return ptr;
+}

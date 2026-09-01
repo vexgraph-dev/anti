@@ -7,6 +7,8 @@
 
 #include "bit/bit.h"
 
+#include "c23/constructor.h"
+
 // primitive/long.h — Long primitive (Legacy: primitive/Long.java).
 // Delegates to Bit64 width pool (8B stride).
 
@@ -22,5 +24,15 @@ void Long_set(void *ptr, int64_t value);
 bool Long_compareAndSet(void *ptr, int64_t expected, int64_t value);
 uint32_t Long_type(void *ptr);
 size_t Long_length(void *ptr);
+
+
+// Ergonomic constructors — Long() and Long(value)
+void *Long_allocWithValue(int64_t value);
+#define Long_0(...) Long_alloc()
+#define Long_1(value) Long_allocWithValue(value)
+#define Long(...) CONSTRUCTOR_DISPATCH(Long, ##__VA_ARGS__)
+
+
+#define Long_array(count) Long_allocArray(count)
 
 #endif
