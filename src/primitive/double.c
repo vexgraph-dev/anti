@@ -70,3 +70,9 @@ size_t Double_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *Double_allocWithValue(double value) {
+    void *ptr = Double_alloc();
+    if (ptr) Double_set(ptr, value);
+    return ptr;
+}
