@@ -34,13 +34,6 @@ bool Vk_ready(void);
 // follows Window_getPresentMode(window).
 bool Vk_clearPresent(void);
 
-// Resize-cadence twin, kept for API compatibility: under the SINGLE-OWNER
-// LAW it no longer blocks or presents inline — it delegates to the worker's
-// try-lock path. The worker is the only presenter; thread 0's resize events
-// just nudge it (the sizeGeneration bump carries the new geometry). Safe on
-// any thread; never parks.
-bool Vk_clearPresentSync(void);
-
 // Human-readable stop point of the last init attempt ("ok", "no loader", ...).
 const char *Vk_status(void);
 

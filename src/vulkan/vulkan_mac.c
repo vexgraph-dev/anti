@@ -382,8 +382,8 @@ void VkMac_resizeRenderTrampoline(void *userdata) {
     (void)userdata;
     // Do absolutely nothing on the main thread!
     // Vulkan has its own dedicated worker thread (vk_present_job) spinning.
-    // If we call Vk_clearPresentSync() here, we block the AppKit resize loop
-    // (windowDidResize) waiting for the GPU, causing severe UI stutter.
+    // The resize trampoline is intentionally a no-op: blocking the AppKit resize
+    // loop (windowDidResize) waiting for the GPU would cause severe UI stutter.
 }
 
 // Cleanup IOSurface state. Called from vulkan.c destroyTargets().

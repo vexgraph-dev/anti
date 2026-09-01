@@ -87,6 +87,7 @@ static SpinLock s_presentLock = SPIN_LOCK_INIT;
 // dies together.
 #define VK_SWAP_IMAGES_MAX 8
 #define VK_RETIRED_SWAPCHAINS_MAX 8
+
 typedef struct RetiredChain {
     VkSwapchainKHR chain;
     uint32_t generation;
@@ -94,6 +95,7 @@ typedef struct RetiredChain {
     VkImageView views[VK_SWAP_IMAGES_MAX];
     VkFramebuffer fbs[VK_SWAP_IMAGES_MAX];
 } RetiredChain;
+
 static RetiredChain s_retired[VK_RETIRED_SWAPCHAINS_MAX];
 static uint32_t s_retiredCount = 0;
 static uint32_t s_swapchainGeneration = 0;
@@ -120,7 +122,6 @@ typedef struct SceneBatchEntry {
     uint32_t gen;   // canvas generation at record time; mismatched = resized
 } SceneBatchEntry;
 static VkCommandBuffer s_sceneBuffer;
-static VkCommandBuffer s_childCmdBuffer; // havent used yet for some reason, remove when being used now
 static VkFence s_sceneFence;
 static SceneBatchEntry s_sceneBatch[VK_SCENE_BATCH_MAX];
 static uint32_t s_sceneBatchCount = 0;
@@ -1201,13 +1202,12 @@ static bool buildPipelines(void) {
     VkCommandBufferAllocateInfo cbai = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
     cbai.commandPool = s_cmdPool;
     cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cbai.commandBufferCount = 3;
+    cbai.commandBufferCount = 2;
     {
-        VkCommandBuffer cbs[3] = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+        VkCommandBuffer cbs[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
         AllocateCommandBuffers_fn(s_device, &cbai, cbs);
         s_cmdBuffer = cbs[0];      // collage + present
         s_sceneBuffer = cbs[1];    // scene production (phase 2)
-        s_childCmdBuffer = cbs[2];  // IOSurface child rendering
     }
 
     s_pipelinesBuilt = true;
@@ -1223,21 +1223,6 @@ bool Vk_clearPresent(void) {
     bool ok = presentFrameLocked();
     SpinLock_unlock(&s_presentLock);
     return ok;
-}
-
-bool Vk_clearPresentSync(void) {
-    // SINGLE-OWNER LAW: thread 0 never parks on the present lock and never
-    // presents inline. The worker is the only presenter; this hook exists
-    // just to nudge it and never act wonky when resize at any way...
-
-    // around 16 + 4 ms to bridge that latency gap i suppose
-    //if (!SpinLock_tryLockTimeout(&s_presentLock, 20000000LL))
-        return Vk_clearPresent();
-    bool ok = presentFrameLocked();
-    SpinLock_unlock(&s_presentLock);
-    return ok;
-
-    return Vk_clearPresent();
 }
 
 static bool presentFrameTail(uint32_t imageIndex);
