@@ -34,7 +34,8 @@ void *Int_allocArray(size_t count) {
 void Int_free(void *ptr) {
     if (!ptr)
         return;
-    BitPool_free(&g_intPool, ptr);
+    if (BitPool_contains(&g_intPool, ptr)) BitPool_free(&g_intPool, ptr);
+    else Memory_free(ptr);
 }
 
 int32_t Int_get(void *ptr) {
@@ -59,12 +60,14 @@ bool Int_compareAndSet(void *ptr, int32_t expected, int32_t value) {
 uint32_t Int_type(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_intPool, ptr)) return BitPool_type(&g_intPool, ptr);
     return Memory_type(ptr);
 }
 
 size_t Int_length(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_intPool, ptr)) return BitPool_length(&g_intPool, ptr);
     return Memory_length(ptr);
 }
 
