@@ -1,0 +1,26 @@
+#ifndef PRIMITIVE_BRAIN_H
+#define PRIMITIVE_BRAIN_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include "bit/bit.h"
+
+// primitive/brain.h — Brain primitive (Legacy: primitive/Brain.java).
+// Delegates to Bit16 width pool (2B stride).
+
+extern BitPool g_brainPool;
+
+bool Brain_init(void);
+void Brain_shutdown(void);
+void *Brain_alloc(void);
+void *Brain_allocArray(size_t count);
+void Brain_free(void *ptr);
+uint16_t Brain_get(void *ptr);
+void Brain_set(void *ptr, uint16_t value);
+bool Brain_compareAndSet(void *ptr, uint16_t expected, uint16_t value);
+uint32_t Brain_type(void *ptr);
+size_t Brain_length(void *ptr);
+
+#endif

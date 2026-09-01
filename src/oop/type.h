@@ -83,6 +83,9 @@
 #define ID_CLASS         0x001Au
 #define ID_STRIDE        0x001Bu
 #define ID_FILE          0x0030u
+#define ID_BOOL          0x0031u
+#define ID_BRAIN         0x0032u
+#define ID_FIXED32       0x0033u
 #define ID_COMMAND       0x0064u
 
 // --- COLLECTION CLASSES ---

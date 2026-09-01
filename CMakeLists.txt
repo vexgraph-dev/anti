@@ -27,6 +27,21 @@ add_executable(anti
     src/cli/commandregistry.c
     src/cli/console.c
     src/primitive/string.c
+    src/primitive/int.c
+    src/primitive/long.c
+    src/primitive/float.c
+    src/primitive/double.c
+    src/primitive/byte.c
+    src/primitive/short.c
+    src/primitive/bool.c
+    src/primitive/brain.c
+    src/primitive/fixed32.c
+    src/primitive/fixed64.c
+    src/primitive/int_float.c
+    src/primitive/int_double.c
+    src/primitive/long_float.c
+    src/primitive/long_double.c
+    src/primitive/pack.c
     src/cli/logcommands.c
     src/cli/scanner.c
     src/engine/loop.c
