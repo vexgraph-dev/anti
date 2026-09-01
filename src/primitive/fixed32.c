@@ -67,3 +67,9 @@ size_t Fixed32_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *Fixed32_allocWithValue(int32_t value) {
+    void *ptr = Fixed32_alloc();
+    if (ptr) Fixed32_set(ptr, value);
+    return ptr;
+}
