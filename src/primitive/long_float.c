@@ -67,3 +67,11 @@ size_t LongFloat_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *LongFloat_allocWithValues(int64_t v1, float v2) {
+    void *ptr = LongFloat_alloc();
+    if (!ptr) return nullptr;
+    *(int64_t*) ptr = v1;
+    *(float*) ((uint8_t*) ptr + sizeof(int64_t)) = v2;
+    return ptr;
+}
