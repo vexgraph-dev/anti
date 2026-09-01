@@ -91,3 +91,15 @@ bool string_equals(const uint8_t *ptr, const char *value) {
         return false;
     return memcmp(ptr, value, len) == 0;
 }
+
+int String_compare(const uint8_t *a, const uint8_t *b) {
+    if (!a && !b)
+        return 0;
+    if (!a)
+        return -1;
+    if (!b)
+        return 1;
+    const char *sa = (const char*) a;
+    const char *sb = (const char*) b;
+    return strcmp(sa, sb);
+}

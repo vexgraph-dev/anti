@@ -78,4 +78,8 @@ bool string_equals(const uint8_t *ptr, const char *value);
 #define String_copy string_copy
 #define String_equals string_equals
 
+// Compare — strcmp style, negatives/zero/positives
+int String_compare(const uint8_t *a, const uint8_t *b);
+#define String_compare String_compare
+
 #endif
