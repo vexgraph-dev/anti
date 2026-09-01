@@ -34,7 +34,8 @@ void *Brain_allocArray(size_t count) {
 void Brain_free(void *ptr) {
     if (!ptr)
         return;
-    BitPool_free(&g_brainPool, ptr);
+    if (BitPool_contains(&g_brainPool, ptr)) BitPool_free(&g_brainPool, ptr);
+    else Memory_free(ptr);
 }
 
 uint16_t Brain_get(void *ptr) {
@@ -83,12 +84,14 @@ bool Brain_compareAndSet(void *ptr, uint16_t expected, uint16_t value) {
 uint32_t Brain_type(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_brainPool, ptr)) return BitPool_type(&g_brainPool, ptr);
     return Memory_type(ptr);
 }
 
 size_t Brain_length(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_brainPool, ptr)) return BitPool_length(&g_brainPool, ptr);
     return Memory_length(ptr);
 }
 
