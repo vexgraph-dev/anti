@@ -146,27 +146,63 @@ void *Struct_elementField(void *ptr, size_t elementIndex, size_t fieldIndex) {
 
     uint32_t type = Memory_type(ptr);
     size_t length = Memory_length(ptr);
-    if (elementIndex >= length)
-        return nullptr;
 
+    // length is bytes, not element count — derive count from stride.
+    // Coexistent has two streams and an aligned split, so we must solve for N.
     if (Type_isStructCoexistent(type)) {
+        size_t s1 = (*layout).stream1Stride;
+        size_t s2 = (*layout).stream2Stride;
+        // Coexistent with empty secondary stream falls back to Array layout
+        if (s2 == 0) {
+            size_t stride = (*layout).stride;
+            size_t count = stride ? length / stride : 0;
+            if (elementIndex >= count) return nullptr;
+            return (uint8_t*) ptr + elementIndex * stride + (*layout).items[fieldIndex].offset;
+        }
+        // Solve for N: length == ((N*s1+7)&~7) + N*s2 ; length uniquely determines N
+        size_t count = 0;
+        if (s1 == 0) {
+            count = s2 ? length / s2 : 0;
+        } else {
+            // estimate then adjust by at most a few steps (padding <8)
+            size_t est = length / (s1 + s2);
+            // helper to compute required bytes for n elements
+            // avoid overflow for huge n — saturate
+            size_t need_est = ((est * s1 + 7) & ~ (size_t)7) + est * s2;
+            while (need_est > length && est > 0) {
+                est--;
+                need_est = ((est * s1 + 7) & ~ (size_t)7) + est * s2;
+            }
+            while (true) {
+                size_t need_next = (((est + 1) * s1 + 7) & ~ (size_t)7) + (est + 1) * s2;
+                if (need_next <= length) { est++; } else break;
+            }
+            count = est;
+        }
+        if (elementIndex >= count) return nullptr;
         const Field *f = &(*layout).items[fieldIndex];
         if (!(*f).isStruct) {
-            return (uint8_t*) ptr + (elementIndex * (*layout).stream1Stride) + (*f).stream1Offset;
+            return (uint8_t*) ptr + (elementIndex * s1) + (*f).stream1Offset;
         } else {
-            size_t s1Size = (length * (*layout).stream1Stride + 7) & ~7;
+            size_t s1Size = ((count * s1 + 7) & ~ (size_t)7);
             uint8_t *stream2Base = (uint8_t*) ptr + s1Size;
-            return stream2Base + (elementIndex * (*layout).stream2Stride) + (*f).stream2Offset;
+            return stream2Base + (elementIndex * s2) + (*f).stream2Offset;
         }
     }
 
     if (Type_isStructSOA(type)) {
         bool dummy = false;
         size_t fieldStride = Fields_resolveSize((*layout).items[fieldIndex].size, &dummy);
-        return (uint8_t*) ptr + length * (*layout).items[fieldIndex].offset
+        size_t stride = (*layout).stride;
+        size_t count = stride ? length / stride : 0;
+        if (elementIndex >= count) return nullptr;
+        return (uint8_t*) ptr + count * (*layout).items[fieldIndex].offset
             + elementIndex * fieldStride;
     }
-    return (uint8_t*) ptr + elementIndex * (*layout).stride
+    size_t stride = (*layout).stride;
+    size_t count = stride ? length / stride : 0;
+    if (elementIndex >= count) return nullptr;
+    return (uint8_t*) ptr + elementIndex * stride
         + (*layout).items[fieldIndex].offset;
 }
 
@@ -379,16 +415,38 @@ void *Struct_getNested(void *ptr, size_t elementIndex, size_t fieldIndex) {
     }
 
     size_t length = Memory_length(ptr);
-    if (elementIndex >= length)
-        return nullptr;
-
+    size_t stride = (*layout).stride;
+    size_t count = 0;
     if (Type_isStructCoexistent(type)) {
-        size_t s1Size = (length * (*layout).stream1Stride + 7) & ~7;
+        size_t s1 = (*layout).stream1Stride;
+        size_t s2 = (*layout).stream2Stride;
+        if (s2 == 0) {
+            count = stride ? length / stride : 0;
+            if (elementIndex >= count) return nullptr;
+            return (uint8_t*) ptr + elementIndex * stride + (*layout).items[fieldIndex].offset;
+        }
+        if (s1 == 0) {
+            count = s2 ? length / s2 : 0;
+            if (elementIndex >= count) return nullptr;
+            // only stream2 exists
+            return (uint8_t*) ptr + elementIndex * s2 + (*layout).items[fieldIndex].stream2Offset;
+        }
+        size_t est = length / (s1 + s2);
+        size_t need_est = ((est * s1 + 7) & ~ (size_t)7) + est * s2;
+        while (need_est > length && est > 0) { est--; need_est = ((est * s1 + 7) & ~ (size_t)7) + est * s2; }
+        while (true) {
+            size_t need_next = (((est + 1) * s1 + 7) & ~ (size_t)7) + (est + 1) * s2;
+            if (need_next <= length) est++; else break;
+        }
+        count = est;
+        if (elementIndex >= count) return nullptr;
+        size_t s1Size = ((count * s1 + 7) & ~ (size_t)7);
         uint8_t *stream2Base = (uint8_t*) ptr + s1Size;
-        return stream2Base + (elementIndex * (*layout).stream2Stride) + (*layout).items[fieldIndex].stream2Offset;
+        return stream2Base + (elementIndex * s2) + (*layout).items[fieldIndex].stream2Offset;
     }
-
-    return (uint8_t*) ptr + elementIndex * (*layout).stride + (*layout).items[fieldIndex].offset;
+    count = stride ? length / stride : 0;
+    if (elementIndex >= count) return nullptr;
+    return (uint8_t*) ptr + elementIndex * stride + (*layout).items[fieldIndex].offset;
 }
 
 // --- GENERIC-EXPLICIT ACCESSORS ---
