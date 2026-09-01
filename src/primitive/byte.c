@@ -67,3 +67,9 @@ size_t Byte_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *Byte_allocWithValue(int8_t value) {
+    void *ptr = Byte_alloc();
+    if (ptr) Byte_set(ptr, value);
+    return ptr;
+}
