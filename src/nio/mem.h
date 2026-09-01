@@ -6,9 +6,12 @@
 
 // nio/mem.h — the ForeignMemory API (Legacy: nio/ForeignMemory.java).
 //
-// Every allocation returns a payload pointer whose 16-byte prefix holds
-// [typeId][length]. Callers never see the header; the length/type accessors
-// walk back to it, so metadata costs one subtract.
+// Every allocation returns a payload pointer whose 32-byte prefix holds
+// [prev][next][typeId][length][pad]. Callers never see the header; the
+// length/type accessors walk back to it, so metadata costs one subtract.
+// The intrusive prev/next links the global block list for Memory_findAll /
+// Memory_freeAll. See lessons/ docs for the intended 16-byte arena doctrine;
+// current malloc+list impl is the stepping stone.
 //
 // This is the "lens of all things": with type+length on every block, debug
 // validation, serialization, and the hot-swap system can trust a raw pointer.
