@@ -67,3 +67,11 @@ size_t IntFloat_length(void *ptr) {
         return 0;
     return Memory_length(ptr);
 }
+
+void *IntFloat_allocWithValues(int32_t v1, float v2) {
+    void *ptr = IntFloat_alloc();
+    if (!ptr) return nullptr;
+    *(int32_t*) ptr = v1;
+    *(float*) ((uint8_t*) ptr + sizeof(int32_t)) = v2;
+    return ptr;
+}
