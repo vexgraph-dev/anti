@@ -110,3 +110,19 @@ uint32_t Memory_type(void *userPtr) {
     Block *hdr = (Block*) ((unsigned char*) userPtr - HEADER_SIZE);
     return (*hdr).typeId;
 }
+size_t Memory_findAll(uint32_t typeId, void **outArray, size_t maxCount) {
+    size_t count = 0;
+    SpinLock_lock(&s_lock);
+    Block *curr = s_head;
+    while (curr) {
+        if (typeId == 0 || curr->typeId == typeId) {
+            if (outArray && count < maxCount) {
+                outArray[count] = (void*)((unsigned char*)curr + HEADER_SIZE);
+            }
+            count++;
+        }
+        curr = curr->next;
+    }
+    SpinLock_unlock(&s_lock);
+    return count;
+}

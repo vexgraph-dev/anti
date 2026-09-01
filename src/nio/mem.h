@@ -39,4 +39,8 @@ void Memory_freeAll(void);
 size_t Memory_length(void *userPtr);
 uint32_t Memory_type(void *userPtr);
 
+// Search: Return the number of blocks matching typeId.
+// If outArray is not NULL, fills it with up to maxCount payload pointers.
+size_t Memory_findAll(uint32_t typeId, void **outArray, size_t maxCount);
+
 #endif
