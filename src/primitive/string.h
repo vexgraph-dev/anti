@@ -98,4 +98,12 @@ uint8_t *String_subLastChar(const uint8_t *str);
 uint8_t *String_subFirst(const uint8_t *str, size_t count);
 uint8_t *String_subLast(const uint8_t *str, size_t count);
 
+// Append — new block or in-place first
+uint8_t *String_append(const uint8_t *a, const uint8_t *b);
+uint8_t *String_appendLiteral(const uint8_t *a, const char *b);
+uint8_t *String_appendLiterals(const char *a, const char *b);
+void String_appendInto(const uint8_t *a, const uint8_t *b, uint8_t *dest);
+void String_appendFirst(uint8_t *a, const uint8_t *b);
+void String_appendFirstLiteral(uint8_t *a, const char *b);
+
 #endif

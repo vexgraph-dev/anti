@@ -205,3 +205,98 @@ uint8_t *String_subLast(const uint8_t *str, size_t count) {
         return string_copy(str);
     return String_substring(str, sLen - count, count);
 }
+
+uint8_t *String_append(const uint8_t *a, const uint8_t *b) {
+    if (!a && !b)
+        return String("");
+    if (!a)
+        return string_copy(b);
+    if (!b)
+        return string_copy(a);
+    size_t aLen = string_length(a);
+    size_t bLen = string_length(b);
+    uint8_t *out = string_allocateUninitialized(aLen + bLen);
+    if (!out)
+        return nullptr;
+    memcpy(out, a, aLen);
+    memcpy(out + aLen, b, bLen);
+    out[aLen + bLen] = '\0';
+    return out;
+}
+
+uint8_t *String_appendLiteral(const uint8_t *a, const char *b) {
+    if (!a && !b)
+        return String("");
+    if (!a)
+        return string_allocate(b);
+    if (!b)
+        return string_copy(a);
+    size_t aLen = string_length(a);
+    size_t bLen = strlen(b);
+    uint8_t *out = string_allocateUninitialized(aLen + bLen);
+    if (!out)
+        return nullptr;
+    memcpy(out, a, aLen);
+    memcpy(out + aLen, b, bLen);
+    out[aLen + bLen] = '\0';
+    return out;
+}
+
+uint8_t *String_appendLiterals(const char *a, const char *b) {
+    if (!a && !b)
+        return String("");
+    if (!a)
+        return string_allocate(b);
+    if (!b)
+        return string_allocate(a);
+    size_t aLen = strlen(a);
+    size_t bLen = strlen(b);
+    uint8_t *out = string_allocateUninitialized(aLen + bLen);
+    if (!out)
+        return nullptr;
+    memcpy(out, a, aLen);
+    memcpy(out + aLen, b, bLen);
+    out[aLen + bLen] = '\0';
+    return out;
+}
+
+void String_appendInto(const uint8_t *a, const uint8_t *b, uint8_t *dest) {
+    if (!a || !b || !dest)
+        return;
+    size_t aLen = string_length(a);
+    size_t bLen = string_length(b);
+    size_t cap = string_capacity(dest);
+    size_t need = aLen + bLen + 1;
+    if (cap < need)
+        return;
+    memmove(dest, a, aLen);
+    memcpy(dest + aLen, b, bLen);
+    dest[aLen + bLen] = '\0';
+}
+
+void String_appendFirst(uint8_t *a, const uint8_t *b) {
+    if (!a || !b)
+        return;
+    size_t aLen = string_length(a);
+    size_t bLen = string_length(b);
+    size_t cap = string_capacity(a);
+    size_t need = aLen + bLen + 1;
+    if (cap >= need) {
+        memcpy(a + aLen, b, bLen + 1);
+        return;
+    }
+    // realloc via new block — caller must reassign: a = String_append(a,b); free old not done here
+    // For in-place grow, we require capacity; if not enough, do nothing (caller should use String_append)
+}
+
+void String_appendFirstLiteral(uint8_t *a, const char *b) {
+    if (!a || !b)
+        return;
+    size_t aLen = string_length(a);
+    size_t bLen = strlen(b);
+    size_t cap = string_capacity(a);
+    size_t need = aLen + bLen + 1;
+    if (cap >= need) {
+        memcpy(a + aLen, b, bLen + 1);
+    }
+}
