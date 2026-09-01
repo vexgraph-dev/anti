@@ -20,7 +20,7 @@ OBJ="$ROOT/.debug-obj"
 mkdir -p "$OBJ"
 
 CC=clang
-CFLAGS=(-std=gnu11 -g -O0 -fno-omit-frame-pointer -mcpu=native -Wall -Wextra)
+CFLAGS=(-std=gnu23 -g -O0 -fno-omit-frame-pointer -mcpu=native -Wall -Wextra)
 if [[ "${QUICK:-0}" != "1" ]]; then
     CFLAGS+=(-Werror)
 fi
@@ -42,10 +42,12 @@ SOURCES=(
     src/objc/window_cocoa.m
     src/objc/panel_cocoa.m
     src/window/panel_bridge.c
+    src/hot/hot.c
+    src/hot/manifest.c
     src/atomic/ring.c
     src/atomic/spin.c
-    src/buffers/buffer.c
-    src/buffers/color_buffer.c
+    src/buffer/buffer.c
+    src/buffer/color_buffer.c
     src/darling/container.c
     src/darling/panel.c
     src/darling/scene.c
@@ -54,7 +56,17 @@ SOURCES=(
     src/oop/type.c
     src/oop/stride.c
     src/oop/struct.c
-    src/oop/fields.c
+    src/oop/field.c
+    src/oop/Class.c
+    src/vulkan/texture/texture.c
+    src/system/image_mac.m
+    src/system/system.c
+    src/io/hot_file.c
+    src/io/mmap.c
+    src/io/bake.c
+    src/io/vfs.c
+    src/cli/console.c
+    src/primitive/string.c
     src/nio/mem.c
     src/thread/thread.c
     src/time/nanotime.c

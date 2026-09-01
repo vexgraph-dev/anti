@@ -261,6 +261,8 @@ add_executable(vk_test
         src/objc/window_cocoa.m
         src/objc/panel_cocoa.m
     src/window/panel_bridge.c
+    src/hot/hot.c
+    src/hot/manifest.c
     src/darling/container.c
     src/darling/panel.c
     src/darling/picture.c
