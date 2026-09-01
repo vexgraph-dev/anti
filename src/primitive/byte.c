@@ -34,7 +34,8 @@ void *Byte_allocArray(size_t count) {
 void Byte_free(void *ptr) {
     if (!ptr)
         return;
-    BitPool_free(&g_bytePool, ptr);
+    if (BitPool_contains(&g_bytePool, ptr)) BitPool_free(&g_bytePool, ptr);
+    else Memory_free(ptr);
 }
 
 int8_t Byte_get(void *ptr) {
@@ -59,12 +60,14 @@ bool Byte_compareAndSet(void *ptr, int8_t expected, int8_t value) {
 uint32_t Byte_type(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_bytePool, ptr)) return BitPool_type(&g_bytePool, ptr);
     return Memory_type(ptr);
 }
 
 size_t Byte_length(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_bytePool, ptr)) return BitPool_length(&g_bytePool, ptr);
     return Memory_length(ptr);
 }
 
