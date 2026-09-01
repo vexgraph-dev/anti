@@ -26,4 +26,11 @@ int64_t Url_basicAuth(const char *user, const char *pass, char *out, size_t cap)
 // "Bearer token" into out. Returns length or -1.
 int64_t Url_bearerAuth(const char *token, char *out, size_t cap);
 
+// Compatibility aliases — legacy tests used NetUrl_* prefix; keep both.
+#define NetUrl_defaultPort Url_defaultPort
+#define NetUrl_build Url_build
+#define NetUrl_base64 Url_base64
+#define NetUrl_basicAuth Url_basicAuth
+#define NetUrl_bearerAuth Url_bearerAuth
+
 #endif

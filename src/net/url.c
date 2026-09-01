@@ -18,19 +18,26 @@ int64_t Url_build(const char *scheme, const char *host, int port,
                      const char *path, char *out, size_t cap) {
     const char *s = scheme ? scheme : HTTP;
     const char *h = host ? host : "";
-    const char *p = path ? path : "/";
+    const char *pIn = path ? path : "/";
+    // Path must start with a slash; prepend when the caller forgot.
+    // joined must live beyond the if-block — p will alias it.
+    char joined[1024];
+    const char *p = pIn;
     if (*p != '/') {
-        // Path must start with a slash; prepend when the caller forgot.
-        char joined[1024];
-        int j = snprintf(joined, sizeof(joined), "/%s", p);
+        int j = snprintf(joined, sizeof(joined), "/%s", pIn);
         if (j < 0 || (size_t)j >= sizeof(joined)) return -1;
-        p = joined; // safe: used before returning within this call
+        p = joined;
     }
 
     int defaultPort = Url_defaultPort(s);
+    int n;
     if (port > 0 && port != defaultPort)
-        return (int64_t)snprintf(out, cap, "%s://%s:%d%s", s, h, port, p);
-    return (int64_t)snprintf(out, cap, "%s://%s%s", s, h, p);
+        n = snprintf(out, cap, "%s://%s:%d%s", s, h, port, p);
+    else
+        n = snprintf(out, cap, "%s://%s%s", s, h, p);
+    if (n < 0) return -1;
+    if (cap == 0 || (size_t)n >= cap) return -1; // truncated — contract says -1
+    return (int64_t)n;
 }
 
 // the characters of base64
@@ -77,9 +84,15 @@ int64_t Url_basicAuth(const char *user, const char *pass, char *out, size_t cap)
     int64_t e = Url_base64((const uint8_t*) creds, (size_t)c, encoded, sizeof(encoded));
     if (e < 0) return -1;
 
-    return snprintf(out, cap, "Basic %s", encoded);
+    int n = snprintf(out, cap, "Basic %s", encoded);
+    if (n < 0) return -1;
+    if (cap == 0 || (size_t)n >= cap) return -1;
+    return (int64_t)n;
 }
 
 int64_t Url_bearerAuth(const char *token, char *out, size_t cap) {
-    return snprintf(out, cap, "Bearer %s", token ? token : "");
+    int n = snprintf(out, cap, "Bearer %s", token ? token : "");
+    if (n < 0) return -1;
+    if (cap == 0 || (size_t)n >= cap) return -1;
+    return (int64_t)n;
 }
