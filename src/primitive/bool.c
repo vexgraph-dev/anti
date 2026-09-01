@@ -34,7 +34,8 @@ void *Bool_allocArray(size_t count) {
 void Bool_free(void *ptr) {
     if (!ptr)
         return;
-    BitPool_free(&g_boolPool, ptr);
+    if (BitPool_contains(&g_boolPool, ptr)) BitPool_free(&g_boolPool, ptr);
+    else Memory_free(ptr);
 }
 
 bool Bool_get(void *ptr) {
@@ -59,12 +60,14 @@ bool Bool_compareAndSet(void *ptr, bool expected, bool value) {
 uint32_t Bool_type(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_boolPool, ptr)) return BitPool_type(&g_boolPool, ptr);
     return Memory_type(ptr);
 }
 
 size_t Bool_length(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_boolPool, ptr)) return BitPool_length(&g_boolPool, ptr);
     return Memory_length(ptr);
 }
 
