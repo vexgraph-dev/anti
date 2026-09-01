@@ -49,6 +49,30 @@ void Brain_set(void *ptr, uint16_t value) {
     *(uint16_t*) ptr = value;
 }
 
+uint16_t Brain_floatToBFloat16(float value) {
+    uint32_t bits;
+    memcpy(&bits, &value, sizeof(bits));
+    uint32_t lsb = (bits >> 16) & 1u;
+    uint32_t roundingBias = 0x7FFFu + lsb;
+    bits += roundingBias;
+    return (uint16_t)(bits >> 16);
+}
+
+float Brain_bFloat16ToFloat(uint16_t bits) {
+    uint32_t expanded = ((uint32_t) bits) << 16;
+    float out;
+    memcpy(&out, &expanded, sizeof(out));
+    return out;
+}
+
+float Brain_getFloat(void *ptr) {
+    return Brain_bFloat16ToFloat(Brain_get(ptr));
+}
+
+void Brain_setFloat(void *ptr, float value) {
+    Brain_set(ptr, Brain_floatToBFloat16(value));
+}
+
 bool Brain_compareAndSet(void *ptr, uint16_t expected, uint16_t value) {
     if (!ptr)
         return false;
