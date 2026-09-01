@@ -21,7 +21,6 @@
 //   PanelCocoa *pc = PanelCocoa_new(p, 640, 400);  // attach IOSurface backing
 //   PanelCocoa_setSize(pc, 800, 600);     // reallocates IOSurface
 //   CALayer *layer = PanelCocoa_layer(pc); // add to window's layer tree
-//   PanelCocoa_render(pc);                 // paint subtree into IOSurface
 //
 // The Panel handle is what darling code already holds; PanelCocoa is the
 // platform-specific backing that makes it display natively.
@@ -53,9 +52,6 @@ void *PanelCocoa_surface(PanelCocoa *pc);  // IOSurfaceRef
 
 // Render the panel's subtree into the IOSurface. For now: CPU paint via
 // Raster (solid color from panel->color). Later: Vulkan render path.
-void PanelCocoa_render(PanelCocoa *pc);
-
-// Mark dirty so the next render repaints. Called on layout/color changes.
 void PanelCocoa_markDirty(PanelCocoa *pc);
 bool PanelCocoa_isDirty(const PanelCocoa *pc);
 
