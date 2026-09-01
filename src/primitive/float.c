@@ -34,7 +34,8 @@ void *Float_allocArray(size_t count) {
 void Float_free(void *ptr) {
     if (!ptr)
         return;
-    BitPool_free(&g_floatPool, ptr);
+    if (BitPool_contains(&g_floatPool, ptr)) BitPool_free(&g_floatPool, ptr);
+    else Memory_free(ptr);
 }
 
 float Float_get(void *ptr) {
@@ -62,12 +63,14 @@ bool Float_compareAndSet(void *ptr, float expected, float value) {
 uint32_t Float_type(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_floatPool, ptr)) return BitPool_type(&g_floatPool, ptr);
     return Memory_type(ptr);
 }
 
 size_t Float_length(void *ptr) {
     if (!ptr)
         return 0;
+    if (BitPool_contains(&g_floatPool, ptr)) return BitPool_length(&g_floatPool, ptr);
     return Memory_length(ptr);
 }
 
