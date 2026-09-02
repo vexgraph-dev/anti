@@ -236,18 +236,23 @@ int main(void) {
         sysFont = Font_loadSystem("Helvetica");
     }
     
-    Label *testLabel = Label_0();
-    Label_setText(testLabel, "hello");
-    Label_setFont(testLabel, sysFont);
-    Label_setFontSize(testLabel, 12.0f);
-    Label_setTextColor(testLabel, 0xFFFFFFFF); // White text
-    
-    Panel_setBackgroundColor(&testLabel->base, 0xFF000000); // Black background
-    Container_setSize(&testLabel->base.base, 200.0f, 200.0f); // Maximum size
-    Container_setSize(&testLabel->base.base, 200.0f, 200.0f); // Actual size
-    
-    Panel_setLocation(&testLabel->base, 50.0f, 250.0f);
-    Panel_addContainer(contentPanel, &testLabel->base);
+    Label *label = Label(contentPanel, "hello");
+    Label_setFont(label, sysFont);
+    Label_setFontSize(label, 280.0f);
+    Label_setTextColor(label, 0xFFFFFFFF);
+    Label_setBackgroundColor(label, 0xFF000000);
+    Label_setSize(label, 400.0f, 300.0f);
+    Label_setLocation(label, 10.0f, 10.0f);
+    Label_setSmoothness(label, 0.2f);
+    if (sysFont) {
+        const char *warm = "hello";
+        for (size_t wi = 0; warm[wi]; wi++) {
+            GlyphMetrics tmpGm;
+            Font_getGlyph(sysFont, (uint32_t) (unsigned char) warm[wi], 32.0f, &tmpGm);
+        }
+        printf("[vk_test] pre-warmed font atlas for \"%s\" texId=%d smoothness=%.2f\n", warm, Font_getTextureId(sysFont), 0.2f);
+        fflush(stdout);
+    }
     // --- LABEL TEST END ---
     // Enable native IOSurface backing on content panel
     Window_forceNativeContainerOnRoot(w, true);
