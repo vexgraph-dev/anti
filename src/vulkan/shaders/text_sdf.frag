@@ -8,6 +8,7 @@ layout(push_constant) uniform Push {
     layout(offset = 16) vec4  u_color;
     layout(offset = 32) uint  u_textureId;
     layout(offset = 36) float u_bold;
+    layout(offset = 40) float u_smoothness;
     layout(offset = 48) vec4  u_uvBox;
 } push;
 
@@ -26,7 +27,9 @@ void main() {
     }
 
     float threshold = 0.5 - push.u_bold;
-    float smoothing = fwidth(dist);
+    float baseWidth = fwidth(dist);
+    float t = clamp(push.u_smoothness, 0.0, 1.0);
+    float smoothing = mix(0.02, baseWidth * 1.8, t);
     float alpha = smoothstep(threshold - smoothing, threshold + smoothing, dist);
 
     if (dist == 0.0) {

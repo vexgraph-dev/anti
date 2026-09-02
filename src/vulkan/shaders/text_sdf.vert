@@ -5,6 +5,7 @@ layout(push_constant) uniform Push {
     layout(offset = 16) vec4 u_color;
     layout(offset = 32) uint u_textureId;
     layout(offset = 36) float u_bold;
+    layout(offset = 40) float u_smoothness;
     layout(offset = 48) vec4 u_uvBox;
 } push;
 
