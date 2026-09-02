@@ -25,3 +25,11 @@ void *Texture_getDescriptorSetLayout(void);
 bool Texture_getSize(int32_t id, uint32_t *outW, uint32_t *outH);
 
 #endif // ANTI_TEXTURE_H
+
+// Loads a texture directly from raw RGBA8 data in memory.
+// Returns a bindless texture ID (>= 0) on success, or -1 on failure.
+int32_t Texture_loadRaw(const void *rgbaData, uint32_t width, uint32_t height);
+
+// Updates a sub-region of an existing texture from raw RGBA8 data in memory.
+// Useful for dynamic atlases.
+bool Texture_updateSubRaw(int32_t id, const void *rgbaData, uint32_t x, uint32_t y, uint32_t width, uint32_t height);

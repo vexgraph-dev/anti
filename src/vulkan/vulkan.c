@@ -160,6 +160,8 @@ static VkPipelineLayout s_quadLayout;
 static VkPipeline s_quadPipeline;
 static VkPipelineLayout s_texLayout;
 static VkPipeline s_texPipeline;
+static VkPipelineLayout s_sdfLayout;
+static VkPipeline s_sdfPipeline;
 static bool s_pipelinesBuilt = false;
 
 static void *s_libLoad(void) {
@@ -1210,6 +1212,47 @@ static bool buildPipelines(void) {
         s_sceneBuffer = cbs[1];    // scene production (phase 2)
     }
 
+
+    // --- sdf pipeline ---
+    VkShaderModule sdfVertMod = createShaderModule("text_sdf_vert.spv", nullptr);
+    VkShaderModule sdfFragMod = createShaderModule("text_sdf_frag.spv", nullptr);
+    if (sdfVertMod == VK_NULL_HANDLE || sdfFragMod == VK_NULL_HANDLE) { snprintf(s_status, sizeof(s_status), "sdf shader missing"); return false; }
+
+    VkPushConstantRange sdfPcr = {0};
+    sdfPcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    sdfPcr.offset = 0;
+    sdfPcr.size = 64; // up to offset 48 + 16 (vec4) = 64 bytes
+
+    VkPipelineLayoutCreateInfo sdfLci = { .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    sdfLci.pushConstantRangeCount = 1;
+    sdfLci.pPushConstantRanges = &sdfPcr;
+    extern void *Texture_getDescriptorSetLayout(void);
+    VkDescriptorSetLayout setLayout = (VkDescriptorSetLayout)Texture_getDescriptorSetLayout();
+    sdfLci.setLayoutCount = 1;
+    sdfLci.pSetLayouts = &setLayout;
+
+    if (CreatePipelineLayout_fn(s_device, &sdfLci, nullptr, &s_sdfLayout) != VK_SUCCESS) return false;
+    
+    // Copy the quad stages/pci struct which were just initialized above
+    VkPipelineShaderStageCreateInfo sdfStages[2] = {{0}, {0}};
+    sdfStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    sdfStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    sdfStages[0].module = sdfVertMod;
+    sdfStages[0].pName = "main";
+    sdfStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    sdfStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    sdfStages[1].module = sdfFragMod;
+    sdfStages[1].pName = "main";
+    
+    VkGraphicsPipelineCreateInfo sdfPci = qpci; // Inherit qpci defaults
+    sdfPci.stageCount = 2;
+    sdfPci.pStages = sdfStages;
+    sdfPci.layout = s_sdfLayout;
+    
+    if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &sdfPci, nullptr, &s_sdfPipeline) != VK_SUCCESS) return false;
+    
+    // Note: createShaderModule leaves cleanup to vkDestroyShaderModule during Vk_shutdown.
+    // The engine's style here doesn't clean them up early, so we leave them intact.
     s_pipelinesBuilt = true;
     return true;
 }
@@ -2070,6 +2113,69 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
 
     CmdPushConstants_fn(cb, s_texLayout, VK_SHADER_STAGE_VERTEX_BIT,   0,  16, push.rect);
     CmdPushConstants_fn(cb, s_texLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 16, 44, push.color);
+
+    CmdDraw_fn(cb, 6, 1, 0, 0);
+}
+
+void Vk_drawSDFText(void *cmdBuffer, float surfaceW, float surfaceH,
+                    float x, float y, float w, float h,
+                    float r, float g, float b, float a,
+                    int32_t textureId, float bold,
+                    float u0, float v0, float u1, float v1) {
+    if (s_sdfPipeline == VK_NULL_HANDLE) return;
+    VkCommandBuffer cb = (VkCommandBuffer)cmdBuffer;
+
+    VK_LOAD_DEVICE_VOID(CmdBindPipeline)
+    VK_LOAD_DEVICE_VOID(CmdPushConstants)
+    VK_LOAD_DEVICE_VOID(CmdDraw)
+    VK_LOAD_DEVICE_VOID(CmdSetViewport)
+    VK_LOAD_DEVICE_VOID(CmdSetScissor)
+    VK_LOAD_DEVICE_VOID(CmdBindDescriptorSets)
+
+    CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_sdfPipeline);
+
+    extern void *Texture_getDescriptorSet(void);
+    VkDescriptorSet bindlessSet = (VkDescriptorSet)Texture_getDescriptorSet();
+    CmdBindDescriptorSets_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_sdfLayout, 0, 1, &bindlessSet, 0, nullptr);
+
+    float px = x, py = y;
+    float pw = w, ph = h;
+    float dx = (px / surfaceW) * 2.0f - 1.0f;
+    float dy = (py / surfaceH) * 2.0f - 1.0f;
+    float dw = (pw / surfaceW) * 2.0f;
+    float dh = (ph / surfaceH) * 2.0f;
+
+    struct {
+        float x, y, w, h;
+        float cr, cg, cb, ca;
+        uint32_t texId;
+        float bold;
+        float pad[2];
+        float u0, v0, u1, v1;
+    } pc;
+    pc.x = dx; pc.y = dy; pc.w = dw; pc.h = dh;
+    pc.cr = r; pc.cg = g; pc.cb = b; pc.ca = a;
+    pc.texId = (uint32_t)textureId;
+    pc.bold = bold;
+    pc.pad[0] = 0; pc.pad[1] = 0;
+    pc.u0 = u0; pc.v0 = v0; pc.u1 = u1; pc.v1 = v1;
+
+    CmdPushConstants_fn(cb, s_sdfLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+
+    VkViewport vp = {0, 0, surfaceW, surfaceH, 0.0f, 1.0f};
+    CmdSetViewport_fn(cb, 0, 1, &vp);
+
+    VkRect2D sc;
+    sc.offset.x = (int32_t)(px > 0 ? px : 0);
+    sc.offset.y = (int32_t)(py > 0 ? py : 0);
+    int32_t scRight = (int32_t)(px + pw);
+    int32_t scBottom = (int32_t)(py + ph);
+    if (scRight > (int32_t)surfaceW) scRight = (int32_t)surfaceW;
+    if (scBottom > (int32_t)surfaceH) scBottom = (int32_t)surfaceH;
+    sc.extent.width = scRight > sc.offset.x ? scRight - sc.offset.x : 0;
+    sc.extent.height = scBottom > sc.offset.y ? scBottom - sc.offset.y : 0;
+    if (sc.extent.width == 0 || sc.extent.height == 0) return;
+    CmdSetScissor_fn(cb, 0, 1, &sc);
 
     CmdDraw_fn(cb, 6, 1, 0, 0);
 }

@@ -19,3 +19,5 @@ glslangValidator -V "$DIR/texture_quad.vert" -o "$DIR/../spv/texture_quad_vert.s
 glslangValidator -V "$DIR/texture_quad.frag" -o "$DIR/../spv/texture_quad_frag.spv"
 
 echo "shaders: spv refreshed"
+glslangValidator -V "$DIR/text_sdf.vert" -o "$DIR/../spv/text_sdf_vert.spv"
+glslangValidator -V "$DIR/text_sdf.frag" -o "$DIR/../spv/text_sdf_frag.spv"
