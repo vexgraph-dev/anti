@@ -60,7 +60,7 @@ cmake --build .
 ./anti_window     # the AppKit windowed demo
 ```
 
-Flags enforced by `CMakeLists.txt`: `-Wall -Wextra -Werror -mcpu=native`.
+Flags enforced by `CMakeLists.txt`: `-Wall -Wextra -Werror -mcpu=native` (resolves to host `apple-mN`; portable Apple-Silicon baseline is `apple-m1`/`generic`).
 
 ## Engine runtime notes
 
