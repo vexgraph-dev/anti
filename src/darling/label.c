@@ -2,6 +2,7 @@
 #include "../vulkan/vk.h"
 #include "../nio/mem.h"
 #include "../oop/type.h"
+#include <math.h>
 #include <string.h>
 
 static void Label_renderFn(Panel *panel, void *renderer, void *cmdBuffer, float x, float y, float w, float h) {
@@ -26,6 +27,16 @@ static void Label_renderFn(Panel *panel, void *renderer, void *cmdBuffer, float 
     float lineGap = 0;
     Font_getVMetrics((*lbl).font, &ascent, &descent, &lineGap);
     float scale = Font_getScaleForPixelHeight((*lbl).font, (*lbl).fontSize);
+    float lineHeight = (ascent - descent + lineGap) * scale;
+    if (lineHeight <= 0.0f)
+        lineHeight = (*lbl).fontSize * 1.2f;
+
+    GlyphMetrics spaceGm = {0};
+    float spaceAdvance = (*lbl).fontSize * 0.3f;
+    if (Font_getGlyph((*lbl).font, (uint32_t) ' ', (*lbl).fontSize, &spaceGm) && spaceGm.advance > 0.0f)
+        spaceAdvance = spaceGm.advance;
+    float tabWidth = 4.0f * spaceAdvance;
+
     float cx = x;
     float cy = y + (ascent * scale);
     int32_t texId = Font_getTextureId((*lbl).font);
@@ -50,14 +61,39 @@ static void Label_renderFn(Panel *panel, void *renderer, void *cmdBuffer, float 
                 codepoint = ((c0 & 0x07) << 18) | (((*lbl).text[i + 1] & 0x3F) << 12) | (((*lbl).text[i + 2] & 0x3F) << 6) | ((*lbl).text[i + 3] & 0x3F);
             charLen = 4;
         }
+        if (codepoint == '\r') {
+            prevChar = 0;
+            i += charLen;
+            continue;
+        }
+        if (codepoint == '\n') {
+            cx = x;
+            cy += lineHeight;
+            prevChar = 0;
+            i += charLen;
+            continue;
+        }
+        if (codepoint == '\t') {
+            if (tabWidth > 0.0f) {
+                float relX = cx - x;
+                cx = x + (floorf(relX / tabWidth) + 1.0f) * tabWidth;
+            } else {
+                cx += 4.0f * spaceAdvance;
+            }
+            prevChar = 0;
+            i += charLen;
+            continue;
+        }
         GlyphMetrics gm = {0};
         if (Font_getGlyph((*lbl).font, codepoint, (*lbl).fontSize, &gm)) {
             if (prevChar != 0)
                 cx += Font_getKerning((*lbl).font, prevChar, codepoint, (*lbl).fontSize);
             prevChar = codepoint;
-            float qx = cx + gm.xOffset;
-            float qy = cy + gm.yOffset;
-            Vk_drawSDFText(cmdBuffer, w, h, qx, qy, gm.width, gm.height, cr, cg, cb, ca, texId, 0.0f, (*lbl).smoothness, gm.u0, gm.v0, gm.u1, gm.v1);
+            if (gm.width > 0.0f && gm.height > 0.0f) {
+                float qx = cx + gm.xOffset;
+                float qy = cy + gm.yOffset;
+                Vk_drawSDFText(cmdBuffer, w, h, qx, qy, gm.width, gm.height, cr, cg, cb, ca, texId, 0.0f, (*lbl).smoothness, gm.u0, gm.v0, gm.u1, gm.v1);
+            }
             cx += gm.advance;
         }
         i += charLen;
