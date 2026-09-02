@@ -12,6 +12,8 @@
 #include "hot/hot.h"
 #include "input/key.h"
 #include "nio/mem.h"
+#include "font/font.h"
+#include "darling/label.h"
 #include "oop/type.h"
 #include "thread/thread.h"
 #include "time/nanotime.h"
@@ -226,6 +228,27 @@ int main(void) {
     Picture_setLocation(pic, 0.0f, 0.0f);
     Panel_addContainer(contentPanel, &(*pic).base);
 
+
+    // --- LABEL TEST START ---
+    Font *sysFont = Font_loadSystem("Comic Sans MS");
+    if (!sysFont) {
+        printf("Warning: Comic Sans MS not found, falling back to system default\n");
+        sysFont = Font_loadSystem("Helvetica");
+    }
+    
+    Label *testLabel = Label_0();
+    Label_setText(testLabel, "hello");
+    Label_setFont(testLabel, sysFont);
+    Label_setFontSize(testLabel, 12.0f);
+    Label_setTextColor(testLabel, 0xFFFFFFFF); // White text
+    
+    Panel_setBackgroundColor(&testLabel->base, 0xFF000000); // Black background
+    Container_setSize(&testLabel->base.base, 200.0f, 200.0f); // Maximum size
+    Container_setSize(&testLabel->base.base, 200.0f, 200.0f); // Actual size
+    
+    Panel_setLocation(&testLabel->base, 50.0f, 250.0f);
+    Panel_addContainer(contentPanel, &testLabel->base);
+    // --- LABEL TEST END ---
     // Enable native IOSurface backing on content panel
     Window_forceNativeContainerOnRoot(w, true);
     printf("native IOSurface: ON (background=Vulkan swapchain, overlays=Vulkan->IOSurface)\n");

@@ -57,6 +57,11 @@ add_executable(anti
     src/darling/panel.c
     src/darling/picture.c
     src/darling/scene.c
+    src/darling/label.c
+    src/darling/rich_label.c
+    src/text/rich_text.c
+    src/font/font.c
+        src/objc/font_cocoa.m
     src/darling/picture.c
     src/darling/canvas.c
     src/io/antihome.c
@@ -173,6 +178,11 @@ add_executable(darlingtest
     src/darling/panel.c
     src/darling/picture.c
     src/darling/scene.c
+    src/darling/label.c
+    src/darling/rich_label.c
+    src/text/rich_text.c
+    src/font/font.c
+        src/objc/font_cocoa.m
     src/lang/mat4.c
     src/lang/vec2.c
     src/lang/vec4.c
@@ -268,6 +278,11 @@ add_executable(vk_test
     src/darling/panel.c
     src/darling/picture.c
     src/darling/scene.c
+    src/darling/label.c
+    src/darling/rich_label.c
+    src/text/rich_text.c
+    src/font/font.c
+        src/objc/font_cocoa.m
     src/lang/mat4.c
     src/lang/vec2.c
     src/lang/vec4.c
@@ -502,3 +517,4 @@ if(WIN32)
 elseif(UNIX AND NOT APPLE)
     target_sources(anti_window PRIVATE src/window/window_linux.c)
 endif()
+set_source_files_properties(src/objc/font_cocoa.m PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
