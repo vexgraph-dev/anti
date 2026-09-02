@@ -10,9 +10,10 @@
 #include <string.h>
 
 #define ATLAS_SIZE 2048
-#define SDF_PADDING 5
+#define SDF_REF_HEIGHT 128.0f
+#define SDF_PADDING 8
 #define SDF_ONEDGE 128
-#define SDF_PIXEL_DIST_SCALE 32.0f
+#define SDF_PIXEL_DIST_SCALE 16.0f
 
 #define GLYPH_CACHE_INIT_CAP 128
 #define GLYPH_STATE_EMPTY 0
@@ -21,7 +22,6 @@
 
 typedef struct GlyphSlot {
     uint32_t codepoint;
-    uint32_t sizeBits;
     GlyphMetrics metrics;
     uint64_t state;
 } GlyphSlot;
@@ -39,9 +39,8 @@ struct Font {
     size_t slotCount;
 };
 
-static uint64_t hashGlyph(uint32_t codepoint, uint32_t sizeBits) {
-    uint64_t key = ((uint64_t) codepoint << 32) | (uint64_t) sizeBits;
-    return Hash_murmur3Mix64(key);
+static uint64_t hashGlyph(uint32_t codepoint) {
+    return Hash_murmur3Mix64((uint64_t) codepoint);
 }
 
 static GlyphSlot *slotAt(Font *font, size_t index) {
@@ -59,7 +58,7 @@ static void growCache(Font *font, size_t newCap) {
     for (size_t i = 0; i < oldCap; i++) {
         GlyphSlot *s = &oldSlots[i];
         if ((*s).state == GLYPH_STATE_OCCUPIED) {
-            uint64_t h = hashGlyph((*s).codepoint, (*s).sizeBits);
+            uint64_t h = hashGlyph((*s).codepoint);
             size_t idx = (size_t) (h & mask);
             while ((*(newSlots + idx)).state == GLYPH_STATE_OCCUPIED)
                 idx = (idx + 1) & mask;
@@ -72,13 +71,13 @@ static void growCache(Font *font, size_t newCap) {
     (*font).slotCap = newCap;
 }
 
-static bool findGlyph(Font *font, uint32_t codepoint, uint32_t sizeBits, GlyphMetrics *outMetrics) {
+static bool findGlyph(Font *font, uint32_t codepoint, GlyphMetrics *outMetrics) {
     if (!(*font).slots)
         return false;
     size_t cap = (*font).slotCap;
     if (cap == 0)
         return false;
-    uint64_t h = hashGlyph(codepoint, sizeBits);
+    uint64_t h = hashGlyph(codepoint);
     size_t mask = cap - 1;
     size_t idx = (size_t) (h & mask);
     for (size_t i = 0; i < cap; i++) {
@@ -86,7 +85,7 @@ static bool findGlyph(Font *font, uint32_t codepoint, uint32_t sizeBits, GlyphMe
         uint64_t st = (*s).state;
         if (st == GLYPH_STATE_EMPTY)
             return false;
-        if (st == GLYPH_STATE_OCCUPIED && (*s).codepoint == codepoint && (*s).sizeBits == sizeBits) {
+        if (st == GLYPH_STATE_OCCUPIED && (*s).codepoint == codepoint) {
             if (outMetrics)
                 *outMetrics = (*s).metrics;
             return true;
@@ -96,7 +95,7 @@ static bool findGlyph(Font *font, uint32_t codepoint, uint32_t sizeBits, GlyphMe
     return false;
 }
 
-static void insertGlyph(Font *font, uint32_t codepoint, uint32_t sizeBits, GlyphMetrics *metrics) {
+static void insertGlyph(Font *font, uint32_t codepoint, GlyphMetrics *metrics) {
     size_t cap = (*font).slotCap;
     if (cap == 0) {
         growCache(font, GLYPH_CACHE_INIT_CAP);
@@ -109,7 +108,7 @@ static void insertGlyph(Font *font, uint32_t codepoint, uint32_t sizeBits, Glyph
         growCache(font, cap * 2);
         cap = (*font).slotCap;
     }
-    uint64_t h = hashGlyph(codepoint, sizeBits);
+    uint64_t h = hashGlyph(codepoint);
     size_t mask = cap - 1;
     size_t idx = (size_t) (h & mask);
     size_t firstDeleted = (size_t) -1;
@@ -120,7 +119,6 @@ static void insertGlyph(Font *font, uint32_t codepoint, uint32_t sizeBits, Glyph
             size_t target = firstDeleted != (size_t) -1 ? firstDeleted : idx;
             GlyphSlot *t = slotAt(font, target);
             (*t).codepoint = codepoint;
-            (*t).sizeBits = sizeBits;
             (*t).metrics = *metrics;
             (*t).state = GLYPH_STATE_OCCUPIED;
             (*font).slotCount++;
@@ -130,7 +128,7 @@ static void insertGlyph(Font *font, uint32_t codepoint, uint32_t sizeBits, Glyph
             if (firstDeleted == (size_t) -1)
                 firstDeleted = idx;
         } else if (st == GLYPH_STATE_OCCUPIED) {
-            if ((*s).codepoint == codepoint && (*s).sizeBits == sizeBits) {
+            if ((*s).codepoint == codepoint) {
                 (*s).metrics = *metrics;
                 return;
             }
@@ -217,83 +215,87 @@ void Font_getVMetrics(const Font *font, float *ascent, float *descent, float *li
 bool Font_getGlyph(Font *font, uint32_t codepoint, float pixelHeight, GlyphMetrics *outMetrics) {
     if (!font)
         return false;
-    uint32_t sizeBits = 0;
-    memcpy(&sizeBits, &pixelHeight, sizeof(float));
-    GlyphMetrics cached = {0};
-    if (findGlyph(font, codepoint, sizeBits, &cached)) {
-        if (outMetrics)
-            *outMetrics = cached;
-        return true;
-    }
-    float scale = stbtt_ScaleForPixelHeight(&(*font).info, pixelHeight);
-    int w = 0;
-    int h = 0;
-    int xoff = 0;
-    int yoff = 0;
-    unsigned char *sdf = stbtt_GetCodepointSDF(&(*font).info, scale, (int) codepoint, SDF_PADDING, SDF_ONEDGE, SDF_PIXEL_DIST_SCALE, &w, &h, &xoff, &yoff);
-    if (!sdf)
-        return false;
-    if ((*font).current_x + w > ATLAS_SIZE) {
-        (*font).current_x = 0;
-        (*font).current_y = (*font).bottom_y;
-    }
-    if ((*font).current_y + h > ATLAS_SIZE) {
+    GlyphMetrics baseMetrics = {0};
+    if (!findGlyph(font, codepoint, &baseMetrics)) {
+        float refScale = stbtt_ScaleForPixelHeight(&(*font).info, SDF_REF_HEIGHT);
+        int w = 0;
+        int h = 0;
+        int xoff = 0;
+        int yoff = 0;
+        unsigned char *sdf = stbtt_GetCodepointSDF(&(*font).info, refScale, (int) codepoint, SDF_PADDING, SDF_ONEDGE, SDF_PIXEL_DIST_SCALE, &w, &h, &xoff, &yoff);
+        if (!sdf)
+            return false;
+        if ((*font).current_x + w > ATLAS_SIZE) {
+            (*font).current_x = 0;
+            (*font).current_y = (*font).bottom_y;
+        }
+        if ((*font).current_y + h > ATLAS_SIZE) {
+            free(sdf);
+            return false;
+        }
+        int destX = (*font).current_x;
+        int destY = (*font).current_y;
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int srcIdx = y * w + x;
+                int dstIdx = ((destY + y) * ATLAS_SIZE + (destX + x)) * 4;
+                unsigned char dist = sdf[srcIdx];
+                (*font).atlas_rgba[dstIdx + 0] = dist;
+                (*font).atlas_rgba[dstIdx + 1] = dist;
+                (*font).atlas_rgba[dstIdx + 2] = dist;
+                (*font).atlas_rgba[dstIdx + 3] = dist;
+            }
+        }
+        uint8_t *tmp = (uint8_t*) Memory_alloc(TYPE_ARRAY, (size_t) (w * h * 4));
+        int tmpIsManaged = 1;
+        if (!tmp) {
+            tmp = (uint8_t*) malloc((size_t) (w * h * 4));
+            tmpIsManaged = 0;
+        }
+        if (tmp) {
+            for (int i = 0; i < w * h; i++) {
+                unsigned char dist = sdf[i];
+                tmp[i * 4 + 0] = dist;
+                tmp[i * 4 + 1] = dist;
+                tmp[i * 4 + 2] = dist;
+                tmp[i * 4 + 3] = dist;
+            }
+            Texture_updateSubRaw((*font).textureId, tmp, (uint32_t) destX, (uint32_t) destY, (uint32_t) w, (uint32_t) h);
+            if (tmpIsManaged)
+                Memory_free(tmp);
+            else
+                free(tmp);
+        }
         free(sdf);
-        return false;
+        (*font).current_x += w + 1;
+        if ((*font).current_y + h > (*font).bottom_y)
+            (*font).bottom_y = (*font).current_y + h + 1;
+        int advanceWidth = 0;
+        int leftSideBearing = 0;
+        stbtt_GetCodepointHMetrics(&(*font).info, (int) codepoint, &advanceWidth, &leftSideBearing);
+        baseMetrics.u0 = (float) destX / (float) ATLAS_SIZE;
+        baseMetrics.v0 = (float) destY / (float) ATLAS_SIZE;
+        baseMetrics.u1 = (float) (destX + w) / (float) ATLAS_SIZE;
+        baseMetrics.v1 = (float) (destY + h) / (float) ATLAS_SIZE;
+        baseMetrics.width = (float) w;
+        baseMetrics.height = (float) h;
+        baseMetrics.xOffset = (float) xoff;
+        baseMetrics.yOffset = (float) yoff;
+        baseMetrics.advance = (float) advanceWidth * refScale;
+        insertGlyph(font, codepoint, &baseMetrics);
     }
-    int destX = (*font).current_x;
-    int destY = (*font).current_y;
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            int srcIdx = y * w + x;
-            int dstIdx = ((destY + y) * ATLAS_SIZE + (destX + x)) * 4;
-            unsigned char dist = sdf[srcIdx];
-            (*font).atlas_rgba[dstIdx + 0] = dist;
-            (*font).atlas_rgba[dstIdx + 1] = dist;
-            (*font).atlas_rgba[dstIdx + 2] = dist;
-            (*font).atlas_rgba[dstIdx + 3] = dist;
-        }
+    if (outMetrics) {
+        float factor = (pixelHeight > 0.0f) ? (pixelHeight / SDF_REF_HEIGHT) : 1.0f;
+        (*outMetrics).u0 = baseMetrics.u0;
+        (*outMetrics).v0 = baseMetrics.v0;
+        (*outMetrics).u1 = baseMetrics.u1;
+        (*outMetrics).v1 = baseMetrics.v1;
+        (*outMetrics).width = baseMetrics.width * factor;
+        (*outMetrics).height = baseMetrics.height * factor;
+        (*outMetrics).xOffset = baseMetrics.xOffset * factor;
+        (*outMetrics).yOffset = baseMetrics.yOffset * factor;
+        (*outMetrics).advance = baseMetrics.advance * factor;
     }
-    uint8_t *tmp = (uint8_t*) Memory_alloc(TYPE_ARRAY, (size_t) (w * h * 4));
-    int tmpIsManaged = 1;
-    if (!tmp) {
-        tmp = (uint8_t*) malloc((size_t) (w * h * 4));
-        tmpIsManaged = 0;
-    }
-    if (tmp) {
-        for (int i = 0; i < w * h; i++) {
-            unsigned char dist = sdf[i];
-            tmp[i * 4 + 0] = dist;
-            tmp[i * 4 + 1] = dist;
-            tmp[i * 4 + 2] = dist;
-            tmp[i * 4 + 3] = dist;
-        }
-        Texture_updateSubRaw((*font).textureId, tmp, (uint32_t) destX, (uint32_t) destY, (uint32_t) w, (uint32_t) h);
-        if (tmpIsManaged)
-            Memory_free(tmp);
-        else
-            free(tmp);
-    }
-    free(sdf);
-    (*font).current_x += w + 1;
-    if ((*font).current_y + h > (*font).bottom_y)
-        (*font).bottom_y = (*font).current_y + h + 1;
-    int advanceWidth = 0;
-    int leftSideBearing = 0;
-    stbtt_GetCodepointHMetrics(&(*font).info, (int) codepoint, &advanceWidth, &leftSideBearing);
-    GlyphMetrics gm = {0};
-    gm.u0 = (float) destX / (float) ATLAS_SIZE;
-    gm.v0 = (float) destY / (float) ATLAS_SIZE;
-    gm.u1 = (float) (destX + w) / (float) ATLAS_SIZE;
-    gm.v1 = (float) (destY + h) / (float) ATLAS_SIZE;
-    gm.width = (float) w;
-    gm.height = (float) h;
-    gm.xOffset = (float) xoff;
-    gm.yOffset = (float) yoff;
-    gm.advance = (float) advanceWidth * scale;
-    insertGlyph(font, codepoint, sizeBits, &gm);
-    if (outMetrics)
-        *outMetrics = gm;
     return true;
 }
 
@@ -321,4 +323,39 @@ Font *Font_loadSystem(const char *familyName) {
     Font *f = Font_load(path);
     free(path);
     return f;
+}
+
+void Font_prewarm(Font *font, const char *chars) {
+    if (!font || !chars)
+        return;
+    size_t len = strlen(chars);
+    for (size_t i = 0; i < len; ) {
+        uint32_t codepoint = 0;
+        unsigned char c0 = (unsigned char) chars[i];
+        int charLen = 1;
+        if (c0 < 0x80) {
+            codepoint = c0;
+        } else if ((c0 & 0xE0) == 0xC0) {
+            if (i + 1 < len)
+                codepoint = ((c0 & 0x1F) << 6) | (chars[i + 1] & 0x3F);
+            charLen = 2;
+        } else if ((c0 & 0xF0) == 0xE0) {
+            if (i + 2 < len)
+                codepoint = ((c0 & 0x0F) << 12) | (((chars[i + 1] & 0x3F) << 6)) | (chars[i + 2] & 0x3F);
+            charLen = 3;
+        } else if ((c0 & 0xF8) == 0xF0) {
+            if (i + 3 < len)
+                codepoint = ((c0 & 0x07) << 18) | (((chars[i + 1] & 0x3F) << 12)) | (((chars[i + 2] & 0x3F) << 6)) | (chars[i + 3] & 0x3F);
+            charLen = 4;
+        }
+        Font_getGlyph(font, codepoint, SDF_REF_HEIGHT, NULL);
+        i += charLen;
+    }
+}
+
+void Font_prewarmAscii(Font *font) {
+    if (!font)
+        return;
+    for (uint32_t cp = 32; cp <= 126; cp++)
+        Font_getGlyph(font, cp, SDF_REF_HEIGHT, NULL);
 }

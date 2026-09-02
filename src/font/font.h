@@ -39,4 +39,7 @@ float Font_getKerning(const Font *font, uint32_t cp1, uint32_t cp2, float pixelH
 
 Font *Font_loadSystem(const char *familyName);
 
+void Font_prewarm(Font *font, const char *chars);
+void Font_prewarmAscii(Font *font);
+
 #endif // ANTI_FONT_H
