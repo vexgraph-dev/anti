@@ -35,7 +35,7 @@ static void RichLabel_renderFn(Panel *panel, void *renderer, void *cmdBuffer, fl
             Vk_fillRect(cmdBuffer, w, h, qx, qy, q->w, q->h, cr, cg, cb, ca);
         } else {
             Vk_drawSDFText(cmdBuffer, w, h, qx, qy, q->w, q->h, 
-                           cr, cg, cb, ca, q->textureId, q->bold,
+                           cr, cg, cb, ca, q->textureId, q->bold, 0.5f,
                            q->u0, q->v0, q->u1, q->v1);
         }
     }
