@@ -1,12 +1,12 @@
-#ifndef C11_OVERLOAD_H
-#define C11_OVERLOAD_H
+#ifndef C23_OVERLOAD_H
+#define C23_OVERLOAD_H
 
 #include "lang/mat4.h"
 #include "lang/vec2.h"
 #include "lang/vec3.h"
 #include "lang/vec4.h"
 
-// c11/overload.h — type-based overloading (the other half of constructor.h).
+// c23/overload.h — type-based overloading (the other half of constructor.h).
 //
 // One name, many types: add/sub/mul/div dispatch on operand TYPES via _Generic,
 // in two shapes picked by ARITY:

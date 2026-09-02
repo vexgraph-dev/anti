@@ -1,7 +1,7 @@
-#ifndef C11_ZERO_H
-#define C11_ZERO_H
+#ifndef C23_ZERO_H
+#define C23_ZERO_H
 
-// c11/zero.h — the generic zero factory: zero(T t), typed by example.
+// c23/zero.h — the generic zero factory: zero(T t), typed by example.
 //
 //   int   i = zero(n);        // 0            — same type as n
 //   float f = zero(x);
@@ -11,8 +11,8 @@
 //   Window *p = zero(ptr);    // nullptr — the true zero of any pointer
 //   const char *s = zero(s);  // "0"
 //
-// The type comes from the argument through __typeof__ (gnu11, like the rest
-// of c11/), so this stays correct for every type the engine will ever add —
+// The type comes from the argument through __typeof__ (gnu23, like the rest
+// of c23/), so this stays correct for every type the engine will ever add —
 // no enumeration, no registry. Lowers to a stack compound literal: no calls,
 // no heap.
 

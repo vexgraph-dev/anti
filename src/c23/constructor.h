@@ -1,7 +1,7 @@
-#ifndef C11_CONSTRUCTOR_H
-#define C11_CONSTRUCTOR_H
+#ifndef C23_CONSTRUCTOR_H
+#define C23_CONSTRUCTOR_H
 
-// c23/constructor.h — Java-style constructor overloading for C11.
+// c23/constructor.h — Java-style constructor overloading for C23.
 //
 // C has no overloading; this header fakes the arity half of it with pure
 // preprocessor dispatch. A class exports one function per accepted arity,
@@ -28,7 +28,7 @@
 // NAME##_k ladder in step.
 //
 // Requires the GNU `, ##__VA_ARGS__` comma-elision extension (CMake builds
-// this tree as gnu11; strict -std=c11 breaks zero-arg dispatch). window.h
+// this tree as gnu23; strict -std=c23 breaks zero-arg dispatch). window.h
 // already leans on the same extension.
 
 #define CONSTRUCTOR_PICK(_0, _1, _2, _3, _4, _5, _6, _7, _8, NAME, ...) NAME

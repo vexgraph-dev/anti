@@ -1,9 +1,9 @@
-#ifndef C11_FN_H
-#define C11_FN_H
+#ifndef C23_FN_H
+#define C23_FN_H
 
 #include <stdint.h>
 
-// c11/fn.h — functions as data (the opcode-in-hand class).
+// c23/fn.h — functions as data (the opcode-in-hand class).
 //
 //   int base = 10;
 //   Function f = { .call = addTen_impl, .ctx = &base };
