@@ -77,7 +77,7 @@ static void pic_render(Panel *p, void *data, void *cmdBuffer, float x, float y, 
     Vk_drawTexture(cmdBuffer, w, h, 0, 0, w, h,
                    1.0f, 1.0f, 1.0f, 1.0f,
                    s_sunflowerId,
-                   m->mode,
+                   (*m).mode,
                    (float)imgW, (float)imgH);
 }
 
@@ -230,27 +230,23 @@ int main(void) {
 
 
     // --- LABEL TEST START ---
-    Font *sysFont = Font_loadSystem("Comic Sans MS");
+    Font *sysFont = Font_loadSystem("Google Sans Code");
     if (!sysFont) {
         printf("Warning: Comic Sans MS not found, falling back to system default\n");
         sysFont = Font_loadSystem("Helvetica");
     }
     
-    Label *label = Label(contentPanel, "hello");
+    Label *label = Label(contentPanel, "hello\nworld");
     Label_setFont(label, sysFont);
-    Label_setFontSize(label, 280.0f);
+    Label_setFontSize(label, 128.0f);
     Label_setTextColor(label, 0xFFFFFFFF);
     Label_setBackgroundColor(label, 0xFF000000);
     Label_setSize(label, 400.0f, 300.0f);
     Label_setLocation(label, 10.0f, 10.0f);
-    Label_setSmoothness(label, 0.2f);
+    Label_setSmoothness(label, 0.1f);
     if (sysFont) {
-        const char *warm = "hello";
-        for (size_t wi = 0; warm[wi]; wi++) {
-            GlyphMetrics tmpGm;
-            Font_getGlyph(sysFont, (uint32_t) (unsigned char) warm[wi], 32.0f, &tmpGm);
-        }
-        printf("[vk_test] pre-warmed font atlas for \"%s\" texId=%d smoothness=%.2f\n", warm, Font_getTextureId(sysFont), 0.2f);
+        Font_prewarm(sysFont, "hello world");
+        printf("[vk_test] pre-warmed font atlas at 128pt for \"hello world\" texId=%d smoothness=%.2f\n", Font_getTextureId(sysFont), 0.1f);
         fflush(stdout);
     }
     // --- LABEL TEST END ---
