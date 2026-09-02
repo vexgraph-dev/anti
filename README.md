@@ -21,7 +21,7 @@ latency: C stripped of its comfort abstractions, rebuilt for raw performance.
   yields the header, so `Memory_type()`/`Memory_length()` are free.
 * `src/bit/bit.h/.c` — the lockless width pool (`BitPool`). ABA-tagged
   freelists recycle slots; freed slots come back at the same address.
-* `src/atomic/spin.h/.c` — `SpinLock` on C11 atomics (ticket lock, bounded
+* `src/atomic/spin.h/.c` — `SpinLock` on C23 atomics (stdatomic) (ticket lock, bounded
   wait).
 * `src/atomic/ring.h/.c` — the MPMC ring buffer (`RingBuffer`), the inter-thread
   channel.
@@ -60,7 +60,7 @@ cmake --build .
 ./anti_window     # the AppKit windowed demo
 ```
 
-Flags enforced by `CMakeLists.txt`: `-Wall -Wextra -Werror -mcpu=apple-m1`.
+Flags enforced by `CMakeLists.txt`: `-Wall -Wextra -Werror -mcpu=native`.
 
 ## Engine runtime notes
 
