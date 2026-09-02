@@ -72,5 +72,5 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
 void Vk_drawSDFText(void *cmdBuffer, float surfaceW, float surfaceH,
                     float x, float y, float w, float h,
                     float r, float g, float b, float a,
-                    int32_t textureId, float bold,
+                    int32_t textureId, float bold, float smoothness,
                     float u0, float v0, float u1, float v1);

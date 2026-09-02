@@ -1244,10 +1244,23 @@ static bool buildPipelines(void) {
     sdfStages[1].module = sdfFragMod;
     sdfStages[1].pName = "main";
     
+    VkPipelineColorBlendAttachmentState sdfBlend = blend;
+    sdfBlend.blendEnable = VK_TRUE;
+    sdfBlend.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    sdfBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    sdfBlend.colorBlendOp = VK_BLEND_OP_ADD;
+    sdfBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    sdfBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    sdfBlend.alphaBlendOp = VK_BLEND_OP_ADD;
+
+    VkPipelineColorBlendStateCreateInfo sdfCb = cb;
+    sdfCb.pAttachments = &sdfBlend;
+
     VkGraphicsPipelineCreateInfo sdfPci = qpci; // Inherit qpci defaults
     sdfPci.stageCount = 2;
     sdfPci.pStages = sdfStages;
     sdfPci.layout = s_sdfLayout;
+    sdfPci.pColorBlendState = &sdfCb;
     
     if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &sdfPci, nullptr, &s_sdfPipeline) != VK_SUCCESS) return false;
     
@@ -2120,7 +2133,7 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
 void Vk_drawSDFText(void *cmdBuffer, float surfaceW, float surfaceH,
                     float x, float y, float w, float h,
                     float r, float g, float b, float a,
-                    int32_t textureId, float bold,
+                    int32_t textureId, float bold, float smoothness,
                     float u0, float v0, float u1, float v1) {
     if (s_sdfPipeline == VK_NULL_HANDLE) return;
     VkCommandBuffer cb = (VkCommandBuffer)cmdBuffer;
@@ -2150,14 +2163,16 @@ void Vk_drawSDFText(void *cmdBuffer, float surfaceW, float surfaceH,
         float cr, cg, cb, ca;
         uint32_t texId;
         float bold;
-        float pad[2];
+        float smoothness;
+        float pad;
         float u0, v0, u1, v1;
     } pc;
     pc.x = dx; pc.y = dy; pc.w = dw; pc.h = dh;
     pc.cr = r; pc.cg = g; pc.cb = b; pc.ca = a;
     pc.texId = (uint32_t)textureId;
     pc.bold = bold;
-    pc.pad[0] = 0; pc.pad[1] = 0;
+    pc.smoothness = smoothness;
+    pc.pad = 0;
     pc.u0 = u0; pc.v0 = v0; pc.u1 = u1; pc.v1 = v1;
 
     CmdPushConstants_fn(cb, s_sdfLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
