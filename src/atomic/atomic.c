@@ -1,8 +1,8 @@
 // thread/atomic.c — atomic variables & synchronization (Legacy: thread/Atomic.java port).
 //
-// Every operation is one C11 stdatomic intrinsic; the module exists so the
+// Every operation is one C23 stdatomic intrinsic; the module exists so the
 // engine reads like the legacy map (Atomic_cas / AtomicInt_add / spin waits)
-// instead of scattering raw __c11 builtins across subsystems.
+// instead of scattering raw stdatomic builtins across subsystems.
 
 #include "atomic/atomic.h"
 

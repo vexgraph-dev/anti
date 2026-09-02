@@ -1,4 +1,4 @@
-// spin.c — SpinLock port (thread/SpinLock.java) on C11 atomics.
+// spin.c — SpinLock port (thread/SpinLock.java) on C23 atomics.
 //
 // One word: 0 = free, otherwise owner-encoded:
 //     (threadId & 0x3FFFFFFF) << 1 | 1

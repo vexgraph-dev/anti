@@ -1,4 +1,4 @@
-// main.c — the demo tying the C11 subsystems together.
+// main.c — the demo tying the C23 subsystems together.
 //
 // Story: 4 producer threads race to push 25 jobs each into a shared MPMC ring.
 // The engine loop (a separate fixed-timestep loop) drains the ring and counts

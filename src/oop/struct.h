@@ -41,7 +41,7 @@ void *Struct_allocateSOARaw(uint32_t generic, size_t amount);
 #define allocate(fields) Struct_allocate(fields)
 #define allocateArray(fields, amount) Struct_allocateArray(fields, amount)
 
-// C11 Generic Selection helpers for Struct_allocate*
+// C23 Generic Selection helpers for Struct_allocate*
 #define Struct_allocateSingleton(target) \
     _Generic((target), \
         const Fields*: Struct_allocate, \
