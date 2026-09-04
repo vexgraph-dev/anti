@@ -112,17 +112,11 @@ add_library(vexspoke STATIC
     src/system/display_info.c
     src/system/hardware_info.c
     src/system/graphics_info.c
-    src/vulkan/vulkan.c
-    src/vulkan/vulkan_mac.c
 )
 
 target_include_directories(vexspoke PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
-
-if(EXISTS "/opt/homebrew/include/vulkan/vulkan.h")
-    target_include_directories(vexspoke PUBLIC /opt/homebrew/include)
-endif()
 
 target_compile_options(vexspoke PRIVATE -Wall -Wextra -Werror -mcpu=native)
 target_link_libraries(vexspoke PUBLIC pthread)
