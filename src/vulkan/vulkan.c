@@ -2,9 +2,6 @@
 #define VK_USE_PLATFORM_METAL_EXT
 
 #include "vulkan/vk.h"
-#include "vulkan/vk_iosurface.h"
-#include "vulkan/vk_scene.h"
-#include "vulkan/vk_view.h"
 #include "vulkan/vulkan_mac.h"
 
 #include "annotation/platform_exclusive.h"
@@ -13,15 +10,22 @@
 #include <vulkan/vulkan_macos.h>
 #include <dlfcn.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdatomic.h>
-#include "darling/container.h"
-#include "darling/panel.h"
 #include "nio/mem.h"
 #include "oop/type.h"
 #include "time/nanotime.h"
 #include "atomic/spin.h"
-#include "window/window.h"
+
+// Opaque window interface forward declarations (implemented in hotcwap/window)
+typedef struct Window Window;
+#define WINDOW_PRESENT_IMMEDIATE 1
+extern uint64_t Window_renderGeneration(const Window *w);
+extern bool Window_isTransparent(const Window *w);
+extern int Window_getPresentMode(const Window *w);
+extern void Window_setGravityTopLeft(Window *w);
+extern void Window_setResizeRenderHook(Window *w, void (*hook)(void *ud), void *ud);
 
 // vulkan/vulkan.c — runtime-loaded Vulkan chain over the compositor model.
 //
@@ -49,6 +53,26 @@ VkPipeline s_instanceTriPipeline;
 VkPipelineLayout s_instanceTriLayout;
 uint64_t s_instanceAnimStartNanos;
 PFN_vkGetDeviceProcAddr s_instanceGdpa;
+VkInstance s_instanceInstance;
+PFN_vkGetInstanceProcAddr s_instanceGpa;
+VkPhysicalDevice s_instancePhys;
+uint32_t s_instanceQueueFamily;
+
+static float s_clearColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+static VkFrameRenderFn s_frameRenderer = nullptr;
+static void *s_frameRendererUserdata = nullptr;
+
+void Vk_setFrameRenderer(VkFrameRenderFn fn, void *userdata) {
+    s_frameRenderer = fn;
+    s_frameRendererUserdata = userdata;
+}
+
+void Vk_setClearColor(float r, float g, float b, float a) {
+    s_clearColor[0] = r;
+    s_clearColor[1] = g;
+    s_clearColor[2] = b;
+    s_clearColor[3] = a;
+}
 
 #define VK_MARK(msg) do { snprintf(s_status, sizeof(s_status), msg); fprintf(stderr, "vk: %s\n", s_status); } while(0)
 
@@ -64,11 +88,6 @@ static bool presentFrameLocked(void);
 // Last-applied Window_renderGeneration. A drift means presentMode or
 // transparent changed on thread 0 and the swapchain wants a rebuild.
 static uint64_t s_appliedRenderGen = 0;
-
-// Last-applied Window_sizeGeneration for the container mirror. The basket
-// panel's w/h are rewritten to the window's content size whenever this
-// drifts — the "root mirrors its window" law.
-static uint64_t s_mirroredSizeGen = UINT64_MAX;
 
 // Animation clock anchor for scene children (u_time seconds since init).
 static uint64_t s_animStartNanos = 0;
@@ -112,19 +131,6 @@ static VkQueue s_queue;
 static VkSwapchainKHR s_swapchain;
 static VkCommandPool s_cmdPool;
 static VkCommandBuffer s_cmdBuffer;
-
-// Phase 2/3 plumbing: scene passes submit on their OWN command buffer +
-// fence, decoupled from the collage submission. A slow scene stays in flight
-// across present frames while the collage keeps stamping finished fronts.
-#define VK_SCENE_BATCH_MAX 8
-typedef struct SceneBatchEntry {
-    VkSceneCanvas *canvas;
-    uint32_t gen;   // canvas generation at record time; mismatched = resized
-} SceneBatchEntry;
-static VkCommandBuffer s_sceneBuffer;
-static VkFence s_sceneFence;
-static SceneBatchEntry s_sceneBatch[VK_SCENE_BATCH_MAX];
-static uint32_t s_sceneBatchCount = 0;
 
 static VkSemaphore s_semAcquire;
 static VkSemaphore s_semRender;
@@ -354,30 +360,6 @@ bool Vk_init(Window *window) {
     if (!rebuildTargets())
         return false;
 
-    // 7. per-monitor render caches + child pipelines + command plumbing
-    if (!VkView_refreshAll(s_instance, s_gpa, s_phys, s_device) || VkView_count() == 0) {
-        snprintf(s_status, sizeof(s_status), "no monitor views");
-        return false;
-    }
-    if (!VkSceneCanvas_initModule(s_instance, s_gpa, s_phys, s_device)) {
-        snprintf(s_status, sizeof(s_status), "scene module failed");
-        return false;
-    }
-    extern bool VkIOSurface_initModule(VkInstance, PFN_vkGetInstanceProcAddr, VkPhysicalDevice, VkDevice);
-    if (!VkIOSurface_initModule(s_instance, s_gpa, s_phys, s_device)) {
-        snprintf(s_status, sizeof(s_status), "iosurface module failed");
-        return false;
-    }
-    extern bool Texture_initModule(void*, void*, void*, void*, void*, uint32_t);
-    if (!Texture_initModule(s_instance, s_gpa, s_phys, s_device, s_queue, s_queueFamily)) {
-        snprintf(s_status, sizeof(s_status), "texture module failed");
-        return false;
-    }
-    // Jump-flood SDF baker: non-fatal. When unavailable (or on failure) the
-    // font installer falls back to the threaded CPU path automatically.
-    extern bool SdfGpu_initModule(void*, void*, void*, void*, void*, uint32_t);
-    if (!SdfGpu_initModule(s_instance, s_gpa, s_phys, s_device, s_queue, s_queueFamily))
-        fprintf(stderr, "vk: sdf-gpu unavailable, CPU font bake fallback\n");
     if (!buildPipelines())
         return false;
 
@@ -394,11 +376,6 @@ bool Vk_init(Window *window) {
     fci2.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     if (CreateFence_fn && CreateFence_fn(s_device, &fci2, nullptr, &s_fence) != VK_SUCCESS) return false;
 
-    // Scene-batch fence: polled non-blocking, never pre-signaled (TIMEOUT
-    // simply means "nothing in flight yet").
-    fci2.flags = 0;
-    if (CreateFence_fn && CreateFence_fn(s_device, &fci2, nullptr, &s_sceneFence) != VK_SUCCESS) return false;
-
     s_animStartNanos = NanoTime_now();
 
     // Export shared state to vulkan_mac.c AFTER all init succeeds.
@@ -409,6 +386,10 @@ bool Vk_init(Window *window) {
     s_instanceTriLayout = s_triLayout;
     s_instanceAnimStartNanos = s_animStartNanos;
     s_instanceGdpa = s_gdpa;
+    s_instanceInstance = s_instance;
+    s_instanceGpa = s_gpa;
+    s_instancePhys = s_phys;
+    s_instanceQueueFamily = s_queueFamily;
 
     // The c -> objc -> c bridge: AppKit's resize servicing drives frames at
     // the OS's own rhythm through this hook.
@@ -703,9 +684,6 @@ static void destroyTargets(void) {
         DestroyRenderPass_fn(s_device, s_drawablePass, nullptr);
     s_drawablePass = VK_NULL_HANDLE;
 
-    // Cleanup IOSurface children (owned by vulkan_mac.c).
-    VkMac_cleanupIOSurfaceState();
-
     if (s_swapchain != VK_NULL_HANDLE && DestroySwapchainKHR_fn)
         DestroySwapchainKHR_fn(s_device, s_swapchain, nullptr);
     s_swapchain = VK_NULL_HANDLE;
@@ -723,18 +701,7 @@ void Vk_shutdown(void) {
     if (!s_lib)
         return;
     if (s_device != VK_NULL_HANDLE) {
-        extern void SdfGpu_shutdown(void);
-        SdfGpu_shutdown();
         destroyTargets();
-        VkView_shutdown();
-        VkSceneCanvas_shutdownModule();
-        s_sceneBatchCount = 0;
-        {
-            VK_LOAD_DEVICE_VOID(DestroyFence)
-            if (s_sceneFence != VK_NULL_HANDLE && DestroyFence_fn)
-                DestroyFence_fn(s_device, s_sceneFence, nullptr);
-            s_sceneFence = VK_NULL_HANDLE;
-        }
         s_pipelinesBuilt = false;
     }
     if (s_instance != VK_NULL_HANDLE) {
@@ -877,13 +844,6 @@ static VkShaderModule createShaderModule(const char *name, const char *unused) {
     }
     free(code); // driver may reference code until pipeline creation; safe for v1 demo
     return module;
-}
-
-static void decodeColor(uint32_t rgba, float *out) {
-    out[0] = ((rgba >> 16) & 0xFF) / 255.0f;
-    out[1] = ((rgba >> 8) & 0xFF) / 255.0f;
-    out[2] = (rgba & 0xFF) / 255.0f;
-    out[3] = ((rgba >> 24) & 0xFF) / 255.0f;
 }
 
 // --- Vk_fillRect: the default panel draw as a public primitive --------------
@@ -1211,13 +1171,8 @@ static bool buildPipelines(void) {
     VkCommandBufferAllocateInfo cbai = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
     cbai.commandPool = s_cmdPool;
     cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cbai.commandBufferCount = 2;
-    {
-        VkCommandBuffer cbs[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-        AllocateCommandBuffers_fn(s_device, &cbai, cbs);
-        s_cmdBuffer = cbs[0];      // collage + present
-        s_sceneBuffer = cbs[1];    // scene production (phase 2)
-    }
+    cbai.commandBufferCount = 1;
+    AllocateCommandBuffers_fn(s_device, &cbai, &s_cmdBuffer);
 
 
     // --- sdf pipeline ---
@@ -1290,37 +1245,10 @@ bool Vk_clearPresent(void) {
 
 static bool presentFrameTail(uint32_t imageIndex);
 
-// Per-frame geometry handed from the head (presentFrameLocked) to the tail
-// (presentFrameTail). Single presenter at a time holds s_presentLock, so a
-// plain file-scope struct is race-free.
-static struct {
-    int winW, winH;   // window content size in points
-    float kx, ky;     // drawable px per layout point (monitor scale)
-    Panel *root;      // basket panel
-    float bg[4];      // board clear color
-    bool nativeContent; // content panel is IOSurface-backed (skip Vulkan render)
-    int contentW, contentH; // content panel size for IOSurface resize
-} s_frame;
-
-// Forward declarations
-
-;;PLATFORM_EXCLUSIVE("Mac")
-;;INTENTION("Thin wrappers that delegate IOSurface rendering to vulkan_mac.c.")
-
-static void renderNativeContent(Window *window, Panel *contentPanel, int winW, int winH, float kx, float ky) {
-    VkMac_renderNativeContent(window, contentPanel, winW, winH, kx, ky, &s_frame.nativeContent);
-}
-
 static bool presentFrameLocked(void) {
     if (!Vk_ready() || !s_pipelinesBuilt) return false;
 
     // Retire the PREVIOUS frame through its fence BEFORE touching the chain.
-    // This is what lets extent-driven rebuilds happen every drag tick without
-    // stalling: no DeviceWaitIdle exists anywhere in this path.
-    // NOTE: the fence is deliberately left SIGNALLED here — ResetFences moves
-    // to just before QueueSubmit, so EVERY early-return below leaves the fence
-    // in the signaled state and the next frame retires instantly instead of
-    // hanging on an unsignaled wait.
     VK_LOAD_DEVICE(WaitForFences)
     VK_LOAD_DEVICE(ResetCommandBuffer)
     VK_LOAD_DEVICE(AcquireNextImageKHR)
@@ -1337,18 +1265,12 @@ static bool presentFrameLocked(void) {
     }
 
     // Policy drift (presentMode / transparent changed) wants a fresh chain.
-    uint64_t renderGen = Window_renderGeneration(s_window);
-    if (renderGen != s_appliedRenderGen && !rebuildTargets()) return false;
+    if (s_window) {
+        uint64_t renderGen = Window_renderGeneration(s_window);
+        if (renderGen != s_appliedRenderGen && !rebuildTargets()) return false;
+    }
 
     // Live caps: the surface outgrowing the chain is THE resize signal.
-    // Rebuild policy: ASAP by default — every diverged tick rebuilds and
-    // presents inline (the sync bridge carries them; the graveyard makes
-    // per-tick churn safe). ANTI_RESIZE_HZ can re-impose a cap (e.g. 30)
-    // on low-end machines. The first tick of any swing always passes
-    // instantly (zero timer), and settling re-arms instant response for
-    // the next swing. Skipped ticks present nothing: TopLeft gravity
-    // holds the last exact-sized frame cropped while the border runs —
-    // never stretched.
     VK_LOAD_INSTANCE(GetPhysicalDeviceSurfaceCapabilitiesKHR)
     static uint64_t s_lastRebuildNs = 0;
     static int s_hzInit = 0;
@@ -1356,7 +1278,7 @@ static bool presentFrameLocked(void) {
     if (!s_hzInit) {
         s_hzInit = 1;
         const char *hzEnv = getenv("ANTI_RESIZE_HZ");
-        int hz = hzEnv ? atoi(hzEnv) : 0; // 0 = uncapped: rebuild every tick
+        int hz = hzEnv ? atoi(hzEnv) : 0;
         s_minRebuildGapNs = hz > 0 ? (int64_t)(1000000000LL / hz) : 0;
     }
     VkSurfaceCapabilitiesKHR live;
@@ -1366,118 +1288,21 @@ static bool presentFrameLocked(void) {
         uint64_t nowNs = NanoTime_now();
         if (s_lastRebuildNs != 0 && s_minRebuildGapNs > 0
             && nowNs - s_lastRebuildNs < (uint64_t)s_minRebuildGapNs) {
-            return false; // throttled: hold the last good frame this tick
+            return false;
         }
         fprintf(stderr, "vk: extent moved %ux%u -> %ux%u; rebuilding\n",
                 s_extent.width, s_extent.height,
                 live.currentExtent.width, live.currentExtent.height);
-        if (!rebuildTargets()) return false; // failed rebuild retries ASAP
+        if (!rebuildTargets()) return false;
         s_lastRebuildNs = NanoTime_now();
     } else {
-        s_lastRebuildNs = 0; // settled: next divergence reacts instantly
+        s_lastRebuildNs = 0;
     }
 
-    // Window geometry: content SIZE in points. Position is irrelevant BY LAW
-    // now — the compositor is window-local; every child is stamped relative
-    // to the drawable's own top-left corner, so moving the window costs the
-    // GPU path literally nothing and nothing can go stale.
-    int winW = s_window ? Window_width(s_window) : 0;
-    int winH = s_window ? Window_height(s_window) : 0;
-    if (winW <= 0 || winH <= 0)
-        return false;
-
-    // Monitor scale oracle: kx/ky convert layout points to drawable pixels
-    // crisply (retina included). The view's CACHE is no longer read or
-    // written anywhere in this file — only its point/pixel ratio matters.
-    // Join by the window's mirrored display id; location sniffing and view 0
-    // are fallbacks for a stale discovery list or an unmapped window.
-    int locX = 0, locY = 0;
-    Window_getLocation(s_window, &locX, &locY);
-    VkView *view = VkView_forMonitor(Window_getMonitorId(s_window));
-    if (!view)
-        view = VkView_forPoint((float)locX, (float)locY);
-    if (!view)
-        view = VkView_at(0);
-    if (!view)
-        return false;
-
-    float cacheW = (float)VkView_getWidth(view);
-    float cacheH = (float)VkView_getHeight(view);
-    float pointW = (float)VkView_getPointWidth(view);
-    float pointH = (float)VkView_getPointHeight(view);
-    if (cacheW <= 0.0f || cacheH <= 0.0f || pointW <= 0.0f || pointH <= 0.0f)
-        return false;
-    s_frame.kx = cacheW / pointW; // drawable px per layout point
-    s_frame.ky = cacheH / pointH;
-
-
-    // Basket mirror: rewrite its w/h to the window's content size on drift.
-    s_frame.root = Window_getContainer(s_window);
-    Panel *root = s_frame.root;
-
-    // Content panel (IOSurface) path: each child renders via Vulkan into
-    // its own IOSurface; AppKit composites the CALayers.
-    // Note: contentPanel itself is purely a placeholder (its own background is ignored).
-    s_frame.nativeContent = false;
-    Panel *contentPanel = Window_getContentPanel(s_window);
-    if (contentPanel) {
-        Container_setSize(&(*contentPanel).base, (float)winW, (float)winH);
-        if (Window_isNativeContainerOnRoot(s_window)) {
-            s_frame.nativeContent = true;
-            // Native pixel dimensions: points × scale factor
-            int nativePxW = (int)(winW * s_frame.kx + 0.5f);
-            int nativePxH = (int)(winH * s_frame.ky + 0.5f);
-            s_frame.contentW = nativePxW;
-            s_frame.contentH = nativePxH;
-            renderNativeContent(s_window, contentPanel, winW, winH, s_frame.kx, s_frame.ky);
-            // Composite CALayers into window's layer tree
-            Window_compositeIOSurfaceChildren(s_window, contentPanel);
-            // DO NOT RETURN TRUE HERE. We must continue to render the background swapchain
-            // for the Scene3D and window clearing!
-        }
-    }
-    Panel *scenePanel = Window_getScenePanel(s_window);
-    if (scenePanel != nullptr) {
-        Container_setSize(&(*scenePanel).base, (float)winW, (float)winH);
-    }
-    uint64_t sizeGen = Window_sizeGeneration(s_window);
-    if (root != nullptr && sizeGen != s_mirroredSizeGen) {
-        s_mirroredSizeGen = sizeGen;
-        Container_setSize(&(*root).base, (float)winW, (float)winH);
-    }
-
-    // Clear law: background color inherits from scenePanel (or root).
-    // contentPanel background color is ignored (contentPanel is purely a placeholder).
-    s_frame.bg[0] = s_frame.bg[1] = s_frame.bg[2] = s_frame.bg[3] = 0.0f;
-    if (scenePanel != nullptr) {
-        uint32_t bgColor = Panel_getBackgroundColor(scenePanel);
-        if (bgColor != 0)
-            decodeColor(bgColor, s_frame.bg);
-    } else if (root != nullptr && root != contentPanel) {
-        uint32_t bgColor = Panel_getBackgroundColor(root);
-        if (bgColor != 0)
-            decodeColor(bgColor, s_frame.bg);
-    }
-    s_frame.winW = winW;
-    s_frame.winH = winH;
-
-    // --- acquire first: the blit needs its target index ------------------
-    // FINITE timeout, never UINT64_MAX: during zoom/fullscreen transitions
-    // Core Animation can pause drawable recycling for a few hundred ms. An
-    // unbounded acquire would pin this thread — holding s_presentLock — and
-    // beachball every sync-bridge caller behind it. A timed-_out tick simply
-    // holds the last good frame; nothing is lost. Capped at ~1 display
-    // frame (16.7 ms): a longer cap lets one stalled acquire eat two frames
-    // of cadence.
     uint32_t imageIndex = 0;
     VkResult ar = AcquireNextImageKHR_fn(s_device, s_swapchain, 25000000ULL /* ~1 frame */,
                                          s_semAcquire, VK_NULL_HANDLE, &imageIndex);
     if (ar == VK_ERROR_OUT_OF_DATE_KHR) {
-        // Reactive repair. GAPLESS LAW: do NOT bail — the chain is dead but
-        // the surface geometry is current (bg/kx/ky were just computed), so
-        // rebuild and present THIS tick. Bailing here leaves the compositor
-        // holding the last frame at the old size for a full extra tick: the
-        // visible "unrendered panel -> rendered panel" pop during resize.
         if (!rebuildTargets()) return false;
         ar = AcquireNextImageKHR_fn(s_device, s_swapchain, 25000000ULL,
                                     s_semAcquire, VK_NULL_HANDLE, &imageIndex);
@@ -1485,8 +1310,6 @@ static bool presentFrameLocked(void) {
         return presentFrameTail(imageIndex);
     }
     if (ar == VK_TIMEOUT || ar == VK_NOT_READY) {
-        // No drawable freed in time (compositor busy / mid-transition).
-        // Fence is still signaled — safe to bail clean.
         return false;
     }
     if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR) return false;
@@ -1494,14 +1317,7 @@ static bool presentFrameLocked(void) {
     return presentFrameTail(imageIndex);
 }
 
-// Present tail: records the collage into the freshly acquired drawable,
-// submits, and presents. Shared by the normal tick AND the OUT_OF_DATE
-// recovery path (GAPLESS LAW: rebuild+present in one tick). Reads winW/
-// winH/kx/ky/root/bg computed by presentFrameLocked just above.
 static bool presentFrameTail(uint32_t imageIndex) {
-    // The drawable IS the window now: its true size is the chain's creation
-    // extent, and every coordinate below lives in that space.
-    VK_LOAD_DEVICE(WaitForFences)
     VK_LOAD_DEVICE(BeginCommandBuffer)
     VK_LOAD_DEVICE(EndCommandBuffer)
     VK_LOAD_DEVICE(CmdBeginRenderPass)
@@ -1511,7 +1327,6 @@ static bool presentFrameTail(uint32_t imageIndex) {
     VK_LOAD_DEVICE(CmdSetViewport)
     VK_LOAD_DEVICE(CmdSetScissor)
     VK_LOAD_DEVICE(CmdDraw)
-    VK_LOAD_DEVICE(CmdBlitImage)
     VK_LOAD_DEVICE(CmdClearColorImage)
     VK_LOAD_DEVICE(CmdPipelineBarrier)
     VK_LOAD_DEVICE(QueueSubmit)
@@ -1523,179 +1338,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
 
     float uTime = (float)((double)(NanoTime_now() - s_animStartNanos) / 1e9);
 
-    static uint32_t s_frameNo = 0;
-    static bool s_trace = false;
-    static int s_traceInit = 0;
-    if (!s_traceInit) {
-        s_traceInit = 1;
-        s_trace = getenv("ANTI_VK_TRACE") != nullptr;
-    }
-
-    // --- 0. scene canvases: flip-buffers + own clock (phases 2+3) ---------
-    // PRODUCTION records into back images on its OWN command buffer and
-    // submits under its own fence — a slow AAA pass stays in flight across
-    // many present frames. CONSUMPTION stamps the newest FINISHED front
-    // image every frame, whatever production is doing. ANTI_SCENE_HZ paces
-    // production independently of present rate.
-    struct SceneCut {
-        VkSceneCanvas *canvas;
-        int32_t dx, dy, dw, dh; // unclipped dest rect in drawable pixels
-    };
-    struct SceneCut scenes[8];
-    uint32_t sceneCount = 0;
-
-    // Harvest any completed batch: generation-matched flips land, fronts
-    // advance, and the graveyard frees whatever a resize retired before it.
-    bool productionBlocked = false;
-    if (s_sceneBatchCount > 0) {
-        if (WaitForFences_fn(s_device, 1, &s_sceneFence, VK_TRUE, 0) == VK_SUCCESS) {
-            for (uint32_t i = 0; i < s_sceneBatchCount; i++) {
-                SceneBatchEntry *e = &s_sceneBatch[i];
-                if (VkSceneCanvas_generation((*e).canvas) == (*e).gen)
-                    VkSceneCanvas_flip((*e).canvas);
-            }
-            s_sceneBatchCount = 0;
-            VkSceneCanvas_flushRetired();
-        } else {
-            // Previous batch still executing: one batch in flight at a time.
-            // Keeps ResetFences off a busy fence; production resumes next tick.
-            productionBlocked = true;
-        }
-    }
-
-    // Production pacing: ANTI_SCENE_HZ (default 60; 0 = every present tick).
-    static int s_sceneHzInit = 0;
-    static int64_t s_sceneGapNs = 0;
-    if (!s_sceneHzInit) {
-        s_sceneHzInit = 1;
-        const char *sceneHzEnv = getenv("ANTI_SCENE_HZ");
-        int hz = sceneHzEnv ? atoi(sceneHzEnv) : 60;
-        s_sceneGapNs = hz > 0 ? (int64_t)(1000000000LL / hz) : 0;
-    }
-    uint64_t sceneNowNs = NanoTime_now();
-    uint32_t rendered = 0;
-    bool sceneCbOpen = false;
-
-    Panel *sceneCandidates[8];
-    uint32_t candidateCount = 0;
-
-    Panel *winScene = Window_getScenePanel(s_window);
-    if (winScene != nullptr) {
-        uint32_t st = Memory_type(winScene);
-        if (st == TYPE_SCENE3D_SINGLETON || st == TYPE_SCENE2D_SINGLETON || st == TYPE_SCENE_SINGLETON) {
-            sceneCandidates[candidateCount++] = winScene;
-        }
-    }
-
-    if (s_frame.root != nullptr) {
-        uint32_t rt = Memory_type(s_frame.root);
-        if ((rt == TYPE_SCENE3D_SINGLETON || rt == TYPE_SCENE2D_SINGLETON || rt == TYPE_SCENE_SINGLETON)
-            && s_frame.root != winScene && candidateCount < 8) {
-            sceneCandidates[candidateCount++] = s_frame.root;
-        }
-        size_t childCount = Panel_childCount(s_frame.root);
-        for (size_t i = 0; i < childCount && candidateCount < 8; i++) {
-            Panel *child = Panel_getChild(s_frame.root, i);
-            if (!child)
-                continue;
-            // Skip content panel when IOSurface-backed (rendered by AppKit)
-            if (s_frame.nativeContent && child == Window_getContentPanel(s_window))
-                continue;
-            uint32_t childType = Memory_type(child);
-            if (!(childType == TYPE_SCENE3D_SINGLETON || childType == TYPE_SCENE2D_SINGLETON
-                  || childType == TYPE_SCENE_SINGLETON))
-                continue;
-            if (child == winScene)
-                continue;
-            sceneCandidates[candidateCount++] = child;
-        }
-    }
-
-    for (uint32_t ci = 0; ci < candidateCount && sceneCount < 8; ci++) {
-        Panel *child = sceneCandidates[ci];
-        Vec4 rect;
-        Container_resolve(&(*child).base, 0.0f, 0.0f,
-                          (float)s_frame.winW, (float)s_frame.winH, &rect);
-        if (rect.z <= 0.0f || rect.w <= 0.0f)
-            continue;
-
-        // Canvas pixels = logical points scaled by THIS view's grid, so
-        // canvas->drawable blits stay pixel-exact on every monitor.
-        uint32_t wantW = (uint32_t)(rect.z * s_frame.kx + 0.5f);
-        uint32_t wantH = (uint32_t)(rect.w * s_frame.ky + 0.5f);
-        if (wantW == 0 || wantH == 0)
-            continue;
-        VkSceneCanvas *canvas = VkSceneCanvas_acquire((uintptr_t)child, wantW, wantH);
-        if (!canvas)
-            continue;
-
-        // PRODUCTION: only when the previous batch resolved, the clock
-        // says due, and no pass is in flight for THIS canvas. Otherwise
-        // the finished front simply serves again.
-        if (!productionBlocked && s_sceneBatchCount < VK_SCENE_BATCH_MAX
-            && VkSceneCanvas_needsRender(canvas, sceneNowNs, s_sceneGapNs)) {
-            if (!sceneCbOpen) {
-                // Lazy open: reset+begin only when a batch is actually
-                // forming AND the previous one has fully resolved —
-                // resetting an executing command buffer is UB.
-                VK_LOAD_DEVICE(ResetCommandBuffer)
-                ResetCommandBuffer_fn(s_sceneBuffer, 0);
-                VkCommandBufferBeginInfo sbi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-                BeginCommandBuffer_fn(s_sceneBuffer, &sbi);
-                sceneCbOpen = true;
-            }
-            VkSceneCanvas_beginBackPass(canvas, s_sceneBuffer, 0.0f, 0.0f, 0.0f, 1.0f);
-            VkViewport cvp = {0};
-            cvp.width = (float)wantW;
-            cvp.height = (float)wantH;
-            cvp.maxDepth = 1.0f;
-            VkRect2D csc = {0};
-            csc.extent.width = wantW;
-            csc.extent.height = wantH;
-            CmdBindPipeline_fn(s_sceneBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
-            CmdSetViewport_fn(s_sceneBuffer, 0, 1, &cvp);
-            CmdSetScissor_fn(s_sceneBuffer, 0, 1, &csc);
-            CmdPushConstants_fn(s_sceneBuffer, s_triLayout,
-                                VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &uTime);
-            CmdDraw_fn(s_sceneBuffer, 3, 1, 0, 0);
-            VkSceneCanvas_endBackPass(canvas, s_sceneBuffer);
-            s_sceneBatch[s_sceneBatchCount].canvas = canvas;
-            s_sceneBatch[s_sceneBatchCount].gen = VkSceneCanvas_generation(canvas);
-            s_sceneBatchCount++;
-            rendered++;
-        }
-
-        struct SceneCut *cut = &scenes[sceneCount++];
-        (*cut).canvas = canvas;
-        // Window-local: a child hanging off the window's own edge goes
-        // negative here — the stamp clips it against the drawable.
-        (*cut).dx = (int32_t)(rect.x * s_frame.kx);
-        (*cut).dy = (int32_t)(rect.y * s_frame.ky);
-        (*cut).dw = (int32_t)wantW;
-        (*cut).dh = (int32_t)wantH;
-    }
-
-    if (rendered > 0) {
-        EndCommandBuffer_fn(s_sceneBuffer);
-        // Submit production independently: no swapchain contact, therefore
-        // no semaphores — just the batch fence the next frame polls.
-        VkSubmitInfo ssi = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
-        ssi.commandBufferCount = 1;
-        ssi.pCommandBuffers = &s_sceneBuffer;
-        ResetFences_fn(s_device, 1, &s_sceneFence);
-        QueueSubmit_fn(s_queue, 1, &ssi, s_sceneFence);
-        for (uint32_t i = 0; i < s_sceneBatchCount; i++)
-            VkSceneCanvas_markSubmitted(s_sceneBatch[i].canvas, sceneNowNs);
-        if (s_trace)
-            fprintf(stderr, "vk:trace:   scene tick: %u rendered, batch=%u\n",
-                    rendered, s_sceneBatchCount);
-    }
-
-    // --- 1. prep the drawable: park in board color, stamp scene canvases --
-    // Acquired images arrive layout-undefined; walk to TRANSFER_DST, clear
-    // unconditionally (the pass below LOADs, so first-frame garbage dies
-    // here whether or not scenes exist), then paste each scene canvas as a
-    // pixel-exact cut clipped to the drawable bounds.
+    // 1. Prep drawable layout: walk to TRANSFER_DST and clear
     VkImageMemoryBarrier toPrep = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
     toPrep.srcAccessMask = 0;
     toPrep.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -1710,10 +1353,10 @@ static bool presentFrameTail(uint32_t imageIndex) {
 
     {
         VkClearValue cc = {0};
-        cc.color.float32[0] = s_frame.bg[0];
-        cc.color.float32[1] = s_frame.bg[1];
-        cc.color.float32[2] = s_frame.bg[2];
-        cc.color.float32[3] = s_frame.bg[3];
+        cc.color.float32[0] = s_clearColor[0];
+        cc.color.float32[1] = s_clearColor[1];
+        cc.color.float32[2] = s_clearColor[2];
+        cc.color.float32[3] = s_clearColor[3];
         VkImageSubresourceRange rng = {0};
         rng.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         rng.levelCount = 1;
@@ -1723,100 +1366,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
                               &cc.color, 1, &rng);
     }
 
-    if (sceneCount > 0) {
-        int32_t drawWi = (int32_t)s_extent.width;
-        int32_t drawHi = (int32_t)s_extent.height;
-        for (uint32_t si = 0; si < sceneCount; si++) {
-            struct SceneCut *cut = &scenes[si];
-            VkImage frontImg = VkSceneCanvas_frontImage((*cut).canvas);
-            uint32_t srcW = VkSceneCanvas_width((*cut).canvas);
-            uint32_t srcH = VkSceneCanvas_height((*cut).canvas);
-            bool stretch = false;
-            if (frontImg == VK_NULL_HANDLE) {
-                // RESIZE BRIDGE: the fresh pair hasn't earned its first flip
-                // yet — serve the previous geometry's front STRETCHED into
-                // today's cut instead of dropping to board color. Motion
-                // beats a hole; one flip later this path goes quiet.
-                frontImg = VkSceneCanvas_staleImage((*cut).canvas, &srcW, &srcH);
-                stretch = frontImg != VK_NULL_HANDLE;
-            }
-            if (frontImg == VK_NULL_HANDLE)
-                continue; // genuinely nothing rendered yet: board shows
-            int32_t cx0 = (*cut).dx < 0 ? 0 : (*cut).dx;
-            int32_t cy0 = (*cut).dy < 0 ? 0 : (*cut).dy;
-            int32_t cx1 = (*cut).dx + (*cut).dw > drawWi ? drawWi : (*cut).dx + (*cut).dw;
-            int32_t cy1 = (*cut).dy + (*cut).dh > drawHi ? drawHi : (*cut).dy + (*cut).dh;
-            if (cx0 >= cx1 || cy0 >= cy1)
-                continue; // child hangs fully off the window: pure crop
-
-            VkImageBlit sc = {0};
-            sc.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            sc.srcSubresource.layerCount = 1;
-            if (stretch) {
-                // Whole stale canvas -> whole cut, scaled. No crop math:
-                // the bridge is about continuity, not pixel exactness.
-                sc.srcOffsets[1].x = (int32_t)srcW;
-                sc.srcOffsets[1].y = (int32_t)srcH;
-                sc.srcOffsets[1].z = 1;
-                sc.dstOffsets[0].x = cx0;
-                sc.dstOffsets[0].y = cy0;
-                sc.dstOffsets[1].x = cx1;
-                sc.dstOffsets[1].y = cy1;
-            } else {
-                // The cut geometry is THIS tick's request; a deferred resize
-                // (retire table full) can leave the live canvas smaller than
-                // it. Clamp the crop INSIDE the real canvas and shrink the
-                // stamp by the same amount — an _out-of-bounds src rect is
-                // invalid blit territory, not a visual nit.
-                int32_t sx0 = cx0 - (*cut).dx;
-                int32_t sy0 = cy0 - (*cut).dy;
-                int32_t sx1 = sx0 + (cx1 - cx0);
-                int32_t sy1 = sy0 + (cy1 - cy0);
-                if ((uint32_t)sx1 > srcW) sx1 = (int32_t)srcW;
-                if ((uint32_t)sy1 > srcH) sy1 = (int32_t)srcH;
-                if (sx1 <= sx0 || sy1 <= sy0)
-                    continue; // canvas smaller than its window position here
-
-                sc.srcOffsets[0].x = sx0;           // crop offset INSIDE the canvas
-                sc.srcOffsets[0].y = sy0;
-                sc.srcOffsets[1].x = sx1;
-                sc.srcOffsets[1].y = sy1;
-                sc.srcOffsets[1].z = 1;
-                sc.dstOffsets[0].x = cx0;
-                sc.dstOffsets[0].y = cy0;
-                sc.dstOffsets[1].x = cx0 + (sx1 - sx0);
-                sc.dstOffsets[1].y = cy0 + (sy1 - sy0);
-            }
-            sc.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            sc.dstSubresource.layerCount = 1;
-            // Fresh path: src cut == dst cut, pixel-for-pixel, NEAREST, zero
-            // resampling. Bridge path: LINEAR — a stretched stopgap should
-            // not alias while it lasts.
-            CmdBlitImage_fn(s_cmdBuffer, frontImg,
-                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                            s_swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                            1, &sc, stretch ? VK_FILTER_LINEAR : VK_FILTER_NEAREST);
-        }
-
-        // Transfer writes must be visible to the color attachment stage the
-        // render pass is about to run on.
-        VkImageMemoryBarrier stampsReady = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-        stampsReady.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        stampsReady.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                                  | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        stampsReady.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        stampsReady.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        stampsReady.image = s_swapchainImages[imageIndex];
-        stampsReady.subresourceRange = toPrep.subresourceRange;
-        CmdPipelineBarrier_fn(s_cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                              0, 0, nullptr, 0, nullptr, 1, &stampsReady);
-    }
-
-    // --- 2. procedural children straight onto the drawable -----------------
-    // loadOp=LOAD preserves the scene stamps above; sibling z-order is child
-    // order again. Quads draw in plain window-local pixels — no desktop
-    // space exists anywhere in this loop.
+    // 2. Render pass: invoke frame renderer hook, or spinning triangle fallback
     {
         VkRenderPassBeginInfo rbi2 = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
         rbi2.renderPass = s_drawablePass;
@@ -1825,94 +1375,26 @@ static bool presentFrameTail(uint32_t imageIndex) {
         CmdBeginRenderPass_fn(s_cmdBuffer, &rbi2, VK_SUBPASS_CONTENTS_INLINE);
     }
 
-    bool dump = s_trace && (s_frameNo++ % 60 == 0);
-    if (dump)
-        fprintf(stderr, "vk:trace: %dx%d pts | drawable %ux%u px | k=%.2f\n",
-                s_frame.winW, s_frame.winH, s_extent.width, s_extent.height, s_frame.kx);
-
-    if (s_frame.root != nullptr) {
-        size_t childCount = Panel_childCount(s_frame.root);
-        for (size_t i = 0; i < childCount; i++) {
-            Panel *child = Panel_getChild(s_frame.root, i);
-            if (!child)
-                continue;
-
-            // Resolve against the mirrored basket: plain window-local
-            // points, straight onto the drawable's pixel grid.
-            Vec4 rect;
-            Container_resolve(&(*child).base, 0.0f, 0.0f,
-                              (float)s_frame.winW, (float)s_frame.winH, &rect);
-            if (rect.z <= 0.0f || rect.w <= 0.0f)
-                continue;
-
-            // DOUBLE-RENDER FIX: If native compositing is ON, all UI panels 
-            // are already rendered into individual IOSurfaces and composited 
-            // by AppKit. Do NOT draw them into the background Vulkan swapchain!
-            if (s_frame.nativeContent) {
-                uint32_t cType = Memory_type(child);
-                if (cType != TYPE_SCENE3D_SINGLETON && cType != TYPE_SCENE2D_SINGLETON && cType != TYPE_SCENE_SINGLETON) {
-                    continue; // Skip UI panels; they live in IOSurface land now.
-                }
-            }
-
-            float drawW = (float)s_extent.width;
-            float drawH = (float)s_extent.height;
-            float px = rect.x * s_frame.kx;
-            float py = rect.y * s_frame.ky;
-            float pw = rect.z * s_frame.kx;
-            float ph = rect.w * s_frame.ky;
-            if (px < 0.0f) { pw += px; px = 0.0f; }
-            if (py < 0.0f) { ph += py; py = 0.0f; }
-            if (pw <= 0.0f || ph <= 0.0f) continue;
-            if (px + pw > drawW) pw = drawW - px;
-            if (py + ph > drawH) ph = drawH - py;
-            if (pw <= 0.0f || ph <= 0.0f) continue;
-
-            // VIEWPORT/SCISSOR SEPARATION LAW lives inside Vk_fillRect now:
-            // u_rectNdc places each quad in clip space against a full-drawable
-            // viewport; scissoring is per-fill. Handlers get the same law.
-
-            uint32_t childType = Memory_type(child);
-            if (dump)
-                fprintf(stderr, "vk:trace:   child[%zu] type=0x%04x rect=(%.0f,%.0f %.0fx%.0f)px\n",
-                        i, childType, px, py, pw, ph);
-
-            if (childType == TYPE_SCENE3D_SINGLETON || childType == TYPE_SCENE2D_SINGLETON
-                || childType == TYPE_SCENE_SINGLETON) {
-                // Scene child: already rendered into its canvas pre-pass;
-                // stamped onto the cache as a cut below.
-                continue;
-            }
-
-            // METHOD-SLOT DISPATCH ("@Override"): a set renderHandler replaces
-            // the default draw entirely — it receives an open render pass on
-            // this drawable, the clipped pixel rect, and the command buffer.
-            // nullptr falls through to the built-in solid quad.
-            Panel_RenderFn handler = Panel_getRenderHandler(child);
-            if (handler != nullptr) {
-                handler(child, nullptr, s_cmdBuffer, px, py, pw, ph);
-            } else {
-                uint32_t color = Panel_getBackgroundColor(child);
-                if (color == 0)
-                    continue; // PANEL_COLOR_CLEAR draws nothing without blending
-                float rgba[4];
-                decodeColor(color, rgba);
-                Vk_fillRect(s_cmdBuffer, drawW, drawH, px, py, pw, ph,
-                            rgba[0], rgba[1], rgba[2], rgba[3]);
-            }
-        }
+    if (s_frameRenderer) {
+        s_frameRenderer(s_cmdBuffer, (int)s_extent.width, (int)s_extent.height, s_frameRendererUserdata);
+    } else {
+        // Fallback spinning triangle
+        CmdBindPipeline_fn(s_cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_triPipeline);
+        VkViewport vp = {0, 0, (float)s_extent.width, (float)s_extent.height, 0.0f, 1.0f};
+        CmdSetViewport_fn(s_cmdBuffer, 0, 1, &vp);
+        VkRect2D sc = { .offset = {0, 0}, .extent = s_extent };
+        CmdSetScissor_fn(s_cmdBuffer, 0, 1, &sc);
+        CmdPushConstants_fn(s_cmdBuffer, s_triLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &uTime);
+        CmdDraw_fn(s_cmdBuffer, 3, 1, 0, 0);
     }
 
-    // Drawable complete; the pass leaves it in TRANSFER_SRC (finalLayout),
-    // one honest step short of PRESENT so the dump can read in between.
     CmdEndRenderPass_fn(s_cmdBuffer);
 
-    // Availability hand-off: color writes must be visible to the transfers
-    // that follow (dump copy, and layout walk to present).
+    // 3. Availability hand-off: color writes -> transfer (for dump) / present
     VkImageMemoryBarrier drawDone = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
     drawDone.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     drawDone.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    drawDone.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    drawDone.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     drawDone.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     drawDone.image = s_swapchainImages[imageIndex];
     drawDone.subresourceRange = toPrep.subresourceRange;
@@ -1928,9 +1410,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
         }
     }
 
-    // Walk TRANSFER_SRC -> PRESENT_SRC. The desktop indirection is gone:
-    // there is no window blit, no intersection law, nothing left to glue —
-    // the drawable has been the only canvas since step 1.
+    // 4. Walk TRANSFER_SRC -> PRESENT_SRC
     VkImageMemoryBarrier toPresent = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
     toPresent.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     toPresent.dstAccessMask = 0;
@@ -1943,7 +1423,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
 
     EndCommandBuffer_fn(s_cmdBuffer);
 
-    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo si = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
     si.waitSemaphoreCount = 1;
     si.pWaitSemaphores = &s_semAcquire;
@@ -1952,8 +1432,6 @@ static bool presentFrameTail(uint32_t imageIndex) {
     si.pCommandBuffers = &s_cmdBuffer;
     si.signalSemaphoreCount = 1;
     si.pSignalSemaphores = &s_semRender;
-    // Arm the fence for THIS frame at the last possible moment: every bail
-    // path above has already returned with the fence still signaled.
     ResetFences_fn(s_device, 1, &s_fence);
     QueueSubmit_fn(s_queue, 1, &si, s_fence);
 
@@ -1966,10 +1444,6 @@ static bool presentFrameTail(uint32_t imageIndex) {
     VkResult pr = QueuePresentKHR_fn(s_queue, &pi);
     if (pr == VK_ERROR_OUT_OF_DATE_KHR || pr == VK_SUBOPTIMAL_KHR) {
         if (pr == VK_ERROR_OUT_OF_DATE_KHR) {
-            // Present hit a dead chain (resize landed between acquire and
-            // present). Force next tick through rebuildTargets even if the
-            // extent check would pass — otherwise a chain killed at the END
-            // of a resize never recovers: dead screen until the next resize.
             s_appliedRenderGen = 0;
         }
         return pr == VK_SUBOPTIMAL_KHR;

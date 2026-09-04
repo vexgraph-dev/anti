@@ -6,24 +6,13 @@
 #include <vulkan/vulkan.h>
 #include "annotation/platform_exclusive.h"
 #include "annotation/intention.h"
-#include "vulkan/vk_iosurface.h"
-#include "window/window.h"
-#include "darling/panel.h"
 
-// Forward declaration for VkIOSurface (defined in vk_iosurface.c).
-typedef struct VkIOSurface VkIOSurface;
+// Forward declaration for opaque Window handle (defined in hotcwap/window/window.h).
+typedef struct Window Window;
 
 // vulkan/vulkan_mac.h — macOS-specific Vulkan backend functions.
 ;;PLATFORM_EXCLUSIVE("Mac")
-;;INTENTION("MoltenVK loader, CAMetalLayer surface creation, IOSurface render pass, and IOSurface child rendering for macOS.")
-
-// IOSurface child state: wraps a PanelCocoa's IOSurface for Vulkan rendering.
-struct IOSurfaceChild {
-    Panel *panel;
-    VkIOSurface *surf; // VkImage = IOSurfaceRef
-    VkFramebuffer fb;
-    bool valid;
-};
+;;INTENTION("MoltenVK loader, CAMetalLayer surface creation, and device accessors for macOS.")
 
 // Accessors for cross-platform state owned by vulkan.c.
 extern VkDevice Vk_getDevice(void);
@@ -33,6 +22,10 @@ extern VkPipeline Vk_getTriPipeline(void);
 extern VkPipelineLayout Vk_getTriLayout(void);
 extern uint64_t Vk_getAnimStartNanos(void);
 extern PFN_vkGetDeviceProcAddr Vk_getGdpa(void);
+extern VkInstance Vk_getInstance(void);
+extern PFN_vkGetInstanceProcAddr Vk_getGpa(void);
+extern VkPhysicalDevice Vk_getPhys(void);
+extern uint32_t Vk_getQueueFamily(void);
 
 // Load a Vulkan device function pointer dynamically.
 #define MAC_LOAD_DEVICE(name) \
@@ -48,24 +41,13 @@ void *VkMac_loadLib(void);
 bool VkMac_createSurface(Window *window, VkInstance instance,
                          PFN_vkGetInstanceProcAddr gpa, VkSurfaceKHR *outSurface);
 
-// Ensure the IOSurface render pass exists.
+// Ensure the BGRA8 offscreen/IOSurface render pass exists.
 bool VkMac_ensureIOSurfacePass(void);
 
-// Get the IOSurface render pass (call VkMac_ensureIOSurfacePass first).
+// Get the BGRA8 offscreen/IOSurface render pass (call VkMac_ensureIOSurfacePass first).
 VkRenderPass VkMac_getIOSurfacePass(void);
-
-// Render a panel child into an IOSurface.
-void VkMac_renderChildToIOSurface(Panel *child, void *surface, int w, int h);
-
-// Render content panel children into IOSurfaces.
-void VkMac_renderNativeContent(Window *window, Panel *contentPanel,
-                               int winW, int winH, float kx, float ky,
-                               bool *outNativeContent);
 
 // Resize render trampoline (no-op on macOS; Vulkan has its own worker thread).
 void VkMac_resizeRenderTrampoline(void *userdata);
-
-// Cleanup IOSurface state. Called from vulkan.c destroyTargets().
-void VkMac_cleanupIOSurfaceState(void);
 
 #endif

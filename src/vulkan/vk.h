@@ -34,6 +34,13 @@ bool Vk_ready(void);
 // follows Window_getPresentMode(window).
 bool Vk_clearPresent(void);
 
+// Frame render callback hook invoked inside swapchain render pass.
+typedef void (*VkFrameRenderFn)(void *cmdBuffer, int drawW, int drawH, void *userdata);
+void Vk_setFrameRenderer(VkFrameRenderFn fn, void *userdata);
+
+// Set swapchain background clear color (0.0f - 1.0f RGBA).
+void Vk_setClearColor(float r, float g, float b, float a);
+
 // Human-readable stop point of the last init attempt ("ok", "no loader", ...).
 const char *Vk_status(void);
 
