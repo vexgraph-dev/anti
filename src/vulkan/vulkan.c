@@ -693,6 +693,17 @@ static void destroyTargets(void) {
     if (s_swapchain != VK_NULL_HANDLE && DestroySwapchainKHR_fn)
         DestroySwapchainKHR_fn(s_device, s_swapchain, nullptr);
     s_swapchain = VK_NULL_HANDLE;
+
+    if (s_sdfPipeline != VK_NULL_HANDLE) {
+        VK_LOAD_DEVICE_VOID(DestroyPipeline)
+        if (DestroyPipeline_fn) DestroyPipeline_fn(s_device, s_sdfPipeline, nullptr);
+        s_sdfPipeline = VK_NULL_HANDLE;
+    }
+    if (s_sdfLayout != VK_NULL_HANDLE) {
+        VK_LOAD_DEVICE_VOID(DestroyPipelineLayout)
+        if (DestroyPipelineLayout_fn) DestroyPipelineLayout_fn(s_device, s_sdfLayout, nullptr);
+        s_sdfLayout = VK_NULL_HANDLE;
+    }
 }
 
 bool Vk_ready(void) {
@@ -1183,60 +1194,6 @@ static bool buildPipelines(void) {
     cbai.commandBufferCount = 1;
     AllocateCommandBuffers_fn(s_device, &cbai, &s_cmdBuffer);
 
-
-    // --- sdf pipeline ---
-    VkShaderModule sdfVertMod = createShaderModule("text_sdf_vert.spv", nullptr);
-    VkShaderModule sdfFragMod = createShaderModule("text_sdf_frag.spv", nullptr);
-    if (sdfVertMod == VK_NULL_HANDLE || sdfFragMod == VK_NULL_HANDLE) { snprintf(s_status, sizeof(s_status), "sdf shader missing"); return false; }
-
-    VkPushConstantRange sdfPcr = {0};
-    sdfPcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    sdfPcr.offset = 0;
-    sdfPcr.size = 64; // up to offset 48 + 16 (vec4) = 64 bytes
-
-    VkPipelineLayoutCreateInfo sdfLci = { .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    sdfLci.pushConstantRangeCount = 1;
-    sdfLci.pPushConstantRanges = &sdfPcr;
-    extern void *Texture_getDescriptorSetLayout(void);
-    VkDescriptorSetLayout setLayout = (VkDescriptorSetLayout)Texture_getDescriptorSetLayout();
-    sdfLci.setLayoutCount = 1;
-    sdfLci.pSetLayouts = &setLayout;
-
-    if (CreatePipelineLayout_fn(s_device, &sdfLci, nullptr, &s_sdfLayout) != VK_SUCCESS) return false;
-    
-    // Copy the quad stages/pci struct which were just initialized above
-    VkPipelineShaderStageCreateInfo sdfStages[2] = {{0}, {0}};
-    sdfStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    sdfStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-    sdfStages[0].module = sdfVertMod;
-    sdfStages[0].pName = "main";
-    sdfStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    sdfStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    sdfStages[1].module = sdfFragMod;
-    sdfStages[1].pName = "main";
-    
-    VkPipelineColorBlendAttachmentState sdfBlend = blend;
-    sdfBlend.blendEnable = VK_TRUE;
-    sdfBlend.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    sdfBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    sdfBlend.colorBlendOp = VK_BLEND_OP_ADD;
-    sdfBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    sdfBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    sdfBlend.alphaBlendOp = VK_BLEND_OP_ADD;
-
-    VkPipelineColorBlendStateCreateInfo sdfCb = cb;
-    sdfCb.pAttachments = &sdfBlend;
-
-    VkGraphicsPipelineCreateInfo sdfPci = qpci; // Inherit qpci defaults
-    sdfPci.stageCount = 2;
-    sdfPci.pStages = sdfStages;
-    sdfPci.layout = s_sdfLayout;
-    sdfPci.pColorBlendState = &sdfCb;
-    
-    if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &sdfPci, nullptr, &s_sdfPipeline) != VK_SUCCESS) return false;
-    
-    // Note: createShaderModule leaves cleanup to vkDestroyShaderModule during Vk_shutdown.
-    // The engine's style here doesn't clean them up early, so we leave them intact.
     s_pipelinesBuilt = true;
     return true;
 }
@@ -1623,13 +1580,115 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
     CmdDraw_fn(cb, 6, 1, 0, 0);
 }
 
+static bool ensureSdfPipeline(void) {
+    if (s_sdfPipeline != VK_NULL_HANDLE) return true;
+    if (s_device == VK_NULL_HANDLE) return false;
+
+    extern void *Texture_getDescriptorSetLayout(void);
+    VkDescriptorSetLayout setLayout = (VkDescriptorSetLayout) Texture_getDescriptorSetLayout();
+    if (setLayout == VK_NULL_HANDLE) return false;
+
+    VkShaderModule sdfVertMod = createShaderModule("text_sdf_vert.spv", nullptr);
+    VkShaderModule sdfFragMod = createShaderModule("text_sdf_frag.spv", nullptr);
+    if (sdfVertMod == VK_NULL_HANDLE || sdfFragMod == VK_NULL_HANDLE) return false;
+
+    VK_LOAD_DEVICE(CreatePipelineLayout)
+    VK_LOAD_DEVICE(CreateGraphicsPipelines)
+
+    VkPushConstantRange sdfPcr = {0};
+    sdfPcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    sdfPcr.offset = 0;
+    sdfPcr.size = 64;
+
+    VkPipelineLayoutCreateInfo sdfLci = { .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    sdfLci.pushConstantRangeCount = 1;
+    sdfLci.pPushConstantRanges = &sdfPcr;
+    sdfLci.setLayoutCount = 1;
+    sdfLci.pSetLayouts = &setLayout;
+
+    if (CreatePipelineLayout_fn(s_device, &sdfLci, nullptr, &s_sdfLayout) != VK_SUCCESS) return false;
+
+    VkPipelineShaderStageCreateInfo sdfStages[2] = {{0}, {0}};
+    sdfStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    sdfStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    sdfStages[0].module = sdfVertMod;
+    sdfStages[0].pName = "main";
+    sdfStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    sdfStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    sdfStages[1].module = sdfFragMod;
+    sdfStages[1].pName = "main";
+
+    VkPipelineVertexInputStateCreateInfo vi = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+    VkPipelineInputAssemblyStateCreateInfo ia = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkPipelineViewportStateCreateInfo vp = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+    vp.viewportCount = 1;
+    vp.scissorCount = 1;
+    VkPipelineRasterizationStateCreateInfo rs = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    rs.polygonMode = VK_POLYGON_MODE_FILL;
+    rs.cullMode = VK_CULL_MODE_NONE;
+    rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rs.lineWidth = 1.0f;
+    VkPipelineMultisampleStateCreateInfo ms = { .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    VkPipelineColorBlendAttachmentState sdfBlend = {0};
+    sdfBlend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                            | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    sdfBlend.blendEnable = VK_TRUE;
+    sdfBlend.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    sdfBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    sdfBlend.colorBlendOp = VK_BLEND_OP_ADD;
+    sdfBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    sdfBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    sdfBlend.alphaBlendOp = VK_BLEND_OP_ADD;
+
+    VkPipelineColorBlendStateCreateInfo sdfCb = { .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+    sdfCb.attachmentCount = 1;
+    sdfCb.pAttachments = &sdfBlend;
+
+    VkDynamicState dynStates[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo ds = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    ds.dynamicStateCount = 2;
+    ds.pDynamicStates = dynStates;
+
+    VkRenderPass targetPass = s_drawablePass;
+    if (targetPass == VK_NULL_HANDLE) {
+        extern bool VkMac_ensureIOSurfacePass(void);
+        extern VkRenderPass VkMac_getIOSurfacePass(void);
+        if (VkMac_ensureIOSurfacePass()) {
+            targetPass = VkMac_getIOSurfacePass();
+        }
+    }
+
+    VkGraphicsPipelineCreateInfo sdfPci = { .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+    sdfPci.stageCount = 2;
+    sdfPci.pStages = sdfStages;
+    sdfPci.pVertexInputState = &vi;
+    sdfPci.pInputAssemblyState = &ia;
+    sdfPci.pViewportState = &vp;
+    sdfPci.pRasterizationState = &rs;
+    sdfPci.pMultisampleState = &ms;
+    sdfPci.pColorBlendState = &sdfCb;
+    sdfPci.pDynamicState = &ds;
+    sdfPci.layout = s_sdfLayout;
+    sdfPci.renderPass = targetPass;
+    sdfPci.subpass = 0;
+
+    if (CreateGraphicsPipelines_fn(s_device, VK_NULL_HANDLE, 1, &sdfPci, nullptr, &s_sdfPipeline) != VK_SUCCESS) {
+        s_sdfPipeline = VK_NULL_HANDLE;
+        return false;
+    }
+    return true;
+}
+
 void Vk_drawSDFText(void *cmdBuffer, float surfaceW, float surfaceH,
                     float x, float y, float w, float h,
                     float r, float g, float b, float a,
                     int32_t textureId, float bold, float smoothness,
                     float u0, float v0, float u1, float v1) {
-    if (s_sdfPipeline == VK_NULL_HANDLE) return;
-    VkCommandBuffer cb = (VkCommandBuffer)cmdBuffer;
+    if (!ensureSdfPipeline()) return;
+    VkCommandBuffer cb = (VkCommandBuffer) cmdBuffer;
 
     VK_LOAD_DEVICE_VOID(CmdBindPipeline)
     VK_LOAD_DEVICE_VOID(CmdPushConstants)
@@ -1692,8 +1751,8 @@ void Vk_drawColorGlyph(void *cmdBuffer, float surfaceW, float surfaceH,
                        float x, float y, float w, float h, float alpha,
                        int32_t textureId,
                        float u0, float v0, float u1, float v1) {
-    if (s_sdfPipeline == VK_NULL_HANDLE) return;
-    VkCommandBuffer cb = (VkCommandBuffer)cmdBuffer;
+    if (!ensureSdfPipeline()) return;
+    VkCommandBuffer cb = (VkCommandBuffer) cmdBuffer;
 
     VK_LOAD_DEVICE_VOID(CmdBindPipeline)
     VK_LOAD_DEVICE_VOID(CmdPushConstants)
@@ -1705,7 +1764,7 @@ void Vk_drawColorGlyph(void *cmdBuffer, float surfaceW, float surfaceH,
     CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_sdfPipeline);
 
     extern void *Texture_getDescriptorSet(void);
-    VkDescriptorSet bindlessSet = (VkDescriptorSet)Texture_getDescriptorSet();
+    VkDescriptorSet bindlessSet = (VkDescriptorSet) Texture_getDescriptorSet();
     CmdBindDescriptorSets_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_sdfLayout, 0, 1, &bindlessSet, 0, nullptr);
 
     float px = x, py = y;
