@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Probable (objects/probable.c)
+ * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Core subsystem implementation for Probable.
  *

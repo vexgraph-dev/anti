@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Local (objects/local.c)
+ * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Thread-local variable slot array object wrapper.
  *

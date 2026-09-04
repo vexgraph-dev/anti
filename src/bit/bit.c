@@ -23,6 +23,7 @@
 /**
  * ============================================================================
  * MODULE: Bit (bit/bit.c)
+ * LEVEL: L4 — Self-Management (lockless memory-pool allocator)
  * ============================================================================
  * lockless bit-width pool API (Legacy: bit/Bit64.java).
  *

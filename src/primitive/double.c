@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Double (primitive/double.c)
+ * LEVEL: L2 — Behavior (primitive behavior API)
  * ============================================================================
  * Double primitive (Legacy: primitive/Double.java).
  *

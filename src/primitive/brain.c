@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Brain (primitive/brain.c)
+ * LEVEL: L2 — Behavior (primitive behavior API)
  * ============================================================================
  * Brain primitive (Legacy: primitive/Brain.java).
  *

@@ -7,6 +7,7 @@
 /**
  * ============================================================================
  * MODULE: Field (oop/field.c)
+ * LEVEL: L1 — File Metadata (field descriptor record)
  * ============================================================================
  * Field descriptor (one column in a Class).
  *

@@ -9,6 +9,7 @@
 /**
  * ============================================================================
  * MODULE: Collection (struct/collection.c)
+ * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the Collection metadata struct, ported from
  *

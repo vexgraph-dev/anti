@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Logparser (io/logparser.c)
+ * LEVEL: L2 — Behavior (I/O behavior API)
  * ============================================================================
  * the LogParser class, ported from io/LogParser.java.
  *

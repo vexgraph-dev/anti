@@ -7,6 +7,7 @@
 /**
  * ============================================================================
  * MODULE: Frame_buffer (buffer/frame_buffer.c)
+ * LEVEL: L2 — Behavior (raster buffer behavior API)
  * ============================================================================
  * 4-channel composite frame buffer / render target.
  *

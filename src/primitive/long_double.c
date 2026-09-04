@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Long_double (primitive/long_double.c)
+ * LEVEL: L2 — Behavior (primitive behavior API)
  * ============================================================================
  * LongDouble primitive (Legacy: primitive/LongDouble.java).
  *

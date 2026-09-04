@@ -11,6 +11,7 @@
 /**
  * ============================================================================
  * MODULE: Equals (c23/equals.c)
+ * LEVEL: L2 — Behavior (relational runtime behavior)
  * ============================================================================
  * Relational equality: the C answer to Java `.equals()`. Identity first,
  * then Memory headers (type + length must match), then the Class schema

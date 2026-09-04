@@ -16,6 +16,7 @@
 /**
  * ============================================================================
  * MODULE: Json (net/json.c)
+ * LEVEL: L2 — Behavior (JSON document behavior API)
  * ============================================================================
  * off-heap JSON documents (Legacy: net/JSON.java).
  *

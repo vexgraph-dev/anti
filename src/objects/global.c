@@ -11,6 +11,7 @@
 /**
  * ============================================================================
  * MODULE: Global (objects/global.c)
+ * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Atomic global pointer/variable object wrapper.
  *

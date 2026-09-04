@@ -11,6 +11,7 @@
 /**
  * ============================================================================
  * MODULE: Display_monitor (system/display_monitor.c)
+ * LEVEL: L2 — Behavior (system query behavior API)
  * ============================================================================
  * single display monitor representation (Legacy: system/DisplayMonitor.java)
  *

@@ -9,6 +9,7 @@
 /**
  * ============================================================================
  * MODULE: Graphics_info (system/graphics_info.c)
+ * LEVEL: L2 — Behavior (system query behavior API)
  * ============================================================================
  * GPU and graphics capabilities query (Legacy: system/GraphicsInfo.java)
  *

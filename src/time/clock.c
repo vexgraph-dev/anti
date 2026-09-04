@@ -14,6 +14,7 @@
 /**
  * ============================================================================
  * MODULE: Clock (time/clock.c)
+ * LEVEL: L2 — Behavior (time behavior API)
  * ============================================================================
  * the virtual clock (Legacy: time/Clock.java).
  *

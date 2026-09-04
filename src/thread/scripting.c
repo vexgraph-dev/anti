@@ -9,6 +9,7 @@
 /**
  * ============================================================================
  * MODULE: Scripting (thread/scripting.c)
+ * LEVEL: L2 — Behavior (worker-thread behavior API)
  * ============================================================================
  * the scripting worker (Legacy: ScriptingThread.java).
  *

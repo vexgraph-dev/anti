@@ -13,6 +13,7 @@
 /**
  * ============================================================================
  * MODULE: Netfacade (net/netfacade.c)
+ * LEVEL: L2 — Behavior (net behavior API)
  * ============================================================================
  * the combined conveniences promised by net/net.h.
  *

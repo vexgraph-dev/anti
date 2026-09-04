@@ -11,6 +11,7 @@
 /**
  * ============================================================================
  * MODULE: Audio_stub (audio/audio_stub.c)
+ * LEVEL: L2 — Behavior (audio behavior API)
  * ============================================================================
  * the silence backend for platforms without the Cocoa
  *

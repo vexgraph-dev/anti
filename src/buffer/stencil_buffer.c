@@ -7,6 +7,7 @@
 /**
  * ============================================================================
  * MODULE: Stencil_buffer (buffer/stencil_buffer.c)
+ * LEVEL: L2 — Behavior (raster buffer behavior API)
  * ============================================================================
  * 1-channel 8-bit stencil masking buffer.
  *

@@ -9,6 +9,7 @@
 /**
  * ============================================================================
  * MODULE: Height_buffer (buffer/height_buffer.c)
+ * LEVEL: L2 — Behavior (raster buffer behavior API)
  * ============================================================================
  * 1-channel terrain/displacement elevation buffer.
  *

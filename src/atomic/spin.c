@@ -23,6 +23,7 @@
 /**
  * ============================================================================
  * MODULE: Spin (atomic/spin.c)
+ * LEVEL: L4 — Self-Management (spinlock sync primitive)
  * ============================================================================
  * spinlock API (Legacy: thread/SpinLock.java).
  *

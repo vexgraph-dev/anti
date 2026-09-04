@@ -9,6 +9,7 @@
 /**
  * ============================================================================
  * MODULE: Draw (thread/draw.c)
+ * LEVEL: L2 — Behavior (worker-thread behavior API)
  * ============================================================================
  * the rendering worker pool (Legacy: DrawThread.java).
  *

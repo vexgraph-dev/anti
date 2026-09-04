@@ -14,6 +14,7 @@
 /**
  * ============================================================================
  * MODULE: Touchid_cocoa (objc/touchid_cocoa.m)
+ * LEVEL: L4 — Self-Management (native biometric OS shim)
  * ============================================================================
  * macOS LocalAuthentication bridge for TouchID.
  *

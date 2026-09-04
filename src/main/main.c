@@ -77,6 +77,7 @@
 /**
  * ============================================================================
  * MODULE: AntiRuntimeDemo (src/main/main.c — headless `anti` harness)
+ * LEVEL: L3 — Module Code (headless demo harness)
  * ============================================================================
  * End-to-end demo tying the C23 subsystems together with no window:
  * 4 producer threads race 25 jobs each into a shared MPMC ring while a

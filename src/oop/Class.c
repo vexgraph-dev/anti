@@ -11,6 +11,7 @@
 /**
  * ============================================================================
  * MODULE: Class (oop/Class.c)
+ * LEVEL: L1 — File Metadata (class schema registry)
  * ============================================================================
  * Dynamic Class Schema Engine (Legacy: oop/Fields, now Class).
  *

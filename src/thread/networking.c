@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Networking (thread/networking.c)
+ * LEVEL: L2 — Behavior (worker-thread behavior API)
  * ============================================================================
  * the networking worker (Legacy: NetworkingThread.java).
  *

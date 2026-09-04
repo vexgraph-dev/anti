@@ -14,6 +14,7 @@
 /**
  * ============================================================================
  * MODULE: Thread (thread/thread.c)
+ * LEVEL: L2 — Behavior (worker-thread behavior API)
  * ============================================================================
  * the worker-thread engine (Legacy: the six *Thread.java
  *

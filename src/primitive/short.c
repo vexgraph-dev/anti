@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Short (primitive/short.c)
+ * LEVEL: L2 — Behavior (primitive behavior API)
  * ============================================================================
  * Short primitive (Legacy: primitive/Short.java).
  *

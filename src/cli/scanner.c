@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Scanner (cli/scanner.c)
+ * LEVEL: L2 — Behavior (CLI behavior API)
  * ============================================================================
  * the Scanner class, ported from cli/Scanner.java.
  *

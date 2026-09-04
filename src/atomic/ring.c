@@ -21,6 +21,7 @@
 /**
  * ============================================================================
  * MODULE: Ring (atomic/ring.c)
+ * LEVEL: L4 — Self-Management (MPMC ring sync primitive)
  * ============================================================================
  * MPMC ring buffer API (Legacy: thread/RingBuffer.java).
  *

@@ -11,6 +11,7 @@
 /**
  * ============================================================================
  * MODULE: Future (objects/future.c)
+ * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Asynchronous single-assignment Future object wrapper.
  *

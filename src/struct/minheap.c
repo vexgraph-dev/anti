@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Minheap (struct/minheap.c)
+ * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the MinHeap class, ported from struct/MinHeap.java.
  *

@@ -8,6 +8,7 @@
 /**
  * ============================================================================
  * MODULE: Fastmath (lang/fastmath.c)
+ * LEVEL: L2 — Behavior (math behavior API)
  * ============================================================================
  * the FastMath class, ported from lang/FastMath.java.
  *

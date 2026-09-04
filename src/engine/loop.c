@@ -14,6 +14,7 @@
 /**
  * ============================================================================
  * MODULE: Loop (engine/loop.c)
+ * LEVEL: L2 — Behavior (engine loop behavior)
  * ============================================================================
  * the engine loop API (Legacy: engine/EngineLoop.java).
  *

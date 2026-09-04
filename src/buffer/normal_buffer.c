@@ -9,6 +9,7 @@
 /**
  * ============================================================================
  * MODULE: Normal_buffer (buffer/normal_buffer.c)
+ * LEVEL: L2 — Behavior (raster buffer behavior API)
  * ============================================================================
  * 3-channel (XYZ) surface/view normals buffer.
  *

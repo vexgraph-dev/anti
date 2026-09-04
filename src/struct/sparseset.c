@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Sparseset (struct/sparseset.c)
+ * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the SparseSet class, ported from struct/SparseSet.java.
  *

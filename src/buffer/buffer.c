@@ -11,6 +11,7 @@
 /**
  * ============================================================================
  * MODULE: Buffer (buffer/buffer.c)
+ * LEVEL: L2 — Behavior (raster buffer behavior API)
  * ============================================================================
  * Core 2D multi-channel raster buffer engine.
  *

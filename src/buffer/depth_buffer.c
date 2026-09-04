@@ -9,6 +9,7 @@
 /**
  * ============================================================================
  * MODULE: Depth_buffer (buffer/depth_buffer.c)
+ * LEVEL: L2 — Behavior (raster buffer behavior API)
  * ============================================================================
  * 1-channel floating-point depth buffer.
  *

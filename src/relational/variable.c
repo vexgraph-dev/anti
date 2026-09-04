@@ -14,6 +14,7 @@
 /**
  * ============================================================================
  * MODULE: Variable (relational/variable.c)
+ * LEVEL: L2 — Behavior (relational behavior API)
  * ============================================================================
  * the relational symbol registry (Legacy: variable/Variable.java).
  *

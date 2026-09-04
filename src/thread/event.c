@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Event (thread/event.c)
+ * LEVEL: L2 — Behavior (worker-thread behavior API)
  * ============================================================================
  * the event dispatcher worker (Legacy: EventThread.java).
  *

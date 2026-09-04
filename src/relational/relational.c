@@ -11,6 +11,7 @@
 /**
  * ============================================================================
  * MODULE: Relational (relational/relational.c)
+ * LEVEL: L2 — Behavior (relational behavior API)
  * ============================================================================
  * spotlight relational facade over Variable (Legacy: relational/RelationalEngine.java).
  *

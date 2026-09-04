@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: String (primitive/string.c)
+ * LEVEL: L2 — Behavior (primitive behavior API)
  * ============================================================================
  * the string class, ported from primitive/string.java.
  *

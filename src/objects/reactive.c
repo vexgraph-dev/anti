@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Reactive (objects/reactive.c)
+ * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Event-driven Reactive object wrapper.
  *

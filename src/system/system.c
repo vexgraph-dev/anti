@@ -12,6 +12,7 @@
 /**
  * ============================================================================
  * MODULE: System (system/system.c)
+ * LEVEL: L2 — Behavior (system query behavior API)
  * ============================================================================
  * Unified native system information, discovery, and display subsystem
  *

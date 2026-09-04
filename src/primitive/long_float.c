@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Long_float (primitive/long_float.c)
+ * LEVEL: L2 — Behavior (primitive behavior API)
  * ============================================================================
  * LongFloat primitive (Legacy: primitive/LongFloat.java).
  *

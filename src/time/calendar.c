@@ -13,6 +13,7 @@
 /**
  * ============================================================================
  * MODULE: Calendar (time/calendar.c)
+ * LEVEL: L2 — Behavior (time behavior API)
  * ============================================================================
  * stateless date arithmetic (Legacy: time/Calendar.java).
  *

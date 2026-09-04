@@ -8,6 +8,7 @@
 /**
  * ============================================================================
  * MODULE: Tls_apple (objc/tls_apple.m)
+ * LEVEL: L4 — Self-Management (native TLS platform backend)
  * ============================================================================
  * native Apple TLS backend (Network.framework).
  *

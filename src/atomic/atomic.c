@@ -19,6 +19,7 @@
 /**
  * ============================================================================
  * MODULE: Atomic (atomic/atomic.c)
+ * LEVEL: L4 — Self-Management (atomic variables/synchronization)
  * ============================================================================
  * atomic variables & synchronization (Legacy: thread/Atomic.java).
  *

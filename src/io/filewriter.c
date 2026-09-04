@@ -9,6 +9,7 @@
 /**
  * ============================================================================
  * MODULE: Filewriter (io/filewriter.c)
+ * LEVEL: L2 — Behavior (I/O behavior API)
  * ============================================================================
  * the FileWriter class, ported from io/FileWriter.java.
  *

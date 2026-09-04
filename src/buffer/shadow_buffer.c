@@ -7,6 +7,7 @@
 /**
  * ============================================================================
  * MODULE: Shadow_buffer (buffer/shadow_buffer.c)
+ * LEVEL: L2 — Behavior (raster buffer behavior API)
  * ============================================================================
  * 1-channel shadow depth cascade buffer.
  *

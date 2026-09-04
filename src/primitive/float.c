@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Float (primitive/float.c)
+ * LEVEL: L2 — Behavior (primitive behavior API)
  * ============================================================================
  * Float primitive (Legacy: primitive/Float.java).
  *

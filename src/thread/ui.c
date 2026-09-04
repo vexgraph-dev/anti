@@ -9,6 +9,7 @@
 /**
  * ============================================================================
  * MODULE: Ui (thread/ui.c)
+ * LEVEL: L2 — Behavior (worker-thread behavior API)
  * ============================================================================
  * the UI worker (Legacy: UIThread.java).
  *

@@ -26,6 +26,7 @@
 /**
  * ============================================================================
  * MODULE: Mouse (input/mouse.c)
+ * LEVEL: L2 — Behavior (input behavior API)
  * ============================================================================
  * mouse buttons, position, and event stream
  *

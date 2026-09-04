@@ -11,6 +11,7 @@
 /**
  * ============================================================================
  * MODULE: Stack (struct/stack.c)
+ * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the Stack class, ported from struct/Stack.java. LIFO over a
  *

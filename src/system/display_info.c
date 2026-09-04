@@ -9,6 +9,7 @@
 /**
  * ============================================================================
  * MODULE: Display_info (system/display_info.c)
+ * LEVEL: L2 — Behavior (system query behavior API)
  * ============================================================================
  * global display subsystem query (Legacy: system/DisplayInfo.java)
  *

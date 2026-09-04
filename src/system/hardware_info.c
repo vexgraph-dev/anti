@@ -9,6 +9,7 @@
 /**
  * ============================================================================
  * MODULE: Hardware_info (system/hardware_info.c)
+ * LEVEL: L2 — Behavior (system query behavior API)
  * ============================================================================
  * host hardware information query (Legacy: system/HardwareInfo.java)
  *

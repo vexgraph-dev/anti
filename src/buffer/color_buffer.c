@@ -7,6 +7,7 @@
 /**
  * ============================================================================
  * MODULE: Color_buffer (buffer/color_buffer.c)
+ * LEVEL: L2 — Behavior (raster buffer behavior API)
  * ============================================================================
  * 4-channel RGBA color buffer.
  *

@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Passive (objects/passive.c)
+ * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Lazy-evaluated / computed Passive object wrapper.
  *

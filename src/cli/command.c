@@ -11,6 +11,7 @@
 /**
  * ============================================================================
  * MODULE: Command (cli/command.c)
+ * LEVEL: L2 — Behavior (CLI behavior API)
  * ============================================================================
  * the Command class, ported from cli/Command.java.
  *

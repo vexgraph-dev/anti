@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Long (primitive/long.c)
+ * LEVEL: L2 — Behavior (primitive behavior API)
  * ============================================================================
  * Long primitive (Legacy: primitive/Long.java).
  *

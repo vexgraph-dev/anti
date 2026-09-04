@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Struct (oop/struct.c)
+ * LEVEL: L2 — Behavior (struct allocation behavior)
  * ============================================================================
  * Dynamic Struct Instance & Allocation Engine.
  *

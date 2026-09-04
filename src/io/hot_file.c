@@ -5,6 +5,7 @@
 /**
  * ============================================================================
  * MODULE: Hot_file (io/hot_file.c)
+ * LEVEL: L4 — Self-Management (OS file-watch loader infra)
  * ============================================================================
  * OS-level file monitoring and hot-reloading architecture
  *

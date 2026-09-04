@@ -5,6 +5,7 @@
 /**
  * ============================================================================
  * MODULE: Type (oop/type.c)
+ * LEVEL: L1 — File Metadata (type-id metadata registry)
  * ============================================================================
  * the TypeRegister, ported from oop/TypeRegister.java.
  *

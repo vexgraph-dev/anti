@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * MODULE: Int_double (primitive/int_double.c)
+ * LEVEL: L2 — Behavior (primitive behavior API)
  * ============================================================================
  * IntDouble primitive (Legacy: primitive/IntDouble.java).
  *

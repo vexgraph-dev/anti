@@ -11,6 +11,7 @@
 /**
  * ============================================================================
  * MODULE: Vexhome (io/vexhome.c)
+ * LEVEL: L2 — Behavior (I/O behavior API)
  * ============================================================================
  * the VexHome class (was AntiHome, renamed on the
  *
