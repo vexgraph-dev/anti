@@ -59,12 +59,18 @@ VkPhysicalDevice s_instancePhys;
 uint32_t s_instanceQueueFamily;
 
 static float s_clearColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+static VkPreFrameFn s_preFrameRenderer = nullptr;
 static VkFrameRenderFn s_frameRenderer = nullptr;
 static void *s_frameRendererUserdata = nullptr;
 
+void Vk_setPreFrameRenderer(VkPreFrameFn fn, void *userdata) {
+    s_preFrameRenderer = fn;
+    if (userdata) s_frameRendererUserdata = userdata;
+}
+
 void Vk_setFrameRenderer(VkFrameRenderFn fn, void *userdata) {
     s_frameRenderer = fn;
-    s_frameRendererUserdata = userdata;
+    if (userdata) s_frameRendererUserdata = userdata;
 }
 
 void Vk_setClearColor(float r, float g, float b, float a) {
@@ -722,6 +728,9 @@ void Vk_shutdown(void) {
     s_surface = VK_NULL_HANDLE;
     s_gpa = nullptr;
     s_gdpa = nullptr;
+    s_preFrameRenderer = nullptr;
+    s_frameRenderer = nullptr;
+    s_frameRendererUserdata = nullptr;
     snprintf(s_status, sizeof(s_status), "shutdown");
 }
 
@@ -1299,6 +1308,10 @@ static bool presentFrameLocked(void) {
         s_lastRebuildNs = 0;
     }
 
+    if (s_preFrameRenderer) {
+        s_preFrameRenderer(s_window, (int)s_extent.width, (int)s_extent.height, s_frameRendererUserdata);
+    }
+
     uint32_t imageIndex = 0;
     VkResult ar = AcquireNextImageKHR_fn(s_device, s_swapchain, 25000000ULL /* ~1 frame */,
                                          s_semAcquire, VK_NULL_HANDLE, &imageIndex);
@@ -1371,6 +1384,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
         VkRenderPassBeginInfo rbi2 = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
         rbi2.renderPass = s_drawablePass;
         rbi2.framebuffer = s_swapchainFbs[imageIndex];
+        rbi2.renderArea.offset = (VkOffset2D){0, 0};
         rbi2.renderArea.extent = s_extent;
         CmdBeginRenderPass_fn(s_cmdBuffer, &rbi2, VK_SUBPASS_CONTENTS_INLINE);
     }
@@ -1394,7 +1408,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
     VkImageMemoryBarrier drawDone = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
     drawDone.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     drawDone.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    drawDone.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    drawDone.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     drawDone.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     drawDone.image = s_swapchainImages[imageIndex];
     drawDone.subresourceRange = toPrep.subresourceRange;
@@ -1423,7 +1437,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
 
     EndCommandBuffer_fn(s_cmdBuffer);
 
-    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
     VkSubmitInfo si = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
     si.waitSemaphoreCount = 1;
     si.pWaitSemaphores = &s_semAcquire;

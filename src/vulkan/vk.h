@@ -34,6 +34,10 @@ bool Vk_ready(void);
 // follows Window_getPresentMode(window).
 bool Vk_clearPresent(void);
 
+// Pre-frame callback hook invoked before swapchain acquisition (e.g. offscreen passes).
+typedef void (*VkPreFrameFn)(Window *window, int drawW, int drawH, void *userdata);
+void Vk_setPreFrameRenderer(VkPreFrameFn fn, void *userdata);
+
 // Frame render callback hook invoked inside swapchain render pass.
 typedef void (*VkFrameRenderFn)(void *cmdBuffer, int drawW, int drawH, void *userdata);
 void Vk_setFrameRenderer(VkFrameRenderFn fn, void *userdata);
