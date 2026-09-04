@@ -22,10 +22,10 @@ crash-dump_*.txt
 .vscode/
 
 ### Legacy Java snapshot (mirror of origin/legacy-java, local only) ###
-legacy-java/
+../../legacy-java/
 
 ### Private / Teaching docs (personal material, not source) ###
-lessons/
+../../lessons/
 transition/
 *.md
 !README.md
@@ -38,10 +38,11 @@ regurgitation/
 tests/
 
 ### Private / agent-adjacent config ###
-legacy-java
+hot/
+../../legacy-java
 preferences/
 preferences*.local.txt
-preferences.txt
+../../preferences.txt
 code.txt
 debug_code.txt
 clipboard.png
