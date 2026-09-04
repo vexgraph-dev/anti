@@ -35,7 +35,7 @@ Command *CommandParser_parse(const char *line) {
     size_t argc = tokens - 1;
 
     uint8_t *name = nullptr;
-    uint8_t **args = argc > 0 ? (uint8_t **) calloc(argc, sizeof(uint8_t*)) : nullptr;
+    uint8_t **args = argc > 0 ? (uint8_t**) calloc(argc, sizeof(uint8_t*)) : nullptr;
     if (argc > 0 && !args)
         return nullptr;
 
