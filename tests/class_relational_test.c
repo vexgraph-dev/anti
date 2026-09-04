@@ -80,9 +80,9 @@ static void testRelationalSpotlight(void){
     // getValue / getFunction
     void *p = Relational_getValue(&global, "health_ui");
     CHECK(p != nullptr);
-    CHECK(strcmp(string_get((uint8_t*)p), "panel")==0);
+    CHECK(strcmp(string_get((uint8_t*) p), "panel")==0);
     // function pointer round-trip
-    void *fn = (void*)0x12345;
+    void *fn = (void*) 0x12345;
     Relational_setFunction(&global, "onUpdate", fn);
     CHECK(Relational_getFunction(&global, "onUpdate")==fn);
 
