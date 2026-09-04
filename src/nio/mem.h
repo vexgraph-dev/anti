@@ -28,6 +28,11 @@ typedef struct MemoryHeader {
     uint32_t slabIndex;
     uint32_t magic;
 } MemoryHeader;
+_Static_assert(sizeof(MemoryHeader) == 16, "MemoryHeader must stay 16 bytes");
+// 16-byte alignment holds by construction, not by attribute (this toolchain's
+// _Alignas rejects typedef application): master/slab arenas come from malloc
+// (16-aligned on arm64 macOS), every slot size and bump total is a multiple
+// of 16, so every payload pointer satisfies (u & 15) == 0 as mem.c guards.
 
 // Backward-compatibility struct alias
 typedef struct Block {

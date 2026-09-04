@@ -207,7 +207,7 @@ void Memory_free(void *userPtr) {
         return;
 
     uintptr_t u = (uintptr_t) userPtr;
-    if (u < sizeof(MemoryHeader) || (u & 7) != 0)
+    if (u < sizeof(MemoryHeader) || (u & 15) != 0)
         return;
 
     MemoryHeader *h = (MemoryHeader*) ((uint8_t*) userPtr - sizeof(MemoryHeader));
