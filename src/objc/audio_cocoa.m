@@ -219,7 +219,8 @@ void AudioVoice_play(AudioVoice *voice) {
     if (!voice || !(*voice).clip)
         return;
     @autoreleasepool {
-        AVAudioPCMBuffer *buf = (*(*voice).clip).buffer;
+        AudioClip *clip = (*voice).clip;
+        AVAudioPCMBuffer *buf = (*clip).buffer;
         AVAudioPlayerNodeBufferOptions opts = (*voice).looping
             ? AVAudioPlayerNodeBufferLoops
             : AVAudioPlayerNodeBufferInterrupts;
