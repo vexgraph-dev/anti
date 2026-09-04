@@ -69,4 +69,22 @@ uint32_t Memory_type(void *userPtr);
 // If outArray is not NULL, fills it with up to maxCount payload pointers.
 size_t Memory_findAll(uint32_t typeId, void **outArray, size_t maxCount);
 
+// Phase-4 instancing (Arena-B): the process-global allocator above is the
+// DEFAULT arena. Secondary arenas are fully isolated slab sets carved from
+// their own malloc — allocate in B, verify, free B, default untouched.
+// Headers are unchanged (16B, no arena tag), so this is ABI-stable: free
+// routes by address-range lookup across a small registry (default + 3).
+// Registration happens pre-threads; the hot path takes no extra locks.
+typedef struct MemoryArena MemoryArena;
+
+MemoryArena *MemoryArena_create(size_t totalBytes);
+void MemoryArena_destroy(MemoryArena *a);
+void *MemoryArena_alloc(MemoryArena *a, uint32_t typeId, size_t numBytes);
+void *MemoryArena_realloc(MemoryArena *a, void *userPtr, size_t newBytes);
+void MemoryArena_free(MemoryArena *a, void *userPtr);
+void MemoryArena_freeAll(MemoryArena *a);
+size_t MemoryArena_findAll(MemoryArena *a, uint32_t typeId, void **outArray, size_t maxCount);
+size_t MemoryArena_activeBytes(MemoryArena *a);
+size_t MemoryArena_capacity(MemoryArena *a);
+
 #endif

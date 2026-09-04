@@ -17,6 +17,9 @@
  * Anti Paradigm: zero steady-state malloc, cache-hot slot recycling, and
  * 16-byte negative pointer math.
  *
+ * Phase-4 instancing: globals are the DEFAULT MemoryArena; secondaries
+ * register for address-range free routing. Header layout untouched.
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:
@@ -28,6 +31,17 @@
  *   - Memory_length(userPtr)
  *   - Memory_type(userPtr)
  *   - Memory_findAll(typeId, outArray, maxCount)
+ *
+ * Arena Functions (Phase-4):
+ *   - MemoryArena_create(totalBytes)
+ *   - MemoryArena_destroy(a)
+ *   - MemoryArena_alloc(a, typeId, numBytes)
+ *   - MemoryArena_realloc(a, userPtr, newBytes)
+ *   - MemoryArena_free(a, userPtr)
+ *   - MemoryArena_freeAll(a)
+ *   - MemoryArena_findAll(a, typeId, outArray, maxCount)
+ *   - MemoryArena_activeBytes(a)
+ *   - MemoryArena_capacity(a)
  * ============================================================================
  */
 
@@ -35,6 +49,7 @@
 #define SLAB_LARGE 0xFFFFFFFFu
 #define SLAB_SYSTEM 0xFFFFFFFEu
 #define ANTI_ARENA_DEFAULT_SIZE (64 * 1024 * 1024) // 64 MB master arena
+#define ARENA_REGISTRY_MAX 4
 
 typedef struct FreeNode {
     struct FreeNode *next;
@@ -49,73 +64,24 @@ typedef struct SlabClass {
     SpinLock lock;
 } SlabClass;
 
-static SlabClass s_slabs[SLAB_COUNT] = {
-    { .slot_size = 64,   .capacity = 32768, .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 2 MB
-    { .slot_size = 128,  .capacity = 32768, .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 4 MB
-    { .slot_size = 256,  .capacity = 16384, .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 4 MB
-    { .slot_size = 512,  .capacity = 8192,  .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 4 MB
-    { .slot_size = 1024, .capacity = 4096,  .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 4 MB
-    { .slot_size = 2048, .capacity = 2048,  .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 4 MB
-    { .slot_size = 4096, .capacity = 2048,  .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 8 MB
+struct MemoryArena {
+    SlabClass slabs[SLAB_COUNT];
+    uint8_t *masterArena;
+    size_t masterCapacity;
+    uint8_t *bumpArena;
+    size_t bumpCapacity;
+    size_t bumpOffset;
+    SpinLock bumpLock;
+    SpinLock initLock;
+    bool live;
 };
 
-static uint8_t *s_masterArena = nullptr;
-static size_t s_masterCapacity = 0;
-static uint8_t *s_bumpArena = nullptr;
-static size_t s_bumpCapacity = 0;
-static size_t s_bumpOffset = 0;
-static SpinLock s_bumpLock = SPIN_LOCK_INIT;
-static SpinLock s_initLock = SPIN_LOCK_INIT;
+static uint32_t s_slabSizes[SLAB_COUNT] = { 64, 128, 256, 512, 1024, 2048, 4096 };
+static uint32_t s_slabCaps[SLAB_COUNT] = { 32768, 32768, 16384, 8192, 4096, 2048, 2048 };
 
-bool Memory_init(size_t totalBytes) {
-    SpinLock_lock(&s_initLock);
-    if (s_masterArena) {
-        SpinLock_unlock(&s_initLock);
-        return true;
-    }
-
-    size_t cap = totalBytes > 0 ? totalBytes : ANTI_ARENA_DEFAULT_SIZE;
-    s_masterArena = (uint8_t*) malloc(cap);
-    if (!s_masterArena) {
-        SpinLock_unlock(&s_initLock);
-        return false;
-    }
-    s_masterCapacity = cap;
-
-    uint8_t *cur = s_masterArena;
-    for (size_t s = 0; s < SLAB_COUNT; s++) {
-        SlabClass *slab = &s_slabs[s];
-        (*slab).arena = cur;
-        (*slab).free_head = nullptr;
-        (*slab).count = 0;
-        (*slab).lock = SPIN_LOCK_INIT;
-
-        uint32_t sz = (*slab).slot_size;
-        for (size_t i = (*slab).capacity; i > 0; i--) {
-            uint8_t *slot_ptr = (*slab).arena + (i - 1) * sz;
-            MemoryHeader *h = (MemoryHeader*) slot_ptr;
-            (*h).magic = 0;
-            FreeNode *node = (FreeNode*) (slot_ptr + sizeof(MemoryHeader));
-            (*node).next = (*slab).free_head;
-            (*slab).free_head = node;
-        }
-        cur += (size_t)(*slab).capacity * sz;
-    }
-
-    s_bumpArena = cur;
-    s_bumpCapacity = s_masterCapacity > (size_t)(cur - s_masterArena) ? (s_masterCapacity - (size_t)(cur - s_masterArena)) : 0;
-    s_bumpOffset = 0;
-    s_bumpLock = SPIN_LOCK_INIT;
-
-    SpinLock_unlock(&s_initLock);
-    return true;
-}
-
-static inline void ensure_initialized(void) {
-    if (!s_masterArena) {
-        Memory_init(ANTI_ARENA_DEFAULT_SIZE);
-    }
-}
+static MemoryArena s_default = {0};
+static MemoryArena *s_registry[ARENA_REGISTRY_MAX] = { &s_default, nullptr, nullptr, nullptr };
+static SpinLock s_registryLock = SPIN_LOCK_INIT;
 
 static inline int find_slab(size_t payload_bytes) {
     size_t needed = payload_bytes + sizeof(MemoryHeader);
@@ -129,14 +95,72 @@ static inline int find_slab(size_t payload_bytes) {
     return -1;
 }
 
-void *Memory_alloc(uint32_t typeId, size_t numBytes) {
+static void slab_template(SlabClass *slab, uint32_t idx) {
+    (*slab).slot_size = s_slabSizes[idx];
+    (*slab).capacity = s_slabCaps[idx];
+    (*slab).count = 0;
+    (*slab).arena = nullptr;
+    (*slab).free_head = nullptr;
+    (*slab).lock = SPIN_LOCK_INIT;
+}
+
+static bool arena_init(MemoryArena *a, size_t totalBytes) {
+    if (!a)
+        return false;
+    for (size_t s = 0; s < SLAB_COUNT; s++)
+        slab_template(&(*a).slabs[s], (uint32_t) s);
+    (*a).initLock = SPIN_LOCK_INIT;
+    (*a).bumpLock = SPIN_LOCK_INIT;
+    (*a).live = false;
+
+    size_t cap = totalBytes > 0 ? totalBytes : ANTI_ARENA_DEFAULT_SIZE;
+    uint8_t *master = (uint8_t*) malloc(cap);
+    if (!master)
+        return false;
+
+    uint8_t *cur = master;
+    size_t left = cap;
+    for (size_t s = 0; s < SLAB_COUNT; s++) {
+        SlabClass *slab = &(*a).slabs[s];
+        size_t need = (size_t)(*slab).capacity * (*slab).slot_size;
+        if (need > left) {
+            free(master);
+            return false;
+        }
+        (*slab).arena = cur;
+        (*slab).free_head = nullptr;
+        (*slab).count = 0;
+        uint32_t sz = (*slab).slot_size;
+        for (size_t i = (*slab).capacity; i > 0; i--) {
+            uint8_t *slot_ptr = (*slab).arena + (i - 1) * sz;
+            MemoryHeader *h = (MemoryHeader*) slot_ptr;
+            (*h).magic = 0;
+            FreeNode *node = (FreeNode*) (slot_ptr + sizeof(MemoryHeader));
+            (*node).next = (*slab).free_head;
+            (*slab).free_head = node;
+        }
+        cur += need;
+        left -= need;
+    }
+
+    (*a).masterArena = master;
+    (*a).masterCapacity = cap;
+    (*a).bumpArena = cur;
+    (*a).bumpCapacity = left;
+    (*a).bumpOffset = 0;
+    (*a).live = true;
+    return true;
+}
+
+static void *arena_alloc(MemoryArena *a, uint32_t typeId, size_t numBytes) {
+    if (!a || !(*a).live)
+        return nullptr;
     if (numBytes > UINT32_MAX)
         return nullptr;
-    ensure_initialized();
 
     int s_idx = find_slab(numBytes);
     if (s_idx >= 0) {
-        SlabClass *slab = &s_slabs[s_idx];
+        SlabClass *slab = &(*a).slabs[s_idx];
         SpinLock_lock(&(*slab).lock);
         FreeNode *node = (*slab).free_head;
         if (node) {
@@ -156,15 +180,14 @@ void *Memory_alloc(uint32_t typeId, size_t numBytes) {
         }
     }
 
-    // Large allocation from bump arena (or slab fallback)
     size_t aligned_len = (numBytes + 15) & ~15ull;
     size_t total = sizeof(MemoryHeader) + aligned_len;
 
-    SpinLock_lock(&s_bumpLock);
-    if (s_bumpOffset + total <= s_bumpCapacity) {
-        uint8_t *slot_ptr = s_bumpArena + s_bumpOffset;
-        s_bumpOffset += total;
-        SpinLock_unlock(&s_bumpLock);
+    SpinLock_lock(&(*a).bumpLock);
+    if ((*a).bumpOffset + total <= (*a).bumpCapacity) {
+        uint8_t *slot_ptr = (*a).bumpArena + (*a).bumpOffset;
+        (*a).bumpOffset += total;
+        SpinLock_unlock(&(*a).bumpLock);
 
         MemoryHeader *h = (MemoryHeader*) slot_ptr;
         (*h).typeId = typeId;
@@ -173,9 +196,8 @@ void *Memory_alloc(uint32_t typeId, size_t numBytes) {
         (*h).magic = MEMORY_MAGIC;
         return (void*) (slot_ptr + sizeof(MemoryHeader));
     }
-    SpinLock_unlock(&s_bumpLock);
+    SpinLock_unlock(&(*a).bumpLock);
 
-    // Overflow fallback for assets exceeding master arena
     uint8_t *raw = (uint8_t*) malloc(total);
     if (!raw)
         return nullptr;
@@ -186,6 +208,108 @@ void *Memory_alloc(uint32_t typeId, size_t numBytes) {
     (*h).slabIndex = SLAB_SYSTEM;
     (*h).magic = MEMORY_MAGIC;
     return (void*) (raw + sizeof(MemoryHeader));
+}
+
+static void arena_free(MemoryArena *a, void *userPtr) {
+    if (!a || !userPtr)
+        return;
+
+    uintptr_t u = (uintptr_t) userPtr;
+    if (u < sizeof(MemoryHeader) || (u & 15) != 0)
+        return;
+
+    MemoryHeader *h = (MemoryHeader*) ((uint8_t*) userPtr - sizeof(MemoryHeader));
+    if ((*h).magic != MEMORY_MAGIC)
+        return;
+
+    uint32_t s_idx = (*h).slabIndex;
+    if (s_idx < SLAB_COUNT) {
+        (*h).magic = 0;
+        SlabClass *slab = &(*a).slabs[s_idx];
+        FreeNode *node = (FreeNode*) userPtr;
+
+        SpinLock_lock(&(*slab).lock);
+        (*node).next = (*slab).free_head;
+        (*slab).free_head = node;
+        if ((*slab).count > 0)
+            (*slab).count--;
+        SpinLock_unlock(&(*slab).lock);
+    } else if (s_idx == SLAB_LARGE) {
+        (*h).magic = 0;
+    } else if (s_idx == SLAB_SYSTEM) {
+        (*h).magic = 0;
+        free((void*) h);
+    }
+}
+
+static void arena_freeAll(MemoryArena *a) {
+    if (!a || !(*a).live)
+        return;
+
+    for (size_t s = 0; s < SLAB_COUNT; s++) {
+        SlabClass *slab = &(*a).slabs[s];
+        SpinLock_lock(&(*slab).lock);
+        (*slab).free_head = nullptr;
+        (*slab).count = 0;
+
+        uint32_t sz = (*slab).slot_size;
+        for (size_t i = (*slab).capacity; i > 0; i--) {
+            uint8_t *slot_ptr = (*slab).arena + (i - 1) * sz;
+            MemoryHeader *h = (MemoryHeader*) slot_ptr;
+            (*h).magic = 0;
+            FreeNode *node = (FreeNode*) (slot_ptr + sizeof(MemoryHeader));
+            (*node).next = (*slab).free_head;
+            (*slab).free_head = node;
+        }
+        SpinLock_unlock(&(*slab).lock);
+    }
+
+    SpinLock_lock(&(*a).bumpLock);
+    (*a).bumpOffset = 0;
+    SpinLock_unlock(&(*a).bumpLock);
+}
+
+// Free-routing: headers carry no arena tag (ABI-stable by design), so the
+// owner is whoever's master range contains the header. SLAB_SYSTEM blocks
+// are malloc-fallback and free directly. Registry writes happen at
+// create/destroy (pre-threads); reads are lock-free.
+static MemoryArena *arena_for(void *userPtr) {
+    if (!userPtr)
+        return &s_default;
+    MemoryHeader *h = (MemoryHeader*) ((uint8_t*) userPtr - sizeof(MemoryHeader));
+    if ((*h).magic != MEMORY_MAGIC)
+        return nullptr;
+    if ((*h).slabIndex == SLAB_SYSTEM)
+        return nullptr;
+    uint8_t *slot = (uint8_t*) h;
+    for (size_t i = 0; i < ARENA_REGISTRY_MAX; i++) {
+        MemoryArena *a = s_registry[i];
+        if (a && (*a).live && slot >= (*a).masterArena && slot < (*a).masterArena + (*a).masterCapacity)
+            return a;
+    }
+    // Valid magic but no live owner: destroyed arena or foreign block.
+    // Never touch the default freelist with a foreign node pointer.
+    return nullptr;
+}
+
+static inline void ensure_initialized(void) {
+    if (!s_default.live)
+        Memory_init(ANTI_ARENA_DEFAULT_SIZE);
+}
+
+bool Memory_init(size_t totalBytes) {
+    SpinLock_lock(&s_default.initLock);
+    if (s_default.live) {
+        SpinLock_unlock(&s_default.initLock);
+        return true;
+    }
+    SpinLock_unlock(&s_default.initLock);
+    return arena_init(&s_default, totalBytes);
+}
+
+void *Memory_alloc(uint32_t typeId, size_t numBytes) {
+    ensure_initialized();
+    return arena_alloc(&s_default, typeId, numBytes);
 }
 
 void *Memory_realloc(void *userPtr, size_t newBytes) {
@@ -206,60 +330,22 @@ void *Memory_realloc(void *userPtr, size_t newBytes) {
 void Memory_free(void *userPtr) {
     if (!userPtr)
         return;
-
-    uintptr_t u = (uintptr_t) userPtr;
-    if (u < sizeof(MemoryHeader) || (u & 15) != 0)
-        return;
-
     MemoryHeader *h = (MemoryHeader*) ((uint8_t*) userPtr - sizeof(MemoryHeader));
     if ((*h).magic != MEMORY_MAGIC)
         return;
-
-    uint32_t s_idx = (*h).slabIndex;
-    if (s_idx < SLAB_COUNT) {
-        (*h).magic = 0; // Poison magic immediately to guard against double-free
-        SlabClass *slab = &s_slabs[s_idx];
-        FreeNode *node = (FreeNode*) userPtr;
-
-        SpinLock_lock(&(*slab).lock);
-        (*node).next = (*slab).free_head;
-        (*slab).free_head = node;
-        if ((*slab).count > 0)
-            (*slab).count--;
-        SpinLock_unlock(&(*slab).lock);
-    } else if (s_idx == SLAB_LARGE) {
-        (*h).magic = 0; // Reclaimed during Memory_freeAll
-    } else if (s_idx == SLAB_SYSTEM) {
+    if ((*h).slabIndex == SLAB_SYSTEM) {
         (*h).magic = 0;
         free((void*) h);
+        return;
     }
+    MemoryArena *a = arena_for(userPtr);
+    if (!a)
+        return;
+    arena_free(a, userPtr);
 }
 
 void Memory_freeAll(void) {
-    if (!s_masterArena)
-        return;
-
-    for (size_t s = 0; s < SLAB_COUNT; s++) {
-        SlabClass *slab = &s_slabs[s];
-        SpinLock_lock(&(*slab).lock);
-        (*slab).free_head = nullptr;
-        (*slab).count = 0;
-
-        uint32_t sz = (*slab).slot_size;
-        for (size_t i = (*slab).capacity; i > 0; i--) {
-            uint8_t *slot_ptr = (*slab).arena + (i - 1) * sz;
-            MemoryHeader *h = (MemoryHeader*) slot_ptr;
-            (*h).magic = 0;
-            FreeNode *node = (FreeNode*) (slot_ptr + sizeof(MemoryHeader));
-            (*node).next = (*slab).free_head;
-            (*slab).free_head = node;
-        }
-        SpinLock_unlock(&(*slab).lock);
-    }
-
-    SpinLock_lock(&s_bumpLock);
-    s_bumpOffset = 0;
-    SpinLock_unlock(&s_bumpLock);
+    arena_freeAll(&s_default);
 }
 
 size_t Memory_length(void *userPtr) {
@@ -293,12 +379,92 @@ uint32_t Memory_type(void *userPtr) {
 }
 
 size_t Memory_findAll(uint32_t typeId, void **outArray, size_t maxCount) {
+    return MemoryArena_findAll(&s_default, typeId, outArray, maxCount);
+}
+
+MemoryArena *MemoryArena_create(size_t totalBytes) {
+    MemoryArena *a = (MemoryArena*) calloc(1, sizeof(MemoryArena));
+    if (!a)
+        return nullptr;
+    if (!arena_init(a, totalBytes)) {
+        free(a);
+        return nullptr;
+    }
+    SpinLock_lock(&s_registryLock);
+    bool placed = false;
+    for (size_t i = 1; i < ARENA_REGISTRY_MAX; i++) {
+        if (!s_registry[i]) {
+            s_registry[i] = a;
+            placed = true;
+            break;
+        }
+    }
+    SpinLock_unlock(&s_registryLock);
+    if (!placed) {
+        free((*a).masterArena);
+        free(a);
+        return nullptr;
+    }
+    return a;
+}
+
+void MemoryArena_destroy(MemoryArena *a) {
+    if (!a || a == &s_default)
+        return;
+    SpinLock_lock(&s_registryLock);
+    for (size_t i = 1; i < ARENA_REGISTRY_MAX; i++) {
+        if (s_registry[i] == a)
+            s_registry[i] = nullptr;
+    }
+    SpinLock_unlock(&s_registryLock);
+    (*a).live = false;
+    free((*a).masterArena);
+    (*a).masterArena = nullptr;
+    free(a);
+}
+
+void *MemoryArena_alloc(MemoryArena *a, uint32_t typeId, size_t numBytes) {
+    if (!a)
+        return nullptr;
+    return arena_alloc(a, typeId, numBytes);
+}
+
+void *MemoryArena_realloc(MemoryArena *a, void *userPtr, size_t newBytes) {
+    if (!a)
+        return nullptr;
+    if (!userPtr)
+        return arena_alloc(a, 0, newBytes);
+
+    uint32_t typeId = Memory_type(userPtr);
+    size_t oldLen = Memory_length(userPtr);
+    void *next = arena_alloc(a, typeId, newBytes);
+    if (!next)
+        return nullptr;
+
+    memcpy(next, userPtr, oldLen < newBytes ? oldLen : newBytes);
+    Memory_free(userPtr);
+    return next;
+}
+
+void MemoryArena_free(MemoryArena *a, void *userPtr) {
+    if (!a)
+        return;
+    arena_free(a, userPtr);
+}
+
+void MemoryArena_freeAll(MemoryArena *a) {
+    if (!a)
+        return;
+    arena_freeAll(a);
+}
+
+size_t MemoryArena_findAll(MemoryArena *a, uint32_t typeId, void **outArray, size_t maxCount) {
     size_t count = 0;
-    if (!s_masterArena)
+    if (!a || !(*a).live)
         return 0;
 
     for (size_t s = 0; s < SLAB_COUNT; s++) {
-        SlabClass *slab = &s_slabs[s];
+        SlabClass *slab = &(*a).slabs[s];
         SpinLock_lock(&(*slab).lock);
         uint32_t sz = (*slab).slot_size;
         for (size_t i = 0; i < (*slab).capacity; i++) {
@@ -316,4 +482,26 @@ size_t Memory_findAll(uint32_t typeId, void **outArray, size_t maxCount) {
         SpinLock_unlock(&(*slab).lock);
     }
     return count;
+}
+
+size_t MemoryArena_activeBytes(MemoryArena *a) {
+    size_t total = 0;
+    if (!a || !(*a).live)
+        return 0;
+    for (size_t s = 0; s < SLAB_COUNT; s++) {
+        SlabClass *slab = &(*a).slabs[s];
+        SpinLock_lock(&(*slab).lock);
+        total += (size_t)(*slab).count * (*slab).slot_size;
+        SpinLock_unlock(&(*slab).lock);
+    }
+    SpinLock_lock(&(*a).bumpLock);
+    total += (*a).bumpOffset;
+    SpinLock_unlock(&(*a).bumpLock);
+    return total;
+}
+
+size_t MemoryArena_capacity(MemoryArena *a) {
+    if (!a)
+        return 0;
+    return (*a).masterCapacity;
 }
