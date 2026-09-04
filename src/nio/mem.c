@@ -1,94 +1,199 @@
 #include "nio/mem.h"
-
-#include <stdlib.h>
-#include <string.h>
+#include "annotation/overview.h"
 #include "atomic/spin.h"
 
-// mem.c — ForeignMemory port. The lens of all things: every byte in the
-// engine is reached through a block that knows its own type + length.
-//
-// Layout of one allocation (userPtr points at the aligned payload):
-//
-//     [ prev ][ next ][ typeId ][ length ][ pad ][ payload ... ]
-//     `----------------- 32-byte header -----------------'
-//
-// Memory_alloc returns the payload pointer. Walking back 32 bytes gives the
-// header, so Memory_type()/Memory_length() cost nothing — just a subtract.
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
-static const size_t HEADER_SIZE = 32;
-static const size_t ALIGN = 8;
-#define MEMORY_BLOCK_MAGIC 0x5645585F4D454D21ULL
+;;OVERVIEW
+/**
+ * ============================================================================
+ * CLASS: ForeignMemory (nio/mem)
+ * ============================================================================
+ * Pre-allocated Master Arena and Size-Class Slab Allocator fulfilling the
+ * Anti Paradigm: zero steady-state malloc, cache-hot slot recycling, and
+ * 16-byte negative pointer math.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Memory_init(totalBytes)
+ *   - Memory_alloc(typeId, numBytes)
+ *   - Memory_realloc(userPtr, newBytes)
+ *   - Memory_free(userPtr)
+ *   - Memory_freeAll(void)
+ *   - Memory_length(userPtr)
+ *   - Memory_type(userPtr)
+ *   - Memory_findAll(typeId, outArray, maxCount)
+ * ============================================================================
+ */
 
-static Block *s_head = nullptr;
-static SpinLock s_lock = SPIN_LOCK_INIT;
+#define SLAB_COUNT 7
+#define SLAB_LARGE 0xFFFFFFFFu
+#define SLAB_SYSTEM 0xFFFFFFFEu
+#define ANTI_ARENA_DEFAULT_SIZE (64 * 1024 * 1024) // 64 MB master arena
 
-static inline bool is_valid_pointer(const void *userPtr) {
-    if (!userPtr)
+typedef struct FreeNode {
+    struct FreeNode *next;
+} FreeNode;
+
+typedef struct SlabClass {
+    uint32_t slot_size;
+    uint32_t capacity;
+    uint32_t count;
+    uint8_t *arena;
+    FreeNode *free_head;
+    SpinLock lock;
+} SlabClass;
+
+static SlabClass s_slabs[SLAB_COUNT] = {
+    { .slot_size = 64,   .capacity = 32768, .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 2 MB
+    { .slot_size = 128,  .capacity = 32768, .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 4 MB
+    { .slot_size = 256,  .capacity = 16384, .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 4 MB
+    { .slot_size = 512,  .capacity = 8192,  .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 4 MB
+    { .slot_size = 1024, .capacity = 4096,  .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 4 MB
+    { .slot_size = 2048, .capacity = 2048,  .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 4 MB
+    { .slot_size = 4096, .capacity = 2048,  .count = 0, .arena = nullptr, .free_head = nullptr, .lock = SPIN_LOCK_INIT }, // 8 MB
+};
+
+static uint8_t *s_masterArena = nullptr;
+static size_t s_masterCapacity = 0;
+static uint8_t *s_bumpArena = nullptr;
+static size_t s_bumpCapacity = 0;
+static size_t s_bumpOffset = 0;
+static SpinLock s_bumpLock = SPIN_LOCK_INIT;
+static SpinLock s_initLock = SPIN_LOCK_INIT;
+
+bool Memory_init(size_t totalBytes) {
+    SpinLock_lock(&s_initLock);
+    if (s_masterArena) {
+        SpinLock_unlock(&s_initLock);
+        return true;
+    }
+
+    size_t cap = totalBytes > 0 ? totalBytes : ANTI_ARENA_DEFAULT_SIZE;
+    s_masterArena = (uint8_t*) malloc(cap);
+    if (!s_masterArena) {
+        SpinLock_unlock(&s_initLock);
         return false;
-    uintptr_t u = (uintptr_t) userPtr;
-    if (u < HEADER_SIZE)
-        return false;
-    if ((u & (ALIGN - 1)) != 0)
-        return false;
+    }
+    s_masterCapacity = cap;
+
+    uint8_t *cur = s_masterArena;
+    for (size_t s = 0; s < SLAB_COUNT; s++) {
+        SlabClass *slab = &s_slabs[s];
+        (*slab).arena = cur;
+        (*slab).free_head = nullptr;
+        (*slab).count = 0;
+        (*slab).lock = SPIN_LOCK_INIT;
+
+        uint32_t sz = (*slab).slot_size;
+        for (size_t i = (*slab).capacity; i > 0; i--) {
+            uint8_t *slot_ptr = (*slab).arena + (i - 1) * sz;
+            MemoryHeader *h = (MemoryHeader*) slot_ptr;
+            (*h).magic = 0;
+            FreeNode *node = (FreeNode*) (slot_ptr + sizeof(MemoryHeader));
+            (*node).next = (*slab).free_head;
+            (*slab).free_head = node;
+        }
+        cur += (size_t)(*slab).capacity * sz;
+    }
+
+    s_bumpArena = cur;
+    s_bumpCapacity = s_masterCapacity > (size_t)(cur - s_masterArena) ? (s_masterCapacity - (size_t)(cur - s_masterArena)) : 0;
+    s_bumpOffset = 0;
+    s_bumpLock = SPIN_LOCK_INIT;
+
+    SpinLock_unlock(&s_initLock);
     return true;
 }
 
-static bool is_block_owned_locked(const Block *target) {
-    for (Block *curr = s_head; curr; curr = (*curr).next) {
-        if (curr == target)
-            return true;
+static inline void ensure_initialized(void) {
+    if (!s_masterArena) {
+        Memory_init(ANTI_ARENA_DEFAULT_SIZE);
     }
-    return false;
 }
 
-// Allocate a block, stamp the type, align the payload, return the payload.
-void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
-    // Fail closed: Block.length is uint32_t, so reject anything that truncates.
+static inline int find_slab(size_t payload_bytes) {
+    size_t needed = payload_bytes + sizeof(MemoryHeader);
+    if (needed <= 64)   return 0;
+    if (needed <= 128)  return 1;
+    if (needed <= 256)  return 2;
+    if (needed <= 512)  return 3;
+    if (needed <= 1024) return 4;
+    if (needed <= 2048) return 5;
+    if (needed <= 4096) return 6;
+    return -1;
+}
+
+void *Memory_alloc(uint32_t typeId, size_t numBytes) {
     if (numBytes > UINT32_MAX)
         return nullptr;
-    // Fail closed on size_t overflow.
-    size_t total;
-    if (__builtin_add_overflow(HEADER_SIZE, numBytes, &total))
-        return nullptr;
-    if (__builtin_add_overflow(total, (ALIGN - 1), &total))
-        return nullptr;
-    // stamp the payload
-    unsigned char *raw = malloc(total);
+    ensure_initialized();
 
+    int s_idx = find_slab(numBytes);
+    if (s_idx >= 0) {
+        SlabClass *slab = &s_slabs[s_idx];
+        SpinLock_lock(&(*slab).lock);
+        FreeNode *node = (*slab).free_head;
+        if (node) {
+            (*slab).free_head = (*node).next;
+            (*slab).count++;
+        }
+        SpinLock_unlock(&(*slab).lock);
+
+        if (node) {
+            uint8_t *slot_ptr = (uint8_t*) node - sizeof(MemoryHeader);
+            MemoryHeader *h = (MemoryHeader*) slot_ptr;
+            (*h).typeId = typeId;
+            (*h).length = (uint32_t) numBytes;
+            (*h).slabIndex = (uint32_t) s_idx;
+            (*h).magic = MEMORY_MAGIC;
+            return (void*) node;
+        }
+    }
+
+    // Large allocation from bump arena (or slab fallback)
+    size_t aligned_len = (numBytes + 15) & ~15ull;
+    size_t total = sizeof(MemoryHeader) + aligned_len;
+
+    SpinLock_lock(&s_bumpLock);
+    if (s_bumpOffset + total <= s_bumpCapacity) {
+        uint8_t *slot_ptr = s_bumpArena + s_bumpOffset;
+        s_bumpOffset += total;
+        SpinLock_unlock(&s_bumpLock);
+
+        MemoryHeader *h = (MemoryHeader*) slot_ptr;
+        (*h).typeId = typeId;
+        (*h).length = (uint32_t) numBytes;
+        (*h).slabIndex = SLAB_LARGE;
+        (*h).magic = MEMORY_MAGIC;
+        return (void*) (slot_ptr + sizeof(MemoryHeader));
+    }
+    SpinLock_unlock(&s_bumpLock);
+
+    // Overflow fallback for assets exceeding master arena
+    uint8_t *raw = (uint8_t*) malloc(total);
     if (!raw)
         return nullptr;
 
-    // Align the payload to 8 bytes so doubles/pointers sit naturally.
-    // Assuming malloc returns >= 8-byte alignment, hdr will exactly equal raw.
-    uintptr_t aligned = (uintptr_t) (raw + HEADER_SIZE);
-    aligned = (aligned + ALIGN - 1) & ~(ALIGN - 1);
-
-    Block *hdr = (Block*) (aligned - HEADER_SIZE);
-    (*hdr).typeId = typeId;
-    (*hdr).length = (uint32_t) numBytes;
-    (*hdr).pad = MEMORY_BLOCK_MAGIC;
-
-    SpinLock_lock(&s_lock);
-    (*hdr).prev = nullptr;
-    (*hdr).next = s_head;
-    if (s_head)
-        (*s_head).prev = hdr;
-    s_head = hdr;
-    SpinLock_unlock(&s_lock);
-
-    // return the payload, its like a pointer of that allocated memory
-    return (void*) aligned;
+    MemoryHeader *h = (MemoryHeader*) raw;
+    (*h).typeId = typeId;
+    (*h).length = (uint32_t) numBytes;
+    (*h).slabIndex = SLAB_SYSTEM;
+    (*h).magic = MEMORY_MAGIC;
+    return (void*) (raw + sizeof(MemoryHeader));
 }
 
-// Grow/shrink: allocate new, copy min(old,new) bytes, free old.
 void *Memory_realloc(void *userPtr, size_t newBytes) {
     if (!userPtr)
-        return nullptr;
+        return Memory_alloc(0, newBytes);
+
     uint32_t typeId = Memory_type(userPtr);
     size_t oldLen = Memory_length(userPtr);
-
     void *next = Memory_alloc(typeId, newBytes);
-
     if (!next)
         return nullptr;
 
@@ -98,88 +203,116 @@ void *Memory_realloc(void *userPtr, size_t newBytes) {
 }
 
 void Memory_free(void *userPtr) {
-    if (!is_valid_pointer(userPtr))
+    if (!userPtr)
         return;
-    Block *hdr = (Block*) ((unsigned char*) userPtr - HEADER_SIZE);
 
-    SpinLock_lock(&s_lock);
-    // Validate membership before touching hdr: a foreign/stack/BitPool
-    // pointer must not unlink arbitrary memory or reach free().
-    if (!is_block_owned_locked(hdr)) {
-        SpinLock_unlock(&s_lock);
+    uintptr_t u = (uintptr_t) userPtr;
+    if (u < sizeof(MemoryHeader) || (u & 7) != 0)
         return;
-    }
-    if ((*hdr).prev) {
-        Block *prev = (*hdr).prev;
-        (*prev).next = (*hdr).next;
-    } else {
-        s_head = (*hdr).next;
-    }
-        
-    if ((*hdr).next) {
-        Block *next = (*hdr).next;
-        (*next).prev = (*hdr).prev;
-    }
-    (*hdr).pad = 0;
-    SpinLock_unlock(&s_lock);
 
-    free(hdr);
+    MemoryHeader *h = (MemoryHeader*) ((uint8_t*) userPtr - sizeof(MemoryHeader));
+    if ((*h).magic != MEMORY_MAGIC)
+        return;
+
+    uint32_t s_idx = (*h).slabIndex;
+    if (s_idx < SLAB_COUNT) {
+        (*h).magic = 0; // Poison magic immediately to guard against double-free
+        SlabClass *slab = &s_slabs[s_idx];
+        FreeNode *node = (FreeNode*) userPtr;
+
+        SpinLock_lock(&(*slab).lock);
+        (*node).next = (*slab).free_head;
+        (*slab).free_head = node;
+        if ((*slab).count > 0)
+            (*slab).count--;
+        SpinLock_unlock(&(*slab).lock);
+    } else if (s_idx == SLAB_LARGE) {
+        (*h).magic = 0; // Reclaimed during Memory_freeAll
+    } else if (s_idx == SLAB_SYSTEM) {
+        (*h).magic = 0;
+        free((void*) h);
+    }
 }
 
 void Memory_freeAll(void) {
-    SpinLock_lock(&s_lock);
-    Block *curr = s_head;
-    s_head = nullptr;
-    SpinLock_unlock(&s_lock);
-    
-    while (curr) {
-        Block *next = (*curr).next;
-        (*curr).pad = 0;
-        free(curr);
-        curr = next;
+    if (!s_masterArena)
+        return;
+
+    for (size_t s = 0; s < SLAB_COUNT; s++) {
+        SlabClass *slab = &s_slabs[s];
+        SpinLock_lock(&(*slab).lock);
+        (*slab).free_head = nullptr;
+        (*slab).count = 0;
+
+        uint32_t sz = (*slab).slot_size;
+        for (size_t i = (*slab).capacity; i > 0; i--) {
+            uint8_t *slot_ptr = (*slab).arena + (i - 1) * sz;
+            MemoryHeader *h = (MemoryHeader*) slot_ptr;
+            (*h).magic = 0;
+            FreeNode *node = (FreeNode*) (slot_ptr + sizeof(MemoryHeader));
+            (*node).next = (*slab).free_head;
+            (*slab).free_head = node;
+        }
+        SpinLock_unlock(&(*slab).lock);
     }
+
+    SpinLock_lock(&s_bumpLock);
+    s_bumpOffset = 0;
+    SpinLock_unlock(&s_bumpLock);
 }
 
 size_t Memory_length(void *userPtr) {
-    if (!is_valid_pointer(userPtr))
+    if (!userPtr)
         return 0;
-    Block *hdr = (Block*) ((unsigned char*) userPtr - HEADER_SIZE);
-    SpinLock_lock(&s_lock);
-    if (!is_block_owned_locked(hdr)) {
-        SpinLock_unlock(&s_lock);
+
+    uintptr_t u = (uintptr_t) userPtr;
+    if (u < sizeof(MemoryHeader) || (u & 7) != 0)
         return 0;
+
+    const MemoryHeader *h = (const MemoryHeader*) ((const uint8_t*) userPtr - sizeof(MemoryHeader));
+    if ((*h).magic == MEMORY_MAGIC) {
+        return (size_t) (*h).length;
     }
-    size_t len = (size_t) (*hdr).length;
-    SpinLock_unlock(&s_lock);
-    return len;
+    return 0;
 }
 
 uint32_t Memory_type(void *userPtr) {
-    if (!is_valid_pointer(userPtr))
+    if (!userPtr)
         return 0;
-    Block *hdr = (Block*) ((unsigned char*) userPtr - HEADER_SIZE);
-    SpinLock_lock(&s_lock);
-    if (!is_block_owned_locked(hdr)) {
-        SpinLock_unlock(&s_lock);
+
+    uintptr_t u = (uintptr_t) userPtr;
+    if (u < sizeof(MemoryHeader) || (u & 7) != 0)
         return 0;
+
+    const MemoryHeader *h = (const MemoryHeader*) ((const uint8_t*) userPtr - sizeof(MemoryHeader));
+    if ((*h).magic == MEMORY_MAGIC) {
+        return (*h).typeId;
     }
-    uint32_t tid = (*hdr).typeId;
-    SpinLock_unlock(&s_lock);
-    return tid;
+    return 0;
 }
+
 size_t Memory_findAll(uint32_t typeId, void **outArray, size_t maxCount) {
     size_t count = 0;
-    SpinLock_lock(&s_lock);
-    Block *curr = s_head;
-    while (curr) {
-        if (typeId == 0 || (*curr).typeId == typeId) {
-            if (outArray && count < maxCount) {
-                outArray[count] = (void*) ((unsigned char*) curr + HEADER_SIZE);
+    if (!s_masterArena)
+        return 0;
+
+    for (size_t s = 0; s < SLAB_COUNT; s++) {
+        SlabClass *slab = &s_slabs[s];
+        SpinLock_lock(&(*slab).lock);
+        uint32_t sz = (*slab).slot_size;
+        for (size_t i = 0; i < (*slab).capacity; i++) {
+            uint8_t *slot_ptr = (*slab).arena + i * sz;
+            MemoryHeader *h = (MemoryHeader*) slot_ptr;
+            if ((*h).magic == MEMORY_MAGIC) {
+                if (typeId == 0 || (*h).typeId == typeId) {
+                    if (outArray && count < maxCount) {
+                        outArray[count] = (void*) (slot_ptr + sizeof(MemoryHeader));
+                    }
+                    count++;
+                }
             }
-            count++;
         }
-        curr = (*curr).next;
+        SpinLock_unlock(&(*slab).lock);
     }
-    SpinLock_unlock(&s_lock);
     return count;
 }

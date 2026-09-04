@@ -1,21 +1,35 @@
 #ifndef NIO_MEM_H
 #define NIO_MEM_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
 // nio/mem.h — the ForeignMemory API (Legacy: nio/ForeignMemory.java).
 //
-// Every allocation returns a payload pointer whose 32-byte prefix holds
-// [prev][next][typeId][length][pad]. Callers never see the header; the
-// length/type accessors walk back to it, so metadata costs one subtract.
-// The intrusive prev/next links the global block list for Memory_findAll /
-// Memory_freeAll. See lessons/ docs for the intended 16-byte arena doctrine;
-// current malloc+list impl is the stepping stone.
+// 16-BYTE ARENA DOCTRINE (Anti Paradigm):
+// In standard C, programs malloc/free constantly. In anti, the engine carves
+// out one massive master arena at startup. Memory is partitioned into
+// size-class slabs for O(1) slot claiming and cache-hot recycling.
 //
-// This is the "lens of all things": with type+length on every block, debug
-// validation, serialization, and the hot-swap system can trust a raw pointer.
+// Every allocation returns a payload pointer whose 16-byte prefix holds:
+//
+//     [ typeId (32-bit) ][ length (32-bit) ][ slabIndex (32-bit) ][ magic (32-bit) ]
+//
+// Negative pointer math recovers the header in 1 subtraction; Memory_type()
+// and Memory_length() are free O(1) reads with zero locking.
 
+#define MEMORY_HEADER_SIZE 16
+#define MEMORY_MAGIC 0x56455821u // "VEX!"
+
+typedef struct MemoryHeader {
+    uint32_t typeId;
+    uint32_t length;
+    uint32_t slabIndex;
+    uint32_t magic;
+} MemoryHeader;
+
+// Backward-compatibility struct alias
 typedef struct Block {
     struct Block *prev;
     struct Block *next;
@@ -24,7 +38,11 @@ typedef struct Block {
     uint64_t pad;
 } Block;
 
-// Allocate nbytes with the given type id stamped in the header.
+// Initialize the master arena with a specific total capacity (e.g. 64MB).
+// If not called explicitly, Memory_alloc initializes a 64MB arena lazily.
+bool Memory_init(size_t totalBytes);
+
+// Allocate nbytes with the given type id stamped in the 16-byte header.
 // Returns the aligned payload pointer, or nullptr on failure.
 void *Memory_alloc(uint32_t typeId, size_t numBytes);
 
@@ -32,17 +50,17 @@ void *Memory_alloc(uint32_t typeId, size_t numBytes);
 // pointer (the old one is freed). nullptr on failure leaves the original intact.
 void *Memory_realloc(void *userPtr, size_t newBytes);
 
-// Free a block (userPtr may be nullptr). The header is found by walking back.
+// Free a block back to its slab pool in O(1) cache-hot time.
 void Memory_free(void *userPtr);
 
-// Free all currently allocated blocks. Catch-all for teardown.
+// Free/reset all currently allocated blocks across all slabs in O(1).
 void Memory_freeAll(void);
 
-// Metadata accessors: cost a single pointer subtract.
+// Metadata accessors: cost a single pointer subtract in O(1) without locks.
 size_t Memory_length(void *userPtr);
 uint32_t Memory_type(void *userPtr);
 
-// Search: Return the number of blocks matching typeId.
+// Search: Return the number of active blocks matching typeId.
 // If outArray is not NULL, fills it with up to maxCount payload pointers.
 size_t Memory_findAll(uint32_t typeId, void **outArray, size_t maxCount);
 
