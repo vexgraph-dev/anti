@@ -39,7 +39,7 @@ Feel free to fork the code however or use it as inspiration for your own zero-al
 | External GUI/windowing libs (GLFW, SDL) | Pulls in C++/extra dependencies, contradicts the native backend. | `window.Window` — AppKit directly via Objective-C shim. |
 | Annotation marker written bare (e.g. `DRAFT`) | Style rule. | `;;DRAFT` — two semicolons prefix, nothing after. |
 | Rendering `contentPanel` into swapchain / double-rendering IOSurface panels | Violates layer order & No Double-Render law; `contentPanel` is placeholder only. | Only `TYPE_SCENE*` to swapchain; IOSurface children via `CALayer` (`Window_resizePanelIOSurface`). |
-| `IOSurface` / Vulkan size in logical points | Blurry on Retina. | `px = (int)(points * scale + 0.5f)`, `CALayer` frame in points, `contentsScale = 1.0`. |
+| `IOSurface` / Vulkan size in logical points | Blurry on Retina. | `px = (int)(points * scale + 0.5f)`, `CALayer` frame in points, `contentsScale = backingScaleFactor`. |
 | `IOSurface` panel without `contentsGravity`/`anchorPoint` from `selfAnchor` | Content drifts on live resize. | Set `contentsGravity`/`anchorPoint` per `selfAnchor` map + `geometryFlipped = YES`. |
 
 ---

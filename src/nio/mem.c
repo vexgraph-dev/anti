@@ -266,7 +266,7 @@ size_t Memory_length(void *userPtr) {
         return 0;
 
     uintptr_t u = (uintptr_t) userPtr;
-    if (u < sizeof(MemoryHeader) || (u & 7) != 0)
+    if (u < sizeof(MemoryHeader) || (u & 15) != 0)
         return 0;
 
     const MemoryHeader *h = (const MemoryHeader*) ((const uint8_t*) userPtr - sizeof(MemoryHeader));
@@ -281,7 +281,7 @@ uint32_t Memory_type(void *userPtr) {
         return 0;
 
     uintptr_t u = (uintptr_t) userPtr;
-    if (u < sizeof(MemoryHeader) || (u & 7) != 0)
+    if (u < sizeof(MemoryHeader) || (u & 15) != 0)
         return 0;
 
     const MemoryHeader *h = (const MemoryHeader*) ((const uint8_t*) userPtr - sizeof(MemoryHeader));
