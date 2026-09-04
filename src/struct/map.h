@@ -25,7 +25,7 @@ Map *Map_3(uint32_t key_class, uint32_t val_class, size_t capacity);
 
 void Map_free(Map *map);
 
-// Insert or update key->value. Grows (rehashes) past the 0.75 load factor.
+// Insert or update key => value. Grows (rehashes) past the 0.75 load factor.
 void Map_put(Map *map, uint64_t key, uint64_t value);
 
 // Value for key, or 0 if absent.

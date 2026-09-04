@@ -1,7 +1,7 @@
 // time/calendar.c — stateless date arithmetic (Legacy: time/Calendar.java port).
 //
 // addMonths/addYears shift the month/year fields and clip the day into the
-// target month (Jan 31 + 1 month -> Feb 28), then reconstitute the epoch via
+// target month (Jan 31 + 1 month => Feb 28), then reconstitute the epoch via
 // the inverse of Hinnant's civil-from-days algorithm — same as legacy.
 
 // should support calendar at 1500s i think? may regurgitate...
@@ -45,7 +45,7 @@ void Calendar_addDays(DateTime *dt, int32_t days) {
     setEpochMillis(dt, DateTime_epochMillis(dt) + (int64_t)days * 86400000LL);
 }
 
-// Inverse of Hinnant's algorithm: calendar fields -> UTC epoch millis.
+// Inverse of Hinnant's algorithm: calendar fields => UTC epoch millis.
 static int64_t toEpochMillis(int32_t year, int32_t month, int32_t day,
                              int32_t hour, int32_t minute, int32_t second,
                              int32_t millisecond) {
@@ -74,7 +74,7 @@ void Calendar_addMonths(DateTime *dt, int32_t months) {
     int32_t newYear = totalMonths / 12;
     int32_t newMonth = (totalMonths % 12) + 1;
 
-    // Clip day into the target month (Jan 31 + 1 month -> Feb 28).
+    // Clip day into the target month (Jan 31 + 1 month => Feb 28).
     int32_t maxDays = Calendar_daysInMonth(newYear, newMonth);
     int32_t newDay = day < maxDays ? day : maxDays;
 

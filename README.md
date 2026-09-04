@@ -131,7 +131,7 @@ cmake --build . --target anti
 == anti memory ==
 type=0x20000001 len=16
 == anti bit pool ==
-recycled a -> c=0x10199ec60 (same=1)
+recycled a => c=0x10199ec60 (same=1)
 == anti ring + spin + loop ==
 ...
 received=100/100 ticks=1

@@ -14,9 +14,9 @@
 //
 // Call sites read like Java:
 //
-//     Window *a = Window();                 // -> Window_0()
-//     Window *b = Window("main");           // -> Window_1("main")
-//     Window *c = Window("main", 800, 600); // -> Window_3(...)
+//     Window *a = Window();                 // => Window_0()
+//     Window *b = Window("main");           // => Window_1("main")
+//     Window *c = Window("main", 800, 600); // => Window_3(...)
 //
 // Dispatch is by ARG COUNT only. Type-based overloading (add(x, y) over
 // int/Vec3/Mat4) is a different problem and deliberately _out of scope here.

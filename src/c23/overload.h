@@ -16,8 +16,8 @@
 //                         //             dest LAST (preferences.md rule 9)
 //
 // Cells: scalars {int, long, float, double} route to the promotion family C
-// itself would pick (int+int stays int, anything+long stays long, +float ->
-// float, +double -> double); Vec2/3/4 pair with themselves (elementwise) and
+// itself would pick (int+int stays int, anything+long stays long, +float =>
+// float, +double => double); Vec2/3/4 pair with themselves (elementwise) and
 // with any scalar (broadcast, both orders — s-v and s/v included); mul
 // additionally carries Mat4*Mat4 and Mat4*Vec4. Anything else hits
 // ov_type_error: a loud compile error, never a silent wrong answer. The dest

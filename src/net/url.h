@@ -9,7 +9,7 @@
 // net/TransportProtocol.java). Everything writes into caller buffers and
 // reports what fit; nothing allocates.
 
-// Default ports per scheme ("https" -> 443, else 80).
+// Default ports per scheme ("https" => 443, else 80).
 int Url_defaultPort(const char *scheme);
 
 // Build "scheme://host[:port]/path" into _out. nullptr scheme/host/path fall

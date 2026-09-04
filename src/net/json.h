@@ -53,7 +53,7 @@ typedef struct JsonDoc {
     bool ok;               // parse result
 } JsonDoc;
 
-// Parse `text` (NUL-terminated) using caller storage. Returns doc->ok.
+// Parse `text` (NUL-terminated) using caller storage. Returns (*doc).ok.
 bool Json_parse(JsonDoc *doc, JsonNode *nodes, uint32_t nodeCap,
                 char *scratch, uint32_t scratchCap, const char *text);
 

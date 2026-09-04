@@ -32,8 +32,8 @@ void *Struct_allocateSOAFrom(const Fields *fields, size_t amount);
 void *Struct_allocateSOARaw(uint32_t generic, size_t amount);
 
 // Polymorphic Allocator (arity-dispatched via c23/constructor.h):
-//   Struct(x)         -> allocates singleton
-//   Struct(x, amount) -> allocates array of amount elements
+//   Struct(x)         => allocates singleton
+//   Struct(x, amount) => allocates array of amount elements
 #define Struct_1(...) Struct_allocateSingleton(__VA_ARGS__)
 #define Struct_2(...) Struct_allocateArray(__VA_ARGS__)
 #define Struct(...)   CONSTRUCTOR_DISPATCH(Struct, ##__VA_ARGS__)

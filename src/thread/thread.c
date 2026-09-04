@@ -25,7 +25,7 @@ typedef struct Thread {
 #define THREAD_TASK_SIZE sizeof(void*)
 #define THREAD_QUEUE_CAPACITY 2048
 
-// Central registry: handle address -> 1. Legacy used Map.put(workerPtr, 1L).
+// Central registry: handle address => 1. Legacy used Map.put(workerPtr, 1L).
 static Map *s_workers = nullptr;
 
 static void *platform_main(void *arg);

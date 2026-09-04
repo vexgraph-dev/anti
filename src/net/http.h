@@ -25,7 +25,7 @@ typedef struct HttpRequest {
     const char *scheme;   // "http" default, "https" requires TLS backend
     const char *method;   // "GET", "POST", ... default "GET"
     const char *host;     // required
-    int port;             // 0 -> 80
+    int port;             // 0 => 80
     const char *path;     // default "/"
     const HttpHeader *headers;
     uint32_t headerCount;
@@ -43,7 +43,7 @@ typedef struct HttpResponse {
     size_t bodyLen;
 } HttpResponse;
 
-// Execute one request. Fills resp; body is written into resp->body up to
+// Execute one request. Fills resp; body is written into (*resp).body up to
 // bodyCap and NUL-terminated when it fits.
 bool Http_perform(const HttpRequest *req, HttpResponse *resp);
 

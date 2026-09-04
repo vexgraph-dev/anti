@@ -39,7 +39,7 @@ bool Variable_init(Variable *v);
 // Release all memory. Safe to call twice.
 void Variable_shutdown(Variable *v);
 
-// Register name -> (classId, targetPointer), or update the payload if the name
+// Register name => (classId, targetPointer), or update the payload if the name
 // already exists. Returns the assigned var id, or -1 on invalid input.
 int32_t Variable_instant(Variable *v, const char *name, uint32_t classId, uintptr_t targetPointer);
 

@@ -125,7 +125,7 @@ static void on_quit_command(Command *command) {
 
 static void on_reactive_change(uint64_t oldVal, uint64_t newVal, void *userdata) {
     (void)userdata;
-    printf("reactive changed: %llu -> %llu\n", (unsigned long long)oldVal, (unsigned long long)newVal);
+    printf("reactive changed: %llu => %llu\n", (unsigned long long)oldVal, (unsigned long long)newVal);
 }
 
 static uint64_t passive_lazy_calc(void *userdata) {
@@ -403,7 +403,7 @@ int main(void) {
     Mat4_free(trs);
     Vec3_free(pt3);
 
-    // BitPool: allocation a, free a, allocate again -> the SAME address comes back.
+    // BitPool: allocation a, free a, allocate again => the SAME address comes back.
     printf("== anti bit pool ==\n");
     BitPool pool;
     BitPool_init(&pool, 8, 4);
@@ -412,7 +412,7 @@ int main(void) {
     printf("a=%p b=%p\n", a, b);
     BitPool_free(&pool, a);
     void *c = BitPool_alloc(&pool, TYPE_INT_SINGLETON);
-    printf("recycled a -> c=%p (same=%d)\n", c, c == a);
+    printf("recycled a => c=%p (same=%d)\n", c, c == a);
     BitPool_shutdown(&pool);
 
     // Variable: relational symbol registry — every name maps to a typed pointer.
@@ -508,7 +508,7 @@ int main(void) {
            (unsigned long long)Queue_pop(queue), (unsigned long long)Queue_pop(queue));
     Queue_free(queue);
 
-    // Map: open-addressing int -> int.
+    // Map: open-addressing int => int.
     printf("== anti struct: Map ==\n");
     Map *map = Map(ID_INT, ID_LONG, 8);
     for (uint64_t k = 1; k <= 20; k++)
@@ -552,7 +552,7 @@ int main(void) {
            MinHeap_popItem(heap), MinHeap_popItem(heap), MinHeap_popItem(heap));
     MinHeap_free(heap);
 
-    // SparseSet: ECS-style entity -> component.
+    // SparseSet: ECS-style entity => component.
     printf("== anti struct: SparseSet ==\n");
     SparseSet *ss = SparseSet(8, 100, (size_t)sizeof(int32_t));
     uint8_t *comp = SparseSet_add(ss, 42);

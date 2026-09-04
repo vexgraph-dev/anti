@@ -2,7 +2,7 @@
 //
 // A single-pass recursive-descent parser over the caller's text. Depth is
 // bounded by JSON_MAX_DEPTH; every pool exhaustion or syntax error flips
-// doc->ok once and the parse unwinds. Escaped strings decode forward into
+// (*doc).ok once and the parse unwinds. Escaped strings decode forward into
 // the scratch arena so value views stay pointer-stable.
 
 #include "net/json.h"
@@ -78,7 +78,7 @@ static bool parseStringBody(Parser *ps, uint32_t *offOut, uint32_t *lenOut, bool
                 case 'r': c = '\r'; (*ps).p++; break;
                 case 't': c = '\t'; (*ps).p++; break;
                 case 'u': {
-                    // \uXXXX -> UTF-8 (BMP only)
+                    // \uXXXX => UTF-8 (BMP only)
                     unsigned int cp = 0;
                     for (int i = 0; i < 4; i++) {
                         (*ps).p++;

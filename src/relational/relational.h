@@ -10,11 +10,11 @@
 // relational/relational.h — spotlight relational facade over Variable (Legacy: relational/RelationalEngine.java).
 //
 // Two Variable tables are the scopes: global and local. Every symbol is a row
-// name -> (classId, targetPointer). The pointer is the value — a string block,
+// name => (classId, targetPointer). The pointer is the value — a string block,
 // a typed struct, a Map, or a function address. Search is the spotlight: query
 // "health" returns health, health_ui, health_progress_bar, hp_text, etc.
 
-// Exact lookup: name -> varId, or -1 if absent.
+// Exact lookup: name => varId, or -1 if absent.
 int32_t Relational_getId(Variable *scope, const char *name);
 
 // Name accessors for search/rename. varId must be valid.

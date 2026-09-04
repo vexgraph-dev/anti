@@ -5,9 +5,9 @@
 // by marker byte FIRST (bits [15:8]) so button payloads can never collide
 // with the motion markers (legacy read the low action nibble too late and
 // silently dropped right-down / middle-up — fixed here):
-//   marker 255 -> move(5) / delta(9) / zoom(8)   marker 254 -> scroll(6)
-//   action8 == 7 -> drag (marker holds the real button)
-//   otherwise    -> button event (action = packed & 3)
+//   marker 255 => move(5) / delta(9) / zoom(8)   marker 254 => scroll(6)
+//   action8 == 7 => drag (marker holds the real button)
+//   otherwise    => button event (action = packed & 3)
 //
 // Position is written on dispatch (move/drag), so Mouse_x()/Mouse_y() are
 // live polls instead of the dead getters the legacy shipped.
