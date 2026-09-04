@@ -93,13 +93,17 @@ void Memory_free(void *userPtr) {
         SpinLock_unlock(&s_lock);
         return;
     }
-    if ((*hdr).prev)
-        (*(*hdr).prev).next = (*hdr).next;
-    else
+    if ((*hdr).prev) {
+        Block *prev = (*hdr).prev;
+        (*prev).next = (*hdr).next;
+    } else {
         s_head = (*hdr).next;
+    }
         
-    if ((*hdr).next)
-        (*(*hdr).next).prev = (*hdr).prev;
+    if ((*hdr).next) {
+        Block *next = (*hdr).next;
+        (*next).prev = (*hdr).prev;
+    }
     SpinLock_unlock(&s_lock);
 
     free(hdr);
@@ -134,13 +138,13 @@ size_t Memory_findAll(uint32_t typeId, void **outArray, size_t maxCount) {
     SpinLock_lock(&s_lock);
     Block *curr = s_head;
     while (curr) {
-        if (typeId == 0 || curr->typeId == typeId) {
+        if (typeId == 0 || (*curr).typeId == typeId) {
             if (outArray && count < maxCount) {
-                outArray[count] = (void*)((unsigned char*)curr + HEADER_SIZE);
+                outArray[count] = (void*) ((unsigned char*) curr + HEADER_SIZE);
             }
             count++;
         }
-        curr = curr->next;
+        curr = (*curr).next;
     }
     SpinLock_unlock(&s_lock);
     return count;
