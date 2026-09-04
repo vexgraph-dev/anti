@@ -30,7 +30,10 @@ static uintptr_t ptrOf(uint64_t packed) {
 }
 
 static uint64_t pack(uint16_t tag, uintptr_t ptr) {
-    return (uint64_t)tag << 48 | (uint64_t)ptr;
+    // Mask to low 48 bits: the freelist design only stores 48-bit addresses.
+    // Callers on platforms with tagged/high-bit pointers must fail earlier;
+    // masking here keeps the tag bits from being corrupted.
+    return (uint64_t) tag << 48 | ((uint64_t) ptr & 0x0000FFFFFFFFFFFFull);
 }
 
 // Carve one arena and thread every slot onto the free list.
@@ -99,16 +102,39 @@ void *BitPool_alloc(BitPool *pool, uint32_t type_id) {
 // Push a slot back: store its next, then CAS it onto the head (tag bump
 // again). If two threads free at once, one CAS loses and retries.
 void BitPool_free(BitPool *pool, void *user_ptr) {
-    if (!pool || !user_ptr) return;
+    if (!pool || !user_ptr)
+        return;
+    // Fail closed: only slots from this arena may be freed.
+    if (!BitPool_contains(pool, user_ptr))
+        return;
 
     BitSlot *slot = (BitSlot*) ((uint8_t*) user_ptr - sizeof(BitSlot));
+    // Best-effort double-free guard: free slots have type_id==0 and already
+    // sit on the free list. Scan the list; if present, refuse the second push
+    // that would otherwise create a freelist cycle (same address to 2 owners).
+    // Racy under concurrent free, but turns the common single-threaded
+    // double-free from corruption into a no-op.
+    if ((*slot).type_id == 0) {
+        // Full walk (bounded by capacity+1 to avoid spinning on a corrupt list).
+        size_t steps = 0;
+        uint64_t head_now = atomic_load_explicit(&(*pool).free_head, memory_order_acquire);
+        uintptr_t p = ptrOf(head_now);
+        while (p != 0 && steps <= (*pool).capacity + 1) {
+            if (p == (uintptr_t) slot)
+                return;
+            const BitSlot *curr = (const BitSlot*) p;
+            uint64_t nxt = atomic_load_explicit(&(*curr).next, memory_order_acquire);
+            p = ptrOf(nxt);
+            steps++;
+        }
+    }
     (*slot).type_id = 0;
 
     uint64_t head_packed = atomic_load_explicit(&(*pool).free_head, memory_order_acquire);
     uint16_t tag;
 
     for (;;) {
-        tag = (uint16_t)(tagOf(head_packed) + 1);
+        tag = (uint16_t) (tagOf(head_packed) + 1);
         atomic_store_explicit(&(*slot).next, pack(tag, ptrOf(head_packed)),
                               memory_order_release);
 

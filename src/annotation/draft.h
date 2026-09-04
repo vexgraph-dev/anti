@@ -1,7 +1,7 @@
 #ifndef ANNOTATION_DRAFT_H
 #define ANNOTATION_DRAFT_H
 
-// src/annotation/draft.h — C mirror of legacy-java/src/annotation/Draft.java.
+// src/annotation/draft.h — C mirror of _legacy-java/src/annotation/Draft.java.
 //
 // C has no language-level annotations, so each legacy annotation becomes a
 // header defining a zero-cost marker macro. The macros expand to a static
@@ -13,7 +13,7 @@
 // first fresh write, not ready for production.
 //
 // Usage: prefix the marker with two semicolons so it reads as a marker:
-// `;;DRAFT` (see preferences.txt, rule 8).
+// `;;DRAFT` (see preferences.md, rule 8).
 
 #define DRAFT _Static_assert(1, "@Draft");
 

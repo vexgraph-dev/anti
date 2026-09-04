@@ -24,7 +24,7 @@ TouchIDToken TouchID_authenticate(const char *reason) {
 
         // LAPolicyDeviceOwnerAuthentication presents TouchID (biometrics) first
         // and seamlessly flips to the system password sheet if the user chooses
-        // "Use Password...", or if TouchID is not enrolled/locked out.
+        // "Use Password...", or if TouchID is not enrolled/locked _out.
         LAPolicy policy = LAPolicyDeviceOwnerAuthentication;
         if (![context canEvaluatePolicy:policy error:&error]) {
             if (error) {

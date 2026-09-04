@@ -56,7 +56,7 @@ void Variable_setPointer(Variable *v, int32_t varId, uintptr_t targetPointer);
 bool Variable_compareAndSetPointer(Variable *v, int32_t varId, uintptr_t expected, uintptr_t newPointer);
 uint32_t Variable_getClassId(Variable *v, int32_t varId);
 
-// Copy the registered name into out (nul-terminated, at most outCap bytes).
+// Copy the registered name into _out (nul-terminated, at most outCap bytes).
 // Returns the string length, or -1 on bad varId / short buffer.
 int Variable_getName(Variable *v, int32_t varId, char *out, size_t outCap);
 

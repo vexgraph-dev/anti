@@ -30,7 +30,7 @@ bool Vk_ready(void);
 // children of the window's container basket — at absolute desktop
 // coordinates, then blit the window's region (top-left anchored) from the
 // monitor's giant cache into the acquired swapchain image and present.
-// False when not ready or the swapchain is out of date. Present pacing
+// False when not ready or the swapchain is _out of date. Present pacing
 // follows Window_getPresentMode(window).
 bool Vk_clearPresent(void);
 
@@ -38,7 +38,7 @@ bool Vk_clearPresent(void);
 const char *Vk_status(void);
 
 // Solid-quad primitive: the default Panel draw, exposed so Panel_RenderFn
-// overrides can compose real content out of it ("pointing one function at
+// overrides can compose real content _out of it ("pointing one function at
 // another"). Records an axis-aligned fill at drawable-pixel coords into an
 // open render pass; sets its own viewport (whole drawable) and scissor (the
 // rect), per the VIEWPORT/SCISSOR SEPARATION LAW. Safe to call several times
@@ -74,3 +74,11 @@ void Vk_drawSDFText(void *cmdBuffer, float surfaceW, float surfaceH,
                     float r, float g, float b, float a,
                     int32_t textureId, float bold, float smoothness,
                     float u0, float v0, float u1, float v1);
+
+// Renders a color glyph (runtime/baked emoji) from a color atlas page.
+// Same quad/UV plumbing as Vk_drawSDFText, but the fragment branch outputs
+// raw RGBA: tint is ignored except for alpha (label opacity).
+void Vk_drawColorGlyph(void *cmdBuffer, float surfaceW, float surfaceH,
+                       float x, float y, float w, float h, float alpha,
+                       int32_t textureId,
+                       float u0, float v0, float u1, float v1);

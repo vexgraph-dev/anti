@@ -14,7 +14,7 @@
 // consumers pop, all at zero allocation.
 
 typedef struct RingBuffer {
-    SpinLock lock;       // serializes the actual copy in/out
+    SpinLock lock;       // serializes the actual copy in/_out
     size_t capacity;        // power of two
     size_t mask;            // capacity - 1, for slot masking
     size_t elem_size;       // bytes per element
@@ -31,7 +31,7 @@ void RingBuffer_shutdown(RingBuffer *ring);
 // Copy item into the ring. Returns false if full (caller retries/spins).
 bool RingBuffer_push(RingBuffer *ring, const void *item);
 
-// Copy oldest item out into out. Returns false if empty.
+// Copy oldest item _out into _out. Returns false if empty.
 bool RingBuffer_pop(RingBuffer *ring, void *out);
 
 #endif

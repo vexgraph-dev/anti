@@ -9,7 +9,7 @@
 
 #define LOG_KIND_RENDER_PRODUCE 1    // v0=slot, v1=drawCount
 #define LOG_KIND_RENDER_PRESENT 2    // v0=slot, v1=presentCount
-#define LOG_KIND_RENDER_DROPPED 3    // v0=slot, v1=reason (0=skipped, 1=out-of-date)
+#define LOG_KIND_RENDER_DROPPED 3    // v0=slot, v1=reason (0=skipped, 1=_out-of-date)
 
 #define LOG_KIND_KEY_DOWN   10       // v0=keyCode, v1=exactNanos
 #define LOG_KIND_KEY_REPEAT 11       // v0=keyCode, v1=exactNanos

@@ -23,8 +23,16 @@ static SpinLock s_lock = SPIN_LOCK_INIT;
 
 // Allocate a block, stamp the type, align the payload, return the payload.
 void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
+    // Fail closed: Block.length is uint32_t, so reject anything that truncates.
+    if (numBytes > UINT32_MAX)
+        return nullptr;
+    // Fail closed on size_t overflow.
+    size_t total;
+    if (__builtin_add_overflow(HEADER_SIZE, numBytes, &total))
+        return nullptr;
+    if (__builtin_add_overflow(total, (ALIGN - 1), &total))
+        return nullptr;
     // stamp the payload
-    const size_t total = HEADER_SIZE + numBytes + (ALIGN - 1);
     unsigned char *raw = malloc(total);
 
     if (!raw)
@@ -32,12 +40,12 @@ void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
 
     // Align the payload to 8 bytes so doubles/pointers sit naturally.
     // Assuming malloc returns >= 8-byte alignment, hdr will exactly equal raw.
-    uintptr_t aligned = (uintptr_t)(raw + HEADER_SIZE);
+    uintptr_t aligned = (uintptr_t) (raw + HEADER_SIZE);
     aligned = (aligned + ALIGN - 1) & ~(ALIGN - 1);
 
     Block *hdr = (Block*) (aligned - HEADER_SIZE);
     (*hdr).typeId = typeId;
-    (*hdr).length = (uint32_t)numBytes;
+    (*hdr).length = (uint32_t) numBytes;
     (*hdr).pad = 0;
 
     SpinLock_lock(&s_lock);
@@ -54,7 +62,8 @@ void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
 
 // Grow/shrink: allocate new, copy min(old,new) bytes, free old.
 void *Memory_realloc(void *userPtr, size_t newBytes) {
-    if (!userPtr) return nullptr;
+    if (!userPtr)
+        return nullptr;
     uint32_t typeId = Memory_type(userPtr);
     size_t oldLen = Memory_length(userPtr);
 
@@ -72,8 +81,18 @@ void Memory_free(void *userPtr) {
     if (!userPtr)
         return;
     Block *hdr = (Block*) ((unsigned char*) userPtr - HEADER_SIZE);
-    
+
     SpinLock_lock(&s_lock);
+    // Validate membership before touching hdr: a foreign/stack/BitPool
+    // pointer must not unlink arbitrary memory or reach free().
+    bool owned = false;
+    for (Block *curr = s_head; curr; curr = (*curr).next) {
+        if (curr == hdr) { owned = true; break; }
+    }
+    if (!owned) {
+        SpinLock_unlock(&s_lock);
+        return;
+    }
     if ((*hdr).prev)
         (*(*hdr).prev).next = (*hdr).next;
     else

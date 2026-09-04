@@ -13,7 +13,7 @@
 
 bool Calendar_isLeapYear(int32_t year);
 
-// 0 for an out-of-range month, else 28/29/30/31.
+// 0 for an _out-of-range month, else 28/29/30/31.
 int32_t Calendar_daysInMonth(int32_t year, int32_t month);
 
 // ISO-8601 weekday (1=Monday .. 7=Sunday) via Zeller's congruence.

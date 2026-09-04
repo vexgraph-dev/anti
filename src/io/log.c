@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "io/antihome.h"
+#include "io/vexhome.h"
 
 // log.c — Log port (Legacy: io/Log.java). MPSC event ring + writer daemon.
 
@@ -164,7 +164,7 @@ bool Log_init(Log *log, const char *path, size_t slot_count) {
 }
 
 bool Log_initDefault(Log *log) {
-    return Log_init(log, AntiHome_defaultLogPath(), LOG_DEFAULT_SLOT_COUNT);
+    return Log_init(log, VexHome_defaultLogPath(), LOG_DEFAULT_SLOT_COUNT);
 }
 
 void Log_shutdown(Log *log) {

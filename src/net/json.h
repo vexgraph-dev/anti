@@ -63,7 +63,7 @@ bool Json_ok(const JsonDoc *doc);
 
 // Object member lookup by key (objects only). JSON_NONE-ref when missing.
 JsonRef Json_member(const JsonDoc *doc, JsonRef obj, const char *key);
-// Array/object element by ordinal; JSON_NONE-ref when out of range.
+// Array/object element by ordinal; JSON_NONE-ref when _out of range.
 JsonRef Json_at(const JsonDoc *doc, JsonRef node, uint32_t index);
 uint32_t Json_count(const JsonDoc *doc, JsonRef node); // array/object arity
 
@@ -76,8 +76,8 @@ const char *Json_string(const JsonDoc *doc, JsonRef ref, uint32_t *lengthOut);
 const char *Json_key(const JsonDoc *doc, JsonRef ref, uint32_t *lengthOut);
 
 // --- Writer ---
-// Appends a JSON rendering of value into out (NUL-terminated). Strings are
-// escaped. Returns bytes written (excluding NUL) or -1 when out ran out.
+// Appends a JSON rendering of value into _out (NUL-terminated). Strings are
+// escaped. Returns bytes written (excluding NUL) or -1 when _out ran _out.
 int64_t Json_writeNumber(char *out, size_t cap, double v);
 int64_t Json_writeString(char *out, size_t cap, const char *s);
 int64_t Json_writeBool(char *out, size_t cap, bool v);

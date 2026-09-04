@@ -7,7 +7,7 @@
  *
  * 1. macOS Dialog Presentation & Customization:
  *    On macOS, the biometric prompt is presented by Apple's LocalAuthentication
- *    framework (`LAContext`) and rendered out-of-process by `coreauthd` /
+ *    framework (`LAContext`) and rendered _out-of-process by `coreauthd` /
  *    `SecurityAgent` for security and anti-phishing protection.
  *
  *    Customizable elements:
@@ -74,18 +74,23 @@
 #include "security/touchid.h"
 
 TouchIDToken TouchID_authenticate(const char *reason) {
-    (void)reason; // In the stub we succeed immediately with static magic bytes
+    (void)reason; // Stub must fail closed: no biometrics off Apple platforms.
     TouchIDToken tok = {
-        .magic = { 0xA185C7CC6B2B7D00ULL, 0x00D7B26E13F5A12DULL },
-        .consumed = false
+        .magic = { 0ULL, 0ULL },
+        .consumed = true
     };
     return tok;
 }
 
 bool TouchID_verify(TouchIDToken tok) {
+#ifdef ALLOW_INSECURE_STUB
     return !tok.consumed;
+#else
+    (void)tok;
+    return false;
+#endif
 }
 
 void TouchID_discard(TouchIDToken tok) {
-    tok.consumed = true;
+    (void)tok; // by-value token: nothing to consume here; verify already gates.
 }

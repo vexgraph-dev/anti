@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include "net/url.h"
+#include "net/tls.h"
 
 #define HEADER_BLOCK_CAP 8192
 #define RECV_TIMEOUT_DEFAULT_MS 5000
@@ -77,6 +78,16 @@ static bool recvSome(int fd, char *dst, size_t cap, size_t *gotOut) {
     return true;
 }
 
+static bool hasCRLF(const char *s) {
+    if (!s)
+        return false;
+    for (; *s; s++) {
+        if (*s == '\r' || *s == '\n')
+            return true;
+    }
+    return false;
+}
+
 bool Http_perform(const HttpRequest *req, HttpResponse *resp) {
     // Preserve the caller's receive buffer across the init wipe.
     char *bodyOut = resp ? (*resp).body : nullptr;
@@ -87,11 +98,27 @@ bool Http_perform(const HttpRequest *req, HttpResponse *resp) {
     (*resp).body = bodyOut;
     (*resp).bodyCap = bodyCap;
 
-    if (!req || !(*req).host || !(*resp).body) return false;
+    if (!req || !(*req).host || !(*resp).body)
+        return false;
 
     const char *method = (*req).method ? (*req).method : "GET";
     const char *path = (*req).path ? (*req).path : "/";
-    int port = (*req).port > 0 ? (*req).port : Url_defaultPort("http");
+    const char *scheme = (*req).scheme ? (*req).scheme : "http";
+    // Fail closed: https:// requires a TLS backend (tls_apple / tls_curl).
+    // Refuse instead of downgrading to plain text.
+    if (strcasecmp(scheme, "https") == 0)
+        return false;
+    if (strcasecmp(scheme, "http") != 0)
+        return false;
+    // Fail closed on CRLF injection: untrusted method/path/host/header
+    // must not smuggle extra requests into the head block.
+    if (hasCRLF(method) || hasCRLF(path) || hasCRLF((*req).host))
+        return false;
+    for (uint32_t i = 0; i < (*req).headerCount && i < HTTP_MAX_HEADERS; i++) {
+        if (hasCRLF((*req).headers[i].name) || hasCRLF((*req).headers[i].value))
+            return false;
+    }
+    int port = (*req).port > 0 ? (*req).port : Url_defaultPort(scheme);
     uint32_t timeoutMs = (*req).timeoutMs ? (*req).timeoutMs : RECV_TIMEOUT_DEFAULT_MS;
 
     // --- Resolve ---
@@ -265,8 +292,16 @@ static void *acceptLoop(void *arg) {
             if (strncasecmp(line, "Content-Length:", 15) == 0)
                 contentLen = (size_t)strtoul(line + 15, nullptr, 10);
         }
-        while (total < contentLen && total < SERVER_BODY_CAP) {
-            ssize_t r = recv(clientFd, s_serverBody + total, contentLen - total, 0);
+        // Fail closed: attacker Content-Length must not overflow the fixed box.
+        if (contentLen > SERVER_BODY_CAP) {
+            Http_respond(clientFd, 400, "text/plain", "body too large", 14);
+            close(clientFd);
+            continue;
+        }
+        while (total < contentLen) {
+            size_t want = contentLen - total;
+            if (want > SERVER_BODY_CAP - total) want = SERVER_BODY_CAP - total;
+            ssize_t r = recv(clientFd, s_serverBody + total, want, 0);
             if (r <= 0) break;
             total += (size_t)r;
         }

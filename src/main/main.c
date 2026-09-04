@@ -28,7 +28,7 @@
 #include "cli/logcommands.h"
 #include "cli/scanner.h"
 #include "engine/loop.h"
-#include "io/antihome.h"
+#include "io/vexhome.h"
 #include "io/file.h"
 #include "io/filewriter.h"
 #include "io/log.h"
@@ -201,9 +201,9 @@ int main(void) {
 
     // AntiHome: per-user ~/anti layout.
     printf("== anti io: AntiHome ==\n");
-    printf("ensure=%d root=%s\n", AntiHome_ensure(), AntiHome_root());
-    printf("logs=%s projects=%s\n", AntiHome_logs(), AntiHome_projects());
-    printf("defaultLog=%s\n", AntiHome_defaultLogPath());
+    printf("ensure=%d root=%s\n", VexHome_ensure(), VexHome_root());
+    printf("logs=%s projects=%s\n", VexHome_logs(), VexHome_projects());
+    printf("defaultLog=%s\n", VexHome_defaultLogPath());
 
     // FileWriter: buffered binary writer.
     printf("== anti io: FileWriter ==\n");

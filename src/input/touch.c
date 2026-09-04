@@ -3,7 +3,7 @@
 // Ten fixed slots, each 32 bytes of state (press/release/hold/taps/action)
 // plus 32 bytes of geometry (x/y/pressure). The backend resolves OS touch
 // identities into slots before pushing; dispatch reconstructs timestamps and
-// fans out to listeners on the game thread.
+// fans _out to listeners on the game thread.
 
 #include "input/touch.h"
 

@@ -1,6 +1,7 @@
 #ifndef ENGINE_LOOP_H
 #define ENGINE_LOOP_H
 
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -16,8 +17,8 @@ typedef void (*TickFn)(void *userdata);
 typedef struct Loop {
     TickFn tick;      // called once per fixed step (never nullptr)
     void *userdata;         // opaque context handed to tick
-    int64_t frame_ms;       // fixed timestep in milliseconds
-    bool running;           // Loop_stop flips this to end the loop
+    int64_t frame_ms;       // fixed timestep in milliseconds (>0)
+    _Atomic bool running;   // Loop_stop flips this to end the loop
 } Loop;
 
 // Run until Loop_stop is called (usually from inside the tick).

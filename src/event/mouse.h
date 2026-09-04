@@ -21,7 +21,7 @@ typedef struct MouseEvent {
     void (*onMouseDrag)(void *self, int mouseEvent, double x, double y); // default no-op
     void (*onMouseScroll)(void *self, double dx, double dy);             // default no-op
     // Trackpad pinch-to-zoom (macOS NSEventTypeMagnify). Positive = zoom in
-    // (fingers spread), negative = zoom out (fingers pinched).
+    // (fingers spread), negative = zoom _out (fingers pinched).
     void (*onMouseZoom)(void *self, double magnification);               // default no-op
 } MouseEvent;
 

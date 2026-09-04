@@ -5,6 +5,7 @@
 #include "vulkan/vk_iosurface.h"
 
 #include <vulkan/vulkan_core.h>
+#include <IOSurface/IOSurface.h>
 #include <dlfcn.h>
 #include <stdatomic.h>
 #include "darling/container.h"
@@ -150,16 +151,11 @@ struct IOSurfaceChild *VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
     MAC_LOAD_DEVICE(CmdDraw);
     MAC_LOAD_DEVICE(DestroyFramebuffer);
 
-    // Get panel's max size (first setSize = max, subsequent = clamped current)
-    float maxW = (*child).base.maxW;
-    float maxH = (*child).base.maxH;
-    if (maxW <= 0.0f || maxH <= 0.0f) {
-        maxW = (float)w;
-        maxH = (float)h;
-    }
-    int canvasW = (int)(maxW + 0.5f);
-    int canvasH = (int)(maxH + 0.5f);
-    if (canvasW <= 0 || canvasH <= 0) return nullptr;
+    // Get canvas dimensions from the allocated IOSurface backing
+    int canvasW = (int) IOSurfaceGetWidth((IOSurfaceRef) surface);
+    int canvasH = (int) IOSurfaceGetHeight((IOSurfaceRef) surface);
+    if (canvasW <= 0 || canvasH <= 0)
+        return nullptr;
 
     // Find or create IOSurface child state
     struct IOSurfaceChild *ioChild = nullptr;
@@ -227,19 +223,17 @@ struct IOSurfaceChild *VkMac_recordChildToIOSurface(VkCommandBuffer cb, Panel *c
     };
     CmdBeginRenderPass_fn(cb, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    // Use the panel's CURRENT size for rendering (not the max allocation size).
-    // The IOSurface buffer is allocated at canvasW×canvasH (max), but the actual
-    // content only occupies the panel's current w×h within that buffer.
-    float curW = (*child).base.w;
-    float curH = (*child).base.h;
-    if (curW <= 0.0f) curW = (float)canvasW;
-    if (curH <= 0.0f) curH = (float)canvasH;
-    if (curW > (float)canvasW) curW = (float)canvasW;
-    if (curH > (float)canvasH) curH = (float)canvasH;
-    int renderW = (int)(curW + 0.5f);
-    int renderH = (int)(curH + 0.5f);
-    if (renderW <= 0) renderW = 1;
-    if (renderH <= 0) renderH = 1;
+    // Use the child's resolved native pixel size (clamped to canvas)
+    int renderW = w;
+    int renderH = h;
+    if (renderW > canvasW)
+        renderW = canvasW;
+    if (renderH > canvasH)
+        renderH = canvasH;
+    if (renderW <= 0)
+        renderW = 1;
+    if (renderH <= 0)
+        renderH = 1;
 
     // Set viewport and scissor to the panel's CURRENT size
     VkViewport vp = { .width = (float)renderW, .height = (float)renderH, .maxDepth = 1.0f };
@@ -290,9 +284,7 @@ void VkMac_renderNativeContent(Window *window, Panel *contentPanel,
     Panel *scenePanel = Window_getScenePanel(window);
 
     // Resize IOSurface backings at native pixel resolution.
-    int nativePxW = (int)(winW * kx + 0.5f);
-    int nativePxH = (int)(winH * ky + 0.5f);
-    Window_resizePanelIOSurface(window, contentPanel, nativePxW, nativePxH);
+    Window_resizePanelIOSurface(window, contentPanel, winW, winH);
 
     size_t childCount = Panel_childCount(contentPanel);
     if (childCount == 0) return;

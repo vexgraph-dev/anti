@@ -13,7 +13,7 @@
 //
 //   x = add(a, b);        // value form — pure math, mutates nothing
 //   add(a, b, &dest);     // dest form  — result written through the pointer,
-//                         //             dest LAST (preferences.txt rule 9)
+//                         //             dest LAST (preferences.md rule 9)
 //
 // Cells: scalars {int, long, float, double} route to the promotion family C
 // itself would pick (int+int stays int, anything+long stays long, +float ->

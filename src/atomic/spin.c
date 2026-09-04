@@ -12,6 +12,7 @@
 
 #include "atomic/spin.h"
 
+#include <pthread.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -34,8 +35,10 @@ static uint32_t ticket(uint64_t thread_id) {
 // Spin until acquired. The CAS publishes with acquire so our critical section
 // sees everything the previous owner wrote before releasing.
 void SpinLock_lock(SpinLock *lock) {
+    if (!lock)
+        return;
     uint32_t expected = 0;
-    uint32_t tk = ticket(0);
+    uint32_t tk = ticket((uint64_t) pthread_self());
     while (!atomic_compare_exchange_weak_explicit(&(*lock).word, &expected, tk,
                                                   memory_order_acquire, memory_order_relaxed)) {
         expected = 0;
@@ -47,8 +50,10 @@ void SpinLock_lock(SpinLock *lock) {
 
 // One-shot acquire: returns immediately whether it worked or not.
 bool SpinLock_tryLock(SpinLock *lock) {
+    if (!lock)
+        return false;
     uint32_t expected = 0;
-    uint32_t tk = ticket(0);
+    uint32_t tk = ticket((uint64_t) pthread_self());
     return atomic_compare_exchange_strong_explicit(&(*lock).word, &expected, tk,
                                                    memory_order_acquire, memory_order_relaxed);
 }
@@ -74,6 +79,15 @@ bool SpinLock_tryLockTimeout(SpinLock *lock, int64_t timeout_nanos) {
 // Release with release semantics so our critical-section writes are visible
 // to the next thread that acquires.
 void SpinLock_unlock(SpinLock *lock) {
+    if (!lock)
+        return;
+    // Fail closed: only the owning thread may release. A foreign unlock
+    // indicates a lock-handoff bug; refuse instead of opening the lock.
+    uint32_t cur = atomic_load_explicit(&(*lock).word, memory_order_acquire);
+    if (cur == 0)
+        return;
+    if (cur != ticket((uint64_t) pthread_self()))
+        return;
     atomic_store_explicit(&(*lock).word, 0, memory_order_release);
 }
 

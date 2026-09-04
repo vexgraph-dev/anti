@@ -50,7 +50,7 @@ static const KeyEvent *s_listeners[64];
 static int s_listenerCount = 0;
 
 // Window-scoped listeners: slot index IS the window id (0 = broadcast is
-// reserved and never attached; broadcast events fan out to every slot).
+// reserved and never attached; broadcast events fan _out to every slot).
 static const KeyEvent *s_winListeners[WINDOW_SLOTS][KEY_MAX_WINDOW_LISTENERS];
 static int s_winCounts[WINDOW_SLOTS];
 
@@ -227,7 +227,7 @@ void Key_pushCharEvent(uint32_t windowId, uint32_t c) {
 }
 
 // Deliver one event to a scoped listener list (slot 0 is never attached, so
-// broadcast events fan out to slots 1..N).
+// broadcast events fan _out to slots 1..N).
 static void deliverToWindow(uint32_t windowId, int action, int keyEvent, uint64_t exactNanos) {
     if (windowId >= WINDOW_SLOTS) return;
     for (int i = 0; i < s_winCounts[windowId]; i++) {

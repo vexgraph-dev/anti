@@ -44,7 +44,7 @@ void Mat4_copy(const Mat4 *src, Mat4 *dest);
 // dest = left * right. Safe when dest aliases left or right.
 void Mat4_multiply(const Mat4 *left, const Mat4 *right, Mat4 *dest);
 
-// Transpose in place or out of place; safe when dest aliases src.
+// Transpose in place or _out of place; safe when dest aliases src.
 void Mat4_transpose(const Mat4 *src, Mat4 *dest);
 
 // Single-pass TRS synthesis (column-major, 21 multiplies). Angles in degrees.

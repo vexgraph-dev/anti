@@ -22,6 +22,7 @@ typedef struct HttpHeader {
 } HttpHeader;
 
 typedef struct HttpRequest {
+    const char *scheme;   // "http" default, "https" requires TLS backend
     const char *method;   // "GET", "POST", ... default "GET"
     const char *host;     // required
     int port;             // 0 -> 80

@@ -373,6 +373,11 @@ bool Vk_init(Window *window) {
         snprintf(s_status, sizeof(s_status), "texture module failed");
         return false;
     }
+    // Jump-flood SDF baker: non-fatal. When unavailable (or on failure) the
+    // font installer falls back to the threaded CPU path automatically.
+    extern bool SdfGpu_initModule(void*, void*, void*, void*, void*, uint32_t);
+    if (!SdfGpu_initModule(s_instance, s_gpa, s_phys, s_device, s_queue, s_queueFamily))
+        fprintf(stderr, "vk: sdf-gpu unavailable, CPU font bake fallback\n");
     if (!buildPipelines())
         return false;
 
@@ -718,6 +723,8 @@ void Vk_shutdown(void) {
     if (!s_lib)
         return;
     if (s_device != VK_NULL_HANDLE) {
+        extern void SdfGpu_shutdown(void);
+        SdfGpu_shutdown();
         destroyTargets();
         VkView_shutdown();
         VkSceneCanvas_shutdownModule();
@@ -1458,7 +1465,7 @@ static bool presentFrameLocked(void) {
     // FINITE timeout, never UINT64_MAX: during zoom/fullscreen transitions
     // Core Animation can pause drawable recycling for a few hundred ms. An
     // unbounded acquire would pin this thread — holding s_presentLock — and
-    // beachball every sync-bridge caller behind it. A timed-out tick simply
+    // beachball every sync-bridge caller behind it. A timed-_out tick simply
     // holds the last good frame; nothing is lost. Capped at ~1 display
     // frame (16.7 ms): a longer cap lets one stalled acquire eat two frames
     // of cadence.
@@ -1759,7 +1766,7 @@ static bool presentFrameTail(uint32_t imageIndex) {
                 // The cut geometry is THIS tick's request; a deferred resize
                 // (retire table full) can leave the live canvas smaller than
                 // it. Clamp the crop INSIDE the real canvas and shrink the
-                // stamp by the same amount — an out-of-bounds src rect is
+                // stamp by the same amount — an _out-of-bounds src rect is
                 // invalid blit territory, not a visual nit.
                 int32_t sx0 = cx0 - (*cut).dx;
                 int32_t sy0 = cy0 - (*cut).dy;
@@ -2026,7 +2033,7 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
         VkPipelineColorBlendAttachmentState blendAtt = {0};
         blendAtt.colorWriteMask = 0xF;
         blendAtt.blendEnable = VK_TRUE;
-        blendAtt.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        blendAtt.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
         blendAtt.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         blendAtt.colorBlendOp = VK_BLEND_OP_ADD;
         blendAtt.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
@@ -2072,34 +2079,32 @@ void Vk_drawTexture(void *cmdBuffer, float surfaceW, float surfaceH,
 
     CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_texPipeline);
 
+    float scLeft = x < 0.0f ? 0.0f : x;
+    float scRight = (x + w > surfaceW) ? surfaceW : (x + w);
+    float scBottom = y < 0.0f ? 0.0f : y;
+    float scTop = (y + h > surfaceH) ? surfaceH : (y + h);
+
+    if (scRight <= scLeft || scTop <= scBottom)
+        return;
+
     VkViewport viewport = { .x = 0.0f, .y = surfaceH, .width = surfaceW, .height = -surfaceH, .maxDepth = 1.0f };
-    VkRect2D scissor = { .offset.x = (int32_t)x, .offset.y = (int32_t)(surfaceH - y - h),
-                         .extent.width = (uint32_t)w, .extent.height = (uint32_t)h };
+    VkRect2D scissor = {
+        .offset.x = (int32_t) scLeft,
+        .offset.y = (int32_t) (surfaceH - scTop),
+        .extent.width = (uint32_t) (scRight - scLeft),
+        .extent.height = (uint32_t) (scTop - scBottom)
+    };
     CmdSetViewport_fn(cb, 0, 1, &viewport);
     CmdSetScissor_fn(cb, 0, 1, &scissor);
 
     extern void *Texture_getDescriptorSet(void);
-    VkDescriptorSet bindlessSet = (VkDescriptorSet)Texture_getDescriptorSet();
-    CmdBindDescriptorSets_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_texLayout, 0, 1, &bindlessSet, 0, nullptr);
-
-    // Push constant layout (must match texture_quad.frag):
-    //   [0..15]  vec4  rectNdc        (vertex)
-    if (bindlessSet != VK_NULL_HANDLE && CmdBindDescriptorSets_fn) {
+    VkDescriptorSet bindlessSet = (VkDescriptorSet) Texture_getDescriptorSet();
+    if (bindlessSet != VK_NULL_HANDLE && CmdBindDescriptorSets_fn)
         CmdBindDescriptorSets_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_texLayout,
                                  0, 1, &bindlessSet, 0, nullptr);
-    }
 
-    if (CmdSetViewport_fn) {
-        VkViewport vp = { .x = 0.0f, .y = surfaceH, .width = surfaceW, .height = -surfaceH, .maxDepth = 1.0f };
-        CmdSetViewport_fn(cb, 0, 1, &vp);
-    }
-    if (CmdSetScissor_fn) {
-        VkRect2D sc = { .offset.x = (int32_t)x, .offset.y = (int32_t)(surfaceH - y - h),
-                        .extent.width = (uint32_t)w, .extent.height = (uint32_t)h };
-        CmdSetScissor_fn(cb, 0, 1, &sc);
-    }
-
-    if (!CmdPushConstants_fn || !CmdDraw_fn) return;
+    if (!CmdPushConstants_fn || !CmdDraw_fn)
+        return;
 
     struct {
         float    rect[4];       // offset 0
@@ -2172,6 +2177,70 @@ void Vk_drawSDFText(void *cmdBuffer, float surfaceW, float surfaceH,
     pc.texId = (uint32_t)textureId;
     pc.bold = bold;
     pc.smoothness = smoothness;
+    pc.pad = 0;
+    pc.u0 = u0; pc.v0 = v0; pc.u1 = u1; pc.v1 = v1;
+
+    CmdPushConstants_fn(cb, s_sdfLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+
+    VkViewport vp = {0, 0, surfaceW, surfaceH, 0.0f, 1.0f};
+    CmdSetViewport_fn(cb, 0, 1, &vp);
+
+    VkRect2D sc;
+    sc.offset.x = (int32_t)(px > 0 ? px : 0);
+    sc.offset.y = (int32_t)(py > 0 ? py : 0);
+    int32_t scRight = (int32_t)(px + pw);
+    int32_t scBottom = (int32_t)(py + ph);
+    if (scRight > (int32_t)surfaceW) scRight = (int32_t)surfaceW;
+    if (scBottom > (int32_t)surfaceH) scBottom = (int32_t)surfaceH;
+    sc.extent.width = scRight > sc.offset.x ? scRight - sc.offset.x : 0;
+    sc.extent.height = scBottom > sc.offset.y ? scBottom - sc.offset.y : 0;
+    if (sc.extent.width == 0 || sc.extent.height == 0) return;
+    CmdSetScissor_fn(cb, 0, 1, &sc);
+
+    CmdDraw_fn(cb, 6, 1, 0, 0);
+}
+
+void Vk_drawColorGlyph(void *cmdBuffer, float surfaceW, float surfaceH,
+                       float x, float y, float w, float h, float alpha,
+                       int32_t textureId,
+                       float u0, float v0, float u1, float v1) {
+    if (s_sdfPipeline == VK_NULL_HANDLE) return;
+    VkCommandBuffer cb = (VkCommandBuffer)cmdBuffer;
+
+    VK_LOAD_DEVICE_VOID(CmdBindPipeline)
+    VK_LOAD_DEVICE_VOID(CmdPushConstants)
+    VK_LOAD_DEVICE_VOID(CmdDraw)
+    VK_LOAD_DEVICE_VOID(CmdSetViewport)
+    VK_LOAD_DEVICE_VOID(CmdSetScissor)
+    VK_LOAD_DEVICE_VOID(CmdBindDescriptorSets)
+
+    CmdBindPipeline_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_sdfPipeline);
+
+    extern void *Texture_getDescriptorSet(void);
+    VkDescriptorSet bindlessSet = (VkDescriptorSet)Texture_getDescriptorSet();
+    CmdBindDescriptorSets_fn(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_sdfLayout, 0, 1, &bindlessSet, 0, nullptr);
+
+    float px = x, py = y;
+    float pw = w, ph = h;
+    float dx = (px / surfaceW) * 2.0f - 1.0f;
+    float dy = (py / surfaceH) * 2.0f - 1.0f;
+    float dw = (pw / surfaceW) * 2.0f;
+    float dh = (ph / surfaceH) * 2.0f;
+
+    struct {
+        float x, y, w, h;
+        float cr, cg, cb, ca;
+        uint32_t texId;
+        float bold;
+        float smoothness;
+        float pad;
+        float u0, v0, u1, v1;
+    } pc;
+    pc.x = dx; pc.y = dy; pc.w = dw; pc.h = dh;
+    pc.cr = 1.0f; pc.cg = 1.0f; pc.cb = 1.0f; pc.ca = alpha;
+    pc.texId = (uint32_t)textureId;
+    pc.bold = 0.0f;
+    pc.smoothness = -1.0f; // color-glyph sentinel: raw RGBA branch in text_sdf.frag
     pc.pad = 0;
     pc.u0 = u0; pc.v0 = v0; pc.u1 = u1; pc.v1 = v1;
 

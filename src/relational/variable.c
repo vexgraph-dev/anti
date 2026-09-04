@@ -105,6 +105,11 @@ static uint8_t *slotPtr(Variable *v, int32_t varId) {
     return (*v).arena + (size_t) varId * VARIABLE_SLOT_SIZE;
 }
 
+static bool validId(Variable *v, int32_t varId) {
+    return v && (*v).active && (*v).arena && varId >= 0 &&
+           (size_t)varId < (*v).activeCount;
+}
+
 bool Variable_init(Variable *v) {
     memset(v, 0, sizeof(*v));
     (*v).capacity = VARIABLE_DEFAULT_CAPACITY;
@@ -234,29 +239,39 @@ bool Variable_rename(Variable *v, const char *oldName, const char *newName) {
 }
 
 uintptr_t Variable_getPointer(Variable *v, int32_t varId) {
+    if (!validId(v, varId))
+        return 0;
     uint64_t *slot = (uint64_t*) slotPtr(v, varId);
     return (uintptr_t) slot[5];
 }
 
 void Variable_setPointer(Variable *v, int32_t varId, uintptr_t targetPointer) {
+    if (!validId(v, varId))
+        return;
     uint64_t *slot = (uint64_t*) slotPtr(v, varId);
-    slot[5] = (uint64_t)targetPointer;
+    slot[5] = (uint64_t) targetPointer;
 }
 
 bool Variable_compareAndSetPointer(Variable *v, int32_t varId, uintptr_t expected, uintptr_t newPointer) {
-    uint64_t *slot = (uint64_t*) slotPtr(v, varId);
-    if (slot[5] != (uint64_t)expected)
+    if (!validId(v, varId))
         return false;
-    slot[5] = (uint64_t)newPointer;
+    uint64_t *slot = (uint64_t*) slotPtr(v, varId);
+    if (slot[5] != (uint64_t) expected)
+        return false;
+    slot[5] = (uint64_t) newPointer;
     return true;
 }
 
 uint32_t Variable_getClassId(Variable *v, int32_t varId) {
+    if (!validId(v, varId))
+        return 0;
     uint64_t *slot = (uint64_t*) slotPtr(v, varId);
-    return (uint32_t)(slot[4] >> 32);
+    return (uint32_t) (slot[4] >> 32);
 }
 
 int Variable_getName(Variable *v, int32_t varId, char *out, size_t outCap) {
+    if (!validId(v, varId) || !out)
+        return -1;
     uint64_t *slot = (uint64_t*) slotPtr(v, varId);
     char buf[VARIABLE_NAME_SIZE + 1];
     size_t len = 0;

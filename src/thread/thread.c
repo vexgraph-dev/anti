@@ -40,7 +40,7 @@ Thread *Thread_new(uint32_t typeId, Thread_Job job, size_t queueCapacity,
                    bool tickWhenIdle, bool core) {
     if (!job || queueCapacity == 0)
         return nullptr;
-    Thread *t = (Thread*) Memory_alloc(typeId, sizeof(Thread));
+    Thread *t = Memory_alloc(typeId, sizeof(Thread));
     if (!t)
         return nullptr;
     atomic_init(&(*t).state, 0);

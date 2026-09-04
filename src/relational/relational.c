@@ -71,7 +71,7 @@ void *Relational_getValue(Variable *scope, const char *name) {
 }
 
 void *Relational_getValueById(Variable *scope, int32_t varId) {
-    if (!scope || varId < 0)
+    if (!scope || varId < 0 || (size_t) varId >= Variable_getActiveCount(scope))
         return nullptr;
     return (void*) Variable_getPointer(scope, varId);
 }
@@ -84,7 +84,7 @@ bool Relational_setValue(Variable *scope, const char *name, uint32_t classId, vo
 }
 
 bool Relational_setValueById(Variable *scope, int32_t varId, void *ptr) {
-    if (!scope || varId < 0)
+    if (!scope || varId < 0 || (size_t) varId >= Variable_getActiveCount(scope))
         return false;
     Variable_setPointer(scope, varId, (uintptr_t) ptr);
     return true;
@@ -143,7 +143,7 @@ static size_t searchOne(Variable *scope, const char *query, int32_t *outIds, siz
         if (filled >= cap)
             break;
         int32_t varId = (int32_t) i;
-        char nameBuf[32];
+        char nameBuf[33];
         int len = Variable_getName(scope, varId, nameBuf, sizeof(nameBuf));
         if (len < 0)
             continue;
@@ -166,7 +166,7 @@ static size_t searchOne(Variable *scope, const char *query, int32_t *outIds, siz
         if (filled >= cap)
             break;
         int32_t varId = (int32_t) i;
-        char nameBuf[32];
+        char nameBuf[33];
         int len = Variable_getName(scope, varId, nameBuf, sizeof(nameBuf));
         if (len < 0)
             continue;
@@ -190,7 +190,7 @@ static size_t searchOne(Variable *scope, const char *query, int32_t *outIds, siz
         if (filled >= cap)
             break;
         int32_t varId = (int32_t) i;
-        char nameBuf[32];
+        char nameBuf[33];
         int len = Variable_getName(scope, varId, nameBuf, sizeof(nameBuf));
         if (len < 0)
             continue;

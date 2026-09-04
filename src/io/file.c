@@ -96,22 +96,30 @@ bool File_close(File *f) {
 }
 
 int64_t File_read(File *f, void *dest, int64_t max_len) {
-    if (!f || !(*f).handle)
+    if (!f || !(*f).handle || !dest)
         return -1;
-    size_t n = fread(dest, 1, (size_t)max_len, (*f).handle);
+    if (max_len < 0)
+        return -1;
+    if (max_len == 0)
+        return 0;
+    size_t n = fread(dest, 1, (size_t) max_len, (*f).handle);
     if (n == 0 && ferror((*f).handle))
         return -1;
-    (*f).position += (int64_t)n;
-    return (int64_t)n;
+    (*f).position += (int64_t) n;
+    return (int64_t) n;
 }
 
 int64_t File_write(File *f, const void *src, int64_t len) {
-    if (!f || !(*f).handle)
+    if (!f || !(*f).handle || !src)
         return -1;
-    size_t n = fwrite(src, 1, (size_t)len, (*f).handle);
+    if (len < 0)
+        return -1;
+    if (len == 0)
+        return 0;
+    size_t n = fwrite(src, 1, (size_t) len, (*f).handle);
     if (n == 0 && ferror((*f).handle))
         return -1;
-    (*f).position += (int64_t)n;
+    (*f).position += (int64_t) n;
     if ((*f).position > (*f).size)
         (*f).size = (*f).position;
     return (int64_t)n;

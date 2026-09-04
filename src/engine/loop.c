@@ -12,28 +12,40 @@
 static int64_t nowMs(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    return (int64_t) ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
 void Loop_run(Loop *loop) {
-    if (!loop || !(*loop).tick) return;
+    if (!loop || !(*loop).tick)
+        return;
+    if ((*loop).frame_ms <= 0)
+        return;
 
-    (*loop).running = true;
+    atomic_store_explicit(&(*loop).running, true, memory_order_release);
     int64_t accumulator = 0;
     int64_t prev = nowMs();
 
-    while ((*loop).running) {
+    while (atomic_load_explicit(&(*loop).running, memory_order_acquire)) {
         int64_t now = nowMs();
         accumulator += now - prev;
         prev = now;
 
-        while (accumulator >= (*loop).frame_ms) {
+        // Clamp catch-up: at most 4 steps per frame, then drop backlog.
+        // Prevents spiral-of-death after a stall and bounds frame time.
+        int steps = 0;
+        while (accumulator >= (*loop).frame_ms && steps < 4) {
             (*loop).tick((*loop).userdata);
             accumulator -= (*loop).frame_ms;
+            steps++;
+            if (!atomic_load_explicit(&(*loop).running, memory_order_acquire))
+                break;
         }
+        if (steps == 4)
+            accumulator = 0;
     }
 }
 
 void Loop_stop(Loop *loop) {
-    if (loop) (*loop).running = false;
+    if (loop)
+        atomic_store_explicit(&(*loop).running, false, memory_order_release);
 }
