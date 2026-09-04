@@ -209,7 +209,7 @@ Class *Class_createNamed(size_t count, ...) {
     if (nextFieldsId >= MAX_FIELDS)
         return nullptr;
     size_t *classes = Memory_alloc(Type_make(FORM_ARRAY, ID_STRIDE), count * sizeof(size_t));
-    const char **names = Memory_alloc(Type_make(FORM_ARRAY, ID_STRIDE), count * sizeof(char *));
+    const char **names = Memory_alloc(Type_make(FORM_ARRAY, ID_STRIDE), count * sizeof(char*));
     if (!classes || !names) {
         if (classes) Memory_free(classes);
         if (names) Memory_free(names);
