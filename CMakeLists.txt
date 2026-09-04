@@ -10,11 +10,22 @@ if(APPLE)
     set(CMAKE_OBJC_STANDARD_REQUIRED ON)
 endif()
 
+# Release: dead-code stripping so unused symbols cost zero bytes in artifacts.
+# (Duplicated per repo for standalone builds; harmless when built in-tree.)
+if(APPLE)
+    add_compile_options($<$<CONFIG:Release>:-ffunction-sections> $<$<CONFIG:Release>:-fdata-sections>)
+    add_link_options($<$<CONFIG:Release>:-Wl,-dead_strip>)
+elseif(UNIX)
+    add_compile_options($<$<CONFIG:Release>:-ffunction-sections> $<$<CONFIG:Release>:-fdata-sections>)
+    add_link_options($<$<CONFIG:Release>:-Wl,--gc-sections>)
+endif()
+
 if(NOT TARGET vexspoke)
 # Core VexSpoke (formerly Anti) Runtime Library
 add_library(vexspoke STATIC
     src/bit/bit.c
     src/nio/mem.c
+    src/c23/equals.c
     src/c23/free.c
     src/oop/type.c
     src/oop/Class.c
@@ -210,4 +221,3 @@ add_executable(class_relational_test
     tests/class_relational_test.c
 )
 target_link_libraries(class_relational_test PRIVATE vexspoke)
-    src/c23/equals.c
