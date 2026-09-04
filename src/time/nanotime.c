@@ -8,6 +8,34 @@
 #include "time/nanotime.h"
 
 #include <time.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Nanotime (time/nanotime.c)
+ * ============================================================================
+ * the monotonic clock (Legacy: time/NanoTime.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - NanoTime_init(void)
+ *
+ * Core Functions:
+ *   - NanoTime_now(void)
+ *   - NanoTime_startNanos(void)
+ *   - NanoTime_elapsedNanos(void)
+ *   - NanoTimer_reset(timer)
+ *   - NanoTimer_tick(timer)
+ *   - NanoTimer_tickWithClock(timer, clock)
+ *   - NanoTimer_deltaTime(timer)
+ *   - NanoTimer_totalTime(timer)
+ *   - NanoTimer_deltaNanos(timer)
+ *   - NanoTimer_elapsedNanosOf(timer)
+ * ============================================================================
+ */
+
 
 // little conflicted.. would need this to be localthread variable to ensure thread safety
 static uint64_t s_startNanos = 0;

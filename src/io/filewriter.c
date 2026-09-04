@@ -3,6 +3,26 @@
 #include <string.h>
 
 #include "io/file.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Filewriter (io/filewriter.c)
+ * ============================================================================
+ * the FileWriter class, ported from io/FileWriter.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - FileWriter_open(w, path)
+ *   - FileWriter_write(w, data, len)
+ *   - FileWriter_flush(w)
+ *   - FileWriter_close(w)
+ *   - FileWriter_bytesWritten(w)
+ * ============================================================================
+ */
+
 
 // filewriter.c — FileWriter port (Legacy: io/FileWriter.java).
 

@@ -4,6 +4,94 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Struct (oop/struct.c)
+ * ============================================================================
+ * Dynamic Struct Instance & Allocation Engine.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Struct_allocate(fields)
+ *   - Struct_allocateSingletonRaw(generic)
+ *   - Struct_allocateArrayFrom(fields, amount)
+ *   - Struct_allocateArrayRaw(generic, amount)
+ *   - Struct_allocateCoexistentFrom(fields, amount)
+ *   - Struct_allocateCoexistentRaw(generic, amount)
+ *   - Struct_allocateSOAFrom(fields, amount)
+ *   - Struct_allocateSOARaw(generic, amount)
+ *   - Struct_constructArray(fieldClasses, fieldCount)
+ *   - Struct_construct(fieldClasses, fieldCount)
+ *   - Struct_stride(generic)
+ *   - Struct_fieldsCount(generic)
+ *   - Struct_fieldClass(generic, fieldIndex)
+ *   - Struct_free(userPtr)
+ *   - Struct_field(ptr, fieldIndex)
+ *   - Struct_elementField(ptr, elementIndex, fieldIndex)
+ *
+ * Setters:
+ *   - Struct_setField(ptr, fieldIndex, value)
+ *   - Struct_setElement(ptr, elementIndex, fieldIndex, value)
+ *   - Struct_setInt(ptr, fieldIndex, value)
+ *   - Struct_setLong(ptr, fieldIndex, value)
+ *   - Struct_setFloat(ptr, fieldIndex, value)
+ *   - Struct_setDouble(ptr, fieldIndex, value)
+ *   - Struct_setByte(ptr, fieldIndex, value)
+ *   - Struct_setShort(ptr, fieldIndex, value)
+ *   - Struct_setPointerField(ptr, fieldIndex, value)
+ *   - Struct_setIntElement(ptr, elementIndex, fieldIndex, value)
+ *   - Struct_setLongElement(ptr, elementIndex, fieldIndex, value)
+ *   - Struct_setFloatElement(ptr, elementIndex, fieldIndex, value)
+ *   - Struct_setDoubleElement(ptr, elementIndex, fieldIndex, value)
+ *   - Struct_setByteElement(ptr, elementIndex, fieldIndex, value)
+ *   - Struct_setShortElement(ptr, elementIndex, fieldIndex, value)
+ *   - Struct_setIntG(generic, ptr, fieldIndex, value)
+ *   - Struct_setLongG(generic, ptr, fieldIndex, value)
+ *   - Struct_setFloatG(generic, ptr, fieldIndex, value)
+ *   - Struct_setDoubleG(generic, ptr, fieldIndex, value)
+ *   - Struct_setByteG(generic, ptr, fieldIndex, value)
+ *   - Struct_setShortG(generic, ptr, fieldIndex, value)
+ *   - Struct_setNestedInt(ptr, elementIndex, fieldIndex, subFieldIndex, value)
+ *   - Struct_setNestedFloat(ptr, elementIndex, fieldIndex, subFieldIndex, value)
+ *   - Struct_setNestedLong(ptr, elementIndex, fieldIndex, subFieldIndex, value)
+ *   - Struct_setNestedDouble(ptr, elementIndex, fieldIndex, subFieldIndex, value)
+ *
+ * Getters:
+ *   - Struct_get(generic)
+ *   - Struct_isFieldStruct(generic, fieldIndex)
+ *   - Struct_getField(ptr, fieldIndex)
+ *   - Struct_getElement(ptr, elementIndex, fieldIndex)
+ *   - Struct_getInt(ptr, fieldIndex)
+ *   - Struct_getLong(ptr, fieldIndex)
+ *   - Struct_getFloat(ptr, fieldIndex)
+ *   - Struct_getDouble(ptr, fieldIndex)
+ *   - Struct_getByte(ptr, fieldIndex)
+ *   - Struct_getShort(ptr, fieldIndex)
+ *   - Struct_getPointerField(ptr, fieldIndex)
+ *   - Struct_getIntElement(ptr, elementIndex, fieldIndex)
+ *   - Struct_getLongElement(ptr, elementIndex, fieldIndex)
+ *   - Struct_getFloatElement(ptr, elementIndex, fieldIndex)
+ *   - Struct_getDoubleElement(ptr, elementIndex, fieldIndex)
+ *   - Struct_getByteElement(ptr, elementIndex, fieldIndex)
+ *   - Struct_getShortElement(ptr, elementIndex, fieldIndex)
+ *   - Struct_getNested(ptr, elementIndex, fieldIndex)
+ *   - Struct_getIntG(generic, ptr, fieldIndex)
+ *   - Struct_getLongG(generic, ptr, fieldIndex)
+ *   - Struct_getFloatG(generic, ptr, fieldIndex)
+ *   - Struct_getDoubleG(generic, ptr, fieldIndex)
+ *   - Struct_getByteG(generic, ptr, fieldIndex)
+ *   - Struct_getShortG(generic, ptr, fieldIndex)
+ *   - Struct_getNestedInt(ptr, elementIndex, fieldIndex, subFieldIndex)
+ *   - Struct_getNestedFloat(ptr, elementIndex, fieldIndex, subFieldIndex)
+ *   - Struct_getNestedLong(ptr, elementIndex, fieldIndex, subFieldIndex)
+ *   - Struct_getNestedDouble(ptr, elementIndex, fieldIndex, subFieldIndex)
+ * ============================================================================
+ */
+
 
 // struct.c — Dynamic Struct Instance & Allocation Engine.
 

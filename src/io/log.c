@@ -5,6 +5,39 @@
 #include <time.h>
 
 #include "io/vexhome.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Log (io/log.c)
+ * ============================================================================
+ * the Log class, ported from io/Log.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Log_init(log, path, slot_count)
+ *
+ * Core Functions:
+ *   - Log_initDefault(log)
+ *   - Log_shutdown(log)
+ *   - Log_path(log)
+ *   - Log_appended(log)
+ *   - Log_dropped(log)
+ *   - Log_written(log)
+ *   - Log_append(log, kind, v0, v1, v2, v3, v4)
+ *   - Log_appendKind(log, kind)
+ *
+ * Setters:
+ *   - Log_setActive(log, on)
+ *
+ * Getters:
+ *   - Log_isEnabled(log)
+ *   - Log_isActive(log)
+ * ============================================================================
+ */
+
 
 // log.c — Log port (Legacy: io/Log.java). MPSC event ring + writer daemon.
 

@@ -4,6 +4,35 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Reactive (objects/reactive.c)
+ * ============================================================================
+ * Event-driven Reactive object wrapper.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Reactive_1(initialValue)
+ *   - Reactive_2(init, count)
+ *
+ * Core Functions:
+ *   - Reactive_free(reactive)
+ *
+ * Setters:
+ *   - Reactive_set(reactive, value)
+ *   - Reactive_setOnSet(reactive, cb, userdata)
+ *   - Reactive_setOnGet(reactive, cb, userdata)
+ *   - Reactive_setOnChanged(reactive, cb, userdata)
+ *
+ * Getters:
+ *   - Reactive_get(reactive)
+ * ============================================================================
+ */
+
 
 // reactive.c — Event-driven Reactive object wrapper implementation.
 

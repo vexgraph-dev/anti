@@ -3,6 +3,31 @@
 #include <string.h>
 
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Depth_buffer (buffer/depth_buffer.c)
+ * ============================================================================
+ * 1-channel floating-point depth buffer.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - DepthBuffer_2(width, height)
+ *
+ * Core Functions:
+ *   - DepthBuffer_clear(buf, depth)
+ *
+ * Setters:
+ *   - DepthBuffer_set(buf, x, y, depth)
+ *
+ * Getters:
+ *   - DepthBuffer_get(buf, x, y)
+ * ============================================================================
+ */
+
 
 // depth_buffer.c — 1-channel depth buffer implementation.
 

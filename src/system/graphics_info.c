@@ -3,6 +3,45 @@
 #include <string.h>
 
 #include "system/discovery.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Graphics_info (system/graphics_info.c)
+ * ============================================================================
+ * GPU and graphics capabilities query (Legacy: system/GraphicsInfo.java)
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Setters:
+ *   - GraphicsInfo_setGpuName(val)
+ *   - GraphicsInfo_setGpuVendorId(val)
+ *   - GraphicsInfo_setGpuDeviceId(val)
+ *   - GraphicsInfo_setPrimaryGraphicsApi(val)
+ *   - GraphicsInfo_setUnifiedMemoryEnabled(val)
+ *   - GraphicsInfo_setComputeShadersEnabled(val)
+ *   - GraphicsInfo_setMeshShadersEnabled(val)
+ *   - GraphicsInfo_setHardwareRayTracingEnabled(val)
+ *   - GraphicsInfo_setMaxTextureSize(val)
+ *   - GraphicsInfo_setVramTotal(val)
+ *   - GraphicsInfo_setVramAvailable(val)
+ *
+ * Getters:
+ *   - GraphicsInfo_getGpuName(void)
+ *   - GraphicsInfo_getGpuVendorId(void)
+ *   - GraphicsInfo_getGpuDeviceId(void)
+ *   - GraphicsInfo_getPrimaryGraphicsApi(void)
+ *   - GraphicsInfo_getUnifiedMemoryEnabled(void)
+ *   - GraphicsInfo_getComputeShadersEnabled(void)
+ *   - GraphicsInfo_getMeshShadersEnabled(void)
+ *   - GraphicsInfo_getHardwareRayTracingEnabled(void)
+ *   - GraphicsInfo_getMaxTextureSize(void)
+ *   - GraphicsInfo_getVramTotal(void)
+ *   - GraphicsInfo_getVramAvailable(void)
+ * ============================================================================
+ */
+
 
 static char     s_gpuName[128] = "Apple M-Series GPU";
 static int32_t  s_gpuVendorId = 0x106B; // Apple vendor ID

@@ -5,6 +5,51 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Display_monitor (system/display_monitor.c)
+ * ============================================================================
+ * single display monitor representation (Legacy: system/DisplayMonitor.java)
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - DisplayMonitor_0(void)
+ *
+ * Core Functions:
+ *   - DisplayMonitor_free(monitor)
+ *
+ * Setters:
+ *   - DisplayMonitor_setId(m, id)
+ *   - DisplayMonitor_setName(m, name)
+ *   - DisplayMonitor_setCurrentWidth(m, val)
+ *   - DisplayMonitor_setCurrentHeight(m, val)
+ *   - DisplayMonitor_setPointWidth(m, val)
+ *   - DisplayMonitor_setPointHeight(m, val)
+ *   - DisplayMonitor_setNativeWidth(m, val)
+ *   - DisplayMonitor_setNativeHeight(m, val)
+ *   - DisplayMonitor_setRefreshRate(m, val)
+ *   - DisplayMonitor_setHdrSupported(m, val)
+ *   - DisplayMonitor_setDpi(m, val)
+ *
+ * Getters:
+ *   - DisplayMonitor_getId(m)
+ *   - DisplayMonitor_getName(m)
+ *   - DisplayMonitor_getCurrentWidth(m)
+ *   - DisplayMonitor_getCurrentHeight(m)
+ *   - DisplayMonitor_getPointWidth(m)
+ *   - DisplayMonitor_getPointHeight(m)
+ *   - DisplayMonitor_getNativeWidth(m)
+ *   - DisplayMonitor_getNativeHeight(m)
+ *   - DisplayMonitor_getRefreshRate(m)
+ *   - DisplayMonitor_getHdrSupported(m)
+ *   - DisplayMonitor_getDpi(m)
+ * ============================================================================
+ */
+
 
 struct DisplayMonitor {
     uint32_t id;

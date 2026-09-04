@@ -4,6 +4,38 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Bool (primitive/bool.c)
+ * ============================================================================
+ * Bool primitive (Legacy: primitive/Bool.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Bool_init(void)
+ *
+ * Core Functions:
+ *   - Bool_shutdown(void)
+ *   - Bool_alloc(void)
+ *   - Bool_allocArray(count)
+ *   - Bool_free(ptr)
+ *   - Bool_compareAndSet(ptr, expected, value)
+ *   - Bool_type(ptr)
+ *   - Bool_length(ptr)
+ *   - Bool_allocWithValue(value)
+ *
+ * Setters:
+ *   - Bool_set(ptr, value)
+ *
+ * Getters:
+ *   - Bool_get(ptr)
+ * ============================================================================
+ */
+
 
 BitPool g_boolPool;
 

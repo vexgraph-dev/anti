@@ -1,6 +1,31 @@
 #include "buffer/color_buffer.h"
 
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Color_buffer (buffer/color_buffer.c)
+ * ============================================================================
+ * 4-channel RGBA color buffer.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - ColorBuffer_2(width, height)
+ *
+ * Core Functions:
+ *   - ColorBuffer_clearRGBA(buf, r, g, b, a)
+ *
+ * Setters:
+ *   - ColorBuffer_setRGBA(buf, x, y, r, g, b, a)
+ *
+ * Getters:
+ *   - ColorBuffer_getRGBA(buf, x, y, r, g, b, a)
+ * ============================================================================
+ */
+
 
 // color_buffer.c — 4-channel RGBA color buffer implementation.
 

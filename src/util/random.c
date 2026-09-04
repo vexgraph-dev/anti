@@ -7,6 +7,37 @@
 #include "nio/mem.h"
 #include "oop/type.h"
 #include "util/hash.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Random (util/random.c)
+ * ============================================================================
+ * the Random class, ported from util/Random.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Random_1(seed)
+ *
+ * Core Functions:
+ *   - Random_free(r)
+ *   - Random_system(void)
+ *   - Random_nextLong(r)
+ *   - Random_nextInt(r)
+ *   - Random_nextFloat(r)
+ *   - Random_nextDouble(r)
+ *   - Random_nextNDCFloat(r)
+ *   - Random_nextChar(r)
+ *   - Random_sample(r, probable)
+ *   - Random_probablePool(r, pool)
+ *
+ * Getters:
+ *   - Random_getWeight(r, weight, total)
+ * ============================================================================
+ */
+
 
 // random.c — Random port (Legacy: util/Random.java).
 

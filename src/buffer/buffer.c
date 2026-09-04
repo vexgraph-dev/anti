@@ -5,6 +5,46 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Buffer (buffer/buffer.c)
+ * ============================================================================
+ * Core 2D multi-channel raster buffer engine.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Buffer_4(classId, width, height, channels)
+ *
+ * Core Functions:
+ *   - Buffer_expand(buf, newWidth, newHeight)
+ *   - Buffer_free(buf)
+ *   - Buffer_width(buf)
+ *   - Buffer_height(buf)
+ *   - Buffer_channels(buf)
+ *   - Buffer_length(buf)
+ *   - Buffer_type(buf)
+ *   - Buffer_classId(buf)
+ *   - Buffer_data(buf)
+ *   - Buffer_constData(buf)
+ *   - Buffer_clear(buf, clearValue)
+ *   - Buffer_copy(src, dst)
+ *   - Buffer_blit(src, dst, srcX, srcY, dstX, dstY, width, height)
+ *   - Buffer_sample(buf, u, v, channel)
+ *
+ * Setters:
+ *   - Buffer_set(buf, index, value)
+ *   - Buffer_setPixel(buf, x, y, channel, value)
+ *
+ * Getters:
+ *   - Buffer_get(buf, index)
+ *   - Buffer_getPixel(buf, x, y, channel)
+ * ============================================================================
+ */
+
 
 // buffer.c — Core 2D multi-channel raster buffer implementation.
 

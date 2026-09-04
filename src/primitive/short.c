@@ -4,6 +4,38 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Short (primitive/short.c)
+ * ============================================================================
+ * Short primitive (Legacy: primitive/Short.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Short_init(void)
+ *
+ * Core Functions:
+ *   - Short_shutdown(void)
+ *   - Short_alloc(void)
+ *   - Short_allocArray(count)
+ *   - Short_free(ptr)
+ *   - Short_compareAndSet(ptr, expected, value)
+ *   - Short_type(ptr)
+ *   - Short_length(ptr)
+ *   - Short_allocWithValue(value)
+ *
+ * Setters:
+ *   - Short_set(ptr, value)
+ *
+ * Getters:
+ *   - Short_get(ptr)
+ * ============================================================================
+ */
+
 
 BitPool g_shortPool;
 

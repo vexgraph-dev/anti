@@ -4,6 +4,31 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Choice (objects/choice.c)
+ * ============================================================================
+ * Immutable deterministic choice / branch dispatcher.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Choice_3(objectPtrs, callbacks, count)
+ *   - Choice_2(init, count)
+ *
+ * Core Functions:
+ *   - Choice_free(choice)
+ *   - Choice_length(choice)
+ *   - Choice_trigger(choice, index, userdata)
+ *
+ * Getters:
+ *   - Choice_getObject(choice, index)
+ * ============================================================================
+ */
+
 
 // choice.c — Immutable deterministic choice / branch dispatcher implementation.
 

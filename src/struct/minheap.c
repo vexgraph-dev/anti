@@ -4,6 +4,34 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Minheap (struct/minheap.c)
+ * ============================================================================
+ * the MinHeap class, ported from struct/MinHeap.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - MinHeap_1(capacity)
+ *   - MinHeap_0(void)
+ *
+ * Core Functions:
+ *   - MinHeap_free(heap)
+ *   - MinHeap_size(heap)
+ *   - MinHeap_capacity(heap)
+ *   - MinHeap_push(heap, item, priority)
+ *   - MinHeap_popItem(heap)
+ *   - MinHeap_peekItem(heap)
+ *
+ * Getters:
+ *   - MinHeap_isEmpty(heap)
+ * ============================================================================
+ */
+
 
 // minheap.c — MinHeap port (Legacy: struct/MinHeap.java). 1-based array, sift
 // up on push, sift down on pop, strictly lower priority rises to the root.

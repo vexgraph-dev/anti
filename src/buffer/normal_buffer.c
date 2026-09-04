@@ -3,6 +3,28 @@
 #include <string.h>
 
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Normal_buffer (buffer/normal_buffer.c)
+ * ============================================================================
+ * 3-channel (XYZ) surface/view normals buffer.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - NormalBuffer_2(width, height)
+ *
+ * Setters:
+ *   - NormalBuffer_setNormal(buf, x, y, nx, ny, nz)
+ *
+ * Getters:
+ *   - NormalBuffer_getNormal(buf, x, y, nx, ny, nz)
+ * ============================================================================
+ */
+
 
 // normal_buffer.c — 3-channel normal buffer implementation.
 

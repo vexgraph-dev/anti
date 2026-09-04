@@ -4,6 +4,38 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Byte (primitive/byte.c)
+ * ============================================================================
+ * Byte primitive (Legacy: primitive/Byte.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Byte_init(void)
+ *
+ * Core Functions:
+ *   - Byte_shutdown(void)
+ *   - Byte_alloc(void)
+ *   - Byte_allocArray(count)
+ *   - Byte_free(ptr)
+ *   - Byte_compareAndSet(ptr, expected, value)
+ *   - Byte_type(ptr)
+ *   - Byte_length(ptr)
+ *   - Byte_allocWithValue(value)
+ *
+ * Setters:
+ *   - Byte_set(ptr, value)
+ *
+ * Getters:
+ *   - Byte_get(ptr)
+ * ============================================================================
+ */
+
 
 BitPool g_bytePool;
 

@@ -72,6 +72,25 @@
  */
 
 #include "security/touchid.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Touchid (security/touchid.c)
+ * ============================================================================
+ * perform operation
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - TouchID_discard(tok)
+ *   - TouchID_authenticate(reason)
+ *   - TouchID_verify(tok)
+ *   - TouchID_prompt(reason)
+ * ============================================================================
+ */
+
 
 TouchIDToken TouchID_authenticate(const char *reason) {
     (void)reason; // Stub must fail closed: no biometrics off Apple platforms.

@@ -3,6 +3,51 @@
 #include "lang/fastmath.h"
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Mat4 (lang/mat4.c)
+ * ============================================================================
+ * the Mat4 class, ported from lang/Mat4.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Mat4_0(void)
+ *
+ * Core Functions:
+ *   - Mat4_identityAlloc(void)
+ *   - Mat4_free(m)
+ *   - Mat4_zero(m)
+ *   - Mat4_identity(m)
+ *   - Mat4_copy(src, dest)
+ *   - Mat4_multiply(left, right, dest)
+ *   - Mat4_transpose(src, dest)
+ *   - Mat4_createTransformationMatrix(pos_x, pos_y, pos_z, rot_x_deg, rot_y_deg, rot_z_deg, scale_x, scale_y, scale_z, dest)
+ *   - Mat4_createTransformationMatrix2D(pos_x, pos_y, rot_z_deg, scale_x, scale_y, dest)
+ *   - Mat4_createViewMatrix(pos_x, pos_y, pos_z, pitch_deg, yaw_deg, roll_deg, dest)
+ *   - Mat4_translate(src, tx, ty, tz, dest)
+ *   - Mat4_scale(src, sx, sy, sz, dest)
+ *   - Mat4_rotate(src, angle_radians, axis_x, axis_y, axis_z, dest)
+ *   - Mat4_perspective(fov_y_radians, aspect, z_near, z_far, dest)
+ *   - Mat4_perspectiveVulkan(fov_y_radians, aspect, z_near, z_far, dest)
+ *   - Mat4_orthographic(left, right, bottom, top, z_near, z_far, dest)
+ *   - Mat4_lookAt(eye_x, eye_y, eye_z, target_x, target_y, target_z, up_x, up_y, up_z, dest)
+ *   - Mat4_transform(m, src_vec, dest_vec)
+ *   - Mat4_transformVec3(m, src_vec, dest_vec)
+ *
+ * Setters:
+ *   - Mat4_set(m, row, col, val)
+ *   - Mat4_setRaw(m, index, val)
+ *
+ * Getters:
+ *   - Mat4_get(m, row, col)
+ *   - Mat4_getRaw(m, index)
+ * ============================================================================
+ */
+
 
 // mat4.c — Mat4 port (Legacy: lang/Mat4.java). 64-byte column-major matrix.
 

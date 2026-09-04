@@ -6,6 +6,40 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: File (io/file.c)
+ * ============================================================================
+ * the File class, ported from io/File.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - File_open(path, mode)
+ *   - File_close(f)
+ *   - File_read(f, dest, max_len)
+ *   - File_write(f, src, len)
+ *   - File_seek(f, position)
+ *   - File_refreshSize(f)
+ *   - File_flush(f)
+ *   - File_handle(f)
+ *   - File_name(f)
+ *   - File_size(f)
+ *   - File_pos(f)
+ *   - File_mode(f)
+ *   - File_eof(f)
+ *   - File_exists(path)
+ *   - File_mkdirs(path)
+ *   - File_delete(path)
+ *
+ * Getters:
+ *   - File_isDirectory(path)
+ * ============================================================================
+ */
+
 
 // file.c — File port (Legacy: io/File.java). stdio-backed file handle.
 

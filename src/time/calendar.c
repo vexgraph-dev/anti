@@ -7,6 +7,29 @@
 // should support calendar at 1500s i think? may regurgitate...
 
 #include "time/calendar.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Calendar (time/calendar.c)
+ * ============================================================================
+ * stateless date arithmetic (Legacy: time/Calendar.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Calendar_daysInMonth(year, month)
+ *   - Calendar_dayOfWeek(year, month, day)
+ *   - Calendar_addDays(dt, days)
+ *   - Calendar_addMonths(dt, months)
+ *   - Calendar_addYears(dt, years)
+ *
+ * Getters:
+ *   - Calendar_isLeapYear(year)
+ * ============================================================================
+ */
+
 
 bool Calendar_isLeapYear(int32_t year) {
     return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);

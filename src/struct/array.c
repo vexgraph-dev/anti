@@ -5,6 +5,39 @@
 #include "nio/mem.h"
 #include "oop/stride.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Array (struct/array.c)
+ * ============================================================================
+ * the Array class, ported from struct/Array.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Array_2(element_class, length)
+ *
+ * Core Functions:
+ *   - Array_free(array)
+ *   - Array_slot(array, index)
+ *   - Array_size(array)
+ *   - Array_length(array)
+ *   - Array_capacity(array)
+ *   - Array_elementClassId(array)
+ *   - Array_stride(array)
+ *   - Array_dataBuffer(array)
+ *
+ * Setters:
+ *   - Array_set(array, index, value)
+ *
+ * Getters:
+ *   - Array_get(array, index)
+ *   - Array_isEmpty(array)
+ * ============================================================================
+ */
+
 
 // array.c — Array port (Legacy: struct/Array.java).
 

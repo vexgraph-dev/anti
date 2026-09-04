@@ -17,6 +17,28 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Spin (atomic/spin.c)
+ * ============================================================================
+ * spinlock API (Legacy: thread/SpinLock.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - SpinLock_lock(lock)
+ *   - SpinLock_tryLock(lock)
+ *   - SpinLock_tryLockTimeout(lock, timeout_nanos)
+ *   - SpinLock_unlock(lock)
+ *
+ * Getters:
+ *   - SpinLock_isLocked(lock)
+ * ============================================================================
+ */
+
 
 // x86 has `pause`; ARM64 has `yield`. Both tell the CPU "I'm spinning" so it
 // can back off power/contention. This is the one place we're arch-specific.

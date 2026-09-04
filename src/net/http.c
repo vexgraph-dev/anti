@@ -26,6 +26,25 @@
 
 #include "net/url.h"
 #include "net/tls.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Http (net/http.c)
+ * ============================================================================
+ * HTTP/1.1 client & micro server over BSD sockets
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Http_perform(req, resp)
+ *   - HttpServer_start(server, port, handler, userdata, portOut)
+ *   - HttpServer_stop(server)
+ *   - Http_respond(clientFd, status, contentType, body, bodyLen)
+ * ============================================================================
+ */
+
 
 #define HEADER_BLOCK_CAP 8192
 #define RECV_TIMEOUT_DEFAULT_MS 5000

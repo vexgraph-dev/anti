@@ -4,6 +4,23 @@
 
 #include "io/file.h"
 #include "io/logparser.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Logcommands (cli/logcommands.c)
+ * ============================================================================
+ * the LogCommands class, ported from cli/LogCommands.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - LogCommands_stat(path)
+ *   - LogCommands_cat(path, limit)
+ * ============================================================================
+ */
+
 
 // logcommands.c — the LogCommands class, ported from cli/LogCommands.java.
 

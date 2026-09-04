@@ -7,6 +7,70 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Audio_cocoa (objc/audio_cocoa.m)
+ * ============================================================================
+ * AVFoundation backend (the macOS half of audio.h).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Audio_init(void)
+ *   - AudioVoice_new(void)
+ *   - Audio_0(void)
+ *   - Audio_2(sampleRate, channels)
+ *
+ * Core Functions:
+ *   - sharedEngine(void)
+ *   - ensureRunning(void)
+ *   - Audio_shutdown(void)
+ *   - clipAlloc(seconds)
+ *   - AudioClip_load(path)
+ *   - AudioClip_tone(frequencyHz, seconds)
+ *   - for(i++)
+ *   - AudioClip_free(clip)
+ *   - Memory_free(clip)
+ *   - AudioClip_seconds(clip)
+ *   - AudioVoice_free(voice)
+ *   - AudioVoice_play(voice)
+ *   - AudioVoice_pause(voice)
+ *   - AudioVoice_stop(voice)
+ *   - audioInitFields(a, rate, channels)
+ *   - audioWireUp(a)
+ *   - Audio_withRate(sampleRate)
+ *   - Audio_load(path)
+ *   - Audio_play(a)
+ *   - Audio_pause(a)
+ *   - Audio_stop(a)
+ *   - Audio_free(a)
+ *
+ * Setters:
+ *   - AudioVoice_setClip(voice, clip)
+ *   - AudioVoice_setGain(voice, gain)
+ *   - AudioVoice_setPitch(voice, pitch)
+ *   - AudioVoice_setLooping(voice, looping)
+ *   - Audio_setGain(a, gain)
+ *   - Audio_setPitch(a, pitch)
+ *   - Audio_setLooping(a, looping)
+ *   - Audio_setSampleRate(a, rate)
+ *   - Audio_setChannels(a, channels)
+ *
+ * Getters:
+ *   - Audio_isReady(void)
+ *   - AudioVoice_isPlaying(voice)
+ *   - Audio_isPlaying(a)
+ *   - Audio_getGain(a)
+ *   - Audio_getPitch(a)
+ *   - Audio_getLooping(a)
+ *   - Audio_getSampleRate(a)
+ *   - Audio_getChannels(a)
+ * ============================================================================
+ */
+
 
 // audio/audio_cocoa.m — AVFoundation backend (the macOS half of audio.h).
 //

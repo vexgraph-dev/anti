@@ -7,6 +7,28 @@
 #include "input/focus.h"
 
 #include <stdatomic.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Focus (input/focus.c)
+ * ============================================================================
+ * THE spotlight (one focused window per machine).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Focus_id(void)
+ *
+ * Setters:
+ *   - Focus_set(windowId)
+ *
+ * Getters:
+ *   - Focus_isFocused(windowId)
+ * ============================================================================
+ */
+
 
 static _Atomic uint32_t s_focusId = FOCUS_BROADCAST;
 

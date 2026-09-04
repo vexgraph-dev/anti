@@ -7,6 +7,24 @@
 #include "primitive/string.h"
 #include "struct/array.h"
 #include "struct/map.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Commandregistry (cli/commandregistry.c)
+ * ============================================================================
+ * the CommandRegistry class, ported from
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - CommandRegistry_register(name, target)
+ *   - CommandRegistry_execute(command)
+ *   - CommandRegistry_free(void)
+ * ============================================================================
+ */
+
 
 // commandregistry.c — the CommandRegistry class, ported from cli/CommandRegistry.java.
 

@@ -4,6 +4,26 @@
 #include <stdio.h>
 
 #include "primitive/string.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Scanner (cli/scanner.c)
+ * ============================================================================
+ * the Scanner class, ported from cli/Scanner.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Scanner_nextLine(void)
+ *   - Scanner_nextWord(void)
+ *
+ * Getters:
+ *   - Scanner_hasNextLine(void)
+ * ============================================================================
+ */
+
 
 // scanner.c — the Scanner class, ported from cli/Scanner.java.
 

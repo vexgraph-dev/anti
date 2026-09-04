@@ -5,6 +5,33 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Future (objects/future.c)
+ * ============================================================================
+ * Asynchronous single-assignment Future object wrapper.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Future_0(void)
+ *   - Future_2(init, count)
+ *
+ * Core Functions:
+ *   - Future_free(future)
+ *
+ * Setters:
+ *   - Future_setDesiredValue(future, value)
+ *
+ * Getters:
+ *   - Future_isGiven(future)
+ *   - Future_get(future)
+ * ============================================================================
+ */
+
 
 // future.c — Asynchronous single-assignment Future object wrapper implementation.
 typedef struct Future {

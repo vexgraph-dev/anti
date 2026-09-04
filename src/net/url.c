@@ -6,6 +6,26 @@
 
 #include <stdio.h>
 #include <strings.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Url (net/url.c)
+ * ============================================================================
+ * URI synthesis & authentication headers (Legacy:
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Url_defaultPort(scheme)
+ *   - Url_build(scheme, host, port, path, out, cap)
+ *   - Url_base64(in, len, out, cap)
+ *   - Url_basicAuth(user, pass, out, cap)
+ *   - Url_bearerAuth(token, out, cap)
+ * ============================================================================
+ */
+
 
 int Url_defaultPort(const char *scheme) {
     if (scheme && strcasecmp(scheme, "https") == 0) return 443;

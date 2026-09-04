@@ -2,6 +2,22 @@
 
 #include "oop/struct.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Stride (oop/stride.c)
+ * ============================================================================
+ * the Stride utility, ported from oop/Stride.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Getters:
+ *   - Stride_get(class_id)
+ * ============================================================================
+ */
+
 
 // stride.c — Stride port (Legacy: oop/Stride.java). Byte width of a class.
 

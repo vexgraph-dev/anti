@@ -2,6 +2,25 @@
 
 #include "annotation/draft.h"
 #include "annotation/intention.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Tls_apple (objc/tls_apple.m)
+ * ============================================================================
+ * native Apple TLS backend (Network.framework).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Tls_connect(host, port, connOut)
+ *   - Tls_send(conn, buf, len)
+ *   - Tls_recv(conn, buf, cap, gotOut)
+ *   - Tls_close(conn)
+ * ============================================================================
+ */
+
 
 // net/tls_apple.m — native Apple TLS backend (Network.framework).
 ;;DRAFT

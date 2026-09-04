@@ -14,6 +14,27 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdbool.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Registry (atomic/registry.c)
+ * ============================================================================
+ * thread identity & roles (Legacy: thread/ThreadRegistry.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - ThreadRegistry_index(void)
+ *   - ThreadRegistry_role(index)
+ *   - ThreadRegistry_roleName(role)
+ *
+ * Setters:
+ *   - ThreadRegistry_setRole(index, role)
+ * ============================================================================
+ */
+
 
 static _Atomic uint64_t s_table[THREAD_REGISTRY_SIZE]; // 0 = empty slot
 static _Atomic int32_t s_roles[THREAD_REGISTRY_SIZE];

@@ -4,6 +4,38 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Float (primitive/float.c)
+ * ============================================================================
+ * Float primitive (Legacy: primitive/Float.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Float_init(void)
+ *
+ * Core Functions:
+ *   - Float_shutdown(void)
+ *   - Float_alloc(void)
+ *   - Float_allocArray(count)
+ *   - Float_free(ptr)
+ *   - Float_compareAndSet(ptr, expected, value)
+ *   - Float_type(ptr)
+ *   - Float_length(ptr)
+ *   - Float_allocWithValue(value)
+ *
+ * Setters:
+ *   - Float_set(ptr, value)
+ *
+ * Getters:
+ *   - Float_get(ptr)
+ * ============================================================================
+ */
+
 
 BitPool g_floatPool;
 

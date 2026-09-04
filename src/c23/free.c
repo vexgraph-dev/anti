@@ -4,6 +4,22 @@
 #include "nio/mem.h"
 #include "oop/type.h"
 #include "objects/probable.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Free (c23/free.c)
+ * ============================================================================
+ * The Relational Destructor Dispatcher.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - c23_free(ptr)
+ * ============================================================================
+ */
+
 
 // Note: Add other class headers here as they get ported and need destructors.
 

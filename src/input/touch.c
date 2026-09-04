@@ -12,6 +12,42 @@
 #include "input/focus.h"
 #include "atomic/ring.h"
 #include "time/nanotime.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Touch (input/touch.c)
+ * ============================================================================
+ * trackpad touch state + event stream (Legacy: input/Touch.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Touch_init(void)
+ *
+ * Core Functions:
+ *   - Touch_shutdown(void)
+ *   - Touch_addListener(listener)
+ *   - Touch_removeListener(listener)
+ *   - Touch_attachWindow(windowId, listener)
+ *   - Touch_detachWindow(windowId, listener)
+ *   - Touch_detachWindowAll(windowId)
+ *   - Touch_pushTouchEvent(windowId, touchId, action, x, y, pressure, holdThresholdNanos)
+ *   - Touch_dispatchEvents(void)
+ *   - Touch_pressTime(touchId)
+ *   - Touch_lastHoldDuration(touchId)
+ *   - Touch_taps(touchId)
+ *   - Touch_lastAction(touchId)
+ *   - Touch_x(touchId)
+ *   - Touch_y(touchId)
+ *   - Touch_pressure(touchId)
+ *
+ * Getters:
+ *   - Touch_isDown(touchId)
+ * ============================================================================
+ */
+
 
 #define QUEUE_CAPACITY 1024
 

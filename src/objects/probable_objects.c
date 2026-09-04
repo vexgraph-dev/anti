@@ -5,6 +5,37 @@
 #include "nio/mem.h"
 #include "oop/type.h"
 #include "util/random.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Probable_objects (objects/probable_objects.c)
+ * ============================================================================
+ * the ProbableObjects class, ported from
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - ProbableObjects_1(capacity)
+ *   - ProbableObjects_2(init, count)
+ *
+ * Core Functions:
+ *   - ProbableObjects_free(po)
+ *   - ProbableObjects_size(po)
+ *   - ProbableObjects_capacity(po)
+ *   - ProbableObjects_totalWeight(po)
+ *   - ProbableObjects_add(po, object, weight)
+ *   - ProbableObjects_addProbable(po, probable)
+ *   - ProbableObjects_objectAt(po, index)
+ *   - ProbableObjects_cumulativeAt(po, index)
+ *   - ProbableObjects_weightAt(po, index)
+ *
+ * Getters:
+ *   - ProbableObjects_get(po)
+ * ============================================================================
+ */
+
 
 // probable_objects.c — ProbableObjects port (Legacy: objects/ProbableObjects.java).
 

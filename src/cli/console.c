@@ -5,6 +5,28 @@
 
 #include "primitive/string.h"
 #include "atomic/ring.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Console (cli/console.c)
+ * ============================================================================
+ * the Console class, ported from cli/Console.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Console_init(void)
+ *
+ * Core Functions:
+ *   - Console_log(message)
+ *   - Console_logString(_string)
+ *   - Console_drain(void)
+ *   - Console_shutdown(void)
+ * ============================================================================
+ */
+
 
 // console.c — the Console class, ported from cli/Console.java.
 

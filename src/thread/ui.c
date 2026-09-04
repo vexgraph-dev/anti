@@ -3,6 +3,25 @@
 #include "annotation/incomplete.h"
 
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Ui (thread/ui.c)
+ * ============================================================================
+ * the UI worker (Legacy: UIThread.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - UIThread_invoke(void)
+ *   - UIThread_submit(w, packet)
+ *   - UIThread_stop(w)
+ *   - UIThread_free(w)
+ * ============================================================================
+ */
+
 
 // thread/ui.c — UI worker (Legacy: UIThread.java).
 

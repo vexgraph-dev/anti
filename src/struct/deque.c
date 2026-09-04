@@ -5,6 +5,45 @@
 #include "nio/mem.h"
 #include "oop/stride.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Deque (struct/deque.c)
+ * ============================================================================
+ * the Deque class, ported from struct/Deque.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Deque_2(element_class, capacity)
+ *   - Deque_1(element_class)
+ *
+ * Core Functions:
+ *   - Deque_2Count(element_class, count)
+ *   - Deque_free(deque)
+ *   - Deque_addFirst(deque, value_or_pointer)
+ *   - Deque_addLast(deque, value_or_pointer)
+ *   - Deque_removeFirst(deque)
+ *   - Deque_removeLast(deque)
+ *   - Deque_peekFirst(deque)
+ *   - Deque_peekLast(deque)
+ *   - Deque_slot(deque, index)
+ *   - Deque_size(deque)
+ *   - Deque_length(deque)
+ *   - Deque_capacity(deque)
+ *   - Deque_elementClassId(deque)
+ *   - Deque_stride(deque)
+ *   - Deque_head(deque)
+ *   - Deque_dataBuffer(deque)
+ *
+ * Getters:
+ *   - Deque_get(deque, index)
+ *   - Deque_isEmpty(deque)
+ * ============================================================================
+ */
+
 
 // deque.c — Deque port (Legacy: struct/Deque.java). Circular buffer: logical
 // index i maps to physical (head + i) % capacity.

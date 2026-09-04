@@ -13,6 +13,26 @@
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <CoreGraphics/CoreGraphics.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Discovery (objc/discovery.m)
+ * ============================================================================
+ * native hardware, display, and GPU probe (Legacy: system/SystemDiscovery.java)
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - SystemDiscovery_bootstrap(void)
+ *   - SystemDiscovery_refresh(void)
+ *
+ * Getters:
+ *   - SystemDiscovery_isBootstrapped(void)
+ * ============================================================================
+ */
+
 #import <Metal/Metal.h>
 #import <AppKit/AppKit.h>
 #import <IOKit/ps/IOPowerSources.h>

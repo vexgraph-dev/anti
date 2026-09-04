@@ -4,6 +4,37 @@
 #include "nio/mem.h"
 #include "oop/type.h"
 #include "util/random.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Probable (objects/probable.c)
+ * ============================================================================
+ * Core subsystem implementation for Probable.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Probable_3(object, weight, total)
+ *   - Probable_2(init, count)
+ *
+ * Core Functions:
+ *   - Probable_free(p)
+ *   - Probable_object(p)
+ *   - Probable_weight(p)
+ *   - Probable_total(p)
+ *
+ * Setters:
+ *   - Probable_setObject(p, object)
+ *   - Probable_setWeight(p, weight)
+ *   - Probable_setTotal(p, total)
+ *
+ * Getters:
+ *   - Probable_get(p)
+ * ============================================================================
+ */
+
 
 Probable *Probable_3(uintptr_t object, uint32_t weight, uint32_t total) {
     Probable *p = (Probable*) Memory_alloc(TYPE_PROBABLE, sizeof(Probable));

@@ -4,6 +4,26 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Networking (thread/networking.c)
+ * ============================================================================
+ * the networking worker (Legacy: NetworkingThread.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - NetworkingThread_invoke(void)
+ *   - NetworkingThread_core(void)
+ *   - NetworkingThread_submit(w, batch)
+ *   - NetworkingThread_stop(w)
+ *   - NetworkingThread_free(w)
+ * ============================================================================
+ */
+
 
 // thread/networking.c — networking worker (Legacy: NetworkingThread.java).
 

@@ -4,6 +4,38 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Long (primitive/long.c)
+ * ============================================================================
+ * Long primitive (Legacy: primitive/Long.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Long_init(void)
+ *
+ * Core Functions:
+ *   - Long_shutdown(void)
+ *   - Long_alloc(void)
+ *   - Long_allocArray(count)
+ *   - Long_free(ptr)
+ *   - Long_compareAndSet(ptr, expected, value)
+ *   - Long_type(ptr)
+ *   - Long_length(ptr)
+ *   - Long_allocWithValue(value)
+ *
+ * Setters:
+ *   - Long_set(ptr, value)
+ *
+ * Getters:
+ *   - Long_get(ptr)
+ * ============================================================================
+ */
+
 
 BitPool g_longPool;
 

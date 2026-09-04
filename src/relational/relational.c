@@ -5,6 +5,38 @@
 
 #include "nio/mem.h"
 #include "primitive/string.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Relational (relational/relational.c)
+ * ============================================================================
+ * spotlight relational facade over Variable (Legacy: relational/RelationalEngine.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Relational_search(scope, query, outIds, cap)
+ *   - Relational_searchAll(global, local, query, outIds, cap)
+ *
+ * Setters:
+ *   - Relational_setName(scope, oldName, newName)
+ *   - Relational_setValue(scope, name, classId, ptr)
+ *   - Relational_setValueById(scope, varId, ptr)
+ *   - Relational_setString(scope, name, value)
+ *   - Relational_setFunction(scope, name, fn)
+ *
+ * Getters:
+ *   - Relational_getId(scope, name)
+ *   - Relational_getName(scope, varId, out, outCap)
+ *   - Relational_getValue(scope, name)
+ *   - Relational_getValueById(scope, varId)
+ *   - Relational_getString(scope, name)
+ *   - Relational_getFunction(scope, name)
+ * ============================================================================
+ */
+
 
 // helpers — one level only, dest last where it matters
 

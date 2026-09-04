@@ -3,6 +3,25 @@
 #include "annotation/incomplete.h"
 
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Scripting (thread/scripting.c)
+ * ============================================================================
+ * the scripting worker (Legacy: ScriptingThread.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - ScriptingThread_invoke(void)
+ *   - ScriptingThread_submit(w, task)
+ *   - ScriptingThread_stop(w)
+ *   - ScriptingThread_free(w)
+ * ============================================================================
+ */
+
 
 // thread/scripting.c — scripting worker (Legacy: ScriptingThread.java).
 

@@ -4,6 +4,54 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: String (primitive/string.c)
+ * ============================================================================
+ * the string class, ported from primitive/string.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - string_allocate(value)
+ *   - string_allocateBytes(bytes, len)
+ *   - string_allocateUninitialized(len)
+ *   - string_free(ptr)
+ *   - string_length(ptr)
+ *   - string_type(ptr)
+ *   - string_classId(void)
+ *   - string_capacity(ptr)
+ *   - string_copy(ptr)
+ *   - string_equals(ptr, value)
+ *   - String_compare(a, b)
+ *   - String_contains(haystack, needle)
+ *   - String_containsLiteral(haystack, needle)
+ *   - String_indexOf(haystack, needle)
+ *   - String_indexOfLiteral(haystack, needle)
+ *   - String_instring(index, haystack, needle)
+ *   - String_instringLiteral(index, haystack, needle)
+ *   - String_substring(str, start, len)
+ *   - String_substringLiteral(str, start, len)
+ *   - String_subFirstChar(str)
+ *   - String_subLastChar(str)
+ *   - String_subFirst(str, count)
+ *   - String_subLast(str, count)
+ *   - String_append(a, b)
+ *   - String_appendLiteral(a, b)
+ *   - String_appendLiterals(a, b)
+ *   - String_appendInto(a, b, dest)
+ *   - String_appendFirst(a, b)
+ *   - String_appendFirstLiteral(a, b)
+ *
+ * Getters:
+ *   - string_get(ptr)
+ *   - string_isArray(ptr)
+ * ============================================================================
+ */
+
 
 // string.c — the string class, ported from primitive/string.java.
 

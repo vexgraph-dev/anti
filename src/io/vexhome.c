@@ -5,6 +5,28 @@
 #include <string.h>
 
 #include "io/file.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Vexhome (io/vexhome.c)
+ * ============================================================================
+ * the VexHome class (was AntiHome, renamed on the
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - VexHome_root(void)
+ *   - VexHome_projects(void)
+ *   - VexHome_logs(void)
+ *   - VexHome_fonts(void)
+ *   - VexHome_placeholder(void)
+ *   - VexHome_ensure(void)
+ *   - VexHome_defaultLogPath(void)
+ * ============================================================================
+ */
+
 
 // vexhome.c — VexHome port (was AntiHome; Legacy: io/AntiHome.java). ~/anti layout.
 

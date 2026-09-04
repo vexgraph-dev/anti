@@ -15,6 +15,27 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Ring (atomic/ring.c)
+ * ============================================================================
+ * MPMC ring buffer API (Legacy: thread/RingBuffer.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - RingBuffer_init(ring, elem_size, capacity)
+ *
+ * Core Functions:
+ *   - RingBuffer_shutdown(ring)
+ *   - RingBuffer_push(ring, item)
+ *   - RingBuffer_pop(ring, out)
+ * ============================================================================
+ */
+
 
 // Round up to the next power of two (clamp: 1..2^64). Classic bit trick —
 // same nextPowerOfTwo the Java version had.

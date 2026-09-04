@@ -1,6 +1,27 @@
 #include "util/arrays.h"
 
 #include <string.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Arrays (util/arrays.c)
+ * ============================================================================
+ * the Arrays utility, ported from util/Arrays.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Arrays_sortInt(data, length)
+ *   - Arrays_sortLong(data, length)
+ *   - Arrays_binarySearchInt(data, length, key)
+ *   - Arrays_binarySearchLong(data, length, key)
+ *   - Arrays_fill(data, length, value)
+ *   - Arrays_copy(src, dest, bytes)
+ * ============================================================================
+ */
+
 
 // arrays.c — Arrays port (Legacy: util/Arrays.java). Quicksort + search over
 // int32/int64 buffers, memcpy-backed block ops.

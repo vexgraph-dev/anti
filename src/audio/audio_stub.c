@@ -5,6 +5,63 @@
 // every control is a no-op, so callers stay identical across platforms.
 
 #include "annotation/incomplete.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Audio_stub (audio/audio_stub.c)
+ * ============================================================================
+ * the silence backend for platforms without the Cocoa
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Audio_init(void)
+ *   - AudioVoice_new(void)
+ *   - Audio_0(void)
+ *   - Audio_2(sampleRate, channels)
+ *
+ * Core Functions:
+ *   - Audio_shutdown(void)
+ *   - AudioClip_load(path)
+ *   - AudioClip_tone(frequencyHz, seconds)
+ *   - AudioClip_free(clip)
+ *   - AudioClip_seconds(clip)
+ *   - AudioVoice_free(voice)
+ *   - AudioVoice_play(voice)
+ *   - AudioVoice_pause(voice)
+ *   - AudioVoice_stop(voice)
+ *   - Audio_load(path)
+ *   - Audio_withRate(sampleRate)
+ *   - Audio_play(a)
+ *   - Audio_pause(a)
+ *   - Audio_stop(a)
+ *   - Audio_free(a)
+ *
+ * Setters:
+ *   - AudioVoice_setClip(voice, clip)
+ *   - AudioVoice_setGain(voice, gain)
+ *   - AudioVoice_setPitch(voice, pitch)
+ *   - AudioVoice_setLooping(voice, looping)
+ *   - Audio_setGain(a, gain)
+ *   - Audio_setPitch(a, pitch)
+ *   - Audio_setLooping(a, looping)
+ *   - Audio_setSampleRate(a, rate)
+ *   - Audio_setChannels(a, channels)
+ *
+ * Getters:
+ *   - Audio_isReady(void)
+ *   - AudioVoice_isPlaying(voice)
+ *   - Audio_isPlaying(a)
+ *   - Audio_getGain(a)
+ *   - Audio_getPitch(a)
+ *   - Audio_getLooping(a)
+ *   - Audio_getSampleRate(a)
+ *   - Audio_getChannels(a)
+ * ============================================================================
+ */
+
 
 ;;INCOMPLETE // Windows/X11 audio backends land here; until then this platform
 ;;INCOMPLETE // is silent by design.

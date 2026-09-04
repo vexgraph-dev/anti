@@ -2,6 +2,33 @@
 
 #include <math.h>
 #include <string.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Fastmath (lang/fastmath.c)
+ * ============================================================================
+ * the FastMath class, ported from lang/FastMath.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - FastMath_abs(x)
+ *   - FastMath_absInt(n)
+ *   - FastMath_round(x)
+ *   - FastMath_invSqrt(x)
+ *   - FastMath_sin32(x)
+ *   - FastMath_cos32(x)
+ *   - FastMath_tan32(x)
+ *   - FastMath_toRadians(degrees)
+ *   - FastMath_toDegrees(radians)
+ *   - FastMath_pow(base, exponent)
+ *   - FastMath_clamp(val, min, max)
+ *   - FastMath_cosFromSin(sin, angle)
+ * ============================================================================
+ */
+
 
 // fastmath.c — FastMath port (Legacy: lang/FastMath.java). Pure functions.
 

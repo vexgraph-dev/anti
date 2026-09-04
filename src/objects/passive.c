@@ -4,6 +4,32 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Passive (objects/passive.c)
+ * ============================================================================
+ * Lazy-evaluated / computed Passive object wrapper.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Passive_3(getter, setter, userdata)
+ *   - Passive_2(init, count)
+ *
+ * Core Functions:
+ *   - Passive_free(passive)
+ *
+ * Setters:
+ *   - Passive_set(passive, value)
+ *
+ * Getters:
+ *   - Passive_get(passive)
+ * ============================================================================
+ */
+
 
 // passive.c — Lazy-evaluated / computed Passive object wrapper implementation.
 

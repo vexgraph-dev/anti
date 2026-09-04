@@ -5,6 +5,29 @@
 #include "nio/mem.h"
 #include "oop/type.h"
 #include "primitive/string.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Command (cli/command.c)
+ * ============================================================================
+ * the Command class, ported from cli/Command.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Command_3(name_ptr, arg_ptrs, argc)
+ *
+ * Core Functions:
+ *   - Command_type(command)
+ *   - Command_name(command)
+ *   - Command_argumentCount(command)
+ *   - Command_argument(command, index)
+ *   - Command_free(command)
+ * ============================================================================
+ */
+
 
 // command.c — the Command class, ported from cli/Command.java.
 

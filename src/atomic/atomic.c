@@ -13,6 +13,47 @@
 #endif
 
 #include "time/nanotime.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Atomic (atomic/atomic.c)
+ * ============================================================================
+ * atomic variables & synchronization (Legacy: thread/Atomic.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - AtomicBool_cas(a, expected, v)
+ *   - AtomicBool_exchange(a, v)
+ *   - AtomicBool_toggle(a)
+ *   - AtomicInt_cas(a, expected, v)
+ *   - AtomicInt_exchange(a, v)
+ *   - AtomicInt_add(a, delta)
+ *   - AtomicInt_increment(a)
+ *   - AtomicInt_decrement(a)
+ *   - AtomicLong_cas(a, expected, v)
+ *   - AtomicLong_exchange(a, v)
+ *   - AtomicLong_add(a, delta)
+ *   - AtomicPtr_exchange(a, v)
+ *   - AtomicPtr_cas(a, expected, v)
+ *   - AtomicBool_spinUntil(a, target)
+ *   - AtomicBool_spinUntilFor(a, target, timeoutNanos)
+ *
+ * Setters:
+ *   - AtomicBool_set(a, v)
+ *   - AtomicInt_set(a, v)
+ *   - AtomicLong_set(a, v)
+ *
+ * Getters:
+ *   - AtomicBool_get(a)
+ *   - AtomicInt_get(a)
+ *   - AtomicLong_get(a)
+ *   - AtomicPtr_get(a)
+ * ============================================================================
+ */
+
 
 // --- Bool ---
 

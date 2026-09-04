@@ -8,6 +8,38 @@
 #include "oop/type.h"
 #include "struct/array.h"
 #include "struct/map.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Thread (thread/thread.c)
+ * ============================================================================
+ * the worker-thread engine (Legacy: the six *Thread.java
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Thread_new(typeId, job, queueCapacity, tickWhenIdle, core)
+ *
+ * Core Functions:
+ *   - Thread_run(self)
+ *   - Thread_submit(self, task)
+ *   - Thread_stop(self)
+ *   - Thread_free(self)
+ *   - Thread_queue(self)
+ *   - Thread_purpose(self)
+ *   - Thread_runAll(void)
+ *   - Thread_stopAll(void)
+ *   - Thread_freeAll(void)
+ *   - Thread_freeAllSystem(void)
+ *   - Thread_count(void)
+ *
+ * Getters:
+ *   - Thread_isRunning(self)
+ * ============================================================================
+ */
+
 
 // thread/thread.c — the worker engine (Legacy: thread/*Thread.java).
 

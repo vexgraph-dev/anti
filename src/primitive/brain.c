@@ -4,6 +4,42 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Brain (primitive/brain.c)
+ * ============================================================================
+ * Brain primitive (Legacy: primitive/Brain.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Brain_init(void)
+ *
+ * Core Functions:
+ *   - Brain_shutdown(void)
+ *   - Brain_alloc(void)
+ *   - Brain_allocArray(count)
+ *   - Brain_free(ptr)
+ *   - Brain_compareAndSet(ptr, expected, value)
+ *   - Brain_type(ptr)
+ *   - Brain_length(ptr)
+ *   - Brain_floatToBFloat16(value)
+ *   - Brain_bFloat16ToFloat(bits)
+ *   - Brain_allocWithValue(value)
+ *
+ * Setters:
+ *   - Brain_set(ptr, value)
+ *   - Brain_setFloat(ptr, value)
+ *
+ * Getters:
+ *   - Brain_get(ptr)
+ *   - Brain_getFloat(ptr)
+ * ============================================================================
+ */
+
 
 BitPool g_brainPool;
 

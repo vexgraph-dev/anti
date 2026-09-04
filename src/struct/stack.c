@@ -5,6 +5,40 @@
 #include "nio/mem.h"
 #include "oop/stride.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Stack (struct/stack.c)
+ * ============================================================================
+ * the Stack class, ported from struct/Stack.java. LIFO over a
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Stack_2(element_class, capacity)
+ *   - Stack_1(element_class)
+ *
+ * Core Functions:
+ *   - Stack_2Count(element_class, count)
+ *   - Stack_free(stack)
+ *   - Stack_push(stack, value_or_pointer)
+ *   - Stack_pop(stack)
+ *   - Stack_peek(stack)
+ *   - Stack_slot(stack, index)
+ *   - Stack_size(stack)
+ *   - Stack_length(stack)
+ *   - Stack_capacity(stack)
+ *   - Stack_elementClassId(stack)
+ *   - Stack_stride(stack)
+ *   - Stack_dataBuffer(stack)
+ *
+ * Getters:
+ *   - Stack_isEmpty(stack)
+ * ============================================================================
+ */
+
 
 // stack.c — Stack port (Legacy: struct/Stack.java).
 

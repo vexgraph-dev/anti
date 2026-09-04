@@ -7,6 +7,34 @@
 #include "time/datetime.h"
 
 #include <time.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Datetime (time/datetime.c)
+ * ============================================================================
+ * UTC date/time breakdown (Legacy: time/DateTime.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - DateTime_epochMillis(dt)
+ *   - DateTime_year(dt)
+ *   - DateTime_month(dt)
+ *   - DateTime_day(dt)
+ *   - DateTime_hour(dt)
+ *   - DateTime_minute(dt)
+ *   - DateTime_second(dt)
+ *   - DateTime_millisecond(dt)
+ *   - DateTime_dayOfWeek(dt)
+ *
+ * Setters:
+ *   - DateTime_set(dt)
+ *   - setEpochMillis(dt, epochMillis)
+ * ============================================================================
+ */
+
 
 void setEpochMillis(DateTime *dt, int64_t epochMillis) {
     (*dt).epochMillis = epochMillis;

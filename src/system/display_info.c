@@ -3,6 +3,50 @@
 #include <string.h>
 
 #include "system/discovery.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Display_info (system/display_info.c)
+ * ============================================================================
+ * global display subsystem query (Legacy: system/DisplayInfo.java)
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Setters:
+ *   - DisplayInfo_setMonitorCount(val)
+ *   - DisplayInfo_setPrimaryMonitor(val)
+ *   - DisplayInfo_setMonitors(monitors, count)
+ *   - DisplayInfo_setMonitorResolutionWidth(val)
+ *   - DisplayInfo_setMonitorResolutionHeight(val)
+ *   - DisplayInfo_setPointResolutionWidth(val)
+ *   - DisplayInfo_setPointResolutionHeight(val)
+ *   - DisplayInfo_setNativeResolutionWidth(val)
+ *   - DisplayInfo_setNativeResolutionHeight(val)
+ *   - DisplayInfo_setCurrentRefreshRate(val)
+ *   - DisplayInfo_setHdrSupported(val)
+ *   - DisplayInfo_setDisplayDensity(val)
+ *   - DisplayInfo_setHardwareDensity(val)
+ *
+ * Getters:
+ *   - DisplayInfo_getMonitorCount(void)
+ *   - DisplayInfo_getPrimaryMonitor(void)
+ *   - DisplayInfo_getMonitor(index)
+ *   - DisplayInfo_getMonitors(outCount)
+ *   - DisplayInfo_getMonitorResolutionWidth(void)
+ *   - DisplayInfo_getMonitorResolutionHeight(void)
+ *   - DisplayInfo_getPointResolutionWidth(void)
+ *   - DisplayInfo_getPointResolutionHeight(void)
+ *   - DisplayInfo_getNativeResolutionWidth(void)
+ *   - DisplayInfo_getNativeResolutionHeight(void)
+ *   - DisplayInfo_getCurrentRefreshRate(void)
+ *   - DisplayInfo_getHdrSupported(void)
+ *   - DisplayInfo_getDisplayDensity(void)
+ *   - DisplayInfo_getHardwareDensity(void)
+ * ============================================================================
+ */
+
 
 #define MAX_SYSTEM_MONITORS 16
 

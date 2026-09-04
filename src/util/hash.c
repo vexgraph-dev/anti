@@ -1,4 +1,22 @@
 #include "util/hash.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Hash (util/hash.c)
+ * ============================================================================
+ * the Hash utility, ported from util/Hash.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Getters:
+ *   - Hash_fnv1a64(data, length)
+ *   - Hash_murmur3Mix64(k)
+ *   - Hash_murmur3Mix32(k)
+ * ============================================================================
+ */
+
 
 // hash.c — Hash port (Legacy: util/Hash.java). Pure functions, no state.
 

@@ -4,6 +4,38 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Long_double (primitive/long_double.c)
+ * ============================================================================
+ * LongDouble primitive (Legacy: primitive/LongDouble.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - LongDouble_init(void)
+ *
+ * Core Functions:
+ *   - LongDouble_shutdown(void)
+ *   - LongDouble_alloc(void)
+ *   - LongDouble_allocArray(count)
+ *   - LongDouble_free(ptr)
+ *   - LongDouble_compareAndSet(ptr, expected, value)
+ *   - LongDouble_type(ptr)
+ *   - LongDouble_length(ptr)
+ *   - LongDouble_allocWithValues(v1, v2)
+ *
+ * Setters:
+ *   - LongDouble_set(ptr, value)
+ *
+ * Getters:
+ *   - LongDouble_get(ptr)
+ * ============================================================================
+ */
+
 
 BitPool g_long_doublePool;
 

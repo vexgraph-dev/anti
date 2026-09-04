@@ -5,6 +5,41 @@
 #include "nio/mem.h"
 #include "oop/stride.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Queue (struct/queue.c)
+ * ============================================================================
+ * the Queue class, ported from struct/Queue.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Queue_2(element_class, capacity)
+ *   - Queue_1(element_class)
+ *
+ * Core Functions:
+ *   - Queue_2Count(element_class, count)
+ *   - Queue_free(queue)
+ *   - Queue_push(queue, value_or_pointer)
+ *   - Queue_pop(queue)
+ *   - Queue_peek(queue)
+ *   - Queue_slot(queue, index)
+ *   - Queue_size(queue)
+ *   - Queue_length(queue)
+ *   - Queue_capacity(queue)
+ *   - Queue_elementClassId(queue)
+ *   - Queue_stride(queue)
+ *   - Queue_head(queue)
+ *   - Queue_dataBuffer(queue)
+ *
+ * Getters:
+ *   - Queue_isEmpty(queue)
+ * ============================================================================
+ */
+
 
 // queue.c — Queue port (Legacy: struct/Queue.java).
 

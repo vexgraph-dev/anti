@@ -4,6 +4,36 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Sparseset (struct/sparseset.c)
+ * ============================================================================
+ * the SparseSet class, ported from struct/SparseSet.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - SparseSet_3(capacity, maxEntities, stride)
+ *
+ * Core Functions:
+ *   - SparseSet_free(set)
+ *   - SparseSet_count(set)
+ *   - SparseSet_capacity(set)
+ *   - SparseSet_maxEntities(set)
+ *   - SparseSet_contains(set, entityId)
+ *   - SparseSet_add(set, entityId)
+ *   - SparseSet_remove(set, entityId)
+ *   - SparseSet_denseEntities(set)
+ *   - SparseSet_denseData(set)
+ *
+ * Getters:
+ *   - SparseSet_get(set, entityId)
+ * ============================================================================
+ */
+
 
 // sparseset.c — SparseSet port (Legacy: struct/SparseSet.java).
 

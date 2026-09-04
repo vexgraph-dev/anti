@@ -4,6 +4,28 @@
 #include <string.h>
 
 #include "io/file.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Logparser (io/logparser.c)
+ * ============================================================================
+ * the LogParser class, ported from io/LogParser.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - LogParser_count(path)
+ *   - LogParser_parse(path, handler, userdata)
+ *   - LogParser_formatRecord(out, out_cap, kind, ts, base_ts, name, v0, v1, v2, v3, v4)
+ *   - LogParser_kindName(kind)
+ *
+ * Getters:
+ *   - LogParser_isLogFile(path)
+ * ============================================================================
+ */
+
 
 // logparser.c — LogParser port (Legacy: io/LogParser.java).
 

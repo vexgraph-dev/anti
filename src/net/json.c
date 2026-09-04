@@ -10,6 +10,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Json (net/json.c)
+ * ============================================================================
+ * off-heap JSON documents (Legacy: net/JSON.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Json_parse(doc, nodes, nodeCap, scratch, scratchCap, text)
+ *   - Json_root(doc)
+ *   - Json_ok(doc)
+ *   - Json_member(doc, obj, key)
+ *   - Json_at(doc, node, index)
+ *   - Json_count(doc, node)
+ *   - Json_type(doc, ref)
+ *   - Json_bool(doc, ref)
+ *   - Json_number(doc, ref)
+ *   - Json_string(doc, ref, lengthOut)
+ *   - Json_key(doc, ref, lengthOut)
+ *   - Json_writeNumber(out, cap, v)
+ *   - Json_writeString(out, cap, s)
+ *   - Json_writeBool(out, cap, v)
+ * ============================================================================
+ */
+
 
 typedef struct Parser {
     JsonDoc *doc;

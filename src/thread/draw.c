@@ -3,6 +3,25 @@
 #include "annotation/incomplete.h"
 
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Draw (thread/draw.c)
+ * ============================================================================
+ * the rendering worker pool (Legacy: DrawThread.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - DrawThread_invokeRole(role)
+ *   - DrawThread_submitTo(role, task)
+ *   - DrawThread_stopAll(void)
+ *   - DrawThread_freeAll(void)
+ * ============================================================================
+ */
+
 
 // thread/draw.c — rendering worker pool (Legacy: DrawThread.java).
 

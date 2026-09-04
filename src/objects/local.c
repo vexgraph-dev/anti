@@ -4,6 +4,32 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Local (objects/local.c)
+ * ============================================================================
+ * Thread-local variable slot array object wrapper.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Local_0(void)
+ *   - Local_2(init, count)
+ *
+ * Core Functions:
+ *   - Local_free(local)
+ *
+ * Setters:
+ *   - Local_set(local, threadId, value)
+ *
+ * Getters:
+ *   - Local_get(local, threadId)
+ * ============================================================================
+ */
+
 
 // local.c — Thread-local variable slot array object wrapper implementation.
 

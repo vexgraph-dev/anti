@@ -17,6 +17,30 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Bit (bit/bit.c)
+ * ============================================================================
+ * lockless bit-width pool API (Legacy: bit/Bit64.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - BitPool_init(pool, element_size, capacity)
+ *
+ * Core Functions:
+ *   - BitPool_shutdown(pool)
+ *   - BitPool_alloc(pool, type_id)
+ *   - BitPool_free(pool, user_ptr)
+ *   - BitPool_contains(pool, user_ptr)
+ *   - BitPool_type(pool, user_ptr)
+ *   - BitPool_length(pool, user_ptr)
+ * ============================================================================
+ */
+
 
 #define SLOT_SIZE(elem) (sizeof(BitSlot) + (elem) + 7u & ~7u)
 

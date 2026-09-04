@@ -8,6 +8,23 @@
 #include "engine/loop.h"
 
 #include <time.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Loop (engine/loop.c)
+ * ============================================================================
+ * the engine loop API (Legacy: engine/EngineLoop.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Loop_run(loop)
+ *   - Loop_stop(loop)
+ * ============================================================================
+ */
+
 
 static int64_t nowMs(void) {
     struct timespec ts;

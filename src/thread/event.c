@@ -4,6 +4,25 @@
 #include "input/mouse.h"
 #include "input/touch.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Event (thread/event.c)
+ * ============================================================================
+ * the event dispatcher worker (Legacy: EventThread.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - EventThread_invoke(void)
+ *   - EventThread_submit(w, packet)
+ *   - EventThread_stop(w)
+ *   - EventThread_free(w)
+ * ============================================================================
+ */
+
 
 // thread/event.c — event dispatcher worker (Legacy: EventThread.java).
 

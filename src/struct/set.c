@@ -6,6 +6,36 @@
 #include "oop/type.h"
 #include "util/arrays.h"
 #include "util/hash.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Set (struct/set.c)
+ * ============================================================================
+ * the Set class, ported from struct/Set.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Set_2(element_class, capacity)
+ *   - Set_1(element_class)
+ *
+ * Setters:
+ *   - Set_free(set)
+ *   - Set_add(set, element)
+ *   - Set_contains(set, element)
+ *   - Set_remove(set, element)
+ *   - Set_toList(set)
+ *   - Set_toSortedList(set)
+ *   - Set_isEmpty(set)
+ *   - Set_size(set)
+ *   - Set_capacity(set)
+ *   - Set_elementClassId(set)
+ *   - Set_dataBuffer(set)
+ * ============================================================================
+ */
+
 
 // set.c — Set port (Legacy: struct/Set.java).
 

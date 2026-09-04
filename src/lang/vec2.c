@@ -5,6 +5,53 @@
 #include "lang/fastmath.h"
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Vec2 (lang/vec2.c)
+ * ============================================================================
+ * the Vec2 class, ported from lang/Vec2.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Vec2_0(void)
+ *   - Vec2_2(x, y)
+ *
+ * Core Functions:
+ *   - Vec2_free(v)
+ *   - Vec2_copy(src, dest)
+ *   - Vec2_add(a, b, dest)
+ *   - Vec2_sub(a, b, dest)
+ *   - Vec2_mul(a, scalar, dest)
+ *   - Vec2_div(a, scalar, dest)
+ *   - Vec2_dot(a, b)
+ *   - Vec2_lengthSquared(v)
+ *   - Vec2_length(v)
+ *   - Vec2_normalize(src, dest)
+ *   - Vec2_perpendicular(src, dest)
+ *   - Vec2_distance(a, b)
+ *   - Vec2_angle(a, b)
+ *   - Vec2_project(vector, onto, dest)
+ *   - Vec2_min(a, b, dest)
+ *   - Vec2_max(a, b, dest)
+ *   - Vec2_clamp(src, min_val, max_val, dest)
+ *   - Vec2_abs(src, dest)
+ *   - Vec2_lerp(a, b, t, dest)
+ *
+ * Setters:
+ *   - Vec2_setX(v, x)
+ *   - Vec2_setY(v, y)
+ *   - Vec2_set(v, x, y)
+ *
+ * Getters:
+ *   - Vec2_getX(v)
+ *   - Vec2_getY(v)
+ * ============================================================================
+ */
+
 
 // vec2.c — Vec2 port (Legacy: lang/Vec2.java). 8-byte vector block.
 

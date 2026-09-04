@@ -3,6 +3,22 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <ImageIO/ImageIO.h>
 #include <stdlib.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Image_mac (system/image_mac.m)
+ * ============================================================================
+ * detect format (PNG, JPEG, etc)
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - ImageMac_decode(fileData, fileSize, outW, outH)
+ * ============================================================================
+ */
+
 
 void *ImageMac_decode(const void *fileData, size_t fileSize, size_t *outW, size_t *outH) {
     if (!fileData || fileSize == 0) return nullptr;

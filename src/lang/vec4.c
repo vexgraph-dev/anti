@@ -5,6 +5,53 @@
 #include "lang/fastmath.h"
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Vec4 (lang/vec4.c)
+ * ============================================================================
+ * the Vec4 class, ported from lang/Vec4.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Vec4_0(void)
+ *   - Vec4_4(x, y, z, w)
+ *
+ * Core Functions:
+ *   - Vec4_free(v)
+ *   - Vec4_copy(src, dest)
+ *   - Vec4_add(a, b, dest)
+ *   - Vec4_sub(a, b, dest)
+ *   - Vec4_mul(a, scalar, dest)
+ *   - Vec4_div(a, scalar, dest)
+ *   - Vec4_dot(a, b)
+ *   - Vec4_lengthSquared(v)
+ *   - Vec4_length(v)
+ *   - Vec4_normalize(src, dest)
+ *   - Vec4_min(a, b, dest)
+ *   - Vec4_max(a, b, dest)
+ *   - Vec4_clamp(src, min_val, max_val, dest)
+ *   - Vec4_abs(src, dest)
+ *   - Vec4_lerp(a, b, t, dest)
+ *
+ * Setters:
+ *   - Vec4_setX(v, x)
+ *   - Vec4_setY(v, y)
+ *   - Vec4_setZ(v, z)
+ *   - Vec4_setW(v, w)
+ *   - Vec4_set(v, x, y, z, w)
+ *
+ * Getters:
+ *   - Vec4_getX(v)
+ *   - Vec4_getY(v)
+ *   - Vec4_getZ(v)
+ *   - Vec4_getW(v)
+ * ============================================================================
+ */
+
 
 // vec4.c — Vec4 port (Legacy: lang/Vec4.java). 16-byte vector block.
 

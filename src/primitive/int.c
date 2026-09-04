@@ -4,6 +4,38 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Int (primitive/int.c)
+ * ============================================================================
+ * Int primitive (Legacy: primitive/Int.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Int_init(void)
+ *
+ * Core Functions:
+ *   - Int_shutdown(void)
+ *   - Int_alloc(void)
+ *   - Int_allocArray(count)
+ *   - Int_free(ptr)
+ *   - Int_compareAndSet(ptr, expected, value)
+ *   - Int_type(ptr)
+ *   - Int_length(ptr)
+ *   - Int_allocWithValue(value)
+ *
+ * Setters:
+ *   - Int_set(ptr, value)
+ *
+ * Getters:
+ *   - Int_get(ptr)
+ * ============================================================================
+ */
+
 
 BitPool g_intPool;
 

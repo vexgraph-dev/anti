@@ -5,6 +5,22 @@
 #include <string.h>
 
 #include "primitive/string.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Commandparser (cli/commandparser.c)
+ * ============================================================================
+ * the CommandParser class, ported from
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - CommandParser_parse(line)
+ * ============================================================================
+ */
+
 
 // commandparser.c — the CommandParser class, ported from cli/CommandParser.java.
 

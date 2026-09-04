@@ -5,6 +5,35 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Class (oop/Class.c)
+ * ============================================================================
+ * Dynamic Class Schema Engine (Legacy: oop/Fields, now Class).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Fields_create(size_t[])
+ *
+ * Core Functions:
+ *   - Class_createNamed(count, ...)
+ *   - Class_fieldName(generic, fieldIndex)
+ *   - Class_fieldIndex(generic, fieldName)
+ *   - Fields_stride(generic)
+ *   - Fields_count(generic)
+ *   - Fields_fieldSize(generic, fieldIndex)
+ *   - Fields_resolveSize(val, outIsStruct)
+ *
+ * Getters:
+ *   - Fields_get(generic)
+ *   - Fields_isFieldStruct(generic, fieldIndex)
+ * ============================================================================
+ */
+
 
 // fields.c — Dynamic Fields Schema Engine.
 //

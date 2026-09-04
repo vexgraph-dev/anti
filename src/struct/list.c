@@ -6,6 +6,45 @@
 #include "nio/mem.h"
 #include "oop/stride.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: List (struct/list.c)
+ * ============================================================================
+ * the List class, ported from struct/List.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - List_2(element_class, capacity)
+ *   - List_1(element_class)
+ *
+ * Core Functions:
+ *   - List_2Count(element_class, count)
+ *   - List_free(list)
+ *   - List_add(list, value_or_pointer)
+ *   - List_addSlot(list)
+ *   - List_slot(list, index)
+ *   - List_remove(list, index)
+ *   - List_compare(a, b)
+ *   - List_size(list)
+ *   - List_length(list)
+ *   - List_capacity(list)
+ *   - List_elementClassId(list)
+ *   - List_stride(list)
+ *   - List_dataBuffer(list)
+ *
+ * Setters:
+ *   - List_set(list, index, value)
+ *
+ * Getters:
+ *   - List_get(list, index)
+ *   - List_isEmpty(list)
+ * ============================================================================
+ */
+
 
 // list.c — List port (Legacy: struct/List.java).
 

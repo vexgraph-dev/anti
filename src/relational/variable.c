@@ -8,6 +8,38 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Variable (relational/variable.c)
+ * ============================================================================
+ * the relational symbol registry (Legacy: variable/Variable.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Variable_init(v)
+ *
+ * Core Functions:
+ *   - Variable_shutdown(v)
+ *   - Variable_instant(v, name, classId, targetPointer)
+ *   - Variable_rename(v, oldName, newName)
+ *   - Variable_compareAndSetPointer(v, varId, expected, newPointer)
+ *
+ * Setters:
+ *   - Variable_setPointer(v, varId, targetPointer)
+ *
+ * Getters:
+ *   - Variable_getId(v, name)
+ *   - Variable_getPointer(v, varId)
+ *   - Variable_getClassId(v, varId)
+ *   - Variable_getName(v, varId, out, outCap)
+ *   - Variable_getActiveCount(v)
+ * ============================================================================
+ */
+
 
 static void lowercasePack(const char *name, size_t len, uint64_t words[4]) {
     for (int w = 0; w < 4; w++) {

@@ -8,6 +8,35 @@
 #include "time/clock.h"
 
 #include <time.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Clock (time/clock.c)
+ * ============================================================================
+ * the virtual clock (Legacy: time/Clock.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Clock_create(void)
+ *
+ * Core Functions:
+ *   - Clock_tick(clock)
+ *   - Clock_timeScale(clock)
+ *   - Clock_virtualTimeMillis(clock)
+ *   - Clock_reset(clock)
+ *
+ * Setters:
+ *   - Clock_setTimeScale(clock, scale)
+ *   - Clock_setPaused(clock, paused)
+ *
+ * Getters:
+ *   - Clock_isPaused(clock)
+ * ============================================================================
+ */
+
 
 // Wall-clock millis (legacy used System.currentTimeMillis(); kept for the
 // informational base anchor).

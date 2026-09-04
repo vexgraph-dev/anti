@@ -6,6 +6,22 @@
 #include "input/touch.h"
 #include "time/nanotime.h"
 #include "io/hot_file.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: System (system/system.c)
+ * ============================================================================
+ * Unified native system information, discovery, and display subsystem
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - System_initializeAll(void)
+ * ============================================================================
+ */
+
 
 void System_initializeAll(void) {
     NanoTime_init();

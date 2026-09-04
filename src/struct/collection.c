@@ -3,6 +3,38 @@
 #include <string.h>
 
 #include "nio/mem.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Collection (struct/collection.c)
+ * ============================================================================
+ * the Collection metadata struct, ported from
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Collection_type(c)
+ *   - Collection_size(c)
+ *   - Collection_length(c)
+ *   - Collection_elementClassId(c)
+ *   - Collection_keyClassId(c)
+ *   - Collection_stride(c)
+ *   - Collection_valClassId(c)
+ *   - Collection_capacity(c)
+ *   - Collection_head(c)
+ *   - Collection_dataBuffer(c)
+ *   - Collection_readSlot(c, index)
+ *   - Collection_writeSlot(c, index, value)
+ *   - Collection_readSlotUnsafe(c, index)
+ *   - Collection_writeSlotUnsafe(c, index, value)
+ *
+ * Getters:
+ *   - Collection_isEmpty(c)
+ * ============================================================================
+ */
+
 
 // collection.c — Collection port (Legacy: struct/Collection.java).
 

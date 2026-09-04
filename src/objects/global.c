@@ -5,6 +5,33 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Global (objects/global.c)
+ * ============================================================================
+ * Atomic global pointer/variable object wrapper.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Global_1(initialValue)
+ *   - Global_2(init, count)
+ *
+ * Core Functions:
+ *   - Global_free(global)
+ *   - Global_compareAndSet(global, expected, value)
+ *
+ * Setters:
+ *   - Global_set(global, value)
+ *
+ * Getters:
+ *   - Global_get(global)
+ * ============================================================================
+ */
+
 
 // global.c — Atomic global pointer/variable object wrapper implementation.
 

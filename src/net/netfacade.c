@@ -7,6 +7,27 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Netfacade (net/netfacade.c)
+ * ============================================================================
+ * the combined conveniences promised by net/net.h.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - Json_parse(doc, nodes, nodeCap, scratch, scratchCap, body)
+ *   - Net_postJson(host, port, path, jsonBody, respBody, cap)
+ *
+ * Getters:
+ *   - Net_get(host, port, path, bodyOut, cap)
+ *   - Net_getJson(host, port, path, doc, nodes, nodeCap, scratch, scratchCap)
+ * ============================================================================
+ */
+
 
 int64_t Net_get(const char *host, int port, const char *path,
                 char *bodyOut, size_t cap) {

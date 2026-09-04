@@ -17,6 +17,50 @@
 #include "input/focus.h"
 #include "atomic/ring.h"
 #include "time/nanotime.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Key (input/key.c)
+ * ============================================================================
+ * never stale.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Key_init(void)
+ *
+ * Core Functions:
+ *   - Key_shutdown(void)
+ *   - Key_addListener(listener)
+ *   - Key_removeListener(listener)
+ *   - Key_attachWindow(windowId, listener)
+ *   - Key_detachWindow(windowId, listener)
+ *   - Key_detachWindowAll(windowId)
+ *   - Key_pushEvent(windowId, keyCode, action, holdThresholdNanos)
+ *   - Key_pushCharEvent(windowId, c)
+ *   - Key_dispatchEvents(void)
+ *   - Key_pressTime(keyCode)
+ *   - Key_lastReleaseTime(keyCode)
+ *   - Key_lastHoldDurationNanos(keyCode)
+ *   - Key_currentHoldDurationNanos(keyCode)
+ *   - Key_holdDurationNanos(keyCode)
+ *   - Key_durationSinceReleaseNanos(keyCode)
+ *   - Key_taps(keyCode)
+ *   - Key_resetTaps(keyCode)
+ *   - Key_code(keyEvent)
+ *   - Key_name(keyCode)
+ *
+ * Getters:
+ *   - Key_isDown(keyCode)
+ *   - Key_hasShift(keyEvent)
+ *   - Key_hasControl(keyEvent)
+ *   - Key_hasOption(keyEvent)
+ *   - Key_hasCommand(keyEvent)
+ * ============================================================================
+ */
+
 
 #define KEY_COUNT 512
 #define QUEUE_CAPACITY 1024

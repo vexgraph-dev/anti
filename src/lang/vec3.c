@@ -5,6 +5,57 @@
 #include "lang/fastmath.h"
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Vec3 (lang/vec3.c)
+ * ============================================================================
+ * the Vec3 class, ported from lang/Vec3.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Vec3_0(void)
+ *   - Vec3_3(x, y, z)
+ *
+ * Core Functions:
+ *   - Vec3_free(v)
+ *   - Vec3_copy(src, dest)
+ *   - Vec3_add(a, b, dest)
+ *   - Vec3_sub(a, b, dest)
+ *   - Vec3_mul(a, scalar, dest)
+ *   - Vec3_div(a, scalar, dest)
+ *   - Vec3_dot(a, b)
+ *   - Vec3_cross(a, b, dest)
+ *   - Vec3_lengthSquared(v)
+ *   - Vec3_length(v)
+ *   - Vec3_normalize(src, dest)
+ *   - Vec3_fastNormalize(src, dest)
+ *   - Vec3_distance(a, b)
+ *   - Vec3_angle(a, b)
+ *   - Vec3_project(vector, onto, dest)
+ *   - Vec3_reflect(incident, normal, dest)
+ *   - Vec3_min(a, b, dest)
+ *   - Vec3_max(a, b, dest)
+ *   - Vec3_clamp(src, min_val, max_val, dest)
+ *   - Vec3_abs(src, dest)
+ *   - Vec3_lerp(a, b, t, dest)
+ *
+ * Setters:
+ *   - Vec3_setX(v, x)
+ *   - Vec3_setY(v, y)
+ *   - Vec3_setZ(v, z)
+ *   - Vec3_set(v, x, y, z)
+ *
+ * Getters:
+ *   - Vec3_getX(v)
+ *   - Vec3_getY(v)
+ *   - Vec3_getZ(v)
+ * ============================================================================
+ */
+
 
 // vec3.c — Vec3 port (Legacy: lang/Vec3.java). 12-byte vector block.
 

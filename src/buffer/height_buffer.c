@@ -3,6 +3,28 @@
 #include <string.h>
 
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Height_buffer (buffer/height_buffer.c)
+ * ============================================================================
+ * 1-channel terrain/displacement elevation buffer.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - HeightBuffer_2(width, height)
+ *
+ * Setters:
+ *   - HeightBuffer_setHeight(buf, x, y, h)
+ *
+ * Getters:
+ *   - HeightBuffer_getHeight(buf, x, y)
+ * ============================================================================
+ */
+
 
 // height_buffer.c — HeightBuffer implementation.
 

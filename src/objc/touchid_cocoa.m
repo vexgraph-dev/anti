@@ -8,6 +8,27 @@
 
 #include "security/touchid.h"
 #include "annotation/platform_exclusive.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Touchid_cocoa (objc/touchid_cocoa.m)
+ * ============================================================================
+ * macOS LocalAuthentication bridge for TouchID.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - TouchID_authenticate(reason)
+ *   - fprintf(stderr, %s\n", error.localizedDescription.UTF8String)
+ *   - dispatch_semaphore_signal(sema)
+ *   - dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER)
+ *   - TouchID_verify(tok)
+ *   - TouchID_discard(tok)
+ * ============================================================================
+ */
+
 
 ;;PLATFORM_EXCLUSIVE("Mac")
 

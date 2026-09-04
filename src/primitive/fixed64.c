@@ -4,6 +4,38 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Fixed64 (primitive/fixed64.c)
+ * ============================================================================
+ * Fixed64 primitive (Legacy: primitive/Fixed64.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Fixed64_init(void)
+ *
+ * Core Functions:
+ *   - Fixed64_shutdown(void)
+ *   - Fixed64_alloc(void)
+ *   - Fixed64_allocArray(count)
+ *   - Fixed64_free(ptr)
+ *   - Fixed64_compareAndSet(ptr, expected, value)
+ *   - Fixed64_type(ptr)
+ *   - Fixed64_length(ptr)
+ *   - Fixed64_allocWithValue(value)
+ *
+ * Setters:
+ *   - Fixed64_set(ptr, value)
+ *
+ * Getters:
+ *   - Fixed64_get(ptr)
+ * ============================================================================
+ */
+
 
 BitPool g_fixed64Pool;
 

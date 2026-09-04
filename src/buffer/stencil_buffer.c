@@ -1,6 +1,28 @@
 #include "buffer/stencil_buffer.h"
 
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Stencil_buffer (buffer/stencil_buffer.c)
+ * ============================================================================
+ * 1-channel 8-bit stencil masking buffer.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - StencilBuffer_2(width, height)
+ *
+ * Setters:
+ *   - StencilBuffer_set(buf, x, y, val)
+ *
+ * Getters:
+ *   - StencilBuffer_get(buf, x, y)
+ * ============================================================================
+ */
+
 
 // stencil_buffer.c — StencilBuffer implementation.
 

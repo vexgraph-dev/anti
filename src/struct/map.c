@@ -5,6 +5,39 @@
 #include "nio/mem.h"
 #include "oop/type.h"
 #include "util/hash.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Map (struct/map.c)
+ * ============================================================================
+ * the Map class, ported from struct/Map.java.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Map_3(key_class, val_class, capacity)
+ *   - Map_2(key_class, val_class)
+ *
+ * Core Functions:
+ *   - Map_free(map)
+ *   - Map_put(map, key, value)
+ *   - Map_containsKey(map, key)
+ *   - Map_remove(map, key)
+ *   - Map_keys(map)
+ *   - Map_size(map)
+ *   - Map_capacity(map)
+ *   - Map_keyClassId(map)
+ *   - Map_valClassId(map)
+ *   - Map_dataBuffer(map)
+ *
+ * Getters:
+ *   - Map_get(map, key)
+ *   - Map_isEmpty(map)
+ * ============================================================================
+ */
+
 
 // map.c — Map port (Legacy: struct/Map.java).
 

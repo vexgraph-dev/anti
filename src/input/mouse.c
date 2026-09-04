@@ -20,6 +20,53 @@
 #include "input/key.h"
 #include "atomic/ring.h"
 #include "time/nanotime.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Mouse (input/mouse.c)
+ * ============================================================================
+ * mouse buttons, position, and event stream
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Mouse_init(void)
+ *
+ * Core Functions:
+ *   - Mouse_shutdown(void)
+ *   - Mouse_addListener(listener)
+ *   - Mouse_removeListener(listener)
+ *   - Mouse_attachWindow(windowId, listener)
+ *   - Mouse_detachWindow(windowId, listener)
+ *   - Mouse_detachWindowAll(windowId)
+ *   - Mouse_pushButtonEvent(windowId, button, action, holdThresholdNanos)
+ *   - Mouse_pushMoveEvent(windowId, x, y)
+ *   - Mouse_pushMoveDeltaEvent(windowId, dx, dy)
+ *   - Mouse_pushDragEvent(windowId, button, x, y)
+ *   - Mouse_pushScrollEvent(windowId, dx, dy)
+ *   - Mouse_pushZoomEvent(windowId, magnification)
+ *   - Mouse_dispatchEvents(void)
+ *   - Mouse_pressTime(button)
+ *   - Mouse_lastReleaseTime(button)
+ *   - Mouse_lastHoldDurationNanos(button)
+ *   - Mouse_currentHoldDurationNanos(button)
+ *   - Mouse_taps(button)
+ *   - Mouse_x(void)
+ *   - Mouse_y(void)
+ *   - Mouse_button(mouseEvent)
+ *   - Mouse_name(button)
+ *
+ * Getters:
+ *   - Mouse_isDown(button)
+ *   - Mouse_hasShift(mouseEvent)
+ *   - Mouse_hasControl(mouseEvent)
+ *   - Mouse_hasOption(mouseEvent)
+ *   - Mouse_hasCommand(mouseEvent)
+ * ============================================================================
+ */
+
 
 #define BUTTON_COUNT 16
 #define QUEUE_CAPACITY 1024

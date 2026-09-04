@@ -4,6 +4,38 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Double (primitive/double.c)
+ * ============================================================================
+ * Double primitive (Legacy: primitive/Double.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Double_init(void)
+ *
+ * Core Functions:
+ *   - Double_shutdown(void)
+ *   - Double_alloc(void)
+ *   - Double_allocArray(count)
+ *   - Double_free(ptr)
+ *   - Double_compareAndSet(ptr, expected, value)
+ *   - Double_type(ptr)
+ *   - Double_length(ptr)
+ *   - Double_allocWithValue(value)
+ *
+ * Setters:
+ *   - Double_set(ptr, value)
+ *
+ * Getters:
+ *   - Double_get(ptr)
+ * ============================================================================
+ */
+
 
 BitPool g_doublePool;
 

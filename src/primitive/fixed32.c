@@ -4,6 +4,38 @@
 
 #include "nio/mem.h"
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Fixed32 (primitive/fixed32.c)
+ * ============================================================================
+ * Fixed32 primitive (Legacy: primitive/Fixed32.java).
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - Fixed32_init(void)
+ *
+ * Core Functions:
+ *   - Fixed32_shutdown(void)
+ *   - Fixed32_alloc(void)
+ *   - Fixed32_allocArray(count)
+ *   - Fixed32_free(ptr)
+ *   - Fixed32_compareAndSet(ptr, expected, value)
+ *   - Fixed32_type(ptr)
+ *   - Fixed32_length(ptr)
+ *   - Fixed32_allocWithValue(value)
+ *
+ * Setters:
+ *   - Fixed32_set(ptr, value)
+ *
+ * Getters:
+ *   - Fixed32_get(ptr)
+ * ============================================================================
+ */
+
 
 BitPool g_fixed32Pool;
 

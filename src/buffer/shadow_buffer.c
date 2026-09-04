@@ -1,6 +1,22 @@
 #include "buffer/shadow_buffer.h"
 
 #include "oop/type.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Shadow_buffer (buffer/shadow_buffer.c)
+ * ============================================================================
+ * 1-channel shadow depth cascade buffer.
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Constructors:
+ *   - ShadowBuffer_2(width, height)
+ * ============================================================================
+ */
+
 
 // shadow_buffer.c — ShadowBuffer implementation.
 

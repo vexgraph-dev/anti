@@ -3,6 +3,49 @@
 #include <string.h>
 
 #include "system/discovery.h"
+#include "annotation/overview.h"
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: Hardware_info (system/hardware_info.c)
+ * ============================================================================
+ * host hardware information query (Legacy: system/HardwareInfo.java)
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Setters:
+ *   - HardwareInfo_setOperatingSystem(val)
+ *   - HardwareInfo_setSystemArchitecture(val)
+ *   - HardwareInfo_setDeviceModel(val)
+ *   - HardwareInfo_setCpuBrand(val)
+ *   - HardwareInfo_setCpuCoreCount(val)
+ *   - HardwareInfo_setCpuThreadCount(val)
+ *   - HardwareInfo_setRamTotal(val)
+ *   - HardwareInfo_setRamAvailable(val)
+ *   - HardwareInfo_setStorageTotalSpace(val)
+ *   - HardwareInfo_setStorageAvailableSpace(val)
+ *   - HardwareInfo_setHasBattery(val)
+ *   - HardwareInfo_setBatteryLevel(val)
+ *   - HardwareInfo_setBatteryStatus(val)
+ *
+ * Getters:
+ *   - HardwareInfo_getOperatingSystem(void)
+ *   - HardwareInfo_getSystemArchitecture(void)
+ *   - HardwareInfo_getDeviceModel(void)
+ *   - HardwareInfo_getCpuBrand(void)
+ *   - HardwareInfo_getCpuCoreCount(void)
+ *   - HardwareInfo_getCpuThreadCount(void)
+ *   - HardwareInfo_getRamTotal(void)
+ *   - HardwareInfo_getRamAvailable(void)
+ *   - HardwareInfo_getStorageTotalSpace(void)
+ *   - HardwareInfo_getStorageAvailableSpace(void)
+ *   - HardwareInfo_hasBattery(void)
+ *   - HardwareInfo_getBatteryLevel(void)
+ *   - HardwareInfo_getBatteryStatus(void)
+ * ============================================================================
+ */
+
 
 static char     s_operatingSystem[64] = "macOS";
 static char     s_systemArchitecture[64] = "arm64";
