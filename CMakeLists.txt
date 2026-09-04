@@ -210,3 +210,4 @@ add_executable(class_relational_test
     tests/class_relational_test.c
 )
 target_link_libraries(class_relational_test PRIVATE vexspoke)
+    src/c23/equals.c
