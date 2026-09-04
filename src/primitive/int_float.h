@@ -30,7 +30,7 @@ size_t IntFloat_length(void *ptr);
 void *IntFloat_allocWithValues(int32_t v1, float v2);
 #define IntFloat_0(...) IntFloat_alloc()
 #define IntFloat_2(v1, v2) IntFloat_allocWithValues(v1, v2)
-#define IntFloat(...) CONSTRUCTOR_DISPATCH(IntFloat, ##__VA_ARGS__)
+#define IntFloat(...) CONSTRUCTOR_DISPATCH(IntFloat, __VA_ARGS__)
 
 
 #define IntFloat_array(count) IntFloat_allocArray(count)

@@ -19,7 +19,7 @@ Local *Local_0(void);
 
 Local *Local_2(const Local *init, size_t count);
 
-#define Local(...) CONSTRUCTOR_DISPATCH(Local, ##__VA_ARGS__)
+#define Local(...) CONSTRUCTOR_DISPATCH(Local, __VA_ARGS__)
 
 void Local_free(Local *local);
 

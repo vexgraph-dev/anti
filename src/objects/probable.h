@@ -16,7 +16,7 @@ typedef struct Probable {
 Probable *Probable_3(uintptr_t object, uint32_t weight, uint32_t total);
 Probable *Probable_2(const Probable *init, size_t count);
 
-#define Probable(...) CONSTRUCTOR_DISPATCH(Probable, ##__VA_ARGS__)
+#define Probable(...) CONSTRUCTOR_DISPATCH(Probable, __VA_ARGS__)
 
 void Probable_free(Probable *p);
 

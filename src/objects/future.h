@@ -18,7 +18,7 @@ Future *Future_0(void);
 
 Future *Future_2(const Future *init, size_t count);
 
-#define Future(...) CONSTRUCTOR_DISPATCH(Future, ##__VA_ARGS__)
+#define Future(...) CONSTRUCTOR_DISPATCH(Future, __VA_ARGS__)
 
 void Future_free(Future *future);
 

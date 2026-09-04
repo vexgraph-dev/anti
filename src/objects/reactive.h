@@ -21,7 +21,7 @@ Reactive *Reactive_1(uint64_t initialValue);
 
 Reactive *Reactive_2(const Reactive *init, size_t count);
 
-#define Reactive(...) CONSTRUCTOR_DISPATCH(Reactive, ##__VA_ARGS__)
+#define Reactive(...) CONSTRUCTOR_DISPATCH(Reactive, __VA_ARGS__)
 
 void Reactive_free(Reactive *reactive);
 

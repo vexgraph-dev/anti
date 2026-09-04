@@ -51,6 +51,6 @@ const int32_t *SparseSet_denseEntities(SparseSet *set);
 const uint8_t *SparseSet_denseData(SparseSet *set);
 
 
-#define SparseSet(...) CONSTRUCTOR_DISPATCH(SparseSet, ##__VA_ARGS__)
+#define SparseSet(...) CONSTRUCTOR_DISPATCH(SparseSet, __VA_ARGS__)
 
 #endif

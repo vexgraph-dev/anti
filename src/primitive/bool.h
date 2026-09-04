@@ -30,7 +30,7 @@ size_t Bool_length(void *ptr);
 void *Bool_allocWithValue(bool value);
 #define Bool_0(...) Bool_alloc()
 #define Bool_1(value) Bool_allocWithValue(value)
-#define Bool(...) CONSTRUCTOR_DISPATCH(Bool, ##__VA_ARGS__)
+#define Bool(...) CONSTRUCTOR_DISPATCH(Bool, __VA_ARGS__)
 
 
 #define Bool_array(count) Bool_allocArray(count)

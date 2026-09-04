@@ -39,6 +39,6 @@ size_t Array_stride(Array *array);
 uint8_t *Array_dataBuffer(Array *array);
 
 
-#define Array(...) CONSTRUCTOR_DISPATCH(Array, ##__VA_ARGS__)
+#define Array(...) CONSTRUCTOR_DISPATCH(Array, __VA_ARGS__)
 
 #endif

@@ -10,5 +10,5 @@
 Buffer *FrameBuffer_2(size_t width, size_t height);
 
 
-#define FrameBuffer(...) CONSTRUCTOR_DISPATCH(FrameBuffer, ##__VA_ARGS__)
+#define FrameBuffer(...) CONSTRUCTOR_DISPATCH(FrameBuffer, __VA_ARGS__)
 #endif

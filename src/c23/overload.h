@@ -306,10 +306,10 @@ static inline void ov_v4_sv_d_div(float s, Vec4 v, Vec4 *d) { (*d) = ov_v4_sv_di
 
 #define OV_PICK(_0, _1, _2, _3, NAME, ...) NAME
 
-#define add(...) OV_PICK(dummy, ##__VA_ARGS__, ov3_add, ov2_add)(__VA_ARGS__)
-#define sub(...) OV_PICK(dummy, ##__VA_ARGS__, ov3_sub, ov2_sub)(__VA_ARGS__)
-#define mul(...) OV_PICK(dummy, ##__VA_ARGS__, ov3_mul, ov2_mul)(__VA_ARGS__)
-#define div(...) OV_PICK(dummy, ##__VA_ARGS__, ov3_div, ov2_div)(__VA_ARGS__)
+#define add(...) OV_PICK(dummy __VA_OPT__(,) __VA_ARGS__, ov3_add, ov2_add)(__VA_ARGS__)
+#define sub(...) OV_PICK(dummy __VA_OPT__(,) __VA_ARGS__, ov3_sub, ov2_sub)(__VA_ARGS__)
+#define mul(...) OV_PICK(dummy __VA_OPT__(,) __VA_ARGS__, ov3_mul, ov2_mul)(__VA_ARGS__)
+#define div(...) OV_PICK(dummy __VA_OPT__(,) __VA_ARGS__, ov3_div, ov2_div)(__VA_ARGS__)
 
 #define ov2_add(a, b) OV_VAL_ADD((a), (b))
 #define ov3_add(a, b, d) OV_DEST_ADD((a), (b), (d))

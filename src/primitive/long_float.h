@@ -30,7 +30,7 @@ size_t LongFloat_length(void *ptr);
 void *LongFloat_allocWithValues(int64_t v1, float v2);
 #define LongFloat_0(...) LongFloat_alloc()
 #define LongFloat_2(v1, v2) LongFloat_allocWithValues(v1, v2)
-#define LongFloat(...) CONSTRUCTOR_DISPATCH(LongFloat, ##__VA_ARGS__)
+#define LongFloat(...) CONSTRUCTOR_DISPATCH(LongFloat, __VA_ARGS__)
 
 
 #define LongFloat_array(count) LongFloat_allocArray(count)

@@ -69,7 +69,7 @@ Audio *Audio_2(double sampleRate, int channels);
     const char *: Audio_load,                       \
     default: Audio_withRate)(a)
 
-#define Audio(...) CONSTRUCTOR_DISPATCH(Audio, ##__VA_ARGS__)
+#define Audio(...) CONSTRUCTOR_DISPATCH(Audio, __VA_ARGS__)
 
 // --- lifecycle ---
 void Audio_play(Audio *a);       // schedules and plays (loops if looping)

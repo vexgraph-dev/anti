@@ -84,4 +84,4 @@ void Mat4_transform(const Mat4 *m, const Vec4 *src_vec, Vec4 *dest_vec);
 void Mat4_transformVec3(const Mat4 *m, const Vec3 *src_vec, Vec3 *dest_vec);
 
 #endif
-#define Mat4(...) CONSTRUCTOR_DISPATCH(Mat4, ##__VA_ARGS__)
+#define Mat4(...) CONSTRUCTOR_DISPATCH(Mat4, __VA_ARGS__)

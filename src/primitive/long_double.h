@@ -30,7 +30,7 @@ size_t LongDouble_length(void *ptr);
 void *LongDouble_allocWithValues(int64_t v1, double v2);
 #define LongDouble_0(...) LongDouble_alloc()
 #define LongDouble_2(v1, v2) LongDouble_allocWithValues(v1, v2)
-#define LongDouble(...) CONSTRUCTOR_DISPATCH(LongDouble, ##__VA_ARGS__)
+#define LongDouble(...) CONSTRUCTOR_DISPATCH(LongDouble, __VA_ARGS__)
 
 
 #define LongDouble_array(count) LongDouble_allocArray(count)

@@ -62,7 +62,7 @@ bool string_equals(const uint8_t *ptr, const char *value);
 #include "c23/constructor.h"
 #define String_0(...) string_allocate("")
 #define String_1(value) _Generic((value), const char*: string_allocate, char*: string_allocate, uint8_t*: string_copy, const uint8_t*: string_copy, default: string_allocate)(value)
-#define String(...) CONSTRUCTOR_DISPATCH(String, ##__VA_ARGS__)
+#define String(...) CONSTRUCTOR_DISPATCH(String, __VA_ARGS__)
 
 // Capital aliases for code-editor ergonomics (lowercase kept for compat)
 #define String_allocate string_allocate

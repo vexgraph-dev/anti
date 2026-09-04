@@ -10,7 +10,7 @@
 //     Window *Window_0(void);
 //     Window *Window_1(const char *title);
 //     Window *Window_3(const char *title, int width, int height);
-//     #define Window(...) CONSTRUCTOR_DISPATCH(Window, ##__VA_ARGS__)
+//     #define Window(...) CONSTRUCTOR_DISPATCH(Window, __VA_ARGS__)
 //
 // Call sites read like Java:
 //
@@ -27,14 +27,13 @@
 // cycle at runtime. Extending past 8 args: grow CONSTRUCTOR_PICK and the
 // NAME##_k ladder in step.
 //
-// Requires the GNU `, ##__VA_ARGS__` comma-elision extension (CMake builds
-// this tree as gnu23; strict -std=c23 breaks zero-arg dispatch). window.h
-// already leans on the same extension.
+// Uses standard ISO C23 `__VA_OPT__(,) __VA_ARGS__` comma-elision, portable
+// across all conforming C23 compilers without GCC/Clang extensions.
 
 #define CONSTRUCTOR_PICK(_0, _1, _2, _3, _4, _5, _6, _7, _8, NAME, ...) NAME
 
 #define CONSTRUCTOR_DISPATCH(NAME, ...) \
-    CONSTRUCTOR_PICK(, ##__VA_ARGS__,   \
+    CONSTRUCTOR_PICK(dummy __VA_OPT__(,) __VA_ARGS__, \
         NAME##_8, NAME##_7, NAME##_6, NAME##_5, \
         NAME##_4, NAME##_3, NAME##_2, NAME##_1, NAME##_0)(__VA_ARGS__)
 

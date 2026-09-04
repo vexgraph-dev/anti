@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.3)
+cmake_minimum_required(VERSION 3.28)
 project(vexspoke C)
 
 set(CMAKE_C_STANDARD 23)
@@ -10,6 +10,7 @@ if(APPLE)
     set(CMAKE_OBJC_STANDARD_REQUIRED ON)
 endif()
 
+if(NOT TARGET vexspoke)
 # Core VexSpoke (formerly Anti) Runtime Library
 add_library(vexspoke STATIC
     src/bit/bit.c
@@ -158,12 +159,15 @@ else()
     find_package(CURL REQUIRED)
     target_link_libraries(vexspoke PUBLIC CURL::libcurl)
 endif()
+endif() # NOT TARGET vexspoke
 
 # Headless demo target
-add_executable(anti
-    src/main/main.c
-)
-target_link_libraries(anti PRIVATE vexspoke)
+if(NOT TARGET anti)
+    add_executable(anti
+        src/main/main.c
+    )
+    target_link_libraries(anti PRIVATE vexspoke)
+endif()
 
 # System Discovery & Hardware / Display probe target
 add_executable(system_test

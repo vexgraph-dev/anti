@@ -20,7 +20,7 @@ Choice *Choice_3(const uint64_t *objectPtrs, const ChoiceCallback *callbacks, si
 
 Choice *Choice_2(const Choice *init, size_t count);
 
-#define Choice(...) CONSTRUCTOR_DISPATCH(Choice, ##__VA_ARGS__)
+#define Choice(...) CONSTRUCTOR_DISPATCH(Choice, __VA_ARGS__)
 
 void Choice_free(Choice *choice);
 

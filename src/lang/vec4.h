@@ -55,5 +55,5 @@ void Vec4_abs(const Vec4 *src, Vec4 *dest);
 void Vec4_lerp(const Vec4 *a, const Vec4 *b, float t, Vec4 *dest);
 
 
-#define Vec4(...) CONSTRUCTOR_DISPATCH(Vec4, ##__VA_ARGS__)
+#define Vec4(...) CONSTRUCTOR_DISPATCH(Vec4, __VA_ARGS__)
 #endif

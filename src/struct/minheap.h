@@ -39,6 +39,6 @@ int32_t MinHeap_peekItem(MinHeap *heap);
 
 MinHeap *MinHeap_0(void);
 
-#define MinHeap(...) CONSTRUCTOR_DISPATCH(MinHeap, ##__VA_ARGS__)
+#define MinHeap(...) CONSTRUCTOR_DISPATCH(MinHeap, __VA_ARGS__)
 
 #endif

@@ -30,7 +30,7 @@ size_t Long_length(void *ptr);
 void *Long_allocWithValue(int64_t value);
 #define Long_0(...) Long_alloc()
 #define Long_1(value) Long_allocWithValue(value)
-#define Long(...) CONSTRUCTOR_DISPATCH(Long, ##__VA_ARGS__)
+#define Long(...) CONSTRUCTOR_DISPATCH(Long, __VA_ARGS__)
 
 
 #define Long_array(count) Long_allocArray(count)

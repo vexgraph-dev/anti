@@ -30,7 +30,7 @@ size_t Int_length(void *ptr);
 void *Int_allocWithValue(int32_t value);
 #define Int_0(...) Int_alloc()
 #define Int_1(value) Int_allocWithValue(value)
-#define Int(...) CONSTRUCTOR_DISPATCH(Int, ##__VA_ARGS__)
+#define Int(...) CONSTRUCTOR_DISPATCH(Int, __VA_ARGS__)
 
 
 #define Int_array(count) Int_allocArray(count)

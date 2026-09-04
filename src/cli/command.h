@@ -40,5 +40,5 @@ uint8_t *Command_argument(const Command *command, size_t index);
 void Command_free(Command *command);
 
 
-#define Command(...) CONSTRUCTOR_DISPATCH(Command, ##__VA_ARGS__)
+#define Command(...) CONSTRUCTOR_DISPATCH(Command, __VA_ARGS__)
 #endif

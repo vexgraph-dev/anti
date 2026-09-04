@@ -56,5 +56,5 @@ void Buffer_blit(const Buffer *src, Buffer *dst, size_t srcX, size_t srcY, size_
 float Buffer_sample(const Buffer *buf, float u, float v, size_t channel);
 
 
-#define Buffer(...) CONSTRUCTOR_DISPATCH(Buffer, ##__VA_ARGS__)
+#define Buffer(...) CONSTRUCTOR_DISPATCH(Buffer, __VA_ARGS__)
 #endif

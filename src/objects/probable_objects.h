@@ -30,7 +30,7 @@ ProbableObjects *ProbableObjects_1(size_t capacity);
 
 ProbableObjects *ProbableObjects_2(const ProbableObjects *init, size_t count);
 
-#define ProbableObjects(...) CONSTRUCTOR_DISPATCH(ProbableObjects, ##__VA_ARGS__)
+#define ProbableObjects(...) CONSTRUCTOR_DISPATCH(ProbableObjects, __VA_ARGS__)
 
 void ProbableObjects_free(ProbableObjects *po);
 

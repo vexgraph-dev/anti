@@ -12,5 +12,5 @@ void NormalBuffer_setNormal(Buffer *buf, size_t x, size_t y, float nx, float ny,
 void NormalBuffer_getNormal(const Buffer *buf, size_t x, size_t y, float *nx, float *ny, float *nz);
 
 
-#define NormalBuffer(...) CONSTRUCTOR_DISPATCH(NormalBuffer, ##__VA_ARGS__)
+#define NormalBuffer(...) CONSTRUCTOR_DISPATCH(NormalBuffer, __VA_ARGS__)
 #endif

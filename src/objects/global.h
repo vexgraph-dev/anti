@@ -18,7 +18,7 @@ Global *Global_1(uint64_t initialValue);
 
 Global *Global_2(const Global *init, size_t count);
 
-#define Global(...) CONSTRUCTOR_DISPATCH(Global, ##__VA_ARGS__)
+#define Global(...) CONSTRUCTOR_DISPATCH(Global, __VA_ARGS__)
 
 void Global_free(Global *global);
 

@@ -20,7 +20,7 @@ Passive *Passive_3(PassiveGetter getter, PassiveSetter setter, void *userdata);
 
 Passive *Passive_2(const Passive *init, size_t count);
 
-#define Passive(...) CONSTRUCTOR_DISPATCH(Passive, ##__VA_ARGS__)
+#define Passive(...) CONSTRUCTOR_DISPATCH(Passive, __VA_ARGS__)
 
 void Passive_free(Passive *passive);
 

@@ -10,5 +10,5 @@
 Buffer *ShadowBuffer_2(size_t width, size_t height);
 
 
-#define ShadowBuffer(...) CONSTRUCTOR_DISPATCH(ShadowBuffer, ##__VA_ARGS__)
+#define ShadowBuffer(...) CONSTRUCTOR_DISPATCH(ShadowBuffer, __VA_ARGS__)
 #endif

@@ -13,5 +13,5 @@ void DepthBuffer_set(Buffer *buf, size_t x, size_t y, float depth);
 void DepthBuffer_clear(Buffer *buf, float depth);
 
 
-#define DepthBuffer(...) CONSTRUCTOR_DISPATCH(DepthBuffer, ##__VA_ARGS__)
+#define DepthBuffer(...) CONSTRUCTOR_DISPATCH(DepthBuffer, __VA_ARGS__)
 #endif

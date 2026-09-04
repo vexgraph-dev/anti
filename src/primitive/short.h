@@ -30,7 +30,7 @@ size_t Short_length(void *ptr);
 void *Short_allocWithValue(int16_t value);
 #define Short_0(...) Short_alloc()
 #define Short_1(value) Short_allocWithValue(value)
-#define Short(...) CONSTRUCTOR_DISPATCH(Short, ##__VA_ARGS__)
+#define Short(...) CONSTRUCTOR_DISPATCH(Short, __VA_ARGS__)
 
 
 #define Short_array(count) Short_allocArray(count)

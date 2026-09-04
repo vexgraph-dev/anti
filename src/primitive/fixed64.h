@@ -30,7 +30,7 @@ size_t Fixed64_length(void *ptr);
 void *Fixed64_allocWithValue(int64_t value);
 #define Fixed64_0(...) Fixed64_alloc()
 #define Fixed64_1(value) Fixed64_allocWithValue(value)
-#define Fixed64(...) CONSTRUCTOR_DISPATCH(Fixed64, ##__VA_ARGS__)
+#define Fixed64(...) CONSTRUCTOR_DISPATCH(Fixed64, __VA_ARGS__)
 
 
 #define Fixed64_array(count) Fixed64_allocArray(count)

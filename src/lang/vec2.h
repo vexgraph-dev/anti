@@ -61,5 +61,5 @@ void Vec2_abs(const Vec2 *src, Vec2 *dest);
 void Vec2_lerp(const Vec2 *a, const Vec2 *b, float t, Vec2 *dest);
 
 
-#define Vec2(...) CONSTRUCTOR_DISPATCH(Vec2, ##__VA_ARGS__)
+#define Vec2(...) CONSTRUCTOR_DISPATCH(Vec2, __VA_ARGS__)
 #endif

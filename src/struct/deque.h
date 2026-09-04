@@ -44,6 +44,6 @@ uint8_t *Deque_dataBuffer(Deque *deque);
 
 Deque *Deque_1(uint32_t element_class);
 
-#define Deque(...) CONSTRUCTOR_DISPATCH(Deque, ##__VA_ARGS__)
+#define Deque(...) CONSTRUCTOR_DISPATCH(Deque, __VA_ARGS__)
 
 #endif

@@ -45,5 +45,5 @@ uintptr_t Random_sample(Random *r, const Probable *probable);
 uintptr_t Random_probablePool(Random *r, const ProbableObjects *pool);
 
 
-#define Random(...) CONSTRUCTOR_DISPATCH(Random, ##__VA_ARGS__)
+#define Random(...) CONSTRUCTOR_DISPATCH(Random, __VA_ARGS__)
 #endif

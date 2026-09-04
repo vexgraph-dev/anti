@@ -30,7 +30,7 @@ size_t Double_length(void *ptr);
 void *Double_allocWithValue(double value);
 #define Double_0(...) Double_alloc()
 #define Double_1(value) Double_allocWithValue(value)
-#define Double(...) CONSTRUCTOR_DISPATCH(Double, ##__VA_ARGS__)
+#define Double(...) CONSTRUCTOR_DISPATCH(Double, __VA_ARGS__)
 
 
 #define Double_array(count) Double_allocArray(count)

@@ -49,6 +49,6 @@ uint8_t *Map_dataBuffer(Map *map);
 
 Map *Map_2(uint32_t key_class, uint32_t val_class);
 
-#define Map(...) CONSTRUCTOR_DISPATCH(Map, ##__VA_ARGS__)
+#define Map(...) CONSTRUCTOR_DISPATCH(Map, __VA_ARGS__)
 
 #endif

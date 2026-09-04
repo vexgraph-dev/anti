@@ -12,5 +12,5 @@ float HeightBuffer_getHeight(const Buffer *buf, size_t x, size_t y);
 void HeightBuffer_setHeight(Buffer *buf, size_t x, size_t y, float h);
 
 
-#define HeightBuffer(...) CONSTRUCTOR_DISPATCH(HeightBuffer, ##__VA_ARGS__)
+#define HeightBuffer(...) CONSTRUCTOR_DISPATCH(HeightBuffer, __VA_ARGS__)
 #endif

@@ -70,5 +70,5 @@ void Vec3_abs(const Vec3 *src, Vec3 *dest);
 void Vec3_lerp(const Vec3 *a, const Vec3 *b, float t, Vec3 *dest);
 
 
-#define Vec3(...) CONSTRUCTOR_DISPATCH(Vec3, ##__VA_ARGS__)
+#define Vec3(...) CONSTRUCTOR_DISPATCH(Vec3, __VA_ARGS__)
 #endif

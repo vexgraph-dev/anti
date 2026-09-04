@@ -36,7 +36,7 @@ void Brain_setFloat(void *ptr, float value);
 void *Brain_allocWithValue(uint16_t value);
 #define Brain_0(...) Brain_alloc()
 #define Brain_1(value) Brain_allocWithValue(value)
-#define Brain(...) CONSTRUCTOR_DISPATCH(Brain, ##__VA_ARGS__)
+#define Brain(...) CONSTRUCTOR_DISPATCH(Brain, __VA_ARGS__)
 
 
 #define Brain_array(count) Brain_allocArray(count)

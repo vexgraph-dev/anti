@@ -53,5 +53,5 @@ float           DisplayMonitor_getDpi(const DisplayMonitor *m);
 void            DisplayMonitor_setDpi(DisplayMonitor *m, float val);
 
 
-#define DisplayMonitor(...) CONSTRUCTOR_DISPATCH(DisplayMonitor, ##__VA_ARGS__)
+#define DisplayMonitor(...) CONSTRUCTOR_DISPATCH(DisplayMonitor, __VA_ARGS__)
 #endif

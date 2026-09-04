@@ -12,5 +12,5 @@ uint8_t StencilBuffer_get(const Buffer *buf, size_t x, size_t y);
 void StencilBuffer_set(Buffer *buf, size_t x, size_t y, uint8_t val);
 
 
-#define StencilBuffer(...) CONSTRUCTOR_DISPATCH(StencilBuffer, ##__VA_ARGS__)
+#define StencilBuffer(...) CONSTRUCTOR_DISPATCH(StencilBuffer, __VA_ARGS__)
 #endif

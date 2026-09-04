@@ -47,6 +47,6 @@ uint8_t *Set_dataBuffer(Set *set);
 
 Set *Set_1(uint32_t element_class);
 
-#define Set(...) CONSTRUCTOR_DISPATCH(Set, ##__VA_ARGS__)
+#define Set(...) CONSTRUCTOR_DISPATCH(Set, __VA_ARGS__)
 
 #endif

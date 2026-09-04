@@ -13,5 +13,5 @@ void ColorBuffer_getRGBA(const Buffer *buf, size_t x, size_t y, uint8_t *r, uint
 void ColorBuffer_clearRGBA(Buffer *buf, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
 
-#define ColorBuffer(...) CONSTRUCTOR_DISPATCH(ColorBuffer, ##__VA_ARGS__)
+#define ColorBuffer(...) CONSTRUCTOR_DISPATCH(ColorBuffer, __VA_ARGS__)
 #endif

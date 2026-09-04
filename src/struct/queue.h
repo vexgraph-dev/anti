@@ -39,6 +39,6 @@ uint8_t *Queue_dataBuffer(Queue *queue);
 
 Queue *Queue_1(uint32_t element_class);
 
-#define Queue(...) CONSTRUCTOR_DISPATCH(Queue, ##__VA_ARGS__)
+#define Queue(...) CONSTRUCTOR_DISPATCH(Queue, __VA_ARGS__)
 
 #endif

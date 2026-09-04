@@ -30,7 +30,7 @@ size_t Fixed32_length(void *ptr);
 void *Fixed32_allocWithValue(int32_t value);
 #define Fixed32_0(...) Fixed32_alloc()
 #define Fixed32_1(value) Fixed32_allocWithValue(value)
-#define Fixed32(...) CONSTRUCTOR_DISPATCH(Fixed32, ##__VA_ARGS__)
+#define Fixed32(...) CONSTRUCTOR_DISPATCH(Fixed32, __VA_ARGS__)
 
 
 #define Fixed32_array(count) Fixed32_allocArray(count)

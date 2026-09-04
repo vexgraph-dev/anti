@@ -30,7 +30,7 @@ size_t IntDouble_length(void *ptr);
 void *IntDouble_allocWithValues(int32_t v1, double v2);
 #define IntDouble_0(...) IntDouble_alloc()
 #define IntDouble_2(v1, v2) IntDouble_allocWithValues(v1, v2)
-#define IntDouble(...) CONSTRUCTOR_DISPATCH(IntDouble, ##__VA_ARGS__)
+#define IntDouble(...) CONSTRUCTOR_DISPATCH(IntDouble, __VA_ARGS__)
 
 
 #define IntDouble_array(count) IntDouble_allocArray(count)

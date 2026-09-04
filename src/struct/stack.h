@@ -38,6 +38,6 @@ uint8_t *Stack_dataBuffer(Stack *stack);
 
 Stack *Stack_1(uint32_t element_class);
 
-#define Stack(...) CONSTRUCTOR_DISPATCH(Stack, ##__VA_ARGS__)
+#define Stack(...) CONSTRUCTOR_DISPATCH(Stack, __VA_ARGS__)
 
 #endif

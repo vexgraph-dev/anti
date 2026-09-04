@@ -58,6 +58,6 @@ uint8_t *List_dataBuffer(List *list);
 
 List *List_1(uint32_t element_class);
 
-#define List(...) CONSTRUCTOR_DISPATCH(List, ##__VA_ARGS__)
+#define List(...) CONSTRUCTOR_DISPATCH(List, __VA_ARGS__)
 
 #endif
