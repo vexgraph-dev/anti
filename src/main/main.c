@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "annotation/overview.h"
 #include "bit/bit.h"
 #include "buffer/color_buffer.h"
 #include "buffer/depth_buffer.h"
@@ -71,6 +72,35 @@
 #define N_THREADS 4
 #define N_PUSH 25
 #define RING_CAP 16
+
+;;OVERVIEW
+/**
+ * ============================================================================
+ * MODULE: AntiRuntimeDemo (src/main/main.c — headless `anti` harness)
+ * ============================================================================
+ * End-to-end demo tying the C23 subsystems together with no window:
+ * 4 producer threads race 25 jobs each into a shared MPMC ring while a
+ * fixed-timestep engine loop drains it; earlier stages exercise Memory,
+ * FastMath, File, BitPool, CLI/console, reactive/passive objects, and log.
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   job_t { from, seq }              // Ring payload: producer id + sequence
+ *   producer_ctx_t { ring, id }      // Per-producer thread context
+ *   engine_ctx_t { ring, loop, received, ticks } // Drain-side loop context
+ *
+ * FUNCTION REGISTRY:
+ * ----------------------------------------------------------------------------
+ * Core Functions:
+ *   - producer_main(arg)             : Push N_PUSH jobs, spin while ring full
+ *   - log_print_handler(userdata, kind, ts, v0..v4) : LogParser record printer
+ *   - on_quit_command(command)       : Ends the scripted console session
+ *   - on_reactive_change(old, new, userdata) : Reactive value-change echo
+ *   - passive_lazy_calc(userdata)    : Lazy passive value computer (base * 2)
+ *   - engine_tick(userdata)          : Drain ring, stop loop at 100 jobs
+ *   - main()                         : Staged subsystem tour + ring race
+ * ============================================================================
+ */
 
 typedef struct job {
     unsigned int from;
