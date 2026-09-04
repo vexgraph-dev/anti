@@ -17,9 +17,29 @@
 
 static const size_t HEADER_SIZE = 32;
 static const size_t ALIGN = 8;
+#define MEMORY_BLOCK_MAGIC 0x5645585F4D454D21ULL
 
 static Block *s_head = nullptr;
 static SpinLock s_lock = SPIN_LOCK_INIT;
+
+static inline bool is_valid_pointer(const void *userPtr) {
+    if (!userPtr)
+        return false;
+    uintptr_t u = (uintptr_t) userPtr;
+    if (u < HEADER_SIZE)
+        return false;
+    if ((u & (ALIGN - 1)) != 0)
+        return false;
+    return true;
+}
+
+static bool is_block_owned_locked(const Block *target) {
+    for (Block *curr = s_head; curr; curr = (*curr).next) {
+        if (curr == target)
+            return true;
+    }
+    return false;
+}
 
 // Allocate a block, stamp the type, align the payload, return the payload.
 void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
@@ -46,7 +66,7 @@ void *Memory_alloc(const uint32_t typeId, const size_t numBytes) {
     Block *hdr = (Block*) (aligned - HEADER_SIZE);
     (*hdr).typeId = typeId;
     (*hdr).length = (uint32_t) numBytes;
-    (*hdr).pad = 0;
+    (*hdr).pad = MEMORY_BLOCK_MAGIC;
 
     SpinLock_lock(&s_lock);
     (*hdr).prev = nullptr;
@@ -78,18 +98,14 @@ void *Memory_realloc(void *userPtr, size_t newBytes) {
 }
 
 void Memory_free(void *userPtr) {
-    if (!userPtr)
+    if (!is_valid_pointer(userPtr))
         return;
     Block *hdr = (Block*) ((unsigned char*) userPtr - HEADER_SIZE);
 
     SpinLock_lock(&s_lock);
     // Validate membership before touching hdr: a foreign/stack/BitPool
     // pointer must not unlink arbitrary memory or reach free().
-    bool owned = false;
-    for (Block *curr = s_head; curr; curr = (*curr).next) {
-        if (curr == hdr) { owned = true; break; }
-    }
-    if (!owned) {
+    if (!is_block_owned_locked(hdr)) {
         SpinLock_unlock(&s_lock);
         return;
     }
@@ -104,6 +120,7 @@ void Memory_free(void *userPtr) {
         Block *next = (*hdr).next;
         (*next).prev = (*hdr).prev;
     }
+    (*hdr).pad = 0;
     SpinLock_unlock(&s_lock);
 
     free(hdr);
@@ -117,21 +134,38 @@ void Memory_freeAll(void) {
     
     while (curr) {
         Block *next = (*curr).next;
+        (*curr).pad = 0;
         free(curr);
         curr = next;
     }
 }
 
 size_t Memory_length(void *userPtr) {
-    if (!userPtr) return 0;
+    if (!is_valid_pointer(userPtr))
+        return 0;
     Block *hdr = (Block*) ((unsigned char*) userPtr - HEADER_SIZE);
-    return (*hdr).length;
+    SpinLock_lock(&s_lock);
+    if (!is_block_owned_locked(hdr)) {
+        SpinLock_unlock(&s_lock);
+        return 0;
+    }
+    size_t len = (size_t) (*hdr).length;
+    SpinLock_unlock(&s_lock);
+    return len;
 }
 
 uint32_t Memory_type(void *userPtr) {
-    if (!userPtr) return 0;
+    if (!is_valid_pointer(userPtr))
+        return 0;
     Block *hdr = (Block*) ((unsigned char*) userPtr - HEADER_SIZE);
-    return (*hdr).typeId;
+    SpinLock_lock(&s_lock);
+    if (!is_block_owned_locked(hdr)) {
+        SpinLock_unlock(&s_lock);
+        return 0;
+    }
+    uint32_t tid = (*hdr).typeId;
+    SpinLock_unlock(&s_lock);
+    return tid;
 }
 size_t Memory_findAll(uint32_t typeId, void **outArray, size_t maxCount) {
     size_t count = 0;
