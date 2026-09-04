@@ -24,8 +24,10 @@ workspace/
 │   │   └── src/                 # Window abstraction, AppKit Cocoa bridge, loader
 │   ├── darling/                 # Retained-mode UI nodes & Vulkan render passes
 │   │   └── src/                 # Canvas, panels, labels, font baking, CoreText, SDF
+│   ├── api-haven/               # Telemetry schemas, webhooks, and transmitters.
+│   │
 │   └── [other projects connecting to each other go here]
-│       └── api-haven/           # Telemetry schemas & Discord webhook transmitters
+│
 ├── CMakeLists.txt               # Umbrella workspace orchestrator
 └── preferences.md               # Engine architectural style preferences (Rules 1–n)
 ```
@@ -34,36 +36,12 @@ workspace/
 
 `vexspoke` is the foundational root of the [@vexgraph-dev](https://github.com/vexgraph-dev) vertical integration stack. Downstream repositories in the ecosystem import and dogfood `vexspoke` directly:
 
-```
-                           ┌──────────────────────────┐
-                           │         vexspoke         │
-                           │  (Foundation C23 Core)   │
-                           └─────────────┬────────────┘
-                                         │
-             ┌───────────────────────────┼───────────────────────────┐
-             │                           │                           │
-             ▼                           ▼                           ▼
-    ┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
-    │     hotcwap     │         │     darling     │         │    api-haven    │
-    │   OS Window &   │         │  UI Toolkit &   │         │   Telemetry &   │
-    │  Hot Reloader   │         │  Render Passes  │         │   Discord API   │
-    └────────┬────────┘         └────────┬────────┘         └─────────────────┘
-             │                           │
-             └─────────────┬─────────────┘
-                           ▼
-                  ┌─────────────────┐
-                  │    vexgraph     │
-                  │  (Application / │
-                  │  Orchestration) │
-                  └─────────────────┘
-```
-
-| Downstream Repository | Role in Ecosystem | How it Uses `vexspoke` |
-| :--- | :--- | :--- |
-| [**`hotcwap`**](https://github.com/vexgraph-dev/hotcwap) | Dynamic library hot-reloader & native OS windowing | Consumes `event/`, `input/`, `time/`, and `buffer/` for zero-allocation event pumps and persistent OS display surfaces. |
-| [**`darling`**](https://github.com/vexgraph-dev/darling) | Retained-mode UI nodes & Vulkan UI pipelines | Consumes `nio/mem`, `bit/bit`, `oop/type`, `lang/math`, and base `vulkan/` contexts to build off-heap UI nodes (`Panel`, `Picture`, `Label`), font baking, and GPU distance-field passes. |
-| [**`api-haven`**](https://github.com/vexgraph-dev/api-haven) | Zero-allocation network APIs & telemetry | Consumes `net/http`, `net/json`, `net/url`, `nio/mem`, and `primitive/string` for off-heap Discord webhooks and metrics streaming. |
-| **`vexgraph`** | Local orchestrator & application probes | Vertically links all three downstream layers together into composite binaries (`main/vk_test.c`). |
+| Downstream Repository                                         | Role in Ecosystem | How it Uses `vexspoke` |
+|:--------------------------------------------------------------| :--- | :--- |
+| [**`hotcwap`**](https://github.com/vexgraph-dev/hotcwap)      | Dynamic library hot-reloader & native OS windowing | Consumes `event/`, `input/`, `time/`, and `buffer/` for zero-allocation event pumps and persistent OS display surfaces. |
+| [**`darling`**](https://github.com/vexgraph-dev/darling)      | Retained-mode UI nodes & Vulkan UI pipelines | Consumes `nio/mem`, `bit/bit`, `oop/type`, `lang/math`, and base `vulkan/` contexts to build off-heap UI nodes (`Panel`, `Picture`, `Label`), font baking, and GPU distance-field passes. |
+| [**`api-haven`**](https://github.com/vexgraph-dev/api-haven)  | Zero-allocation network APIs & telemetry | Consumes `net/http`, `net/json`, `net/url`, `nio/mem`, and `primitive/string` for off-heap Discord webhooks and metrics streaming. |
+| A local directory that holds all                              | Local orchestrator & application probes | Vertically links all three downstream layers together into composite binaries (`main/vk_test.c`). |
 
 ### 1. In-Tree Integration (Subdirectory)
 When nested inside an umbrella workspace, include `vexspoke` directly:
