@@ -14,6 +14,8 @@
  * ============================================================================
  * Brain primitive (Legacy: primitive/Brain.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of brain payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

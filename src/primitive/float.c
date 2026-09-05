@@ -14,6 +14,8 @@
  * ============================================================================
  * Float primitive (Legacy: primitive/Float.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of float payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

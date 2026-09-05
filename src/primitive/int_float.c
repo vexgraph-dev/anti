@@ -14,6 +14,8 @@
  * ============================================================================
  * IntFloat primitive (Legacy: primitive/IntFloat.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of int_float payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

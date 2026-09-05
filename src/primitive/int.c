@@ -14,6 +14,8 @@
  * ============================================================================
  * Int primitive (Legacy: primitive/Int.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of int payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

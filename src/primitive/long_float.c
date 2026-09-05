@@ -14,6 +14,8 @@
  * ============================================================================
  * LongFloat primitive (Legacy: primitive/LongFloat.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of long_float payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

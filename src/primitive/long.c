@@ -14,6 +14,8 @@
  * ============================================================================
  * Long primitive (Legacy: primitive/Long.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of long payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

@@ -14,6 +14,8 @@
  * ============================================================================
  * LongDouble primitive (Legacy: primitive/LongDouble.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of long_double payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

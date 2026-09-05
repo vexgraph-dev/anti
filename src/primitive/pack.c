@@ -9,6 +9,8 @@
  * ============================================================================
  * bit-packing utilities (Legacy: primitive/Pack.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on packed primitive payload buffers)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

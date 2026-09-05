@@ -14,6 +14,8 @@
  * ============================================================================
  * Byte primitive (Legacy: primitive/Byte.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of byte payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

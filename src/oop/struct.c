@@ -14,6 +14,8 @@
  * ============================================================================
  * Dynamic Struct Instance & Allocation Engine.
  *
+ * STRUCT FIELDS: none — procedural (operates on Class/Field descriptors (allocates Memory blocks))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

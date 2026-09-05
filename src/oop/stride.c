@@ -12,6 +12,8 @@
  * ============================================================================
  * the Stride utility, ported from oop/Stride.java.
  *
+ * STRUCT FIELDS: none — procedural (operates on Class/Struct stride registry (no instance state))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Getters:

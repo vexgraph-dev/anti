@@ -14,6 +14,8 @@
  * ============================================================================
  * Short primitive (Legacy: primitive/Short.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of short payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

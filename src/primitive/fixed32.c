@@ -14,6 +14,8 @@
  * ============================================================================
  * Fixed32 primitive (Legacy: primitive/Fixed32.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of fixed32 payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

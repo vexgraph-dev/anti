@@ -14,6 +14,8 @@
  * ============================================================================
  * IntDouble primitive (Legacy: primitive/IntDouble.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of int_double payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

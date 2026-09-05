@@ -14,6 +14,8 @@
  * ============================================================================
  * Bool primitive (Legacy: primitive/Bool.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of bool payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

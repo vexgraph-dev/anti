@@ -10,10 +10,21 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Class (oop/Class.c)
+ * CLASS: Class (oop/Class.c)
  * LEVEL: L1 — File Metadata (class schema registry)
  * ============================================================================
  * Dynamic Class Schema Engine (Legacy: oop/Fields, now Class).
+ *
+ * STRUCT FIELDS (Mirroring oop/Class.h):
+ * ----------------------------------------------------------------------------
+ *   Class {
+ *     uint32_t genericId; // ID_CUSTOM_STRUCT + n
+ *     size_t stride; // Total singleton stride
+ *     size_t stream1Stride; // Hot primitive stream stride
+ *     size_t stream2Stride; // Secondary struct stream stride
+ *     uint32_t count; // Number of fields
+ *     Field *items; // Array of field descriptors
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

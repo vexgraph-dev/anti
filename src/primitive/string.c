@@ -14,6 +14,8 @@
  * ============================================================================
  * the string class, ported from primitive/string.java.
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of string payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

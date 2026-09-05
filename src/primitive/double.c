@@ -14,6 +14,8 @@
  * ============================================================================
  * Double primitive (Legacy: primitive/Double.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of double payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

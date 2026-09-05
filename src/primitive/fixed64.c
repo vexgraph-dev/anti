@@ -14,6 +14,8 @@
  * ============================================================================
  * Fixed64 primitive (Legacy: primitive/Fixed64.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on BitPool/Memory blocks of fixed64 payloads)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:
