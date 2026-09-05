@@ -24,6 +24,8 @@
  * ============================================================================
  * thread identity & roles (Legacy: thread/ThreadRegistry.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on thread registry table (dense index + roles))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

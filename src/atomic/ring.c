@@ -20,10 +20,22 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Ring (atomic/ring.c)
+ * CLASS: Ring (atomic/ring.c)
  * LEVEL: L4 — Self-Management (MPMC ring sync primitive)
  * ============================================================================
  * MPMC ring buffer API (Legacy: thread/RingBuffer.java).
+ *
+ * STRUCT FIELDS (Mirroring atomic/ring.h):
+ * ----------------------------------------------------------------------------
+ *   RingBuffer {
+ *     SpinLock lock; // serializes the actual copy in/_out
+ *     size_t capacity; // power of two
+ *     size_t mask; // capacity - 1, for slot masking
+ *     size_t elem_size; // bytes per element
+ *     _Atomic size_t head; // consumer index (monotonic, never wraps back)
+ *     _Atomic size_t tail; // producer index (monotonic, never wraps back)
+ *     uint8_t *slots; // capacity * elem_size arena
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

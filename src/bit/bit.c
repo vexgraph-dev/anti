@@ -22,10 +22,24 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Bit (bit/bit.c)
+ * CLASS: Bit (bit/bit.c)
  * LEVEL: L4 — Self-Management (lockless memory-pool allocator)
  * ============================================================================
  * lockless bit-width pool API (Legacy: bit/Bit64.java).
+ *
+ * STRUCT FIELDS (Mirroring bit/bit.h):
+ * ----------------------------------------------------------------------------
+ *   BitSlot {
+ *     uint32_t type_id; // block-header type id
+ *     uint32_t length; // payload length
+ *     _Atomic uint64_t next; // ABA-tagged freelist next (lower 48 bits ptr, upper 16 tag)
+ *   }
+ *   BitPool {
+ *     size_t element_size; // bytes per payload slot
+ *     size_t capacity; // slot count
+ *     uint8_t *arena; // one calloc'd arena, never grows
+ *     _Atomic uint64_t free_head; // tagged head of the free list
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

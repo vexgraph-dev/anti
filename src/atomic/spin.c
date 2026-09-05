@@ -22,10 +22,16 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Spin (atomic/spin.c)
+ * CLASS: Spin (atomic/spin.c)
  * LEVEL: L4 — Self-Management (spinlock sync primitive)
  * ============================================================================
  * spinlock API (Legacy: thread/SpinLock.java).
+ *
+ * STRUCT FIELDS (Mirroring atomic/spin.h):
+ * ----------------------------------------------------------------------------
+ *   SpinLock {
+ *     atomic_uint word; // atomic lock word
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

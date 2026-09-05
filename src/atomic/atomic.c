@@ -18,10 +18,25 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Atomic (atomic/atomic.c)
+ * CLASS: Atomic (atomic/atomic.c)
  * LEVEL: L4 — Self-Management (atomic variables/synchronization)
  * ============================================================================
  * atomic variables & synchronization (Legacy: thread/Atomic.java).
+ *
+ * STRUCT FIELDS (Mirroring atomic/atomic.h):
+ * ----------------------------------------------------------------------------
+ *   AtomicBool {
+ *     _Atomic uint8_t value; // payload value
+ *   }
+ *   AtomicInt {
+ *     _Atomic int32_t value; // payload value
+ *   }
+ *   AtomicLong {
+ *     _Atomic int64_t value; // payload value
+ *   }
+ *   AtomicPtr {
+ *     _Atomic(void*) value; // payload value
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

@@ -14,6 +14,8 @@
  * ============================================================================
  * The Relational Destructor Dispatcher.
  *
+ * STRUCT FIELDS: none — procedural (operates on generic Memory blocks via runtime type dispatch)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

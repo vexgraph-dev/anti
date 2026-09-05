@@ -13,10 +13,19 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Loop (engine/loop.c)
+ * CLASS: Loop (engine/loop.c)
  * LEVEL: L2 — Behavior (engine loop behavior)
  * ============================================================================
  * the engine loop API (Legacy: engine/EngineLoop.java).
+ *
+ * STRUCT FIELDS (Mirroring engine/loop.h):
+ * ----------------------------------------------------------------------------
+ *   Loop {
+ *     TickFn tick; // called once per fixed step (never nullptr)
+ *     void *userdata; // opaque context handed to tick
+ *     int64_t frame_ms; // fixed timestep in milliseconds (>0)
+ *     _Atomic bool running; // Loop_stop flips this to end the loop
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

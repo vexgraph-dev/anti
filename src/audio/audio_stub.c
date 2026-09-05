@@ -15,6 +15,8 @@
  * ============================================================================
  * the silence backend for platforms without the Cocoa
  *
+ * STRUCT FIELDS: none — procedural (operates on stub audio backend (no state))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

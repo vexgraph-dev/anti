@@ -18,6 +18,8 @@
  * field-by-field so padding bytes never vote. Types with no registered
  * schema fall back to payload memcmp; foreign pointers prove identity only.
  *
+ * STRUCT FIELDS: none — procedural (operates on generic Memory blocks via Class schema)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:
