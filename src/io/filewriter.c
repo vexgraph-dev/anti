@@ -8,10 +8,19 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Filewriter (io/filewriter.c)
+ * CLASS: Filewriter (io/filewriter.c)
  * LEVEL: L2 — Behavior (I/O behavior API)
  * ============================================================================
  * the FileWriter class, ported from io/FileWriter.java.
+ *
+ * STRUCT FIELDS (Mirroring io/filewriter.h):
+ * ----------------------------------------------------------------------------
+ *   FileWriter {
+ *     FILE *out; // instance state
+ *     bool open; // instance state
+ *     uint64_t bytes_written; // writer-side flushed count
+ *     char buffer[FILEWRITER_BUFFER_SIZE]; // staging buffer
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

@@ -10,10 +10,30 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Log (io/log.c)
+ * CLASS: Log (io/log.c)
  * LEVEL: L2 — Behavior (I/O behavior API)
  * ============================================================================
  * the Log class, ported from io/Log.java.
+ *
+ * STRUCT FIELDS (Mirroring io/log.h):
+ * ----------------------------------------------------------------------------
+ *   Log {
+ *     uint8_t *arena; // head/tail + slot arena, carved once
+ *     size_t slot_count; // live entry count
+ *     size_t slot_mask; // capacity mask for indexing
+ *     size_t slot_size; // slot/ring sizing state
+ *     FileWriter writer; // file sink writer
+ *     pthread_t thread; // background thread handle
+ *     bool thread_started; // background thread handle
+ *     atomic_bool running; // run-state flag
+ *     bool enabled; // built with a real sink
+ *     bool active; // runtime gate; false makes append a no-op
+ *     _Atomic uint64_t appended; // appended record counter
+ *     _Atomic uint64_t dropped; // dropped record counter
+ *     uint64_t written; // writer thread only
+ *     uint64_t flush_point; // writer thread only
+ *     char path[FILE_PATH_MAX]; // backing file path
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

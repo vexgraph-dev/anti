@@ -11,10 +11,20 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: File (io/file.c)
+ * CLASS: File (io/file.c)
  * LEVEL: L2 — Behavior (I/O behavior API)
  * ============================================================================
  * the File class, ported from io/File.java.
+ *
+ * STRUCT FIELDS (Mirroring io/file.h):
+ * ----------------------------------------------------------------------------
+ *   File {
+ *     char name[FILE_PATH_MAX]; // field/entry name
+ *     FILE *handle; // OS file handle
+ *     int64_t size; // file cursor/size state
+ *     int64_t position; // file cursor/size state
+ *     uint32_t mode; // open mode flags
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

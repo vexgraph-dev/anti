@@ -14,6 +14,8 @@
  * ============================================================================
  * the Scanner class, ported from cli/Scanner.java.
  *
+ * STRUCT FIELDS: none — procedural (operates on stdin stream (returns string blocks))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

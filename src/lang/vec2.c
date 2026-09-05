@@ -10,10 +10,17 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Vec2 (lang/vec2.c)
+ * CLASS: Vec2 (lang/vec2.c)
  * LEVEL: L2 — Behavior (math behavior API)
  * ============================================================================
  * the Vec2 class, ported from lang/Vec2.java.
+ *
+ * STRUCT FIELDS (Mirroring lang/vec2.h):
+ * ----------------------------------------------------------------------------
+ *   Vec2 {
+ *     float x; // vector component
+ *     float y; // vector component
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

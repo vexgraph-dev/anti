@@ -17,10 +17,31 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Touch (input/touch.c)
+ * CLASS: Touch (input/touch.c)
  * LEVEL: L2 — Behavior (input behavior API)
  * ============================================================================
  * trackpad touch state + event stream (Legacy: input/Touch.java).
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   InputEvent {
+ *     uint64_t packed;           // legacy 64-bit touch event packing
+ *     uint32_t windowId;         // target window (0 = broadcast)
+ *     uint32_t pad;              // alignment padding
+ *   }
+ *   TouchSlot {
+ *     uint64_t pressTime;        // touchdown timestamp
+ *     uint64_t lastHoldDuration; // active-contact duration
+ *     uint64_t lastReleaseTime;  // lift timestamp
+ *     int32_t taps;              // tap-count state
+ *     int32_t action;            // current touch action
+ *   }
+ *   TouchPos {
+ *     double x;                  // contact X position
+ *     double y;                  // contact Y position
+ *     double pressure;           // contact pressure
+ *     uint64_t pad;              // alignment padding
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

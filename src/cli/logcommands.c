@@ -9,10 +9,19 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Logcommands (cli/logcommands.c)
+ * CLASS: Logcommands (cli/logcommands.c)
  * LEVEL: L2 — Behavior (CLI behavior API)
  * ============================================================================
  * the LogCommands class, ported from cli/LogCommands.java.
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   Cat {
+ *     int64_t base_ts;           // first record timestamp (relative base)
+ *     int64_t shown;             // records printed so far
+ *     int64_t total;             // records scanned so far
+ *     int limit;                 // max records to print (<0 = all)
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

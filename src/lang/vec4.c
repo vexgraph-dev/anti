@@ -10,10 +10,19 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Vec4 (lang/vec4.c)
+ * CLASS: Vec4 (lang/vec4.c)
  * LEVEL: L2 — Behavior (math behavior API)
  * ============================================================================
  * the Vec4 class, ported from lang/Vec4.java.
+ *
+ * STRUCT FIELDS (Mirroring lang/vec4.h):
+ * ----------------------------------------------------------------------------
+ *   Vec4 {
+ *     float x; // vector component
+ *     float y; // vector component
+ *     float z; // vector component
+ *     float w; // vector component
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

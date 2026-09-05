@@ -17,6 +17,8 @@
  * ============================================================================
  * THE spotlight (one focused window per machine).
  *
+ * STRUCT FIELDS: none — procedural (operates on focused window id (single atomic word))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

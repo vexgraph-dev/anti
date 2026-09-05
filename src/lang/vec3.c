@@ -10,10 +10,18 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Vec3 (lang/vec3.c)
+ * CLASS: Vec3 (lang/vec3.c)
  * LEVEL: L2 — Behavior (math behavior API)
  * ============================================================================
  * the Vec3 class, ported from lang/Vec3.java.
+ *
+ * STRUCT FIELDS (Mirroring lang/vec3.h):
+ * ----------------------------------------------------------------------------
+ *   Vec3 {
+ *     float x; // vector component
+ *     float y; // vector component
+ *     float z; // vector component
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

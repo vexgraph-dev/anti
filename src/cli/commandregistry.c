@@ -17,6 +17,8 @@
  * ============================================================================
  * the CommandRegistry class, ported from
  *
+ * STRUCT FIELDS: none — procedural (operates on Map registry of command names to targets)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

@@ -25,10 +25,25 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Mouse (input/mouse.c)
+ * CLASS: Mouse (input/mouse.c)
  * LEVEL: L2 — Behavior (input behavior API)
  * ============================================================================
  * mouse buttons, position, and event stream
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   InputEvent {
+ *     uint64_t packed;           // legacy 64-bit mouse event packing
+ *     uint32_t windowId;         // target window (0 = broadcast)
+ *     uint32_t pad;              // alignment padding
+ *   }
+ *   ButtonSlot {
+ *     uint64_t pressTime;        // last press timestamp
+ *     uint64_t lastReleaseTime;  // last release timestamp
+ *     int32_t taps;              // click-count state
+ *     int32_t pad;               // alignment padding
+ *     uint64_t lastHoldDuration; // hold length accumulator
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

@@ -15,6 +15,8 @@
  * ============================================================================
  * the Console class, ported from cli/Console.java.
  *
+ * STRUCT FIELDS: none — procedural (operates on RingBuffer message queue of string blocks)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

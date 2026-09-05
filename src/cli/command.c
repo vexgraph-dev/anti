@@ -10,10 +10,18 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Command (cli/command.c)
+ * CLASS: Command (cli/command.c)
  * LEVEL: L2 — Behavior (CLI behavior API)
  * ============================================================================
  * the Command class, ported from cli/Command.java.
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   Command (opaque Memory block, see cli/command.h layout) {
+ *     uint8_t *namePtr;          // owned command name string block (+0)
+ *     uint32_t argumentCount;    // argument count (+8)
+ *     uint8_t **arguments;       // owned argument string blocks (+16)
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

@@ -14,6 +14,8 @@
  * ============================================================================
  * the LogParser class, ported from io/LogParser.java.
  *
+ * STRUCT FIELDS: none — procedural (operates on binary log files on disk (read-only))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

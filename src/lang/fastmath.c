@@ -12,6 +12,8 @@
  * ============================================================================
  * the FastMath class, ported from lang/FastMath.java.
  *
+ * STRUCT FIELDS: none — procedural (operates on scalar/Vec/Mat math values (pure functions))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

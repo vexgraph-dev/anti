@@ -8,10 +8,16 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Mat4 (lang/mat4.c)
+ * CLASS: Mat4 (lang/mat4.c)
  * LEVEL: L2 — Behavior (math behavior API)
  * ============================================================================
  * the Mat4 class, ported from lang/Mat4.java.
+ *
+ * STRUCT FIELDS (Mirroring lang/mat4.h):
+ * ----------------------------------------------------------------------------
+ *   Mat4 {
+ *     float m[16]; // column-major 4x4 matrix
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

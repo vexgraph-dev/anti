@@ -15,6 +15,8 @@
  * ============================================================================
  * the CommandParser class, ported from
  *
+ * STRUCT FIELDS: none — procedural (operates on Command blocks (parses lines into Commands))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

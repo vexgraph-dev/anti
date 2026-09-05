@@ -9,6 +9,8 @@
  * ============================================================================
  * OS-level file monitoring and hot-reloading architecture
  *
+ * STRUCT FIELDS: none — procedural (operates on OS file-watch handles (pump-based))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:

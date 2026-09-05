@@ -22,10 +22,25 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Key (input/key.c)
+ * CLASS: Key (input/key.c)
  * LEVEL: L2 — Behavior (input behavior API)
  * ============================================================================
  * never stale.
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   InputEvent {
+ *     uint64_t packed;           // legacy 64-bit key event packing
+ *     uint32_t windowId;         // target window (0 = broadcast)
+ *     uint32_t pad;              // alignment padding
+ *   }
+ *   KeySlot {
+ *     uint64_t pressTime;        // last press timestamp
+ *     uint64_t lastReleaseTime;  // last release timestamp
+ *     int32_t taps;              // tap count for multi-tap
+ *     int32_t pad;               // alignment padding
+ *     uint64_t lastHoldDuration; // hold length accumulator
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

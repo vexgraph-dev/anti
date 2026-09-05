@@ -15,6 +15,8 @@
  * ============================================================================
  * the VexHome class (was AntiHome, renamed on the
  *
+ * STRUCT FIELDS: none — procedural (operates on VexHome directory layout on disk)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:
