@@ -4,10 +4,17 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Type (oop/type.c)
+ * CLASS: Type (oop/type.c)
  * LEVEL: L1 — File Metadata (type-id metadata registry)
  * ============================================================================
  * the TypeRegister, ported from oop/TypeRegister.java.
+ *
+ * STRUCT FIELDS (Mirroring oop/type.h):
+ * ----------------------------------------------------------------------------
+ *   TypeHeader {
+ *     uint32_t typeId; // block-header type id
+ *     uint32_t length; // payload length
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
@@ -39,6 +46,7 @@
  *   - Type_isChoice(typeId)
  *   - Type_getParentClass(classId)
  *   - Type_isA(classId, ancestorId)
+ *   - Type_arch(classId)
  * ============================================================================
  */
 
@@ -52,17 +60,51 @@ uint32_t Type_getParentClass(uint32_t classId) {
     // Buffer family: 0x50..0x63 in legacy all descend from ID_BUFFER.
     if (classId >= 0x0050u && classId <= 0x0063u)
         return ID_BUFFER;
+    // Darling UI tree: everything panels-up descends from Panel,
+    // Panel descends from Container (the root).
     if (classId == ID_PANEL)
         return ID_CONTAINER;
     if (classId == ID_PICTURE)
-        return ID_CONTAINER;
+        return ID_PANEL;
+    if (classId == ID_LABEL)
+        return ID_PANEL;
+    if (classId == ID_RICH_LABEL)
+        return ID_PANEL;
     if (classId == ID_SCENE)
         return ID_PANEL;
     if (classId == ID_SCENE2D)
         return ID_SCENE;
     if (classId == ID_SCENE3D)
         return ID_SCENE;
+    if (classId == ID_CANVAS)
+        return ID_CANVAS;
+    if (classId == ID_CONTAINER)
+        return ID_CONTAINER;
     return classId;
+}
+
+uint32_t Type_arch(uint32_t classId) {
+    switch (classId) {
+        case ID_CONTAINER:
+        case ID_PANEL:
+        case ID_PICTURE:
+        case ID_LABEL:
+        case ID_SCENE:
+        case ID_SCENE2D:
+        case ID_SCENE3D:
+        case ID_RICH_LABEL:
+        case ID_CANVAS:
+            return ARCH_DARLING;
+        case ID_THREAD:
+        case ID_THREAD_NETWORKING:
+        case ID_THREAD_EVENT:
+        case ID_THREAD_DRAW:
+        case ID_THREAD_SCRIPTING:
+        case ID_THREAD_UI:
+            return ARCH_HOTCWAP;
+        default:
+            return ARCH_VEXSPOKE;
+    }
 }
 
 int Type_isA(uint32_t classId, uint32_t ancestorId) {

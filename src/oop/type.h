@@ -10,8 +10,9 @@
 //
 //     0x F M W1 W2 CCCC
 //        | | |  |   `---- class id     (which subsystem/struct this is)
-//        | | |  `-------- wrapper 2    (probable/future/choice)
-//        | | `----------- wrapper 1    (proactive/reactive)
+//        | | |  `-------- wrapper 2    (probable/future/choice | none/proactive/reactive)
+//        | | |                         none: 1 = p, 2 = f, 3 = c | proactive: 4 = p, 5 = f, 6 = c | reactive: 7 = p, 8 = f, 9 = c
+//        | | `----------- wrapper 1    (architecture: 1 = vexspoke, 2 = hotcwap, 3 = darling, > 4 in the future)
 //        | `------------- modifier     (global/locale/transient)
 //        `--------------- form         (singleton/array/pointer/struct...)
 //
@@ -171,17 +172,32 @@
 #define ID_CONTAINER              0x0079u
 #define ID_PANEL                  0x0078u
 #define ID_PICTURE                0x007Au
+#define ID_LABEL                  0x007Bu
 #define ID_SCENE                  0x007Cu
 #define ID_SCENE2D                0x007Du
 #define ID_SCENE3D                0x007Eu
+#define ID_RICH_LABEL             0x007Fu
+#define ID_CANVAS                 0x0065u
 
 // Structural subclass singletons (darling tree)
 #define TYPE_CONTAINER_SINGLETON  (FORM_SINGLETON | ID_CONTAINER)
 #define TYPE_PANEL_SINGLETON      (FORM_SINGLETON | ID_PANEL)
 #define TYPE_PICTURE_SINGLETON    (FORM_SINGLETON | ID_PICTURE)
+#define TYPE_LABEL_SINGLETON      (FORM_SINGLETON | ID_LABEL)
 #define TYPE_SCENE_SINGLETON      (FORM_SINGLETON | ID_SCENE)
 #define TYPE_SCENE2D_SINGLETON    (FORM_SINGLETON | ID_SCENE2D)
 #define TYPE_SCENE3D_SINGLETON    (FORM_SINGLETON | ID_SCENE3D)
+#define TYPE_RICH_LABEL_SINGLETON (FORM_SINGLETON | ID_RICH_LABEL)
+#define TYPE_CANVAS_SINGLETON     (FORM_SINGLETON | ID_CANVAS)
+
+// --- ARCHITECTURE LAYER (which repo owns the class) ---
+// Phase 1: nibble WRAPPER_1 (0x00F00000) is already taken by
+// WRAP_PROACTIVE/WRAP_REACTIVE, so architecture is derived from the
+// CLASS id range instead of a nibble. Long overhaul should carve a real
+// nibble; until then these helpers are the single source of truth.
+#define ARCH_VEXSPOKE 1u
+#define ARCH_HOTCWAP  2u
+#define ARCH_DARLING  3u
 
 #define TYPE_INT_SINGLETON (FORM_SINGLETON | ID_INT)
 #define TYPE_INT_ARRAY     (FORM_ARRAY     | ID_INT)
@@ -343,6 +359,25 @@ static inline int Type_isChoice(uint32_t typeId) {
 // Parent-class walk (Legacy getParentClass). Returns the parent class id,
 // or the class id itself when it is a root. Used by Type_isA.
 uint32_t Type_getParentClass(uint32_t classId);
+
+// Architecture layer owning a class id (ARCH_VEXSPOKE/HOTCWAP/DARLING).
+// Phase 1: range-based (darling = container/panel/picture/label/scene/rich
+// label/canvas ids above; hotcwap/thread/window ids handled by caller via
+// Type_isA; everything else = vexspoke). Used by Darling_addAny.
+uint32_t Type_arch(uint32_t classId);
+
+// True if classId belongs to the given architecture layer.
+static inline int Type_isVexspoke(uint32_t classId) {
+    return Type_arch(classId) == ARCH_VEXSPOKE;
+}
+
+static inline int Type_isHotcwap(uint32_t classId) {
+    return Type_arch(classId) == ARCH_HOTCWAP;
+}
+
+static inline int Type_isDarling(uint32_t classId) {
+    return Type_arch(classId) == ARCH_DARLING;
+}
 
 // True if classId is ancestorId or any descendant of it (walks parents).
 int Type_isA(uint32_t classId, uint32_t ancestorId);
