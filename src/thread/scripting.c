@@ -13,6 +13,8 @@
  * ============================================================================
  * the scripting worker (Legacy: ScriptingThread.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on Thread pool (scripting role workers))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

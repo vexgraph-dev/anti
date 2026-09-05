@@ -11,10 +11,16 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: List (struct/list.c)
+ * CLASS: List (struct/list.c)
  * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the List class, ported from struct/List.java.
+ *
+ * STRUCT FIELDS (Mirroring struct/list.h):
+ * ----------------------------------------------------------------------------
+ *   List {
+ *     Collection collection; // instance state
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

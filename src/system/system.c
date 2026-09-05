@@ -16,6 +16,8 @@
  * ============================================================================
  * Unified native system information, discovery, and display subsystem
  *
+ * STRUCT FIELDS: none — procedural (operates on engine subsystems (init-once boot))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

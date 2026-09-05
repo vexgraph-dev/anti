@@ -13,6 +13,8 @@
  * ============================================================================
  * global display subsystem query (Legacy: system/DisplayInfo.java)
  *
+ * STRUCT FIELDS: none — procedural (operates on DisplayMonitor registry (primary + list))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Setters:

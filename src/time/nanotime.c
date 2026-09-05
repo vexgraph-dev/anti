@@ -13,10 +13,20 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Nanotime (time/nanotime.c)
+ * CLASS: Nanotime (time/nanotime.c)
  * LEVEL: L2 — Behavior (time behavior API)
  * ============================================================================
  * the monotonic clock (Legacy: time/NanoTime.java).
+ *
+ * STRUCT FIELDS (Mirroring time/nanotime.h):
+ * ----------------------------------------------------------------------------
+ *   NanoTimer {
+ *     uint64_t startNanos; // nanosecond timestamp
+ *     uint64_t lastNanos; // nanosecond timestamp
+ *     uint64_t currentNanos; // nanosecond timestamp
+ *     double deltaTime; // seconds, Clock-scaled
+ *     double totalTime; // seconds, accumulated scaled
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

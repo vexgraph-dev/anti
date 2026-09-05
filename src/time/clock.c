@@ -13,10 +13,20 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Clock (time/clock.c)
+ * CLASS: Clock (time/clock.c)
  * LEVEL: L2 — Behavior (time behavior API)
  * ============================================================================
  * the virtual clock (Legacy: time/Clock.java).
+ *
+ * STRUCT FIELDS (Mirroring time/clock.h):
+ * ----------------------------------------------------------------------------
+ *   Clock {
+ *     double timeScale; // default 1.0
+ *     uint64_t baseRealMillis; // wall anchor at create/reset (informational)
+ *     uint64_t lastTickRealMillis; // previous tick's real reading
+ *     uint64_t virtualTimeMillis; // accumulated scaled time
+ *     bool paused; // frozen when true
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

@@ -9,10 +9,22 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Sparseset (struct/sparseset.c)
+ * CLASS: Sparseset (struct/sparseset.c)
  * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the SparseSet class, ported from struct/SparseSet.java.
+ *
+ * STRUCT FIELDS (Mirroring struct/sparseset.h):
+ * ----------------------------------------------------------------------------
+ *   SparseSet {
+ *     int32_t capacity; // dense/data capacity
+ *     int32_t maxEntities; // sparse array length
+ *     int32_t count; // live entries
+ *     int32_t stride; // component stride (0 = set only)
+ *     int32_t *dense; // dense[i] = entity id
+ *     int32_t *sparse; // sparse[entity] = dense index, -1 = absent
+ *     uint8_t *data; // component data, capacity * stride bytes
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

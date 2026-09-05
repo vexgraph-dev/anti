@@ -9,10 +9,19 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Minheap (struct/minheap.c)
+ * CLASS: Minheap (struct/minheap.c)
  * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the MinHeap class, ported from struct/MinHeap.java.
+ *
+ * STRUCT FIELDS (Mirroring struct/minheap.h):
+ * ----------------------------------------------------------------------------
+ *   MinHeap {
+ *     int32_t size; // number of live entries
+ *     int32_t capacity; // max entries (1-based slots are capacity + 1)
+ *     int32_t *items; // item at heap index i (i in [1, size])
+ *     float *priorities; // priority at heap index i
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

@@ -10,10 +10,16 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Array (struct/array.c)
+ * CLASS: Array (struct/array.c)
  * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the Array class, ported from struct/Array.java.
+ *
+ * STRUCT FIELDS (Mirroring struct/array.h):
+ * ----------------------------------------------------------------------------
+ *   Array {
+ *     Collection collection; // instance state
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

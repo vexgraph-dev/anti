@@ -13,6 +13,8 @@
  * ============================================================================
  * GPU and graphics capabilities query (Legacy: system/GraphicsInfo.java)
  *
+ * STRUCT FIELDS: none — procedural (operates on graphics device query state)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Setters:

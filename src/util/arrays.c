@@ -11,6 +11,8 @@
  * ============================================================================
  * the Arrays utility, ported from util/Arrays.java.
  *
+ * STRUCT FIELDS: none — procedural (operates on caller int32/int64/byte buffers (in-place))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

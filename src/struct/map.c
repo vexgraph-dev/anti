@@ -10,10 +10,16 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Map (struct/map.c)
+ * CLASS: Map (struct/map.c)
  * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the Map class, ported from struct/Map.java.
+ *
+ * STRUCT FIELDS (Mirroring struct/map.h):
+ * ----------------------------------------------------------------------------
+ *   Map {
+ *     Collection collection; // instance state
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

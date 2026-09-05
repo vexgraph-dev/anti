@@ -10,10 +10,26 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Display_monitor (system/display_monitor.c)
+ * CLASS: Display_monitor (system/display_monitor.c)
  * LEVEL: L2 — Behavior (system query behavior API)
  * ============================================================================
  * single display monitor representation (Legacy: system/DisplayMonitor.java)
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   DisplayMonitor {
+ *     uint32_t id;               // monitor identifier
+ *     char name[128];            // display name string
+ *     int32_t currentWidth;      // active physical pixel width
+ *     int32_t currentHeight;     // active physical pixel height
+ *     int32_t pointWidth;        // logical point width (UI space)
+ *     int32_t pointHeight;       // logical point height (UI space)
+ *     int32_t nativeWidth;       // hardware panel native width
+ *     int32_t nativeHeight;      // hardware panel native height
+ *     int32_t refreshRate;       // refresh rate in Hz
+ *     bool hdrSupported;         // HDR capability flag
+ *     float dpi;                 // density / scale factor
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

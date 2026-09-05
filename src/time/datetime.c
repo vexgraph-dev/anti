@@ -12,10 +12,24 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Datetime (time/datetime.c)
+ * CLASS: Datetime (time/datetime.c)
  * LEVEL: L2 — Behavior (time behavior API)
  * ============================================================================
  * UTC date/time breakdown (Legacy: time/DateTime.java).
+ *
+ * STRUCT FIELDS (Mirroring time/datetime.h):
+ * ----------------------------------------------------------------------------
+ *   DateTime {
+ *     int64_t epochMillis; // epoch millis anchor
+ *     int32_t year; // calendar component
+ *     int32_t month; // 1-12
+ *     int32_t day; // 1-31
+ *     int32_t hour; // 0-23
+ *     int32_t minute; // 0-59
+ *     int32_t second; // 0-59
+ *     int32_t millisecond; // 0-999
+ *     int32_t dayOfWeek; // 1=Monday .. 7=Sunday
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

@@ -13,10 +13,23 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Thread (thread/thread.c)
+ * CLASS: Thread (thread/thread.c)
  * LEVEL: L2 — Behavior (worker-thread behavior API)
  * ============================================================================
  * the worker-thread engine (Legacy: the six *Thread.java
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   Thread {
+ *     _Atomic int state;         // 0 = STOPPED, 1 = RUNNING
+ *     uint32_t typeId;           // block-header class (ID_THREAD_*)
+ *     pthread_t platform;        // native platform thread handle
+ *     bool platformStarted;      // platform thread spawned flag
+ *     RingBuffer queue;          // void* task slot ring
+ *     Thread_Job job;            // per-pass task body callback
+ *     bool tickWhenIdle;         // run job with nullptr task when idle
+ *     bool core;                 // core handle: immune to stop/free
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

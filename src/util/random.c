@@ -12,10 +12,18 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Random (util/random.c)
+ * CLASS: Random (util/random.c)
  * LEVEL: L2 — Behavior (utility behavior API)
  * ============================================================================
  * the Random class, ported from util/Random.java.
+ *
+ * STRUCT FIELDS (Mirroring util/random.h):
+ * ----------------------------------------------------------------------------
+ *   Random {
+ *     uint64_t seed; // current mixed state
+ *     uint32_t counter; // sequence index
+ *     uint32_t pad; // alignment padding
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

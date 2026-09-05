@@ -8,10 +8,22 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Collection (struct/collection.c)
+ * CLASS: Collection (struct/collection.c)
  * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the Collection metadata struct, ported from
+ *
+ * STRUCT FIELDS (Mirroring struct/collection.h):
+ * ----------------------------------------------------------------------------
+ *   Collection {
+ *     uint32_t typeId; // mirror of the block-header type (for debug)
+ *     uint32_t activeCount; // number of live elements
+ *     uint32_t elementClass; // class of elements (Map: key class)
+ *     uint32_t stride; // bytes per element (Map: val class)
+ *     uint32_t capacity; // element capacity (or slot capacity)
+ *     uint32_t head; // circular head index (Deque/Queue); else 0
+ *     uint8_t *data; // element / slot buffer
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

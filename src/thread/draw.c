@@ -8,10 +8,17 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Draw (thread/draw.c)
+ * CLASS: Draw (thread/draw.c)
  * LEVEL: L2 — Behavior (worker-thread behavior API)
  * ============================================================================
  * the rendering worker pool (Legacy: DrawThread.java).
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   RoleSlot {
+ *     int role;                  // DRAW_ROLE_* tag served by this slot
+ *     Thread *worker;            // backing worker thread handle
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

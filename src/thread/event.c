@@ -14,6 +14,8 @@
  * ============================================================================
  * the event dispatcher worker (Legacy: EventThread.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on Thread pool (event role workers))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

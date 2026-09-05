@@ -13,6 +13,8 @@
  * ============================================================================
  * host hardware information query (Legacy: system/HardwareInfo.java)
  *
+ * STRUCT FIELDS: none — procedural (operates on hardware query state)
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Setters:

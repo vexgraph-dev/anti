@@ -17,6 +17,8 @@
  * ============================================================================
  * stateless date arithmetic (Legacy: time/Calendar.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on DateTime values (pure date arithmetic))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

@@ -9,6 +9,8 @@
  * ============================================================================
  * the Hash utility, ported from util/Hash.java.
  *
+ * STRUCT FIELDS: none — procedural (operates on byte buffers (pure hash functions))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Getters:

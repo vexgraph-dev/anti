@@ -14,6 +14,8 @@
  * ============================================================================
  * the networking worker (Legacy: NetworkingThread.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on Thread pool (networking role workers))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

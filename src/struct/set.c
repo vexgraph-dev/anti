@@ -11,10 +11,16 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Set (struct/set.c)
+ * CLASS: Set (struct/set.c)
  * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the Set class, ported from struct/Set.java.
+ *
+ * STRUCT FIELDS (Mirroring struct/set.h):
+ * ----------------------------------------------------------------------------
+ *   Set {
+ *     Collection collection; // instance state
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

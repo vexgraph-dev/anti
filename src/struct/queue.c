@@ -10,10 +10,16 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Queue (struct/queue.c)
+ * CLASS: Queue (struct/queue.c)
  * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the Queue class, ported from struct/Queue.java.
+ *
+ * STRUCT FIELDS (Mirroring struct/queue.h):
+ * ----------------------------------------------------------------------------
+ *   Queue {
+ *     Collection collection; // instance state
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

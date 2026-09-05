@@ -13,6 +13,8 @@
  * ============================================================================
  * the UI worker (Legacy: UIThread.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on Thread pool (UI role workers))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

@@ -10,10 +10,16 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Stack (struct/stack.c)
+ * CLASS: Stack (struct/stack.c)
  * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the Stack class, ported from struct/Stack.java. LIFO over a
+ *
+ * STRUCT FIELDS (Mirroring struct/stack.h):
+ * ----------------------------------------------------------------------------
+ *   Stack {
+ *     Collection collection; // instance state
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

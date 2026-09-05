@@ -10,10 +10,16 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Deque (struct/deque.c)
+ * CLASS: Deque (struct/deque.c)
  * LEVEL: L2 — Behavior (container behavior API)
  * ============================================================================
  * the Deque class, ported from struct/Deque.java.
+ *
+ * STRUCT FIELDS (Mirroring struct/deque.h):
+ * ----------------------------------------------------------------------------
+ *   Deque {
+ *     Collection collection; // instance state
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
