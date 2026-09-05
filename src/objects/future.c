@@ -10,10 +10,17 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Future (objects/future.c)
+ * CLASS: Future (objects/future.c)
  * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Asynchronous single-assignment Future object wrapper.
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   Future {
+ *     atomic_bool isGiven;       // fulfillment flag (single-assignment)
+ *     uint64_t value;            // resolved payload (0 until given)
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

@@ -20,6 +20,41 @@
  * Phase-4 instancing: globals are the DEFAULT MemoryArena; secondaries
  * register for address-range free routing. Header layout untouched.
  *
+ * STRUCT FIELDS (Mirroring nio/mem.h + local to this file):
+ * ----------------------------------------------------------------------------
+ *   MemoryHeader {
+ *     uint32_t typeId; // block-header type id
+ *     uint32_t length; // payload length
+ *     uint32_t slabIndex; // slab index
+ *     uint32_t magic; // block magic cookie
+ *   }
+ *   Block {
+ *     struct Block *prev; // instance state
+ *     struct Block *next; // next sibling ref
+ *     uint32_t typeId; // block-header type id
+ *     uint32_t length; // payload length
+ *     uint64_t pad; // alignment padding
+ *   }
+ *   SlabClass {
+ *     uint32_t slot_size;        // bytes per slot in this size class
+ *     uint32_t capacity;         // total slots carved from the arena
+ *     uint32_t count;            // live (checked-out) slots
+ *     uint8_t *arena;            // backing store for this class
+ *     FreeNode *free_head;       // lock-free recycled slot stack
+ *     SpinLock lock;             // serializes alloc/free on this class
+ *   }
+ *   MemoryArena {
+ *     SlabClass slabs[SLAB_COUNT]; // size-class slab table (64B..4K)
+ *     uint8_t *masterArena;      // pre-allocated master backing store
+ *     size_t masterCapacity;     // master arena byte capacity
+ *     uint8_t *bumpArena;        // large/allocation bump region
+ *     size_t bumpCapacity;       // bump region capacity
+ *     size_t bumpOffset;         // bump cursor (monotonic)
+ *     SpinLock bumpLock;         // serializes bump allocation
+ *     SpinLock initLock;         // serializes lazy arena init
+ *     bool live;                 // arena ready flag
+ *   }
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

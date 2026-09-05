@@ -15,6 +15,8 @@
  * ============================================================================
  * spotlight relational facade over Variable (Legacy: relational/RelationalEngine.java).
  *
+ * STRUCT FIELDS: none — procedural (operates on Variable scope tables (global/local))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

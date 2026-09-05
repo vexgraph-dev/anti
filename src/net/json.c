@@ -15,10 +15,37 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Json (net/json.c)
+ * CLASS: Json (net/json.c)
  * LEVEL: L2 — Behavior (JSON document behavior API)
  * ============================================================================
  * off-heap JSON documents (Legacy: net/JSON.java).
+ *
+ * STRUCT FIELDS (Mirroring net/json.h + local to this file):
+ * ----------------------------------------------------------------------------
+ *   JsonNode {
+ *     JsonType type; // node type tag
+ *     JsonRef child; // first element/member
+ *     JsonRef next; // next sibling
+ *     uint32_t offset; // string/key start (in src, or scratch when inScratch)
+ *     uint32_t length; // string/key length (decoded)
+ *     bool inScratch; // true when offset points into the decode arena
+ *     double number; // JSON_NUMBER payload
+ *   }
+ *   JsonDoc {
+ *     JsonNode *nodes; // caller-owned pool
+ *     uint32_t nodeCap; // node pool state
+ *     uint32_t nodeCount; // live entry count
+ *     const char *src; // input text (must outlive all string views)
+ *     char *scratch; // caller-owned: decoded escape copies
+ *     uint32_t scratchCap; // input/decode buffer state
+ *     uint32_t scratchUsed; // input/decode buffer state
+ *     JsonRef root; // root node ref
+ *     bool ok; // parse result
+ *   }
+ *   Parser {
+ *     JsonDoc *doc;              // destination document being built
+ *     const char *p;             // input cursor
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

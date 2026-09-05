@@ -10,10 +10,20 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Probable_objects (objects/probable_objects.c)
+ * CLASS: Probable_objects (objects/probable_objects.c)
  * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * the ProbableObjects class, ported from
+ *
+ * STRUCT FIELDS (Mirroring objects/probable_objects.h):
+ * ----------------------------------------------------------------------------
+ *   ProbableObjects {
+ *     uint32_t count; // active choices
+ *     uint32_t totalWeight; // sum of all weights
+ *     uint32_t capacity; // maximum choices
+ *     uint32_t pad; // alignment padding
+ *     uint8_t slots[]; // backing store
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

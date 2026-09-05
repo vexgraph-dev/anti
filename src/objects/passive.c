@@ -9,10 +9,19 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Passive (objects/passive.c)
+ * CLASS: Passive (objects/passive.c)
  * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Lazy-evaluated / computed Passive object wrapper.
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   Passive {
+ *     uint64_t cachedValue;      // memoized lazy value
+ *     PassiveGetter getter;      // lazy compute callback
+ *     PassiveSetter setter;      // optional write-back callback
+ *     void *userdata;            // opaque callback context
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

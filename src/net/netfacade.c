@@ -17,6 +17,8 @@
  * ============================================================================
  * the combined conveniences promised by net/net.h.
  *
+ * STRUCT FIELDS: none — procedural (operates on Http/URL/transport backends (facade))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

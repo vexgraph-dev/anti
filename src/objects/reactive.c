@@ -9,10 +9,20 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Reactive (objects/reactive.c)
+ * CLASS: Reactive (objects/reactive.c)
  * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Event-driven Reactive object wrapper.
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   Reactive {
+ *     uint64_t value;                    // current payload
+ *     ReactiveSetCallback onSet;         // fires on write
+ *     ReactiveGetCallback onGet;         // fires on read
+ *     ReactiveChangedCallback onChanged; // fires when value changes
+ *     void *userdata;                    // opaque observer context
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

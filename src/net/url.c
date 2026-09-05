@@ -16,6 +16,8 @@
  * ============================================================================
  * URI synthesis & authentication headers (Legacy:
  *
+ * STRUCT FIELDS: none — procedural (operates on caller buffers (synthesis, no allocation))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:

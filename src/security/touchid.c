@@ -77,10 +77,17 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Touchid (security/touchid.c)
+ * CLASS: Touchid (security/touchid.c)
  * LEVEL: L2 — Behavior (portable auth behavior stub)
  * ============================================================================
  * perform operation
+ *
+ * STRUCT FIELDS (Mirroring security/touchid.h):
+ * ----------------------------------------------------------------------------
+ *   TouchIDToken {
+ *     uint64_t magic[2]; // randomness, never written by C core... oo00oo00ohh *magic*
+ *     bool     consumed; // set true by verify / discard
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

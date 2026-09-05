@@ -13,10 +13,21 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Variable (relational/variable.c)
+ * CLASS: Variable (relational/variable.c)
  * LEVEL: L2 — Behavior (relational behavior API)
  * ============================================================================
  * the relational symbol registry (Legacy: variable/Variable.java).
+ *
+ * STRUCT FIELDS (Mirroring relational/variable.h):
+ * ----------------------------------------------------------------------------
+ *   Variable {
+ *     uint8_t *arena; // slot arena (activeCount * SLOT_SIZE)
+ *     size_t capacity; // slot count
+ *     size_t activeCount; // registered symbols
+ *     uint8_t *map; // open-addressing name hash map
+ *     size_t mapCapacity; // map slot count
+ *     bool active; // runtime-active flag
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

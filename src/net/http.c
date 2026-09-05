@@ -31,10 +31,50 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Http (net/http.c)
+ * CLASS: Http (net/http.c)
  * LEVEL: L2 — Behavior (net behavior API)
  * ============================================================================
  * HTTP/1.1 client & micro server over BSD sockets
+ *
+ * STRUCT FIELDS (Mirroring net/http.h):
+ * ----------------------------------------------------------------------------
+ *   HttpHeader {
+ *     const char *name; // field/entry name
+ *     const char *value; // payload value
+ *   }
+ *   HttpRequest {
+ *     const char *scheme; // "http" default, "https" requires TLS backend
+ *     const char *method; // "GET", "POST", ... default "GET"
+ *     const char *host; // required
+ *     int port; // 0 => 80
+ *     const char *path; // default "/"
+ *     const HttpHeader *headers; // header array (headerCount entries)
+ *     uint32_t headerCount; // header array length
+ *     const char *body; // nullptr = no body
+ *     size_t bodyLen; // message body state
+ *     uint32_t timeoutMs; // connect+read budget, default 5000
+ *   }
+ *   HttpResponse {
+ *     bool ok; // transport-level success; status may still be 4xx
+ *     int status; // HTTP status code
+ *     char contentType[128]; // response MIME type
+ *     char *body; // caller-owned receive buffer
+ *     size_t bodyCap; // receive buffer capacity
+ *     size_t bodyLen; // received body length
+ *   }
+ *   HttpExchange {
+ *     char method[16]; // HTTP method
+ *     char path[1024]; // request path
+ *     const char *body; // request body view
+ *     size_t bodyLen; // request body length
+ *   }
+ *   HttpServer {
+ *     int listenFd; // listen socket fd
+ *     pthread_t thread; // background thread handle
+ *     volatile bool running; // run-state flag
+ *     HttpHandler handler; // per-connection request handler
+ *     void *userdata; // opaque callback context
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

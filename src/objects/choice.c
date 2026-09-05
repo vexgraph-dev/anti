@@ -9,10 +9,21 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Choice (objects/choice.c)
+ * CLASS: Choice (objects/choice.c)
  * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Immutable deterministic choice / branch dispatcher.
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   ChoiceSlot {
+ *     uint64_t objectPtr;        // option object pointer payload
+ *     ChoiceCallback callback;   // per-option branch callback
+ *   }
+ *   Choice {
+ *     size_t count;              // number of live options
+ *     ChoiceSlot slots[];        // flexible option array
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

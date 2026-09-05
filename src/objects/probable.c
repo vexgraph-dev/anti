@@ -9,10 +9,18 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Probable (objects/probable.c)
+ * CLASS: Probable (objects/probable.c)
  * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Core subsystem implementation for Probable.
+ *
+ * STRUCT FIELDS (Mirroring objects/probable.h):
+ * ----------------------------------------------------------------------------
+ *   Probable {
+ *     uintptr_t object; // object pointer payload
+ *     uint32_t weight; // weighted-choice state
+ *     uint32_t total; // weighted-choice state
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

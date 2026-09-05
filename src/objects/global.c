@@ -10,10 +10,16 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Global (objects/global.c)
+ * CLASS: Global (objects/global.c)
  * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Atomic global pointer/variable object wrapper.
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   Global {
+ *     atomic_uint_least64_t value; // shared atomic payload
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

@@ -9,10 +9,16 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: Local (objects/local.c)
+ * CLASS: Local (objects/local.c)
  * LEVEL: L2 — Behavior (object behavior API)
  * ============================================================================
  * Thread-local variable slot array object wrapper.
+ *
+ * STRUCT FIELDS (local to this file):
+ * ----------------------------------------------------------------------------
+ *   Local {
+ *     uint64_t slots[LOCAL_THREAD_MAX]; // per-thread value slots
+ *   }
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------

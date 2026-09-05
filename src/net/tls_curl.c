@@ -12,6 +12,8 @@
  * ============================================================================
  * libcurl TLS backend for non-Apple platforms.
  *
+ * STRUCT FIELDS: none — procedural (operates on TLS connection handles (opaque backend))
+ *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:
